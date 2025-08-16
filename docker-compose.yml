@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: meditrack_postgres
+    environment:
+      POSTGRES_DB: meditrack
+      POSTGRES_USER: meditrack_user
+      POSTGRES_PASSWORD: meditrack_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - meditrack_network
+    restart: unless-stopped
+
+  # Backend Go
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meditrack_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=meditrack_user
+      - DB_PASSWORD=meditrack_password
+      - DB_NAME=meditrack_db
+      - DB_SSL_MODE=disable
+      - JWT_SECRET=meditrack_jwt_secret_dev
+      - PORT=8080
+    depends_on:
+      - postgres
+    networks:
+      - meditrack_network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/vendor
+
+  # Frontend Vue
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: meditrack_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api
+    depends_on:
+      - backend
+    networks:
+      - meditrack_network
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  # Redis para caché y sesiones (opcional, para futuras funcionalidades)
+  redis:
+    image: redis:7-alpine
+    container_name: meditrack_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - meditrack_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  meditrack_network:
+    driver: bridge 

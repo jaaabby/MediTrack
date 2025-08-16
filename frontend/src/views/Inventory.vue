@@ -1,0 +1,387 @@
+<template>
+  <div class="space-y-6">
+    <!-- Header del inventario -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Inventario de Insumos Médicos</h1>
+        <p class="text-gray-600 mt-1">Gestión y control de stock médico</p>
+      </div>
+      <button class="btn-primary">
+        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Agregar Insumo
+      </button>
+    </div>
+
+    <!-- Filtros y búsqueda -->
+    <div class="card">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- Búsqueda por nombre -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del insumo</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar insumo..."
+              class="form-input pl-10"
+              v-model="filters.name"
+            />
+          </div>
+        </div>
+
+        <!-- Búsqueda por número de lote -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">N° de lote</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Número de lote..."
+              class="form-input pl-10"
+              v-model="filters.lotNumber"
+            />
+          </div>
+        </div>
+
+        <!-- Ordenar por -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Ordenar por</label>
+          <select class="form-select" v-model="filters.sortBy">
+            <option value="name">Nombre</option>
+            <option value="lot_number">Número de lote</option>
+            <option value="expiration_date">Fecha de vencimiento</option>
+            <option value="quantity">Cantidad</option>
+            <option value="location">Ubicación</option>
+            <option value="created_at">Fecha de creación</option>
+          </select>
+        </div>
+
+        <!-- Botón de filtrado -->
+        <div class="flex items-end">
+          <button class="btn-primary w-full" @click="applyFilters">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+            </svg>
+            Filtrar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de inventario -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Lista de Insumos Médicos</h2>
+        <p class="text-sm text-gray-600">Total: {{ filteredSupplies.length }} insumos</p>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead class="table-header">
+            <tr>
+              <th class="table-header-cell">N° de lote</th>
+              <th class="table-header-cell">Nombre del Insumo</th>
+              <th class="table-header-cell">Cantidad</th>
+              <th class="table-header-cell">F. Vencimiento</th>
+              <th class="table-header-cell">Ubicación</th>
+              <th class="table-header-cell">Estado</th>
+              <th class="table-header-cell">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="table-body">
+            <tr v-for="supply in paginatedSupplies" :key="supply.id" class="table-row">
+              <td class="table-cell font-mono text-sm">{{ supply.lotNumber }}</td>
+              <td class="table-cell">
+                <div>
+                  <div class="font-medium text-gray-900">{{ supply.name }}</div>
+                  <div class="text-sm text-gray-500">{{ supply.description }}</div>
+                </div>
+              </td>
+              <td class="table-cell">
+                <span class="font-medium">{{ supply.quantity }}</span>
+                <span class="text-gray-500 text-sm ml-1">unidades</span>
+              </td>
+              <td class="table-cell">
+                <span :class="getExpirationClass(supply.expirationDate)">
+                  {{ formatDate(supply.expirationDate) }}
+                </span>
+              </td>
+              <td class="table-cell">
+                <span class="badge badge-info">{{ supply.location }}</span>
+              </td>
+              <td class="table-cell">
+                <span :class="getStatusBadgeClass(supply.status)">
+                  {{ supply.status }}
+                </span>
+              </td>
+              <td class="table-cell">
+                <div class="flex space-x-2">
+                  <button class="text-primary-600 hover:text-primary-800" @click="viewSupply(supply)">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+                  <button class="text-warning-600 hover:text-warning-800" @click="editSupply(supply)">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button class="text-danger-600 hover:text-danger-800" @click="deleteSupply(supply)">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      <div class="flex items-center justify-between mt-6">
+        <div class="text-sm text-gray-700">
+          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ filteredSupplies.length }} resultados
+        </div>
+        <div class="flex space-x-2">
+          <button
+            class="btn-secondary"
+            :disabled="currentPage === 1"
+            @click="currentPage--"
+          >
+            Anterior
+          </button>
+          <span class="px-3 py-2 text-sm text-gray-700">
+            Página {{ currentPage }} de {{ totalPages }}
+          </span>
+          <button
+            class="btn-secondary"
+            :disabled="currentPage === totalPages"
+            @click="currentPage++"
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botones de acción flotantes -->
+    <div class="fixed bottom-6 right-6 space-y-3">
+      <button class="btn-success rounded-full p-4 shadow-lg" @click="scanQR">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
+        </svg>
+      </button>
+      <button class="btn-primary rounded-full p-4 shadow-lg" @click="exportInventory">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
+
+// Estado reactivo
+const supplies = ref([])
+const filters = ref({
+  name: '',
+  lotNumber: '',
+  sortBy: 'name'
+})
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+// Datos de ejemplo (reemplazar con llamadas a la API)
+const mockSupplies = [
+  {
+    id: 1,
+    lotNumber: '28374',
+    name: 'Guantes Quirúrgicos Nitrilo Vinilo',
+    description: 'Guantes de nitrilo para procedimientos quirúrgicos',
+    quantity: 209,
+    expirationDate: '2025-03-25',
+    location: 'Devoluciones',
+    status: 'active'
+  },
+  {
+    id: 2,
+    lotNumber: '19382',
+    name: 'Guantes Quirúrgicos Nitrilo Vinilo',
+    description: 'Guantes de nitrilo para procedimientos quirúrgicos',
+    quantity: 137,
+    expirationDate: '2025-05-07',
+    location: 'Consignados',
+    status: 'active'
+  },
+  {
+    id: 3,
+    lotNumber: '58373',
+    name: 'Guantes Quirúrgicos Nitrilo Vinilo',
+    description: 'Guantes de nitrilo para procedimientos quirúrgicos',
+    quantity: 492,
+    expirationDate: '2025-06-17',
+    location: 'Central',
+    status: 'active'
+  },
+  {
+    id: 4,
+    lotNumber: '28374',
+    name: 'Guantes Quirúrgicos Nitrilo Vinilo',
+    description: 'Guantes de nitrilo para procedimientos quirúrgicos',
+    quantity: 100,
+    expirationDate: '2025-08-22',
+    location: 'Central',
+    status: 'active'
+  },
+  {
+    id: 5,
+    lotNumber: '19382',
+    name: 'Guantes Quirúrgicos Nitrilo Vinilo',
+    description: 'Guantes de nitrilo para procedimientos quirúrgicos',
+    quantity: 200,
+    expirationDate: '2025-09-12',
+    location: 'Botiquín 3',
+    status: 'active'
+  },
+  {
+    id: 6,
+    lotNumber: '58373',
+    name: 'Guantes Quirúrgicos Nitrilo Vinilo',
+    description: 'Guantes de nitrilo para procedimientos quirúrgicos',
+    quantity: 500,
+    expirationDate: '2025-12-28',
+    location: 'Botiquín 5',
+    status: 'active'
+  }
+]
+
+// Computed properties
+const filteredSupplies = computed(() => {
+  let filtered = [...mockSupplies]
+  
+  if (filters.value.name) {
+    filtered = filtered.filter(supply => 
+      supply.name.toLowerCase().includes(filters.value.name.toLowerCase())
+    )
+  }
+  
+  if (filters.value.lotNumber) {
+    filtered = filtered.filter(supply => 
+      supply.lotNumber.includes(filters.value.lotNumber)
+    )
+  }
+  
+  // Ordenamiento
+  filtered.sort((a, b) => {
+    switch (filters.value.sortBy) {
+      case 'lot_number':
+        return a.lotNumber.localeCompare(b.lotNumber)
+      case 'expiration_date':
+        return new Date(a.expirationDate) - new Date(b.expirationDate)
+      case 'quantity':
+        return b.quantity - a.quantity
+      case 'location':
+        return a.location.localeCompare(b.location)
+      case 'created_at':
+        return new Date(b.createdAt) - new Date(a.createdAt)
+      default:
+        return a.name.localeCompare(b.name)
+    }
+  })
+  
+  return filtered
+})
+
+const totalPages = computed(() => Math.ceil(filteredSupplies.value.length / itemsPerPage))
+
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, filteredSupplies.value.length))
+
+const paginatedSupplies = computed(() => {
+  return filteredSupplies.value.slice(startIndex.value, endIndex.value)
+})
+
+// Métodos
+const applyFilters = () => {
+  currentPage.value = 1
+}
+
+const formatDate = (dateString) => {
+  try {
+    return format(new Date(dateString), 'dd/MM/yyyy', { locale: es })
+  } catch {
+    return dateString
+  }
+}
+
+const getExpirationClass = (expirationDate) => {
+  const today = new Date()
+  const expDate = new Date(expirationDate)
+  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+  
+  if (daysUntilExpiration < 0) return 'text-danger-600 font-semibold'
+  if (daysUntilExpiration <= 30) return 'text-warning-600 font-semibold'
+  return 'text-gray-900'
+}
+
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case 'active':
+      return 'badge badge-success'
+    case 'expired':
+      return 'badge badge-danger'
+    case 'low_stock':
+      return 'badge badge-warning'
+    default:
+      return 'badge badge-info'
+  }
+}
+
+const viewSupply = (supply) => {
+  console.log('Ver insumo:', supply)
+  // TODO: Implementar vista detallada
+}
+
+const editSupply = (supply) => {
+  console.log('Editar insumo:', supply)
+  // TODO: Implementar edición
+}
+
+const deleteSupply = (supply) => {
+  if (confirm(`¿Está seguro de que desea eliminar el insumo ${supply.name}?`)) {
+    console.log('Eliminar insumo:', supply)
+    // TODO: Implementar eliminación
+  }
+}
+
+const scanQR = () => {
+  console.log('Escanear código QR')
+  // TODO: Implementar escáner QR
+}
+
+const exportInventory = () => {
+  console.log('Exportar inventario')
+  // TODO: Implementar exportación
+}
+
+// Lifecycle
+onMounted(() => {
+  supplies.value = mockSupplies
+})
+</script> 
