@@ -13,7 +13,7 @@ func SetupRoutes(
 	medicalSupplyService services.MedicalSupplyService,
 	supplyMovementService services.SupplyMovementService,
 	operatingRoomService services.OperatingRoomService,
-	doctorService services.DoctorService,
+	doctorService services.UserService,
 	locationService services.LocationService,
 	supplyRouteService services.SupplyRouteService,
 	doctorSupplyRouteService services.DoctorSupplyRouteService,

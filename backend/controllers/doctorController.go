@@ -11,11 +11,11 @@ import (
 
 // DoctorController maneja las peticiones HTTP relacionadas con doctores
 type DoctorController struct {
-	doctorService services.DoctorService
+	doctorService services.UserService
 }
 
 // NewDoctorController crea una nueva instancia de DoctorController
-func NewDoctorController(doctorService services.DoctorService) *DoctorController {
+func NewDoctorController(doctorService services.UserService) *DoctorController {
 	return &DoctorController{
 		doctorService: doctorService,
 	}
@@ -23,27 +23,26 @@ func NewDoctorController(doctorService services.DoctorService) *DoctorController
 
 // CreateDoctor crea un nuevo doctor
 func (c *DoctorController) CreateDoctor(ctx *gin.Context) {
-	var doctor models.Doctor
-	if err := ctx.ShouldBindJSON(&doctor); err != nil {
+	var user models.User
+	if err := ctx.ShouldBindJSON(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "Datos de doctor inválidos: " + err.Error(),
+			Error:   "Datos de usuario inválidos: " + err.Error(),
 		})
 		return
 	}
-
-	if err := c.doctorService.CreateDoctor(ctx, &doctor); err != nil {
+	user.Role = "doctor"
+	if err := c.doctorService.CreateUser(ctx, &user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al crear doctor: " + err.Error(),
 		})
 		return
 	}
-
 	ctx.JSON(http.StatusCreated, Response{
 		Success: true,
 		Message: "Doctor creado exitosamente",
-		Data:    doctor,
+		Data:    user,
 	})
 }
 
@@ -58,24 +57,23 @@ func (c *DoctorController) GetDoctorByID(ctx *gin.Context) {
 		return
 	}
 
-	doctor, err := c.doctorService.GetDoctorByID(ctx, id)
-	if err != nil {
+	user, err := c.doctorService.GetUserByID(ctx, id)
+	if err != nil || user.Role != "doctor" {
 		ctx.JSON(http.StatusNotFound, Response{
 			Success: false,
 			Error:   "Doctor no encontrado: " + err.Error(),
 		})
 		return
 	}
-
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
-		Data:    doctor,
+		Data:    user,
 	})
 }
 
 // GetAllDoctors obtiene todos los doctores
 func (c *DoctorController) GetAllDoctors(ctx *gin.Context) {
-	doctors, err := c.doctorService.GetAllDoctors(ctx)
+	users, err := c.doctorService.GetAllUsers(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
@@ -83,7 +81,12 @@ func (c *DoctorController) GetAllDoctors(ctx *gin.Context) {
 		})
 		return
 	}
-
+	var doctors []*models.User
+	for _, u := range users {
+		if u.Role == "doctor" {
+			doctors = append(doctors, u)
+		}
+	}
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Data:    doctors,
@@ -101,7 +104,7 @@ func (c *DoctorController) GetDoctorsBySpecialty(ctx *gin.Context) {
 		return
 	}
 
-	doctors, err := c.doctorService.GetDoctorsBySpecialty(ctx, specialty)
+	users, err := c.doctorService.GetUsersBySpecialty(ctx, specialty)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
@@ -109,7 +112,12 @@ func (c *DoctorController) GetDoctorsBySpecialty(ctx *gin.Context) {
 		})
 		return
 	}
-
+	var doctors []*models.User
+	for _, u := range users {
+		if u.Role == "doctor" {
+			doctors = append(doctors, u)
+		}
+	}
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Data:    doctors,
@@ -127,27 +135,26 @@ func (c *DoctorController) UpdateDoctor(ctx *gin.Context) {
 		return
 	}
 
-	var doctor models.Doctor
-	if err := ctx.ShouldBindJSON(&doctor); err != nil {
+	var user models.User
+	if err := ctx.ShouldBindJSON(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "Datos de doctor inválidos: " + err.Error(),
+			Error:   "Datos de usuario inválidos: " + err.Error(),
 		})
 		return
 	}
-
-	if err := c.doctorService.UpdateDoctor(ctx, &doctor); err != nil {
+	user.Role = "doctor"
+	if err := c.doctorService.UpdateUser(ctx, &user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al actualizar doctor: " + err.Error(),
 		})
 		return
 	}
-
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Doctor actualizado exitosamente",
-		Data:    doctor,
+		Data:    user,
 	})
 }
 
@@ -162,14 +169,13 @@ func (c *DoctorController) DeleteDoctor(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.doctorService.DeleteDoctor(ctx, id); err != nil {
+	if err := c.doctorService.DeleteUser(ctx, id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al eliminar doctor: " + err.Error(),
 		})
 		return
 	}
-
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Doctor eliminado exitosamente",

@@ -8,7 +8,7 @@ import (
 )
 
 // SetupDoctorRoutes configura las rutas de doctores
-func SetupDoctorRoutes(router *gin.RouterGroup, doctorService services.DoctorService) {
+func SetupDoctorRoutes(router *gin.RouterGroup, doctorService services.UserService) {
 	doctorController := controllers.NewDoctorController(doctorService)
 
 	doctors := router.Group("/doctors")

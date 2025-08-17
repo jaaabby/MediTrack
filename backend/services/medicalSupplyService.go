@@ -19,11 +19,11 @@ type MedicalSupplyService interface {
 
 // medicalSupplyService implementa MedicalSupplyService
 type medicalSupplyService struct {
-	medicalSupplyRepo repository.MedicalSupplyRepository
+	medicalSupplyRepo repository.MedicalSupplyRepositoryInterface
 }
 
 // NewMedicalSupplyService crea una nueva instancia de MedicalSupplyService
-func NewMedicalSupplyService(medicalSupplyRepo repository.MedicalSupplyRepository) MedicalSupplyService {
+func NewMedicalSupplyService(medicalSupplyRepo repository.MedicalSupplyRepositoryInterface) MedicalSupplyService {
 	return &medicalSupplyService{
 		medicalSupplyRepo: medicalSupplyRepo,
 	}

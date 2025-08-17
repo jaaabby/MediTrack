@@ -15,15 +15,16 @@ type UserService interface {
 	GetAllUsers(ctx context.Context) ([]*models.User, error)
 	UpdateUser(ctx context.Context, user *models.User) error
 	DeleteUser(ctx context.Context, id string) error
+	GetUsersBySpecialty(ctx context.Context, specialty string) ([]*models.User, error)
 }
 
 // userService implementa UserService
 type userService struct {
-	userRepo repository.UserRepository
+	userRepo repository.UserRepositoryInterface
 }
 
 // NewUserService crea una nueva instancia de UserService
-func NewUserService(userRepo repository.UserRepository) UserService {
+func NewUserService(userRepo repository.UserRepositoryInterface) UserService {
 	return &userService{
 		userRepo: userRepo,
 	}
@@ -57,4 +58,19 @@ func (s *userService) UpdateUser(ctx context.Context, user *models.User) error {
 // DeleteUser implementa la eliminación de un usuario
 func (s *userService) DeleteUser(ctx context.Context, id string) error {
 	return s.userRepo.Delete(ctx, id)
+}
+
+// GetUsersBySpecialty implementa la obtención de usuarios por especialidad y rol doctor
+func (s *userService) GetUsersBySpecialty(ctx context.Context, specialty string) ([]*models.User, error) {
+	users, err := s.userRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var doctors []*models.User
+	for _, u := range users {
+		if u.Role == "doctor" && u.Name == specialty {
+			doctors = append(doctors, u)
+		}
+	}
+	return doctors, nil
 }
