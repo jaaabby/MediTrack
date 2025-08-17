@@ -32,7 +32,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.userService.CreateUser(ctx, &user); err != nil {
+	if err := c.userService.CreateUser(&user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al crear usuario: " + err.Error(),
@@ -49,16 +49,16 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 
 // GetUserByID obtiene un usuario por ID
 func (c *UserController) GetUserByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
+	rut := ctx.Param("id")
+	if rut == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "ID de usuario requerido",
+			Error:   "RUT de usuario requerido",
 		})
 		return
 	}
 
-	user, err := c.userService.GetUserByID(ctx, id)
+	user, err := c.userService.GetUserByID(rut)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{
 			Success: false,
@@ -75,7 +75,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 
 // GetAllUsers obtiene todos los usuarios
 func (c *UserController) GetAllUsers(ctx *gin.Context) {
-	users, err := c.userService.GetAllUsers(ctx)
+	users, err := c.userService.GetAllUsers()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
@@ -92,11 +92,11 @@ func (c *UserController) GetAllUsers(ctx *gin.Context) {
 
 // UpdateUser actualiza un usuario existente
 func (c *UserController) UpdateUser(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
+	rut := ctx.Param("id")
+	if rut == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "ID de usuario requerido",
+			Error:   "RUT de usuario requerido",
 		})
 		return
 	}
@@ -110,7 +110,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.userService.UpdateUser(ctx, &user); err != nil {
+	if err := c.userService.UpdateUser(&user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al actualizar usuario: " + err.Error(),
@@ -127,16 +127,16 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 // DeleteUser elimina un usuario
 func (c *UserController) DeleteUser(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
+	rut := ctx.Param("id")
+	if rut == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "ID de usuario requerido",
+			Error:   "RUT de usuario requerido",
 		})
 		return
 	}
 
-	if err := c.userService.DeleteUser(ctx, id); err != nil {
+	if err := c.userService.DeleteUser(rut); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al eliminar usuario: " + err.Error(),

@@ -33,22 +33,19 @@ func main() {
 	// Crear repositorios
 	userRepo := repository.NewUserRepository(db)
 	medicalSupplyRepo := repository.NewMedicalSupplyRepository(db)
-	supplyMovementRepo := repository.NewSupplyMovementRepository()
-	operatingRoomRepo := repository.NewOperatingRoomRepository()
-	locationRepo := repository.NewLocationRepository()
-	supplyRouteRepo := repository.NewSupplyRouteRepository()
-	doctorSupplyRouteRepo := repository.NewDoctorSupplyRouteRepository()
-	supplyRouteMedicalSupplyRepo := repository.NewSupplyRouteMedicalSupplyRepository()
+	medicalCenterRepo := repository.NewMedicalCenterRepository(db)
+	batchRepo := repository.NewBatchRepository(db)
+	storeRepo := repository.NewStoreRepository(db)
+	supplyHistoryRepo := repository.NewSupplyHistoryRepository(db)
 
 	// Crear servicios
 	userService := services.NewUserService(userRepo)
 	medicalSupplyService := services.NewMedicalSupplyService(medicalSupplyRepo)
-	supplyMovementService := services.NewSupplyMovementService(supplyMovementRepo)
-	operatingRoomService := services.NewOperatingRoomService(operatingRoomRepo)
-	locationService := services.NewLocationService(locationRepo)
-	supplyRouteService := services.NewSupplyRouteService(supplyRouteRepo)
-	doctorSupplyRouteService := services.NewDoctorSupplyRouteService(doctorSupplyRouteRepo)
-	supplyRouteMedicalSupplyService := services.NewSupplyRouteMedicalSupplyService(supplyRouteMedicalSupplyRepo)
+	medicalCenterService := services.NewMedicalCenterService(medicalCenterRepo)
+	batchService := services.NewBatchService(batchRepo)
+	pavilionService := services.NewPavilionService(db)
+	storeService := services.NewStoreService(storeRepo)
+	supplyHistoryService := services.NewSupplyHistoryService(supplyHistoryRepo)
 
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
@@ -64,13 +61,12 @@ func main() {
 		router,
 		userService,
 		medicalSupplyService,
-		supplyMovementService,
-		operatingRoomService,
-		userService, // doctorService ahora es userService
-		locationService,
-		supplyRouteService,
-		doctorSupplyRouteService,
-		supplyRouteMedicalSupplyService,
+		medicalCenterService,
+		batchService,
+		pavilionService,
+		storeService,
+		supplyHistoryService,
+		userService,
 	)
 
 	// Iniciar servidor

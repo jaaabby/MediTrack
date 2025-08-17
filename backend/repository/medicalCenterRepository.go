@@ -14,12 +14,11 @@ func NewMedicalCenterRepository(db *gorm.DB) *MedicalCenterRepository {
 	return &MedicalCenterRepository{DB: db}
 }
 
-// Create a new medical center
+// CRUD básico
 func (r *MedicalCenterRepository) Create(center *models.MedicalCenter) error {
 	return r.DB.Create(center).Error
 }
 
-// Get medical center by ID
 func (r *MedicalCenterRepository) GetByID(id int) (*models.MedicalCenter, error) {
 	var center models.MedicalCenter
 	if err := r.DB.First(&center, id).Error; err != nil {
@@ -28,7 +27,6 @@ func (r *MedicalCenterRepository) GetByID(id int) (*models.MedicalCenter, error)
 	return &center, nil
 }
 
-// Get all medical centers
 func (r *MedicalCenterRepository) GetAll() ([]models.MedicalCenter, error) {
 	var centers []models.MedicalCenter
 	if err := r.DB.Find(&centers).Error; err != nil {
@@ -37,12 +35,10 @@ func (r *MedicalCenterRepository) GetAll() ([]models.MedicalCenter, error) {
 	return centers, nil
 }
 
-// Update medical center
 func (r *MedicalCenterRepository) Update(center *models.MedicalCenter) error {
 	return r.DB.Save(center).Error
 }
 
-// Delete medical center
 func (r *MedicalCenterRepository) Delete(id int) error {
 	return r.DB.Delete(&models.MedicalCenter{}, id).Error
 }
