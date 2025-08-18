@@ -2,41 +2,57 @@ package services
 
 import (
 	"meditrack/models"
-	"meditrack/repository"
+
+	"gorm.io/gorm"
 )
 
-type BatchService interface {
-	CreateBatch(batch *models.Batch) error
-	GetBatchByID(id int) (*models.Batch, error)
-	GetAllBatches() ([]models.Batch, error)
-	UpdateBatch(batch *models.Batch) error
-	DeleteBatch(id int) error
+type BatchService struct {
+	DB *gorm.DB
 }
 
-type batchService struct {
-	repo *repository.BatchRepository
+func NewBatchService(db *gorm.DB) *BatchService {
+	return &BatchService{DB: db}
 }
 
-func NewBatchService(repo *repository.BatchRepository) BatchService {
-	return &batchService{repo: repo}
+func (s *BatchService) CreateBatch(batch *models.Batch) error {
+	return s.DB.Create(batch).Error
 }
 
-func (s *batchService) CreateBatch(batch *models.Batch) error {
-	return s.repo.Create(batch)
+func (s *BatchService) GetBatchByID(id int) (*models.Batch, error) {
+	var batch models.Batch
+	if err := s.DB.First(&batch, id).Error; err != nil {
+		return nil, err
+	}
+	return &batch, nil
 }
 
-func (s *batchService) GetBatchByID(id int) (*models.Batch, error) {
-	return s.repo.GetByID(id)
+func (s *BatchService) GetAllBatches() ([]models.Batch, error) {
+	var batches []models.Batch
+	if err := s.DB.Find(&batches).Error; err != nil {
+		return nil, err
+	}
+	return batches, nil
 }
 
-func (s *batchService) GetAllBatches() ([]models.Batch, error) {
-	return s.repo.GetAll()
+func (s *BatchService) UpdateBatch(id int, newBatch *models.Batch) (*models.Batch, error) {
+	var batch models.Batch
+	if err := s.DB.First(&batch, id).Error; err != nil {
+		return nil, err
+	}
+	batch.ExpirationDate = newBatch.ExpirationDate
+	batch.Amount = newBatch.Amount
+	batch.Supplier = newBatch.Supplier
+	batch.StoreID = newBatch.StoreID
+
+	if err := s.DB.Save(&batch).Error; err != nil {
+		return nil, err
+	}
+	return &batch, nil
 }
 
-func (s *batchService) UpdateBatch(batch *models.Batch) error {
-	return s.repo.Update(batch)
-}
-
-func (s *batchService) DeleteBatch(id int) error {
-	return s.repo.Delete(id)
+func (s *BatchService) DeleteBatch(id int) error {
+	if err := s.DB.Delete(&models.Batch{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }

@@ -67,7 +67,7 @@ func (c *MedicalCenterController) UpdateMedicalCenter(ctx *gin.Context) {
 		return
 	}
 	center.ID = intID
-	if err := c.medicalCenterService.UpdateMedicalCenter(&center); err != nil {
+	if _, err := c.medicalCenterService.UpdateMedicalCenter(intID, &center); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar centro médico: " + err.Error()})
 		return
 	}

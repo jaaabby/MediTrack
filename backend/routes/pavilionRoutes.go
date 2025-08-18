@@ -8,7 +8,7 @@ import (
 )
 
 // SetupPavilionRoutes configura las rutas de pavilion
-func SetupPavilionRoutes(router *gin.RouterGroup, pavilionService *services.PavilionService) {
+func SetupPavilionRoutes(router *gin.RouterGroup, pavilionService services.PavilionService) {
 	pavilionController := controllers.NewPavilionController(pavilionService)
 	pavilions := router.Group("/pavilions")
 	{

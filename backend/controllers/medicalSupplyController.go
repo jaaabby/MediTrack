@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"fmt"
 	"meditrack/models"
 	"meditrack/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -59,11 +59,11 @@ func (c *MedicalSupplyController) GetMedicalSupplyByID(ctx *gin.Context) {
 	}
 
 	// Convertir id a int
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	intID, err := strconv.Atoi(id)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "ID inválido: " + err.Error(),
+			Error:   "ID inválido: debe ser un número entero",
 		})
 		return
 	}
@@ -82,8 +82,6 @@ func (c *MedicalSupplyController) GetMedicalSupplyByID(ctx *gin.Context) {
 		Data:    supply,
 	})
 }
-
-// ...eliminar método GetMedicalSupplyByQRCode, no existe en el service CRUD...
 
 // GetAllMedicalSupplies obtiene todos los insumos médicos
 func (c *MedicalSupplyController) GetAllMedicalSupplies(ctx *gin.Context) {
@@ -113,11 +111,11 @@ func (c *MedicalSupplyController) UpdateMedicalSupply(ctx *gin.Context) {
 		return
 	}
 
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	intID, err := strconv.Atoi(id)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "ID inválido: " + err.Error(),
+			Error:   "ID inválido: debe ser un número entero",
 		})
 		return
 	}
@@ -133,7 +131,7 @@ func (c *MedicalSupplyController) UpdateMedicalSupply(ctx *gin.Context) {
 
 	supply.ID = intID
 
-	if err := c.medicalSupplyService.UpdateMedicalSupply(&supply); err != nil {
+	if _, err := c.medicalSupplyService.UpdateMedicalSupply(intID, &supply); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al actualizar insumo médico: " + err.Error(),
@@ -154,16 +152,16 @@ func (c *MedicalSupplyController) DeleteMedicalSupply(ctx *gin.Context) {
 	if id == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "ID de insumo médico requerido",
+			Error:   "ID inválido: debe ser un número entero",
 		})
 		return
 	}
 
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	intID, err := strconv.Atoi(id)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "ID inválido: " + err.Error(),
+			Error:   "ID inválido: debe ser un número entero",
 		})
 		return
 	}

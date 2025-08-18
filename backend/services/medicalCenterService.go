@@ -2,41 +2,60 @@ package services
 
 import (
 	"meditrack/models"
-	"meditrack/repository"
+
+	"gorm.io/gorm"
 )
 
-type MedicalCenterService interface {
-	CreateMedicalCenter(center *models.MedicalCenter) error
-	GetMedicalCenterByID(id int) (*models.MedicalCenter, error)
-	GetAllMedicalCenters() ([]models.MedicalCenter, error)
-	UpdateMedicalCenter(center *models.MedicalCenter) error
-	DeleteMedicalCenter(id int) error
+type MedicalCenterService struct {
+	DB *gorm.DB
 }
 
-type medicalCenterService struct {
-	repo *repository.MedicalCenterRepository
+func NewMedicalCenterService(db *gorm.DB) *MedicalCenterService {
+	return &MedicalCenterService{DB: db}
 }
 
-func NewMedicalCenterService(repo *repository.MedicalCenterRepository) MedicalCenterService {
-	return &medicalCenterService{repo: repo}
+func (s *MedicalCenterService) CreateMedicalCenter(center *models.MedicalCenter) error {
+	if err := s.DB.Create(center).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *medicalCenterService) CreateMedicalCenter(center *models.MedicalCenter) error {
-	return s.repo.Create(center)
+func (s *MedicalCenterService) GetMedicalCenterByID(id int) (*models.MedicalCenter, error) {
+	var center models.MedicalCenter
+	if err := s.DB.First(&center, id).Error; err != nil {
+		return nil, err
+	}
+	return &center, nil
 }
 
-func (s *medicalCenterService) GetMedicalCenterByID(id int) (*models.MedicalCenter, error) {
-	return s.repo.GetByID(id)
+func (s *MedicalCenterService) GetAllMedicalCenters() ([]models.MedicalCenter, error) {
+	var centers []models.MedicalCenter
+	if err := s.DB.Find(&centers).Error; err != nil {
+		return nil, err
+	}
+	return centers, nil
 }
 
-func (s *medicalCenterService) GetAllMedicalCenters() ([]models.MedicalCenter, error) {
-	return s.repo.GetAll()
+func (s *MedicalCenterService) UpdateMedicalCenter(id int, newCenter *models.MedicalCenter) (*models.MedicalCenter, error) {
+	var center models.MedicalCenter
+	if err := s.DB.First(&center, id).Error; err != nil {
+		return nil, err
+	}
+	center.Name = newCenter.Name
+	center.Address = newCenter.Address
+	center.Phone = newCenter.Phone
+	center.Email = newCenter.Email
+
+	if err := s.DB.Save(&center).Error; err != nil {
+		return nil, err
+	}
+	return &center, nil
 }
 
-func (s *medicalCenterService) UpdateMedicalCenter(center *models.MedicalCenter) error {
-	return s.repo.Update(center)
-}
-
-func (s *medicalCenterService) DeleteMedicalCenter(id int) error {
-	return s.repo.Delete(id)
+func (s *MedicalCenterService) DeleteMedicalCenter(id int) error {
+	if err := s.DB.Delete(&models.MedicalCenter{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }
