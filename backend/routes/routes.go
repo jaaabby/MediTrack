@@ -13,7 +13,7 @@ func SetupRoutes(
 	medicalSupplyService services.MedicalSupplyService,
 	medicalCenterService services.MedicalCenterService,
 	batchService services.BatchService,
-	pavilionService *services.PavilionService,
+	pavilionService services.PavilionService,
 	storeService services.StoreService,
 	supplyHistoryService services.SupplyHistoryService,
 	doctorService services.UserService,
@@ -42,8 +42,6 @@ func SetupRoutes(
 		// Configurar rutas de historial de insumos
 		SetupSupplyHistoryRoutes(v1, supplyHistoryService)
 
-		// Configurar rutas adicionales (trazabilidad, estadísticas, alertas, inventario)
-		SetupAdditionalRoutes(v1)
 	}
 
 	// Ruta de health check

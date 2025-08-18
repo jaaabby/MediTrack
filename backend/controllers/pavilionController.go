@@ -10,10 +10,10 @@ import (
 )
 
 type PavilionController struct {
-	pavilionService *services.PavilionService
+	pavilionService services.PavilionService
 }
 
-func NewPavilionController(pavilionService *services.PavilionService) *PavilionController {
+func NewPavilionController(pavilionService services.PavilionService) *PavilionController {
 	return &PavilionController{pavilionService: pavilionService}
 }
 

@@ -67,7 +67,7 @@ func (c *StoreController) UpdateStore(ctx *gin.Context) {
 		return
 	}
 	store.ID = intID
-	if err := c.storeService.UpdateStore(&store); err != nil {
+	if _, err := c.storeService.UpdateStore(intID, &store); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar store: " + err.Error()})
 		return
 	}

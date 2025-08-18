@@ -2,43 +2,58 @@ package services
 
 import (
 	"meditrack/models"
-	"meditrack/repository"
+
+	"gorm.io/gorm"
 )
 
-type UserService interface {
-	CreateUser(user *models.User) error
-	GetUserByID(rut string) (*models.User, error)
-	GetAllUsers() ([]models.User, error)
-	UpdateUser(user *models.User) error
-	DeleteUser(rut string) error
+type UserService struct {
+	DB *gorm.DB
 }
 
-type userService struct {
-	repo *repository.UserRepository
+func NewUserService(db *gorm.DB) *UserService {
+	return &UserService{DB: db}
 }
 
-func NewUserService(repo *repository.UserRepository) UserService {
-	return &userService{
-		repo: repo,
+func (s *UserService) CreateUser(user *models.User) error {
+	return s.DB.Create(user).Error
+}
+
+func (s *UserService) GetUserByID(rut string) (*models.User, error) {
+	var user models.User
+	if err := s.DB.First(&user, "rut = ?", rut).Error; err != nil {
+		return nil, err
 	}
+	return &user, nil
 }
 
-func (s *userService) CreateUser(user *models.User) error {
-	return s.repo.Create(user)
+func (s *UserService) DeleteUser(rut string) error {
+	if err := s.DB.Delete(&models.User{}, "rut = ?", rut).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *userService) GetUserByID(rut string) (*models.User, error) {
-	return s.repo.GetByID(rut)
+func (s *UserService) UpdateUser(rut string, newUser *models.User) (*models.User, error) {
+	var user models.User
+	if err := s.DB.First(&user, "rut = ?", rut).Error; err != nil {
+		return nil, err
+	}
+	user.Name = newUser.Name
+	user.Email = newUser.Email
+	user.Password = newUser.Password
+	user.Role = newUser.Role
+	user.MedicalCenterID = newUser.MedicalCenterID
+
+	if err := s.DB.Save(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
-func (s *userService) GetAllUsers() ([]models.User, error) {
-	return s.repo.GetAll()
-}
-
-func (s *userService) UpdateUser(user *models.User) error {
-	return s.repo.Update(user)
-}
-
-func (s *userService) DeleteUser(rut string) error {
-	return s.repo.Delete(rut)
+func (s *UserService) GetAllUsers() ([]models.User, error) {
+	var users []models.User
+	if err := s.DB.Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
 }

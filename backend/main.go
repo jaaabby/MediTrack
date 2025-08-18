@@ -7,7 +7,6 @@ import (
 
 	"meditrack/config"
 	"meditrack/middleware"
-	"meditrack/repository"
 	"meditrack/routes"
 	"meditrack/services"
 
@@ -30,22 +29,14 @@ func main() {
 		log.Fatalf("Error al conectar a la base de datos con GORM: %v", err)
 	}
 
-	// Crear repositorios
-	userRepo := repository.NewUserRepository(db)
-	medicalSupplyRepo := repository.NewMedicalSupplyRepository(db)
-	medicalCenterRepo := repository.NewMedicalCenterRepository(db)
-	batchRepo := repository.NewBatchRepository(db)
-	storeRepo := repository.NewStoreRepository(db)
-	supplyHistoryRepo := repository.NewSupplyHistoryRepository(db)
-
 	// Crear servicios
-	userService := services.NewUserService(userRepo)
-	medicalSupplyService := services.NewMedicalSupplyService(medicalSupplyRepo)
-	medicalCenterService := services.NewMedicalCenterService(medicalCenterRepo)
-	batchService := services.NewBatchService(batchRepo)
+	userService := services.NewUserService(db)
+	medicalSupplyService := services.NewMedicalSupplyService(db)
+	medicalCenterService := services.NewMedicalCenterService(db)
+	batchService := services.NewBatchService(db)
 	pavilionService := services.NewPavilionService(db)
-	storeService := services.NewStoreService(storeRepo)
-	supplyHistoryService := services.NewSupplyHistoryService(supplyHistoryRepo)
+	storeService := services.NewStoreService(db)
+	supplyHistoryService := services.NewSupplyHistoryService(db)
 
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
@@ -59,14 +50,14 @@ func main() {
 	// Configurar rutas
 	routes.SetupRoutes(
 		router,
-		userService,
-		medicalSupplyService,
-		medicalCenterService,
-		batchService,
-		pavilionService,
-		storeService,
-		supplyHistoryService,
-		userService,
+		*userService,
+		*medicalSupplyService,
+		*medicalCenterService,
+		*batchService,
+		*pavilionService,
+		*storeService,
+		*supplyHistoryService,
+		*userService,
 	)
 
 	// Iniciar servidor

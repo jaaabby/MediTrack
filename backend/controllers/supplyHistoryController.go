@@ -67,7 +67,7 @@ func (c *SupplyHistoryController) UpdateSupplyHistory(ctx *gin.Context) {
 		return
 	}
 	history.ID = intID
-	if err := c.supplyHistoryService.UpdateSupplyHistory(&history); err != nil {
+	if _, err := c.supplyHistoryService.UpdateSupplyHistory(intID, &history); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar supply history: " + err.Error()})
 		return
 	}

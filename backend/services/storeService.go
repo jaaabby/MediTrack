@@ -2,41 +2,56 @@ package services
 
 import (
 	"meditrack/models"
-	"meditrack/repository"
+
+	"gorm.io/gorm"
 )
 
-type StoreService interface {
-	CreateStore(store *models.Store) error
-	GetStoreByID(id int) (*models.Store, error)
-	GetAllStores() ([]models.Store, error)
-	UpdateStore(store *models.Store) error
-	DeleteStore(id int) error
+type StoreService struct {
+	DB *gorm.DB
 }
 
-type storeService struct {
-	repo *repository.StoreRepository
+func NewStoreService(db *gorm.DB) *StoreService {
+	return &StoreService{DB: db}
 }
 
-func NewStoreService(repo *repository.StoreRepository) StoreService {
-	return &storeService{repo: repo}
+func (s *StoreService) CreateStore(store *models.Store) error {
+	return s.DB.Create(store).Error
 }
 
-func (s *storeService) CreateStore(store *models.Store) error {
-	return s.repo.Create(store)
+func (s *StoreService) GetStoreByID(id int) (*models.Store, error) {
+	var store models.Store
+	if err := s.DB.First(&store, id).Error; err != nil {
+		return nil, err
+	}
+	return &store, nil
 }
 
-func (s *storeService) GetStoreByID(id int) (*models.Store, error) {
-	return s.repo.GetByID(id)
+func (s *StoreService) GetAllStores() ([]models.Store, error) {
+	var stores []models.Store
+	if err := s.DB.Find(&stores).Error; err != nil {
+		return nil, err
+	}
+	return stores, nil
 }
 
-func (s *storeService) GetAllStores() ([]models.Store, error) {
-	return s.repo.GetAll()
+func (s *StoreService) UpdateStore(id int, newStore *models.Store) (*models.Store, error) {
+	var store models.Store
+	if err := s.DB.First(&store, id).Error; err != nil {
+		return nil, err
+	}
+	store.Name = newStore.Name
+	store.Type = newStore.Type
+	store.MedicalCenterID = newStore.MedicalCenterID
+
+	if err := s.DB.Save(&store).Error; err != nil {
+		return nil, err
+	}
+	return &store, nil
 }
 
-func (s *storeService) UpdateStore(store *models.Store) error {
-	return s.repo.Update(store)
-}
-
-func (s *storeService) DeleteStore(id int) error {
-	return s.repo.Delete(id)
+func (s *StoreService) DeleteStore(id int) error {
+	if err := s.DB.Delete(&models.Store{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }

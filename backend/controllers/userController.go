@@ -110,7 +110,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.userService.UpdateUser(&user); err != nil {
+	if _, err := c.userService.UpdateUser(rut, &user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al actualizar usuario: " + err.Error(),

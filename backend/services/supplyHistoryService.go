@@ -2,41 +2,59 @@ package services
 
 import (
 	"meditrack/models"
-	"meditrack/repository"
+
+	"gorm.io/gorm"
 )
 
-type SupplyHistoryService interface {
-	CreateSupplyHistory(history *models.SupplyHistory) error
-	GetSupplyHistoryByID(id int) (*models.SupplyHistory, error)
-	GetAllSupplyHistories() ([]models.SupplyHistory, error)
-	UpdateSupplyHistory(history *models.SupplyHistory) error
-	DeleteSupplyHistory(id int) error
+type SupplyHistoryService struct {
+	DB *gorm.DB
 }
 
-type supplyHistoryService struct {
-	repo *repository.SupplyHistoryRepository
+func NewSupplyHistoryService(db *gorm.DB) *SupplyHistoryService {
+	return &SupplyHistoryService{DB: db}
 }
 
-func NewSupplyHistoryService(repo *repository.SupplyHistoryRepository) SupplyHistoryService {
-	return &supplyHistoryService{repo: repo}
+func (s *SupplyHistoryService) CreateSupplyHistory(history *models.SupplyHistory) error {
+	return s.DB.Create(history).Error
 }
 
-func (s *supplyHistoryService) CreateSupplyHistory(history *models.SupplyHistory) error {
-	return s.repo.Create(history)
+func (s *SupplyHistoryService) GetSupplyHistoryByID(id int) (*models.SupplyHistory, error) {
+	var history models.SupplyHistory
+	if err := s.DB.First(&history, id).Error; err != nil {
+		return nil, err
+	}
+	return &history, nil
 }
 
-func (s *supplyHistoryService) GetSupplyHistoryByID(id int) (*models.SupplyHistory, error) {
-	return s.repo.GetByID(id)
+func (s *SupplyHistoryService) DeleteSupplyHistory(id int) error {
+	if err := s.DB.Delete(&models.SupplyHistory{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *supplyHistoryService) GetAllSupplyHistories() ([]models.SupplyHistory, error) {
-	return s.repo.GetAll()
+func (s *SupplyHistoryService) UpdateSupplyHistory(id int, newHistory *models.SupplyHistory) (*models.SupplyHistory, error) {
+	var history models.SupplyHistory
+	if err := s.DB.First(&history, id).Error; err != nil {
+		return nil, err
+	}
+	history.DateTime = newHistory.DateTime
+	history.Status = newHistory.Status
+	history.DestinationType = newHistory.DestinationType
+	history.DestinationID = newHistory.DestinationID
+	history.MedicalSupplyID = newHistory.MedicalSupplyID
+	history.UserRUT = newHistory.UserRUT
+
+	if err := s.DB.Save(&history).Error; err != nil {
+		return nil, err
+	}
+	return &history, nil
 }
 
-func (s *supplyHistoryService) UpdateSupplyHistory(history *models.SupplyHistory) error {
-	return s.repo.Update(history)
-}
-
-func (s *supplyHistoryService) DeleteSupplyHistory(id int) error {
-	return s.repo.Delete(id)
+func (s *SupplyHistoryService) GetAllSupplyHistories() ([]models.SupplyHistory, error) {
+	var histories []models.SupplyHistory
+	if err := s.DB.Find(&histories).Error; err != nil {
+		return nil, err
+	}
+	return histories, nil
 }

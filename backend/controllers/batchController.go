@@ -67,7 +67,7 @@ func (c *BatchController) UpdateBatch(ctx *gin.Context) {
 		return
 	}
 	batch.ID = intID
-	if err := c.batchService.UpdateBatch(&batch); err != nil {
+	if _, err := c.batchService.UpdateBatch(intID, &batch); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar batch: " + err.Error()})
 		return
 	}
