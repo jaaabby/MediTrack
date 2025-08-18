@@ -11,13 +11,12 @@ func SetupRoutes(
 	router *gin.Engine,
 	userService services.UserService,
 	medicalSupplyService services.MedicalSupplyService,
-	supplyMovementService services.SupplyMovementService,
-	operatingRoomService services.OperatingRoomService,
-	doctorService services.DoctorService,
-	locationService services.LocationService,
-	supplyRouteService services.SupplyRouteService,
-	doctorSupplyRouteService services.DoctorSupplyRouteService,
-	supplyRouteMedicalSupplyService services.SupplyRouteMedicalSupplyService,
+	medicalCenterService services.MedicalCenterService,
+	batchService services.BatchService,
+	pavilionService *services.PavilionService,
+	storeService services.StoreService,
+	supplyHistoryService services.SupplyHistoryService,
+	doctorService services.UserService,
 ) {
 	// API v1
 	v1 := router.Group("/api/v1")
@@ -28,26 +27,20 @@ func SetupRoutes(
 		// Configurar rutas de insumos médicos
 		SetupMedicalSupplyRoutes(v1, medicalSupplyService)
 
-		// Configurar rutas de movimientos de insumos
-		SetupSupplyMovementRoutes(v1, supplyMovementService)
+		// Configurar rutas de centros médicos
+		SetupMedicalCenterRoutes(v1, medicalCenterService)
 
-		// Configurar rutas de salas de operación
-		SetupOperatingRoomRoutes(v1, operatingRoomService)
+		// Configurar rutas de lotes
+		SetupBatchRoutes(v1, batchService)
 
-		// Configurar rutas de doctores
-		SetupDoctorRoutes(v1, doctorService)
+		// Configurar rutas de pabellones
+		SetupPavilionRoutes(v1, pavilionService)
 
-		// Configurar rutas de ubicaciones
-		SetupLocationRoutes(v1, locationService)
+		// Configurar rutas de bodegas
+		SetupStoreRoutes(v1, storeService)
 
-		// Configurar rutas de rutas de suministro
-		SetupSupplyRouteRoutes(v1, supplyRouteService)
-
-		// Configurar rutas de relación doctor-ruta de suministro
-		SetupDoctorSupplyRouteRoutes(v1, doctorSupplyRouteService)
-
-		// Configurar rutas de relación ruta de suministro-insumo médico
-		SetupSupplyRouteMedicalSupplyRoutes(v1, supplyRouteMedicalSupplyService)
+		// Configurar rutas de historial de insumos
+		SetupSupplyHistoryRoutes(v1, supplyHistoryService)
 
 		// Configurar rutas adicionales (trazabilidad, estadísticas, alertas, inventario)
 		SetupAdditionalRoutes(v1)

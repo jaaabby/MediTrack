@@ -1,60 +1,44 @@
 package services
 
 import (
-	"context"
-
 	"meditrack/models"
 	"meditrack/repository"
 )
 
-// UserService define los servicios para usuarios
 type UserService interface {
-	CreateUser(ctx context.Context, user *models.User) error
-	GetUserByID(ctx context.Context, id string) (*models.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
-	GetAllUsers(ctx context.Context) ([]*models.User, error)
-	UpdateUser(ctx context.Context, user *models.User) error
-	DeleteUser(ctx context.Context, id string) error
+	CreateUser(user *models.User) error
+	GetUserByID(rut string) (*models.User, error)
+	GetAllUsers() ([]models.User, error)
+	UpdateUser(user *models.User) error
+	DeleteUser(rut string) error
 }
 
-// userService implementa UserService
 type userService struct {
-	userRepo repository.UserRepository
+	repo *repository.UserRepository
 }
 
-// NewUserService crea una nueva instancia de UserService
-func NewUserService(userRepo repository.UserRepository) UserService {
+func NewUserService(repo *repository.UserRepository) UserService {
 	return &userService{
-		userRepo: userRepo,
+		repo: repo,
 	}
 }
 
-// CreateUser implementa la creación de un usuario
-func (s *userService) CreateUser(ctx context.Context, user *models.User) error {
-	return s.userRepo.Create(ctx, user)
+func (s *userService) CreateUser(user *models.User) error {
+	return s.repo.Create(user)
 }
 
-// GetUserByID implementa la obtención de un usuario por ID
-func (s *userService) GetUserByID(ctx context.Context, id string) (*models.User, error) {
-	return s.userRepo.GetByID(ctx, id)
+func (s *userService) GetUserByID(rut string) (*models.User, error) {
+	return s.repo.GetByID(rut)
 }
 
-// GetUserByEmail implementa la obtención de un usuario por email
-func (s *userService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	return s.userRepo.GetByEmail(ctx, email)
+func (s *userService) GetAllUsers() ([]models.User, error) {
+	return s.repo.GetAll()
 }
 
-// GetAllUsers implementa la obtención de todos los usuarios
-func (s *userService) GetAllUsers(ctx context.Context) ([]*models.User, error) {
-	return s.userRepo.GetAll(ctx)
+func (s *userService) UpdateUser(user *models.User) error {
+	return s.repo.Update(user)
 }
 
-// UpdateUser implementa la actualización de un usuario
-func (s *userService) UpdateUser(ctx context.Context, user *models.User) error {
-	return s.userRepo.Update(ctx, user)
-}
-
-// DeleteUser implementa la eliminación de un usuario
-func (s *userService) DeleteUser(ctx context.Context, id string) error {
-	return s.userRepo.Delete(ctx, id)
+func (s *userService) DeleteUser(rut string) error {
+	return s.repo.Delete(rut)
 }

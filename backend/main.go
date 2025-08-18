@@ -12,6 +12,8 @@ import (
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -21,34 +23,29 @@ func main() {
 		log.Fatalf("Error al cargar configuración: %v", err)
 	}
 
-	// Conectar a la base de datos
-	db, err := config.Connect(cfg.Database)
+	// Conectar a la base de datos con GORM
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable", cfg.Database.Host, cfg.Database.User, cfg.Database.Password, cfg.Database.Name, cfg.Database.Port)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Error al conectar a la base de datos: %v", err)
+		log.Fatalf("Error al conectar a la base de datos con GORM: %v", err)
 	}
-	defer config.Close(db)
 
 	// Crear repositorios
 	userRepo := repository.NewUserRepository(db)
 	medicalSupplyRepo := repository.NewMedicalSupplyRepository(db)
-	supplyMovementRepo := repository.NewSupplyMovementRepository(db)
-	operatingRoomRepo := repository.NewOperatingRoomRepository(db)
-	doctorRepo := repository.NewDoctorRepository(db)
-	locationRepo := repository.NewLocationRepository(db)
-	supplyRouteRepo := repository.NewSupplyRouteRepository(db)
-	doctorSupplyRouteRepo := repository.NewDoctorSupplyRouteRepository(db)
-	supplyRouteMedicalSupplyRepo := repository.NewSupplyRouteMedicalSupplyRepository(db)
+	medicalCenterRepo := repository.NewMedicalCenterRepository(db)
+	batchRepo := repository.NewBatchRepository(db)
+	storeRepo := repository.NewStoreRepository(db)
+	supplyHistoryRepo := repository.NewSupplyHistoryRepository(db)
 
 	// Crear servicios
 	userService := services.NewUserService(userRepo)
 	medicalSupplyService := services.NewMedicalSupplyService(medicalSupplyRepo)
-	supplyMovementService := services.NewSupplyMovementService(supplyMovementRepo)
-	operatingRoomService := services.NewOperatingRoomService(operatingRoomRepo)
-	doctorService := services.NewDoctorService(doctorRepo)
-	locationService := services.NewLocationService(locationRepo)
-	supplyRouteService := services.NewSupplyRouteService(supplyRouteRepo)
-	doctorSupplyRouteService := services.NewDoctorSupplyRouteService(doctorSupplyRouteRepo)
-	supplyRouteMedicalSupplyService := services.NewSupplyRouteMedicalSupplyService(supplyRouteMedicalSupplyRepo)
+	medicalCenterService := services.NewMedicalCenterService(medicalCenterRepo)
+	batchService := services.NewBatchService(batchRepo)
+	pavilionService := services.NewPavilionService(db)
+	storeService := services.NewStoreService(storeRepo)
+	supplyHistoryService := services.NewSupplyHistoryService(supplyHistoryRepo)
 
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
@@ -64,13 +61,12 @@ func main() {
 		router,
 		userService,
 		medicalSupplyService,
-		supplyMovementService,
-		operatingRoomService,
-		doctorService,
-		locationService,
-		supplyRouteService,
-		doctorSupplyRouteService,
-		supplyRouteMedicalSupplyService,
+		medicalCenterService,
+		batchService,
+		pavilionService,
+		storeService,
+		supplyHistoryService,
+		userService,
 	)
 
 	// Iniciar servidor
