@@ -26,11 +26,14 @@ func main() {
 		log.Fatalf("Error al conectar a la base de datos con GORM: %v", err)
 	}
 
-	// Crear servicios
+	// Crear servicio QR primero (sin dependencias)
+	qrService := services.NewQRService(db)
+
+	// Crear servicios con dependencias de QR
 	userService := services.NewUserService(db)
-	medicalSupplyService := services.NewMedicalSupplyService(db)
+	medicalSupplyService := services.NewMedicalSupplyService(db, qrService)
 	medicalCenterService := services.NewMedicalCenterService(db)
-	batchService := services.NewBatchService(db)
+	batchService := services.NewBatchService(db, qrService)
 	pavilionService := services.NewPavilionService(db)
 	storeService := services.NewStoreService(db)
 	supplyHistoryService := services.NewSupplyHistoryService(db)
@@ -56,6 +59,7 @@ func main() {
 		*storeService,
 		*supplyHistoryService,
 		*supplyCodeService,
+		*qrService,
 	)
 
 	// Iniciar servidor

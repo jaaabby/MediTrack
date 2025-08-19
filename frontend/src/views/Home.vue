@@ -87,7 +87,7 @@
       </div>
 
       <!-- Escanear QR -->
-      <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; padding: 24px; cursor: pointer;" @click="navigateTo('/inventory/scan')">
+      <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; padding: 24px; cursor: pointer;" @click="navigateTo('/qr')">
         <div style="display: flex; align-items: center; gap: 16px;">
           <div style="background: #fef3c7; padding: 12px; border-radius: 8px;">
             <svg style="width: 32px; height: 32px; color: #d97706;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,8 +95,8 @@
             </svg>
           </div>
           <div>
-            <h3 style="font-size: 18px; font-weight: 600; color: #111827; margin: 0;">Escanear QR</h3>
-            <p style="color: #6b7280; font-size: 14px; margin: 4px 0 0 0;">Leer códigos de barras/QR</p>
+            <h3 style="font-size: 18px; font-weight: 600; color: #111827; margin: 0;">Escáner QR</h3>
+            <p style="color: #6b7280; font-size: 14px; margin: 4px 0 0 0;">Trazabilidad y verificación</p>
           </div>
         </div>
       </div>
@@ -205,4 +205,4 @@ const handleSearch = () => {
 const navigateTo = (path) => {
   router.push(path)
 }
-</script> 
+</script>

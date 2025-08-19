@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '@/views/Home.vue'
 import Inventory from '@/views/Inventory.vue'
+import QRScanner from '@/views/QRScanner.vue'
+import QRDetails from '@/views/QRDetails.vue'
 //import Statistics from '@/views/Statistics.vue'
 //import Movements from '@/views/Movements.vue'
 //import Profile from '@/views/Profile.vue'
@@ -23,6 +25,24 @@ const routes = [
     component: Inventory,
     meta: {
       title: 'Inventario - MediTrack',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/qr',
+    name: 'QRScanner',
+    component: QRScanner,
+    meta: {
+      title: 'Escáner QR - MediTrack',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/qr/:qrcode',
+    name: 'QRDetails',
+    component: QRDetails,
+    meta: {
+      title: 'Detalles QR - MediTrack',
       requiresAuth: false
     }
   },
@@ -70,7 +90,7 @@ const routes = [
       title: 'Alertas - MediTrack',
       requiresAuth: false
     }
-  },
+  },*/
   // Ruta 404
   {
     path: '/:pathMatch(.*)*',
@@ -80,7 +100,7 @@ const routes = [
       title: 'Página no encontrada - MediTrack',
       requiresAuth: false
     }
-  }*/
+  }
 ]
 
 const router = createRouter({
@@ -111,4 +131,4 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
-export default router 
+export default router

@@ -11,6 +11,7 @@ type Batch struct {
 	Amount         int       `json:"amount" db:"amount" gorm:"not null"`
 	Supplier       string    `json:"supplier" db:"supplier" gorm:"not null"`
 	StoreID        int       `json:"store_id" db:"store_id" gorm:"not null"`
+	QRCode         string    `json:"qr_code" db:"qr_code" gorm:"unique;not null"` // Código QR único para el lote
 }
 
 func (b Batch) TableName() string {
