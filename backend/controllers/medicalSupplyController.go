@@ -179,3 +179,20 @@ func (c *MedicalSupplyController) DeleteMedicalSupply(ctx *gin.Context) {
 		Message: "Insumo médico eliminado exitosamente",
 	})
 }
+
+// GetInventoryList obtiene la lista del inventario combinando datos de batch y supplyCode
+func (c *MedicalSupplyController) GetInventoryList(ctx *gin.Context) {
+	supplies, err := c.medicalSupplyService.GetInventoryList()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error al obtener lista de inventario: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    supplies,
+	})
+}

@@ -31,12 +31,16 @@ CREATE TABLE batch (
     store_id INTEGER NOT NULL REFERENCES store(id)
 );
 
+CREATE TABLE supply_code (
+    code INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    code_supplier INTEGER NOT NULL,
+    batch_id INTEGER NOT NULL REFERENCES batch(id)
+);
+
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,
-    code INTEGER NOT NULL,
-    code_supplier INTEGER,
-    name VARCHAR(255) NOT NULL,
-    batch_id INTEGER NOT NULL REFERENCES batch(id)
+    code INTEGER NOT NULL REFERENCES supply_code(code)
 );
 
 CREATE TABLE "user" (

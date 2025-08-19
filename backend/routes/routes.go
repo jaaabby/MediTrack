@@ -16,7 +16,7 @@ func SetupRoutes(
 	pavilionService services.PavilionService,
 	storeService services.StoreService,
 	supplyHistoryService services.SupplyHistoryService,
-	doctorService services.UserService,
+	supplyCodeService services.SupplyCodeService,
 ) {
 	// API v1
 	v1 := router.Group("/api/v1")
@@ -41,6 +41,9 @@ func SetupRoutes(
 
 		// Configurar rutas de historial de insumos
 		SetupSupplyHistoryRoutes(v1, supplyHistoryService)
+
+		// Configurar rutas de códigos de insumos
+		SetupSupplyCodeRoutes(v1, supplyCodeService)
 
 	}
 

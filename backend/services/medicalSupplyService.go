@@ -10,21 +10,6 @@ type MedicalSupplyService struct {
 	DB *gorm.DB
 }
 
-// InventoryItem representa un item del inventario con información completa
-type InventoryItem struct {
-	ID              int    `json:"id"`
-	Code            int    `json:"code"`
-	CodeSupplier    int    `json:"code_supplier"`
-	Name            string `json:"name"`
-	BatchID         int    `json:"batch_id"`
-	ExpirationDate  string `json:"expiration_date"`
-	Amount          int    `json:"amount"`
-	Supplier        string `json:"supplier"`
-	StoreName       string `json:"store_name"`
-	StoreType       string `json:"store_type"`
-	MedicalCenterID int    `json:"medical_center_id"`
-}
-
 func NewMedicalSupplyService(db *gorm.DB) *MedicalSupplyService {
 	return &MedicalSupplyService{DB: db}
 }
@@ -54,8 +39,8 @@ func (s *MedicalSupplyService) UpdateMedicalSupply(id int, newSupply *models.Med
 	if err := s.DB.First(&supply, id).Error; err != nil {
 		return nil, err
 	}
-	supply.Name = newSupply.Name
-	supply.BatchID = newSupply.BatchID
+
+	supply.Code = newSupply.Code
 
 	if err := s.DB.Save(&supply).Error; err != nil {
 		return nil, err
@@ -70,26 +55,52 @@ func (s *MedicalSupplyService) DeleteMedicalSupply(id int) error {
 	return nil
 }
 
-func (s *MedicalSupplyService) GetInventoryWithDetails() ([]InventoryItem, error) {
-	var items []InventoryItem
-	if err := s.DB.Table("medical_supply").
-		Joins("LEFT JOIN batch ON medical_supply.batch_id = batch.id").
-		Joins("LEFT JOIN store ON batch.store_id = store.id").
-		Joins("LEFT JOIN medical_center ON store.medical_center_id = medical_center.id").
-		Select(`
-			medical_supply.id,
-			medical_supply.code,
-			medical_supply.code_supplier,
-			medical_supply.name,
-			batch.expiration_date,
-			batch.amount,
-			batch.supplier,
-			store.name as store_name,
-			store.type as store_type,
-			medical_center.name as medical_center_name
-		`).
-		Scan(&items).Error; err != nil {
+// GetInventoryList obtiene el inventario combinando datos de batch y supplyCode
+func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, error) {
+	var result []map[string]interface{}
+
+	query := `
+		SELECT 
+			b.id as batch_id,
+			sc.code as supply_code,
+			sc.name as supply_name,
+			b.expiration_date,
+			b.amount,
+			b.supplier
+		FROM batch b
+		JOIN supply_code sc ON b.id = sc.batch_id
+		ORDER BY b.id
+	`
+
+	rows, err := s.DB.Raw(query).Rows()
+	if err != nil {
 		return nil, err
 	}
-	return items, nil
+	defer rows.Close()
+
+	for rows.Next() {
+		var item map[string]interface{} = make(map[string]interface{})
+		var batchID int
+		var supplyCode int
+		var supplyName string
+		var expirationDate string
+		var amount int
+		var supplier string
+
+		err := rows.Scan(&batchID, &supplyCode, &supplyName, &expirationDate, &amount, &supplier)
+		if err != nil {
+			return nil, err
+		}
+
+		item["batch_id"] = batchID
+		item["code"] = supplyCode
+		item["name"] = supplyName
+		item["expiration_date"] = expirationDate
+		item["amount"] = amount
+		item["supplier"] = supplier
+
+		result = append(result, item)
+	}
+
+	return result, nil
 }

@@ -5,6 +5,7 @@
 -- Eliminar tablas en orden de dependencias (hijos primero)
 DROP TABLE IF EXISTS supply_history;
 DROP TABLE IF EXISTS medical_supply;
+DROP TABLE IF EXISTS supply_code;
 DROP TABLE IF EXISTS batch;
 DROP TABLE IF EXISTS store;
 DROP TABLE IF EXISTS pavilion;

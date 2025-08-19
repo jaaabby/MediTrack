@@ -70,9 +70,9 @@ func Load() (*Config, error) {
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnvAsInt("DB_PORT", 5432),
-			User:     getEnv("DB_USER", "meditrack_user"),
-			Password: getEnv("DB_PASSWORD", "meditrack_password"),
-			Name:     getEnv("DB_NAME", "meditrack_db"),
+			User:     getEnv("DB_USER", "postgres"),
+			Password: getEnv("DB_PASSWORD", "password"),
+			Name:     getEnv("DB_NAME", "meditrack"),
 			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
 		},
 		Server: ServerConfig{

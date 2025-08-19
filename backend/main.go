@@ -11,8 +11,6 @@ import (
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
@@ -23,8 +21,7 @@ func main() {
 	}
 
 	// Conectar a la base de datos con GORM
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable", cfg.Database.Host, cfg.Database.User, cfg.Database.Password, cfg.Database.Name, cfg.Database.Port)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := config.ConnectGORM(cfg.Database)
 	if err != nil {
 		log.Fatalf("Error al conectar a la base de datos con GORM: %v", err)
 	}
@@ -37,6 +34,7 @@ func main() {
 	pavilionService := services.NewPavilionService(db)
 	storeService := services.NewStoreService(db)
 	supplyHistoryService := services.NewSupplyHistoryService(db)
+	supplyCodeService := services.NewSupplyCodeService(db)
 
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
@@ -57,7 +55,7 @@ func main() {
 		*pavilionService,
 		*storeService,
 		*supplyHistoryService,
-		*userService,
+		*supplyCodeService,
 	)
 
 	// Iniciar servidor

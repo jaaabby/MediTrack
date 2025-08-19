@@ -14,6 +14,7 @@ func SetupMedicalSupplyRoutes(router *gin.RouterGroup, medicalSupplyService serv
 	{
 		supplies.POST("/", medicalSupplyController.CreateMedicalSupply)
 		supplies.GET("/", medicalSupplyController.GetAllMedicalSupplies)
+		supplies.GET("/list", medicalSupplyController.GetInventoryList)
 		supplies.GET("/:id", medicalSupplyController.GetMedicalSupplyByID)
 		supplies.PUT("/:id", medicalSupplyController.UpdateMedicalSupply)
 		supplies.DELETE("/:id", medicalSupplyController.DeleteMedicalSupply)

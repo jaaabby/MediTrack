@@ -1,216 +1,155 @@
-# MediTrack - Sistema de Trazabilidad Médica
+# MediTrack - Sistema de Gestión de Inventario Médico
 
-Sistema completo de trazabilidad de insumos médicos con arquitectura limpia, backend en Go y frontend en Vue 3.
+MediTrack es una aplicación web completa para la gestión y control de inventario de insumos médicos en centros de salud.
 
-## 🏗️ Arquitectura del Proyecto
+## 🏗️ Arquitectura
 
-```
-MediTrack/
-├── backend/          # API REST en Go con Clean Architecture
-├── frontend/         # Aplicación Vue 3 + TailwindCSS
-├── database/         # Migraciones y scripts de base de datos
-├── docker-compose.yml # Orquestación de servicios
-└── README.md         # Este archivo
-```
+- **Backend**: API REST en Go con Gin y GORM
+- **Frontend**: Aplicación Vue.js 3 con Tailwind CSS
+- **Base de datos**: PostgreSQL
+- **Contenedores**: Docker y Docker Compose
 
-## 🚀 Tecnologías Utilizadas
+## 🚀 Instalación y Ejecución
 
-### Backend
-- **Go 1.21+** con Clean Architecture
-- **Gin** como framework web
-- **PostgreSQL** como base de datos
-- **golang-migrate** para migraciones
-- **JWT** para autenticación (preparado para implementación)
-
-### Frontend
-- **Vue 3** con Composition API
-- **Vite** como bundler
-- **TailwindCSS** para estilos
-- **Vue Router** para navegación
-- **Pinia** para manejo de estado
-
-## 📋 Prerrequisitos
+### Prerrequisitos
 
 - Docker y Docker Compose
-- Go 1.21 o superior
-- Node.js 18 o superior
-- npm o yarn
+- Go 1.21+ (para desarrollo del backend)
+- Node.js 18+ (para desarrollo del frontend)
 
-## 🛠️ Instalación y Configuración
-
-### 1. Clonar y configurar el proyecto
+### 1. Clonar el repositorio
 
 ```bash
-# Clonar el repositorio
-git clone <tu-repositorio>
+git clone <url-del-repositorio>
 cd MediTrack
-
-# Copiar archivos de configuración
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
 ```
 
-### 2. Configurar variables de entorno
+### 2. Configurar la base de datos
 
-Editar `backend/.env`:
+```bash
+# Crear y poblar la base de datos
+cd database
+docker-compose up -d postgres
+
+# Ejecutar las migraciones
+psql -h localhost -U postgres -d meditrack -f migrations/001_initial_schema.up.sql
+
+# Insertar datos de prueba (opcional)
+psql -h localhost -U postgres -d meditrack -f script.sql
+```
+
+### 3. Configurar variables de entorno
+
+Crear archivo `.env` en el directorio raíz:
+
 ```env
+# Backend
 DB_HOST=localhost
 DB_PORT=5432
-DB_USER=meditrack_user
-DB_PASSWORD=meditrack_password
-DB_NAME=meditrack_db
+DB_USER=postgres
+DB_PASSWORD=password
+DB_NAME=meditrack
 DB_SSL_MODE=disable
-JWT_SECRET=tu_jwt_secret_aqui
-PORT=8080
+
+# Frontend
+VITE_API_BASE_URL=http://localhost:8080/api/v1
 ```
 
-Editar `frontend/.env`:
-```env
-VITE_API_BASE_URL=http://localhost:8080/api
-```
-
-### 3. Levantar servicios con Docker
+### 4. Ejecutar con Docker Compose
 
 ```bash
-# Levantar todos los servicios
+# Ejecutar toda la aplicación
 docker-compose up -d
 
 # Ver logs
 docker-compose logs -f
 ```
 
-### 4. Ejecutar migraciones de base de datos
+### 5. Desarrollo local
 
+#### Backend
 ```bash
-# Desde el directorio backend
 cd backend
-go run cmd/migrate/main.go
+go mod download
+go run main.go
 ```
 
-### 5. Instalar dependencias del frontend
-
+#### Frontend
 ```bash
 cd frontend
 npm install
-```
-
-### 6. Ejecutar el proyecto
-
-```bash
-# Terminal 1: Backend
-cd backend
-go run cmd/server/main.go
-
-# Terminal 2: Frontend
-cd frontend
 npm run dev
 ```
 
-## 🌐 Acceso a la Aplicación
-
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:8080
-- **PostgreSQL:** localhost:5432
-
 ## 📊 Estructura de la Base de Datos
 
-El sistema incluye las siguientes entidades principales:
+### Tablas principales:
 
-- **supply_routes**: Rutas de suministro médico
-- **operating_rooms**: Salas de operación
-- **doctors**: Médicos y especialistas
-- **medical_supplies**: Insumos médicos
-- **supply_movements**: Movimientos de insumos
-- **locations**: Ubicaciones físicas
-- **users**: Usuarios del sistema
+- **medical_center**: Centros médicos
+- **store**: Bodegas de almacenamiento
+- **batch**: Lotes de insumos
+- **medical_supply**: Insumos médicos
+- **user**: Usuarios del sistema
+- **supply_history**: Historial de movimientos
 
-## 🔧 Desarrollo
+### Consulta de inventario:
 
-### Backend
+La vista de inventario obtiene datos de múltiples tablas mediante JOINs:
 
-```bash
-cd backend
-
-# Ejecutar tests
-go test ./...
-
-# Ejecutar con hot reload (requiere air)
-air
-
-# Generar documentación
-swag init -g cmd/server/main.go
+```sql
+SELECT 
+    medical_supply.id,
+    medical_supply.code,
+    medical_supply.name,
+    batch.expiration_date,
+    batch.amount,
+    batch.supplier,
+    store.name as store_name,
+    medical_center.name as medical_center_name
+FROM medical_supply
+LEFT JOIN batch ON medical_supply.batch_id = batch.id
+LEFT JOIN store ON batch.store_id = store.id
+LEFT JOIN medical_center ON store.medical_center_id = medical_center.id
 ```
 
-### Frontend
+## 🔧 API Endpoints
 
-```bash
-cd frontend
+### Inventario
+- `GET /api/v1/medical-supplies/inventory` - Obtener inventario completo
+- `GET /api/v1/medical-supplies` - Obtener todos los insumos
+- `POST /api/v1/medical-supplies` - Crear insumo
+- `PUT /api/v1/medical-supplies/:id` - Actualizar insumo
+- `DELETE /api/v1/medical-supplies/:id` - Eliminar insumo
 
-# Ejecutar tests
-npm run test
+## 🎯 Funcionalidades del Frontend
 
-# Build para producción
-npm run build
+- **Vista de inventario** con filtros y búsqueda
+- **Paginación** de resultados
+- **Ordenamiento** por múltiples criterios
+- **Filtros** por nombre, lote, centro médico
+- **Indicadores visuales** para fechas de vencimiento
+- **Acciones** para ver, editar y eliminar insumos
 
-# Preview build
-npm run preview
-```
+## 🐛 Solución de Problemas
 
-## 📁 Estructura de Carpetas
+### Error de conexión a la base de datos
+- Verificar que PostgreSQL esté ejecutándose
+- Comprobar credenciales en el archivo `.env`
+- Verificar que la base de datos `meditrack` exista
 
-### Backend (Clean Architecture)
-```
-backend/
-├── cmd/           # Puntos de entrada de la aplicación
-├── internal/      # Lógica de negocio interna
-│   ├── domain/    # Entidades y reglas de negocio
-│   ├── usecase/   # Casos de uso
-│   ├── repository/# Interfaces de repositorio
-│   └── delivery/  # Controladores HTTP
-├── pkg/           # Paquetes reutilizables
-├── config/        # Configuración
-└── migrations/    # Migraciones de base de datos
-```
+### Error en el frontend
+- Verificar que el backend esté ejecutándose en el puerto 8080
+- Comprobar la variable `VITE_API_BASE_URL`
+- Revisar la consola del navegador para errores
 
-### Frontend
-```
-frontend/
-├── src/
-│   ├── components/    # Componentes Vue
-│   ├── views/         # Páginas/Vistas
-│   ├── stores/        # Stores de Pinia
-│   ├── router/        # Configuración de rutas
-│   └── assets/        # Recursos estáticos
-├── public/            # Archivos públicos
-└── dist/              # Build de producción
-```
-
-## 🚧 Próximas Funcionalidades
-
-- [ ] Autenticación JWT completa
-- [ ] Sistema de trazabilidad con QR codes
-- [ ] Integración con Smart Contracts
-- [ ] Alertas automatizadas
-- [ ] Dashboard de estadísticas avanzado
-- [ ] Sistema de auditoría
-- [ ] API para dispositivos móviles
-
-## 🤝 Contribución
+## 📝 Contribución
 
 1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
 3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+5. Abrir un Pull Request
 
-## 📝 Licencia
+## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## 🆘 Soporte
-
-Para soporte técnico o preguntas, crear un issue en el repositorio o contactar al equipo de desarrollo.
-
----
-
-**MediTrack** - Trazabilidad médica del futuro 🏥✨ 
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles. 

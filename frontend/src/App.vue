@@ -1,13 +1,13 @@
 <template>
   <div id="app" class="min-h-screen bg-gray-50">
     <!-- Header principal -->
-    <header class="bg-white shadow-sm border-b border-gray-200">
+    <header class="bg-blue-600 shadow-sm border-b border-blue-700">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <!-- Logo y título -->
           <div class="flex items-center">
             <div class="flex-shrink-0">
-              <h1 class="text-2xl font-bold text-primary-600">MediTrack</h1>
+              <h1 class="text-2xl font-bold text-white">MediTrack</h1>
             </div>
           </div>
           
@@ -15,24 +15,14 @@
           <div class="flex-1 max-w-lg mx-8">
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
               </div>
-              <input
-                type="text"
-                placeholder="Buscar insumo médico..."
-                class="form-input pl-10 w-full"
-                v-model="searchQuery"
-                @input="handleSearch"
-              />
             </div>
           </div>
           
           <!-- Menú de usuario -->
           <div class="flex items-center space-x-4">
-            <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <svg class="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button class="p-2 rounded-lg hover:bg-blue-700 transition-colors">
+              <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
