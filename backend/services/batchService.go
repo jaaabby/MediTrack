@@ -19,8 +19,8 @@ func NewBatchService(db *gorm.DB, qrService *QRService) *BatchService {
 }
 
 func (s *BatchService) CreateBatch(batch *models.Batch) error {
-	// Generar código QR único para el batch
-	qrCode, err := s.QRService.GenerateBatchQRCode()
+	// Generar código QR único para el batch (solo el string, no la imagen)
+	qrCode, err := s.QRService.GenerateUniqueQRCode("BATCH")
 	if err != nil {
 		return err
 	}

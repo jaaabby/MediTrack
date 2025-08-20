@@ -3,11 +3,7 @@ import Home from '@/views/Home.vue'
 import Inventory from '@/views/Inventory.vue'
 import QRScanner from '@/views/QRScanner.vue'
 import QRDetails from '@/views/QRDetails.vue'
-//import Statistics from '@/views/Statistics.vue'
-//import Movements from '@/views/Movements.vue'
-//import Profile from '@/views/Profile.vue'
-//import Tracking from '@/views/Tracking.vue'
-//import Alerts from '@/views/Alerts.vue'
+import AddSupply from '@/views/AddSupply.vue'
 
 const routes = [
   {
@@ -29,6 +25,15 @@ const routes = [
     }
   },
   {
+    path: '/add-supply',
+    name: 'AddSupply',
+    component: AddSupply,
+    meta: {
+      title: 'Agregar Insumo - MediTrack',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/qr',
     name: 'QRScanner',
     component: QRScanner,
@@ -46,51 +51,6 @@ const routes = [
       requiresAuth: false
     }
   },
-  /*{
-    path: '/statistics',
-    name: 'Statistics',
-    component: Statistics,
-    meta: {
-      title: 'Estadísticas - MediTrack',
-      requiresAuth: false
-    }
-  },
-  {
-    path: '/movements',
-    name: 'Movements',
-    component: Movements,
-    meta: {
-      title: 'Últimos Movimientos - MediTrack',
-      requiresAuth: false
-    }
-  },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: Profile,
-    meta: {
-      title: 'Perfil - MediTrack',
-      requiresAuth: false
-    }
-  },
-  {
-    path: '/tracking',
-    name: 'Tracking',
-    component: Tracking,
-    meta: {
-      title: 'Trazabilidad - MediTrack',
-      requiresAuth: false
-    }
-  },
-  {
-    path: '/alerts',
-    name: 'Alerts',
-    component: Alerts,
-    meta: {
-      title: 'Alertas - MediTrack',
-      requiresAuth: false
-    }
-  },*/
   // Ruta 404
   {
     path: '/:pathMatch(.*)*',

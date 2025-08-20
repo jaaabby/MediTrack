@@ -56,13 +56,78 @@ class InventoryService {
     }
   }
 
-  // Crear insumo médico
+  // Crear insumo médico básico
   async createMedicalSupply(supply) {
     try {
       const response = await this.api.post('/medical-supplies', supply)
       return response.data.data
     } catch (error) {
       console.error('Error al crear insumo médico:', error)
+      throw error
+    }
+  }
+
+  // Crear lote (batch)
+  async createBatch(batchData) {
+    try {
+      const response = await this.api.post('/batches', batchData)
+      return response.data.data
+    } catch (error) {
+      console.error('Error al crear lote:', error)
+      throw error
+    }
+  }
+
+  // Crear código de insumo (supply code)
+  async createSupplyCode(supplyCodeData) {
+    try {
+      const response = await this.api.post('/supply-codes', supplyCodeData)
+      return response.data.data
+    } catch (error) {
+      console.error('Error al crear código de insumo:', error)
+      throw error
+    }
+  }
+
+  // Crear insumo completo con lote y código
+  async createCompleteSupply(supplyData) {
+    try {
+      // 1. Crear el lote primero
+      const batchData = {
+        expiration_date: supplyData.batch.expiration_date,
+        amount: supplyData.batch.amount,
+        supplier: supplyData.batch.supplier,
+        store_id: supplyData.batch.store_id
+      }
+      
+      const createdBatch = await this.createBatch(batchData)
+      
+      // 2. Crear el código de insumo asociado al lote
+      const supplyCodeData = {
+        code: supplyData.supply_code.code,
+        name: supplyData.supply_code.name,
+        code_supplier: supplyData.supply_code.code_supplier,
+        batch_id: createdBatch.id
+      }
+      
+      const createdSupplyCode = await this.createSupplyCode(supplyCodeData)
+      
+      // 3. Crear el insumo médico individual
+      const medicalSupplyData = {
+        code: createdSupplyCode.code
+      }
+      
+      const createdSupply = await this.createMedicalSupply(medicalSupplyData)
+      
+      // Retornar toda la información combinada
+      return {
+        supply: createdSupply,
+        batch: createdBatch,
+        supply_code: createdSupplyCode
+      }
+      
+    } catch (error) {
+      console.error('Error al crear insumo completo:', error)
       throw error
     }
   }
@@ -85,6 +150,60 @@ class InventoryService {
       return response.data
     } catch (error) {
       console.error('Error al eliminar insumo médico:', error)
+      throw error
+    }
+  }
+
+  // Obtener todas las bodegas
+  async getAllStores() {
+    try {
+      const response = await this.api.get('/stores')
+      return response.data.data || []
+    } catch (error) {
+      console.error('Error al obtener bodegas:', error)
+      throw error
+    }
+  }
+
+  // Obtener todos los lotes
+  async getAllBatches() {
+    try {
+      const response = await this.api.get('/batches')
+      return response.data.data || []
+    } catch (error) {
+      console.error('Error al obtener lotes:', error)
+      throw error
+    }
+  }
+
+  // Obtener todos los códigos de insumo
+  async getAllSupplyCodes() {
+    try {
+      const response = await this.api.get('/supply-codes')
+      return response.data.data || []
+    } catch (error) {
+      console.error('Error al obtener códigos de insumo:', error)
+      throw error
+    }
+  }
+
+  // Buscar insumos por término
+  async searchSupplies(searchTerm) {
+    try {
+      const inventory = await this.getInventory()
+      
+      if (!searchTerm) return inventory
+      
+      const filtered = inventory.filter(item => 
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.code?.toString().includes(searchTerm) ||
+        item.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.batch_id?.toString().includes(searchTerm)
+      )
+      
+      return filtered
+    } catch (error) {
+      console.error('Error al buscar insumos:', error)
       throw error
     }
   }

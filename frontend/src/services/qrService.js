@@ -45,7 +45,7 @@ class QRService {
     }
   }
 
-  // Generar código QR para lote
+  // Generar código QR para lote con imagen
   async generateBatchQR() {
     try {
       const response = await this.api.post('/qr/generate/batch')
@@ -56,13 +56,51 @@ class QRService {
     }
   }
 
-  // Generar código QR para insumo médico
+  // Generar código QR para insumo médico con imagen
   async generateSupplyQR() {
     try {
       const response = await this.api.post('/qr/generate/supply')
       return response.data
     } catch (error) {
       console.error('Error al generar código QR de insumo:', error)
+      throw error
+    }
+  }
+
+  // Obtener URL de imagen QR
+  getQRImageUrl(qrCode) {
+    return `${API_BASE_URL}/qr/image/${encodeURIComponent(qrCode)}`
+  }
+
+  // Obtener URL de descarga de imagen QR
+  getQRDownloadUrl(qrCode) {
+    return `${API_BASE_URL}/qr/download/${encodeURIComponent(qrCode)}`
+  }
+
+  // Descargar imagen QR directamente
+  async downloadQRImage(qrCode, filename = null) {
+    try {
+      const response = await this.api.get(`/qr/download/${encodeURIComponent(qrCode)}`, {
+        responseType: 'blob'
+      })
+      
+      // Crear enlace de descarga
+      const blob = new Blob([response.data], { type: 'image/png' })
+      const url = window.URL.createObjectURL(blob)
+      
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename || `qr_${qrCode}.png`
+      document.body.appendChild(link)
+      link.click()
+      
+      // Limpiar
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      return true
+    } catch (error) {
+      console.error('Error al descargar imagen QR:', error)
       throw error
     }
   }

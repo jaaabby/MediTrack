@@ -22,8 +22,12 @@ func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService) {
 		// Obtener historial de un insumo por código QR
 		qr.GET("/history/:qrcode", qrController.GetSupplyHistory)
 
-		// Generar códigos QR (endpoints internos para desarrollo/testing)
+		// Generar códigos QR con imagen
 		qr.POST("/generate/batch", qrController.GenerateBatchQR)
 		qr.POST("/generate/supply", qrController.GenerateSupplyQR)
+
+		// Servir imágenes QR
+		qr.GET("/image/:qrcode", qrController.GetQRImage)
+		qr.GET("/download/:qrcode", qrController.DownloadQRImage)
 	}
 }

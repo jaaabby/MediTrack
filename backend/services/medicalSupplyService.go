@@ -19,8 +19,8 @@ func NewMedicalSupplyService(db *gorm.DB, qrService *QRService) *MedicalSupplySe
 }
 
 func (s *MedicalSupplyService) CreateMedicalSupply(supply *models.MedicalSupply) error {
-	// Generar código QR único para el insumo médico
-	qrCode, err := s.QRService.GenerateMedicalSupplyQRCode()
+	// Generar código QR único para el insumo médico (solo el string, no la imagen)
+	qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
 	if err != nil {
 		return err
 	}

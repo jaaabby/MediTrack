@@ -6,12 +6,12 @@
         <h1 class="text-2xl font-bold text-gray-900">Inventario de Insumos Médicos</h1>
         <p class="text-gray-600 mt-1">Gestión y control de stock médico</p>
       </div>
-      <!--<button class="btn-primary">
+      <router-link to="/add-supply" class="btn-success">
         <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
         Agregar Insumo
-      </button>-->
+      </router-link>
     </div>
 
     <!-- Filtros y búsqueda -->
@@ -272,7 +272,7 @@
                   </button>
                   <button class="text-warning-600 hover:text-warning-800" @click="editSupply(supply)">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
                   <button class="text-danger-600 hover:text-danger-800" @click="deleteSupply(supply)">
@@ -313,28 +313,17 @@
         </div>
       </div>
     </div>
-
-    <!-- Botones de acción flotantes -->
-    <!--<div class="fixed bottom-6 right-6 space-y-3">
-      <button class="btn-success rounded-full p-4 shadow-lg" @click="scanQR">
-        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
-        </svg>
-      </button>
-      <button class="btn-primary rounded-full p-4 shadow-lg" @click="exportInventory">
-        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      </button>
-    </div>-->
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import inventoryService from '@/services/inventoryService'
+
+const route = useRoute()
 
 // Estado reactivo
 const supplies = ref([])
@@ -399,11 +388,6 @@ const paginatedSupplies = computed(() => {
 })
 
 // Métodos
-const applyFilters = () => {
-  // La búsqueda se aplica automáticamente con computed properties
-  currentPage.value = 1
-}
-
 const clearSearch = () => {
   searchTerm.value = ''
   sortField.value = 'name'
@@ -435,19 +419,6 @@ const getExpirationClass = (expirationDate) => {
   return 'text-gray-900'
 }
 
-const getStatusBadgeClass = (status) => {
-  switch (status) {
-    case 'active':
-      return 'badge badge-success'
-    case 'expired':
-      return 'badge badge-danger'
-    case 'low_stock':
-      return 'badge badge-warning'
-    default:
-      return 'badge badge-info'
-  }
-}
-
 const viewSupply = (supply) => {
   console.log('Ver insumo:', supply)
   // TODO: Implementar vista detallada
@@ -463,16 +434,6 @@ const deleteSupply = (supply) => {
     console.log('Eliminar insumo:', supply)
     // TODO: Implementar eliminación usando supply.batch_id
   }
-}
-
-const scanQR = () => {
-  console.log('Escanear código QR')
-  // TODO: Implementar escáner QR
-}
-
-const exportInventory = () => {
-  console.log('Exportar inventario')
-  // TODO: Implementar exportación
 }
 
 // Métodos
@@ -493,6 +454,31 @@ const loadInventory = async () => {
 
 // Lifecycle
 onMounted(() => {
+  // Si viene con un término de búsqueda desde Home, aplicarlo
+  if (route.query.search) {
+    searchTerm.value = route.query.search
+  }
   loadInventory()
 })
-</script> 
+</script>
+
+<style scoped>
+/* Transiciones suaves */
+.table-row:hover {
+  background-color: rgb(249 250 251);
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* Colores específicos para estados */
+.text-danger-600 {
+  color: #dc2626;
+}
+
+.text-warning-600 {
+  color: #d97706;
+}
+
+.text-primary-600 {
+  color: #2563eb;
+}
+</style>
