@@ -54,26 +54,6 @@ func (c *SupplyHistoryController) GetAllSupplyHistories(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
 }
 
-func (c *SupplyHistoryController) UpdateSupplyHistory(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
-		return
-	}
-	var history models.SupplyHistory
-	if err := ctx.ShouldBindJSON(&history); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
-		return
-	}
-	history.ID = intID
-	if _, err := c.supplyHistoryService.UpdateSupplyHistory(intID, &history); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar supply history: " + err.Error()})
-		return
-	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Supply history actualizado", Data: history})
-}
-
 func (c *SupplyHistoryController) DeleteSupplyHistory(ctx *gin.Context) {
 	id := ctx.Param("id")
 	var intID int
