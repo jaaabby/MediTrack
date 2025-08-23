@@ -71,7 +71,6 @@ func (c *SupplyCodeController) UpdateSupplyCode(ctx *gin.Context) {
 	}
 	supplyCode.Name = newSupplyCode.Name
 	supplyCode.CodeSupplier = newSupplyCode.CodeSupplier
-	supplyCode.BatchID = newSupplyCode.BatchID
 	if _, err := c.supplyCodeService.UpdateSupplyCode(intID, supplyCode); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar supply code: " + err.Error()})
 		return

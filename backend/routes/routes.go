@@ -18,6 +18,7 @@ func SetupRoutes(
 	supplyHistoryService services.SupplyHistoryService,
 	supplyCodeService services.SupplyCodeService,
 	qrService services.QRService,
+	batchHistoryService services.BatchHistoryService,
 ) {
 	// API v1
 	v1 := router.Group("/api/v1")
@@ -46,8 +47,13 @@ func SetupRoutes(
 		// Configurar rutas de códigos de insumos
 		SetupSupplyCodeRoutes(v1, supplyCodeService)
 
+<<<<<<< HEAD
 		// Configurar rutas de códigos QR
 		SetupQRRoutes(v1, qrService)
+=======
+		// Configurar rutas de historial de lotes
+		SetupBatchHistoryRoutes(v1, batchHistoryService)
+>>>>>>> origin/main
 	}
 
 	// Ruta de health check

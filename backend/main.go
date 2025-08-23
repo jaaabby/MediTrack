@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"meditrack/config"
+	"meditrack/mailer"
 	"meditrack/middleware"
 	"meditrack/routes"
 	"meditrack/services"
@@ -19,6 +20,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error al cargar configuración: %v", err)
 	}
+
+	// Inicializar el mailer
+	mailer.Setup()
 
 	// Conectar a la base de datos con GORM
 	db, err := config.ConnectGORM(cfg.Database)
@@ -38,6 +42,7 @@ func main() {
 	storeService := services.NewStoreService(db)
 	supplyHistoryService := services.NewSupplyHistoryService(db)
 	supplyCodeService := services.NewSupplyCodeService(db)
+	batchHistoryService := services.NewBatchHistoryService(db)
 
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
@@ -60,6 +65,7 @@ func main() {
 		*supplyHistoryService,
 		*supplyCodeService,
 		*qrService,
+		*batchHistoryService,
 	)
 
 	// Iniciar servidor

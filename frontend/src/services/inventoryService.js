@@ -143,13 +143,45 @@ class InventoryService {
     }
   }
 
-  // Eliminar insumo médico
-  async deleteMedicalSupply(id) {
+  // Actualizar batch (lote)
+  async updateBatch(id, batchData) {
     try {
-      const response = await this.api.delete(`/medical-supplies/${id}`)
-      return response.data
+      const response = await this.api.put(`/batches/${id}`, batchData)
+      return response.data.data
     } catch (error) {
-      console.error('Error al eliminar insumo médico:', error)
+      console.error('Error al actualizar batch:', error)
+      throw error
+    }
+  }
+
+  // Eliminar insumo médico
+  async deleteBatch(id) {
+    try {
+      const response = await this.api.delete(`/batches/${id}`)
+      return response.data.data
+    } catch (error) {
+      console.error('Error al eliminar batch:', error)
+      throw error
+    }
+  }
+
+  async getBatchHistoryWithDetails() {
+    try {
+      const response = await this.api.get('/batch-histories/details')
+      return response.data.data || []
+    } catch (error) {
+      console.error('Error al obtener historial de lotes:', error)
+      throw error
+    }
+  }
+
+  // Buscar historial por número de lote
+  async searchBatchHistoryByBatchNumber(batchNumber) {
+    try {
+      const response = await this.api.get(`/batch-histories/search/${batchNumber}`)
+      return response.data.data || []
+    } catch (error) {
+      console.error('Error al buscar historial por número de lote:', error)
       throw error
     }
   }
