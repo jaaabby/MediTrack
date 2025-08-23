@@ -60,16 +60,17 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 	var result []map[string]interface{}
 
 	query := `
-		SELECT 
+		SELECT DISTINCT ON (b.id)
 			b.id as batch_id,
-			sc.code as supply_code,
-			sc.name as supply_name,
 			b.expiration_date,
 			b.amount,
-			b.supplier
+			b.supplier,
+			sc.code as supply_code,
+			sc.name as supply_name
 		FROM batch b
-		JOIN supply_code sc ON b.id = sc.batch_id
-		ORDER BY b.id
+		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
+		LEFT JOIN supply_code sc ON ms.code = sc.code
+		ORDER BY b.id, sc.code
 	`
 
 	rows, err := s.DB.Raw(query).Rows()
@@ -81,23 +82,23 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 	for rows.Next() {
 		var item map[string]interface{} = make(map[string]interface{})
 		var batchID int
-		var supplyCode int
-		var supplyName string
 		var expirationDate string
 		var amount int
 		var supplier string
+		var supplyCode *int
+		var supplyName *string
 
-		err := rows.Scan(&batchID, &supplyCode, &supplyName, &expirationDate, &amount, &supplier)
+		err := rows.Scan(&batchID, &expirationDate, &amount, &supplier, &supplyCode, &supplyName)
 		if err != nil {
 			return nil, err
 		}
 
 		item["batch_id"] = batchID
-		item["code"] = supplyCode
-		item["name"] = supplyName
 		item["expiration_date"] = expirationDate
 		item["amount"] = amount
 		item["supplier"] = supplier
+		item["code"] = supplyCode
+		item["name"] = supplyName
 
 		result = append(result, item)
 	}

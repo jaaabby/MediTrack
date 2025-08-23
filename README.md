@@ -1,155 +1,103 @@
 # MediTrack - Sistema de Gestión de Inventario Médico
 
-MediTrack es una aplicación web completa para la gestión y control de inventario de insumos médicos en centros de salud.
+## Descripción
+MediTrack es un sistema completo para la gestión y control de inventario médico, desarrollado con Go en el backend y Vue.js en el frontend.
 
-## 🏗️ Arquitectura
+## Funcionalidades Principales
 
-- **Backend**: API REST en Go con Gin y GORM
-- **Frontend**: Aplicación Vue.js 3 con Tailwind CSS
-- **Base de datos**: PostgreSQL
-- **Contenedores**: Docker y Docker Compose
+### Gestión de Inventario
+- Visualización completa del inventario de insumos médicos
+- Búsqueda y filtrado por múltiples criterios
+- Ordenamiento por diferentes campos
+- Paginación de resultados
+- Edición de lotes existentes
 
-## 🚀 Instalación y Ejecución
+### Historial de Movimientos
+- **Historial por Lote**: Botón de historial en cada fila del inventario que muestra el historial completo de un lote específico
+- **Historial Global**: Botón "Historial Global" en el header que permite buscar y visualizar el historial de todos los lotes
+- **Buscador Inteligente**: Búsqueda por número de lote, nombre del insumo, fecha, tipo de movimiento, cantidad o usuario
+- **Filtros Avanzados**: Ordenamiento por fecha, tipo, cantidad y usuario
+- **Paginación**: Navegación eficiente a través de grandes volúmenes de datos históricos
 
-### Prerrequisitos
+## Estructura del Proyecto
 
-- Docker y Docker Compose
-- Go 1.21+ (para desarrollo del backend)
-- Node.js 18+ (para desarrollo del frontend)
-
-### 1. Clonar el repositorio
-
-```bash
-git clone <url-del-repositorio>
-cd MediTrack
+```
+MediTrack/
+├── backend/                 # Servidor Go
+│   ├── controllers/         # Controladores de la API
+│   ├── models/             # Modelos de datos
+│   ├── services/           # Lógica de negocio
+│   ├── routes/             # Definición de rutas
+│   └── config/             # Configuración de base de datos
+├── frontend/               # Aplicación Vue.js
+│   ├── src/
+│   │   ├── views/          # Vistas principales
+│   │   ├── services/       # Servicios de API
+│   │   └── router/         # Configuración de rutas
+└── database/               # Migraciones y scripts SQL
 ```
 
-### 2. Configurar la base de datos
+## Instalación y Configuración
 
-```bash
-# Crear y poblar la base de datos
-cd database
-docker-compose up -d postgres
+### Backend (Go)
+1. Navegar al directorio `backend/`
+2. Instalar dependencias: `go mod download`
+3. Configurar variables de entorno (base de datos, JWT, etc.)
+4. Ejecutar: `go run main.go`
 
-# Ejecutar las migraciones
-psql -h localhost -U postgres -d meditrack -f migrations/001_initial_schema.up.sql
+### Frontend (Vue.js)
+1. Navegar al directorio `frontend/`
+2. Instalar dependencias: `npm install`
+3. Configurar la URL del backend en las variables de entorno
+4. Ejecutar: `npm run dev`
 
-# Insertar datos de prueba (opcional)
-psql -h localhost -U postgres -d meditrack -f script.sql
-```
+### Base de Datos
+1. Configurar PostgreSQL
+2. Ejecutar las migraciones en `database/migrations/`
+3. Verificar la conexión desde el backend
 
-### 3. Configurar variables de entorno
+## API Endpoints
 
-Crear archivo `.env` en el directorio raíz:
-
-```env
-# Backend
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=password
-DB_NAME=meditrack
-DB_SSL_MODE=disable
-
-# Frontend
-VITE_API_BASE_URL=http://localhost:8080/api/v1
-```
-
-### 4. Ejecutar con Docker Compose
-
-```bash
-# Ejecutar toda la aplicación
-docker-compose up -d
-
-# Ver logs
-docker-compose logs -f
-```
-
-### 5. Desarrollo local
-
-#### Backend
-```bash
-cd backend
-go mod download
-go run main.go
-```
-
-#### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## 📊 Estructura de la Base de Datos
-
-### Tablas principales:
-
-- **medical_center**: Centros médicos
-- **store**: Bodegas de almacenamiento
-- **batch**: Lotes de insumos
-- **medical_supply**: Insumos médicos
-- **user**: Usuarios del sistema
-- **supply_history**: Historial de movimientos
-
-### Consulta de inventario:
-
-La vista de inventario obtiene datos de múltiples tablas mediante JOINs:
-
-```sql
-SELECT 
-    medical_supply.id,
-    medical_supply.code,
-    medical_supply.name,
-    batch.expiration_date,
-    batch.amount,
-    batch.supplier,
-    store.name as store_name,
-    medical_center.name as medical_center_name
-FROM medical_supply
-LEFT JOIN batch ON medical_supply.batch_id = batch.id
-LEFT JOIN store ON batch.store_id = store.id
-LEFT JOIN medical_center ON store.medical_center_id = medical_center.id
-```
-
-## 🔧 API Endpoints
+### Historial de Lotes
+- `GET /api/v1/batch-histories/batch/:batchId` - Obtener historial de un lote específico
+- `GET /api/v1/batch-histories/search?q=:term` - Buscar historial por término
+- `GET /api/v1/batch-histories` - Obtener historial global
 
 ### Inventario
-- `GET /api/v1/medical-supplies/inventory` - Obtener inventario completo
-- `GET /api/v1/medical-supplies` - Obtener todos los insumos
-- `POST /api/v1/medical-supplies` - Crear insumo
-- `PUT /api/v1/medical-supplies/:id` - Actualizar insumo
-- `DELETE /api/v1/medical-supplies/:id` - Eliminar insumo
+- `GET /api/v1/medical-supplies/list` - Listar todo el inventario
+- `PUT /api/v1/batches/:id` - Actualizar un lote
 
-## 🎯 Funcionalidades del Frontend
+## Características del Historial
 
-- **Vista de inventario** con filtros y búsqueda
-- **Paginación** de resultados
-- **Ordenamiento** por múltiples criterios
-- **Filtros** por nombre, lote, centro médico
-- **Indicadores visuales** para fechas de vencimiento
-- **Acciones** para ver, editar y eliminar insumos
+### Información Mostrada
+- **Fecha y Hora**: Timestamp exacto de cada movimiento
+- **Tipo de Movimiento**: Estado actual, modificaciones, etc.
+- **Cantidad**: Cambios en el stock del lote
+- **Usuario**: RUT del usuario que realizó la acción
+- **Detalles**: Información adicional del movimiento
 
-## 🐛 Solución de Problemas
+### Funcionalidades de Búsqueda
+- Búsqueda por texto libre en todos los campos
+- Filtrado en tiempo real
+- Ordenamiento por múltiples criterios
+- Paginación automática
 
-### Error de conexión a la base de datos
-- Verificar que PostgreSQL esté ejecutándose
-- Comprobar credenciales en el archivo `.env`
-- Verificar que la base de datos `meditrack` exista
+## Tecnologías Utilizadas
 
-### Error en el frontend
-- Verificar que el backend esté ejecutándose en el puerto 8080
-- Comprobar la variable `VITE_API_BASE_URL`
-- Revisar la consola del navegador para errores
+- **Backend**: Go, Gin, GORM, PostgreSQL
+- **Frontend**: Vue.js 3, Tailwind CSS, Axios
+- **Base de Datos**: PostgreSQL con migraciones
+- **Autenticación**: JWT
+- **Notificaciones**: Sistema de alertas en tiempo real
 
-## 📝 Contribución
+## Contribución
 
-1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
+1. Fork del repositorio
+2. Crear rama para nueva funcionalidad
+3. Implementar cambios
+4. Ejecutar pruebas
+5. Crear Pull Request
 
-## 📄 Licencia
+## Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles. 
+Este proyecto está bajo la Licencia MIT. 

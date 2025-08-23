@@ -41,7 +41,6 @@ func (s *SupplyCodeService) UpdateSupplyCode(id int, newSupplyCode *models.Suppl
 	}
 	supplyCode.Name = newSupplyCode.Name
 	supplyCode.CodeSupplier = newSupplyCode.CodeSupplier
-	supplyCode.BatchID = newSupplyCode.BatchID
 
 	if err := s.DB.Save(&supplyCode).Error; err != nil {
 		return nil, err
