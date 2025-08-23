@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -122,9 +123,11 @@ func getEnvAsInt(key string, defaultValue int) int {
 // getEnvAsSlice obtiene una variable de entorno como slice o retorna un valor por defecto
 func getEnvAsSlice(key string, defaultValue []string) []string {
 	if value := os.Getenv(key); value != "" {
-		// Implementación simple: separar por comas
-		// En producción, podrías usar un formato más robusto como JSON
-		return []string{value}
+		slice := strings.Split(value, ",")
+		for i, item := range slice {
+			slice[i] = strings.TrimSpace(item)
+		}
+		return slice
 	}
 	return defaultValue
 }

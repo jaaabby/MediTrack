@@ -593,23 +593,17 @@
                   <tr v-for="movement in paginatedHistory" :key="movement.id || movement.date_time" class="hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ formatDate(movement.date_time || movement.date) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span :class="getStatusBadgeClass(movement.type || movement.action)">{{ movement.action || movement.type || 'N/A' }}</span>
+                      <span v-if="movement.change_details">{{ movement.change_details }}</span>
+                      <span v-else class="badge badge-info">N/A</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span :class="getAmountClass(movement.details?.amount || movement.amount || 0)" class="font-medium">{{ movement.details?.amount || movement.amount || 'N/A' }}</span>
-                      <span v-if="movement.details?.amount || movement.amount" :class="getAmountClass(movement.details?.amount || movement.amount)" class="text-sm ml-1">unidades</span>
+                      <span v-if="movement.new_values?.amount !== undefined">{{ movement.new_values.amount }}</span>
+                      <span v-else-if="movement.previous_values?.amount !== undefined">{{ movement.previous_values.amount }}</span>
+                      <span v-else class="text-red-600 font-semibold">N/A</span>
                     </td>
+                    <td class="px-6 py-4 whitespace-nowrap">{{ movement.user_rut || movement.user || movement.user_name || 'N/A' }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="text-gray-700">{{ movement.user_rut || movement.user || 'N/A' }}</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="flex space-x-2">
-                        <button class="text-primary-600 hover:text-primary-800" @click="viewMovementDetails(movement)">
-                          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        </button>
-                      </div>
+                      <span class="text-blue-600">●</span>
                     </td>
                   </tr>
                 </tbody>
@@ -1082,6 +1076,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router';
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import inventoryService from '@/services/inventoryService'
@@ -1641,8 +1636,8 @@ const loadInventory = async () => {
   error.value = null
   
   try {
-    const data = await inventoryService.getInventory()
-    supplies.value = data
+  const data = await inventoryService.getInventory()
+  supplies.value = Array.isArray(data) ? data : (data.inventory_items || [])
   } catch (err) {
     error.value = 'Error al cargar el inventario: ' + err.message
     console.error('Error al cargar inventario:', err)

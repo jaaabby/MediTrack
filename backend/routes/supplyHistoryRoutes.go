@@ -10,11 +10,12 @@ import (
 // SetupSupplyHistoryRoutes configura las rutas de supply history
 func SetupSupplyHistoryRoutes(router *gin.RouterGroup, supplyHistoryService services.SupplyHistoryService) {
 	supplyHistoryController := controllers.NewSupplyHistoryController(supplyHistoryService)
-	histories := router.Group("/supply-histories")
+	supplyHistory := router.Group("/supply-history")
 	{
-		histories.POST("/", supplyHistoryController.CreateSupplyHistory)
-		histories.GET("/", supplyHistoryController.GetAllSupplyHistories)
-		histories.GET("/:id", supplyHistoryController.GetSupplyHistoryByID)
-		histories.DELETE("/:id", supplyHistoryController.DeleteSupplyHistory)
+		supplyHistory.POST("/", supplyHistoryController.CreateSupplyHistory)
+		supplyHistory.GET("/", supplyHistoryController.GetAllSupplyHistory)
+		supplyHistory.GET("/:id", supplyHistoryController.GetSupplyHistoryByID)
+		supplyHistory.PUT("/:id", supplyHistoryController.UpdateSupplyHistory)
+		supplyHistory.DELETE("/:id", supplyHistoryController.DeleteSupplyHistory)
 	}
 }

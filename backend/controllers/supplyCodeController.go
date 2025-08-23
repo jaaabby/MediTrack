@@ -18,11 +18,24 @@ func NewSupplyCodeController(supplyCodeService services.SupplyCodeService) *Supp
 }
 
 func (c *SupplyCodeController) CreateSupplyCode(ctx *gin.Context) {
-	var supplyCode models.SupplyCode
-	if err := ctx.ShouldBindJSON(&supplyCode); err != nil {
+	var supplyCodeRequest struct {
+		Code         int    `json:"code" binding:"required"`
+		Name         string `json:"name" binding:"required"`
+		CodeSupplier int    `json:"code_supplier" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&supplyCodeRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
+
+	// Crear modelo - Code es la primary key
+	supplyCode := models.SupplyCode{
+		Code:         supplyCodeRequest.Code,
+		Name:         supplyCodeRequest.Name,
+		CodeSupplier: supplyCodeRequest.CodeSupplier,
+	}
+
 	if err := c.supplyCodeService.CreateSupplyCode(&supplyCode); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al crear supply code: " + err.Error()})
 		return

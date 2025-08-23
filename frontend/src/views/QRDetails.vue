@@ -1,11 +1,21 @@
 <template>
   <div class="space-y-6">
+    <!-- Toast Notification -->
+    <transition name="fade">
+      <div v-if="toast.show" class="fixed top-6 right-6 z-50 bg-blue-600 text-white px-4 py-2 rounded shadow-lg flex items-center">
+        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01"/></svg>
+        <span>{{ toast.message }}</span>
+      </div>
+    </transition>
     <!-- Breadcrumb y acciones -->
-    <div class="flex items-center justify-between">
-      <nav class="flex" aria-label="Breadcrumb">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <nav class="flex mb-4 sm:mb-0" aria-label="Breadcrumb">
         <ol class="inline-flex items-center space-x-1 md:space-x-3">
           <li class="inline-flex items-center">
-            <router-link to="/qr" class="text-gray-700 hover:text-primary-600">
+            <router-link to="/qr" class="text-gray-700 hover:text-blue-600 transition-colors">
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5l2 3h3l2-3h5v5M4 4v5m16-5v5" />
+              </svg>
               Escáner QR
             </router-link>
           </li>
@@ -20,281 +30,258 @@
         </ol>
       </nav>
       
-      <div class="flex space-x-2">
-        <button @click="refreshData" class="btn-secondary" :disabled="loading">
+      <div class="flex flex-wrap gap-2">
+        <button @click="refreshData" class="btn-secondary text-sm" :disabled="loading" title="Actualizar información">
           <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           Actualizar
         </button>
-        <button @click="exportData" class="btn-primary">
+  <button @click="exportData" class="btn-primary text-sm" title="Exportar datos en JSON">
           <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           Exportar
+        </button>
+  <button @click="printQRCode" class="btn-secondary text-sm" title="Imprimir etiqueta QR">
+          <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Imprimir
         </button>
       </div>
     </div>
 
     <!-- Loading state -->
     <div v-if="loading" class="flex justify-center items-center py-12">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      <span class="ml-2 text-gray-600">Cargando información...</span>
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <span class="ml-3 text-gray-600">Cargando información...</span>
     </div>
 
     <!-- Error state -->
-    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-md p-4">
-      <div class="flex">
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
+      <div class="flex items-start">
         <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-red-800">Error al cargar información</h3>
-          <div class="mt-2 text-sm text-red-700">{{ error }}</div>
-          <div class="mt-4">
+        <div class="ml-3 flex-1">
+          <h3 class="text-lg font-medium text-red-800">Error al cargar información</h3>
+          <div class="mt-2 text-sm text-red-700">
+            <p>{{ error }}</p>
+          </div>
+          <div class="mt-4 flex space-x-3">
             <button @click="refreshData" class="btn-secondary text-sm">
-              Reintentar
+              Intentar de Nuevo
             </button>
+            <router-link to="/qr" class="btn-secondary text-sm">
+              Volver al Escáner
+            </router-link>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Contenido principal -->
+    <!-- Content -->
     <div v-else-if="qrInfo" class="space-y-6">
-      <!-- Header con información básica -->
-      <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center">
-            <div class="bg-white bg-opacity-20 p-3 rounded-lg mr-4">
-              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path v-if="qrInfo.type === 'batch'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+      
+      <!-- QR Information Display -->
+      <QRInfoDisplay 
+        :qr-info="qrInfo" 
+        @view-details="() => {}" 
+        @consume-supply="consumeSupply"
+        @view-batch="viewBatch"
+      />
+
+      <!-- Additional Actions Section -->
+      <div class="bg-white rounded-lg shadow-sm border p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <svg class="h-5 w-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Acciones Disponibles
+        </h3>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <!-- Ver en Inventario -->
+          <button @click="viewInInventory" class="action-card" title="Ver en Inventario">
+            <div class="action-icon bg-blue-100 text-blue-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
-            <div>
-              <h1 class="text-2xl font-bold">{{ getTypeLabel(qrInfo.type) }}</h1>
-              <p class="text-primary-100">ID: {{ qrInfo.id }} | Tipo: {{ qrInfo.type.toUpperCase() }}</p>
+            <div class="action-content">
+              <div class="font-medium">Ver en Inventario</div>
+              <div class="text-sm text-gray-500">Buscar en lista completa</div>
             </div>
-          </div>
-          <div class="text-right">
-            <p class="text-primary-100 text-sm">Código QR</p>
-            <code class="bg-white bg-opacity-20 px-3 py-1 rounded font-mono text-sm">
-              {{ qrInfo.qr_code }}
-            </code>
-          </div>
+          </button>
+
+          <!-- Descargar QR -->
+          <button @click="downloadQR" class="action-card" title="Descargar QR en alta calidad">
+            <div class="action-icon bg-green-100 text-green-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="font-medium">Descargar QR</div>
+              <div class="text-sm text-gray-500">Imagen en alta calidad</div>
+            </div>
+          </button>
+
+          <!-- Imprimir QR -->
+          <button @click="printQRCode" class="action-card" title="Imprimir QR físico">
+            <div class="action-icon bg-purple-100 text-purple-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="font-medium">Imprimir QR</div>
+              <div class="text-sm text-gray-500">Etiqueta física</div>
+            </div>
+          </button>
+
+          <!-- Compartir -->
+          <button @click="shareQR" class="action-card" title="Compartir por email/chat">
+            <div class="action-icon bg-yellow-100 text-yellow-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="font-medium">Compartir</div>
+              <div class="text-sm text-gray-500">Enviar por email/chat</div>
+            </div>
+          </button>
+
+          <!-- Ver Historial -->
+          <button @click="openHistoryModal" class="action-card" title="Ver historial de movimientos">
+            <div class="action-icon bg-indigo-100 text-indigo-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="font-medium">Ver Historial</div>
+              <div class="text-sm text-gray-500">Movimientos completos</div>
+            </div>
+          </button>
+
+          <!-- Registrar Movimiento -->
+          <button 
+            v-if="qrInfo.type === 'medical_supply' && !qrInfo.is_consumed" 
+            @click="addMovement" 
+            class="action-card"
+            title="Registrar consumo de producto"
+          >
+            <div class="action-icon bg-red-100 text-red-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="font-medium">Registrar Consumo</div>
+              <div class="text-sm text-gray-500">Marcar como usado</div>
+            </div>
+          </button>
+
+          <!-- Sincronizar -->
+          <button v-if="qrInfo.type === 'batch'" @click="syncBatch" class="action-card" title="Sincronizar cantidades">
+            <div class="action-icon bg-orange-100 text-orange-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="font-medium">Sincronizar</div>
+              <div class="text-sm text-gray-500">Actualizar cantidades</div>
+            </div>
+          </button>
+
+          <!-- Generar Reporte -->
+          <button @click="generateReport" class="action-card" title="Generar reporte detallado">
+            <div class="action-icon bg-teal-100 text-teal-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div class="action-content">
+              <div class="font-medium">Generar Reporte</div>
+              <div class="text-sm text-gray-500">Análisis detallado</div>
+            </div>
+          </button>
         </div>
       </div>
 
-      <!-- Información detallada -->
-      <div class="grid lg:grid-cols-2 gap-6">
-        <!-- Información principal -->
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Información Principal</h2>
-          </div>
-          
-          <div v-if="qrInfo.type === 'batch' && qrInfo.batch_info" class="space-y-4">
-            <dl class="grid grid-cols-1 gap-4">
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Fecha de Vencimiento</dt>
-                <dd :class="getExpirationClass(qrInfo.batch_info.expiration_date)" class="mt-1 text-lg font-semibold">
-                  {{ formatDate(qrInfo.batch_info.expiration_date) }}
-                </dd>
-                <dd class="text-sm text-gray-500">
-                  {{ getExpirationWarning(qrInfo.batch_info.expiration_date) }}
-                </dd>
+      <!-- Modal Historial -->
+      <transition name="fade">
+        <div v-if="showHistoryModal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-40">
+          <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
+            <button @click="closeHistoryModal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" title="Cerrar">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h2 class="text-xl font-bold mb-4">Historial de Movimientos</h2>
+            <div v-if="historyLoading" class="text-center py-4">Cargando...</div>
+            <div v-else-if="historyError" class="text-red-600">{{ historyError }}</div>
+            <div v-else>
+              <div v-if="historyData && historyData.length">
+                <ul class="space-y-2">
+                  <li v-for="(item, idx) in historyData" :key="idx" class="border-b pb-2">
+                    <div><strong>Fecha:</strong> {{ formatDate(item.date) }}</div>
+                    <div><strong>Acción:</strong> {{ item.action }}</div>
+                    <div><strong>Usuario:</strong> {{ item.user }}</div>
+                    <div v-if="item.details"><strong>Detalles:</strong> {{ item.details }}</div>
+                  </li>
+                </ul>
               </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Cantidad Total</dt>
-                <dd class="mt-1 text-lg font-semibold text-gray-900">
-                  {{ qrInfo.batch_info.amount }} unidades
-                </dd>
-              </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Proveedor</dt>
-                <dd class="mt-1 text-lg font-semibold text-gray-900">
-                  {{ qrInfo.batch_info.supplier }}
-                </dd>
-              </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">ID de Bodega</dt>
-                <dd class="mt-1 text-lg font-semibold text-gray-900">
-                  {{ qrInfo.batch_info.store_id }}
-                </dd>
-              </div>
-            </dl>
-          </div>
-
-          <div v-else-if="qrInfo.type === 'medical_supply' && qrInfo.supply_info" class="space-y-4">
-            <dl class="grid grid-cols-1 gap-4">
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Nombre del Insumo</dt>
-                <dd class="mt-1 text-lg font-semibold text-gray-900">
-                  {{ qrInfo.supply_info.supply_code_name }}
-                </dd>
-              </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Código Interno</dt>
-                <dd class="mt-1 text-lg font-semibold text-gray-900">
-                  {{ qrInfo.supply_info.code }}
-                </dd>
-              </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Fecha de Vencimiento</dt>
-                <dd :class="getExpirationClass(qrInfo.supply_info.expiration_date)" class="mt-1 text-lg font-semibold">
-                  {{ formatDate(qrInfo.supply_info.expiration_date) }}
-                </dd>
-                <dd class="text-sm text-gray-500">
-                  {{ getExpirationWarning(qrInfo.supply_info.expiration_date) }}
-                </dd>
-              </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Proveedor</dt>
-                <dd class="mt-1 text-lg font-semibold text-gray-900">
-                  {{ qrInfo.supply_info.supplier }}
-                </dd>
-              </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">Bodega</dt>
-                <dd class="mt-1 text-lg font-semibold text-gray-900">
-                  {{ qrInfo.supply_info.store_name }}
-                </dd>
-              </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">ID del Lote</dt>
-                <dd class="mt-1 text-lg font-semibold text-gray-900">
-                  {{ qrInfo.supply_info.batch_id }}
-                </dd>
-              </div>
-            </dl>
+              <div v-else class="text-gray-500">No hay movimientos registrados.</div>
+            </div>
           </div>
         </div>
-
-        <!-- Código de insumo (si está disponible) -->
-        <div v-if="qrInfo.supply_code" class="card">
-          <div class="card-header">
-            <h2 class="card-title">Información del Código de Insumo</h2>
+      </transition>
+      <!-- QR Code Print Preview (hidden) -->
+      <div ref="printArea" class="print-only">
+        <div class="print-qr-card">
+          <div class="print-header">
+            <h1>MediTrack - {{ getTypeLabel(qrInfo.type) }}</h1>
+            <p>{{ formatDate(new Date()) }}</p>
           </div>
           
-          <dl class="space-y-4">
-            <div>
-              <dt class="text-sm font-medium text-gray-500">Código</dt>
-              <dd class="mt-1 text-lg font-semibold text-gray-900">
-                {{ qrInfo.supply_code.code }}
-              </dd>
+          <div class="print-content">
+            <div class="print-qr-section">
+              <img 
+                v-if="qrInfo.qr_code" 
+                :src="getQRImageUrl(qrInfo.qr_code)" 
+                alt="Código QR"
+                class="print-qr-image"
+              />
+              <p class="print-qr-text">{{ qrInfo.qr_code }}</p>
             </div>
             
-            <div>
-              <dt class="text-sm font-medium text-gray-500">Nombre</dt>
-              <dd class="mt-1 text-lg font-semibold text-gray-900">
-                {{ qrInfo.supply_code.name }}
-              </dd>
+            <div class="print-info-section">
+              <div v-if="qrInfo.type === 'batch' && qrInfo.batch_info" class="print-info-group">
+                <h3>Información del Lote</h3>
+                <p><strong>ID:</strong> {{ qrInfo.batch_info.id }}</p>
+                <p><strong>Proveedor:</strong> {{ qrInfo.batch_info.supplier }}</p>
+                <p><strong>Vencimiento:</strong> {{ formatDate(qrInfo.batch_info.expiration_date) }}</p>
+                <p><strong>Cantidad:</strong> {{ qrInfo.batch_info.amount }} unidades</p>
+              </div>
+              
+              <div v-if="qrInfo.type === 'medical_supply' && qrInfo.supply_info" class="print-info-group">
+                <h3>Información del Producto</h3>
+                <p><strong>Nombre:</strong> {{ qrInfo.supply_info.supply_code_name }}</p>
+                <p><strong>Código:</strong> {{ qrInfo.supply_info.code }}</p>
+                <p><strong>Proveedor:</strong> {{ qrInfo.supply_info.supplier }}</p>
+                <p><strong>Estado:</strong> {{ qrInfo.supply_info.is_consumed ? 'Consumido' : 'Disponible' }}</p>
+              </div>
             </div>
-            
-            <div>
-              <dt class="text-sm font-medium text-gray-500">Código del Proveedor</dt>
-              <dd class="mt-1 text-lg font-semibold text-gray-900">
-                {{ qrInfo.supply_code.code_supplier }}
-              </dd>
-            </div>
-            
-            <div>
-              <dt class="text-sm font-medium text-gray-500">ID del Lote</dt>
-              <dd class="mt-1 text-lg font-semibold text-gray-900">
-                {{ qrInfo.supply_code.batch_id }}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-
-      <!-- Historial completo -->
-      <div v-if="qrInfo.history && qrInfo.history.length > 0" class="card">
-        <div class="card-header">
-          <h2 class="card-title flex items-center">
-            <svg class="h-6 w-6 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Historial Completo de Movimientos
-          </h2>
-          <p class="text-sm text-gray-600">{{ qrInfo.history.length }} movimientos registrados</p>
-        </div>
-        
-        <div class="overflow-x-auto">
-          <table class="table">
-            <thead class="table-header">
-              <tr>
-                <th class="table-header-cell">Fecha y Hora</th>
-                <th class="table-header-cell">Estado</th>
-                <th class="table-header-cell">Tipo de Destino</th>
-                <th class="table-header-cell">ID Destino</th>
-                <th class="table-header-cell">Usuario</th>
-              </tr>
-            </thead>
-            <tbody class="table-body">
-              <tr v-for="movement in qrInfo.history" :key="movement.id" class="table-row">
-                <td class="table-cell">
-                  <div>
-                    <div class="font-medium">{{ formatDate(movement.date_time) }}</div>
-                    <div class="text-sm text-gray-500">{{ formatTime(movement.date_time) }}</div>
-                  </div>
-                </td>
-                <td class="table-cell">
-                  <span :class="getStatusBadgeClass(movement.status)" class="badge">
-                    {{ movement.status }}
-                  </span>
-                </td>
-                <td class="table-cell">
-                  <span class="font-medium">{{ movement.destination_type }}</span>
-                </td>
-                <td class="table-cell">{{ movement.destination_id }}</td>
-                <td class="table-cell">
-                  <code class="text-sm">{{ movement.user_rut }}</code>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Acciones disponibles -->
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Acciones Disponibles</h2>
-        </div>
-        
-        <div class="grid md:grid-cols-3 gap-4">
-          <button @click="viewInInventory" class="btn-secondary p-4 h-auto">
-            <svg class="h-6 w-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            <div class="text-sm font-medium">Ver en Inventario</div>
-          </button>
+          </div>
           
-          <button @click="printQRCode" class="btn-secondary p-4 h-auto">
-            <svg class="h-6 w-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            <div class="text-sm font-medium">Imprimir QR</div>
-          </button>
-          
-          <button @click="addMovement" class="btn-primary p-4 h-auto">
-            <svg class="h-6 w-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <div class="text-sm font-medium">Registrar Movimiento</div>
-          </button>
+          <div class="print-footer">
+            <p>Generado automáticamente por MediTrack</p>
+          </div>
         </div>
       </div>
     </div>
@@ -302,35 +289,53 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qrService'
+import QRInfoDisplay from '@/components/QRInfoDisplay.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// Referencias
+const printArea = ref(null)
 
 // Estado reactivo
 const qrInfo = ref(null)
 const loading = ref(false)
 const error = ref(null)
 
-// Métodos
+// Toast notification
+const toast = ref({ show: false, message: '' })
+function showToast(msg, duration = 2500) {
+  toast.value = { show: true, message: msg }
+  setTimeout(() => { toast.value.show = false }, duration)
+}
+
+// Modal historial
+const showHistoryModal = ref(false)
+const historyLoading = ref(false)
+const historyError = ref(null)
+const historyData = ref([])
+
+// Computed
+const qrCode = computed(() => route.params.qrcode)
+
+// Métodos principales
 const loadQRInfo = async () => {
   loading.value = true
   error.value = null
-  
   try {
-    const qrCode = route.params.qrcode
-    const result = await qrService.scanQRCode(qrCode)
-    
+    const result = await qrService.scanQRCode(qrCode.value)
     if (result.success) {
       qrInfo.value = result.data
     } else {
       error.value = result.error || 'Error al cargar información del QR'
     }
   } catch (err) {
+    console.error('Error loading QR info:', err)
     error.value = err.response?.data?.error || 'Error de conexión'
   } finally {
     loading.value = false
@@ -339,91 +344,164 @@ const loadQRInfo = async () => {
 
 const refreshData = () => {
   loadQRInfo()
+  showToast('Datos actualizados')
 }
 
-const getTypeLabel = (type) => {
-  return type === 'batch' ? 'Lote de Insumos Médicos' : 'Insumo Médico Individual'
-}
-
-const getExpirationClass = (expirationDate) => {
-  const today = new Date()
-  const expDate = new Date(expirationDate)
-  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
-  
-  if (daysUntilExpiration < 0) return 'text-red-600'
-  if (daysUntilExpiration <= 30) return 'text-orange-600'
-  return 'text-green-600'
-}
-
-const getExpirationWarning = (expirationDate) => {
-  const today = new Date()
-  const expDate = new Date(expirationDate)
-  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
-  
-  if (daysUntilExpiration < 0) return `Vencido hace ${Math.abs(daysUntilExpiration)} días`
-  if (daysUntilExpiration === 0) return 'Vence hoy'
-  if (daysUntilExpiration <= 30) return `Vence en ${daysUntilExpiration} días`
-  return `${daysUntilExpiration} días hasta el vencimiento`
-}
-
-const getStatusBadgeClass = (status) => {
-  const statusClasses = {
-    'activo': 'badge-success',
-    'en_transito': 'badge-warning',
-    'utilizado': 'badge-info',
-    'vencido': 'badge-danger'
+// Métodos de acción
+const viewInInventory = () => {
+  if (qrInfo.value?.type === 'batch') {
+    router.push({ name: 'Inventory', query: { batch: qrInfo.value.id } })
+  } else if (qrInfo.value?.type === 'medical_supply') {
+    router.push({ name: 'Inventory', query: { supply: qrInfo.value.id } })
   }
-  return statusClasses[status] || 'badge-info'
+}
+
+const downloadQR = async () => {
+  if (!qrInfo.value?.qr_code) return
+  try {
+    await qrService.downloadQRImage(qrInfo.value.qr_code, 'high')
+    showToast('QR descargado correctamente')
+  } catch (error) {
+    console.error('Error downloading QR:', error)
+    showToast('Error al descargar el código QR')
+  }
+}
+
+const printQRCode = () => {
+  if (!printArea.value) return
+  const printContent = printArea.value.innerHTML
+  const originalContent = document.body.innerHTML
+  document.body.innerHTML = printContent
+  window.print()
+  document.body.innerHTML = originalContent
+  window.location.reload()
+  showToast('Etiqueta enviada a impresión')
+}
+
+const shareQR = async () => {
+  const shareData = {
+    title: `MediTrack - ${getTypeLabel(qrInfo.value?.type)}`,
+    text: `Código QR: ${qrInfo.value?.qr_code}`,
+    url: window.location.href
+  }
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData)
+      showToast('Enlace compartido correctamente')
+    } catch (error) {
+      console.log('Error sharing:', error)
+      await copyToClipboard(window.location.href)
+    }
+  } else {
+    await copyToClipboard(window.location.href)
+  }
+}
+
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    showToast('Enlace copiado al portapapeles')
+  } catch (error) {
+    console.error('Error copying to clipboard:', error)
+    showToast('No se pudo copiar el enlace')
+  }
+}
+
+const openHistoryModal = async () => {
+  showHistoryModal.value = true
+  historyLoading.value = true
+  historyError.value = null
+  historyData.value = []
+  try {
+    const result = await qrService.getSupplyHistory(qrInfo.value.qr_code)
+    if (result.success) {
+      historyData.value = result.data
+    } else {
+      historyError.value = result.error || 'Error al obtener el historial'
+    }
+  } catch (error) {
+    console.error('Error getting history:', error)
+    historyError.value = 'Error al obtener el historial'
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+const closeHistoryModal = () => {
+  showHistoryModal.value = false
+}
+
+const addMovement = () => {
+  router.push({ name: 'QRConsumer', query: { qr: qrInfo.value?.qr_code } })
+}
+
+const consumeSupply = (qrInfo) => {
+  router.push({ name: 'QRConsumer', query: { qr: qrInfo.qr_code } })
+}
+
+const viewBatch = (batchId) => {
+  router.push({ name: 'Inventory', query: { batch: batchId } })
+}
+
+const syncBatch = async () => {
+  try {
+    await qrService.syncBatchAmounts()
+    showToast('Lote sincronizado correctamente')
+    await refreshData()
+  } catch (error) {
+    console.error('Error syncing batch:', error)
+    showToast('Error al sincronizar el lote')
+  }
+}
+
+const generateReport = () => {
+  const reportData = {
+    qr_code: qrInfo.value?.qr_code,
+    type: qrInfo.value?.type,
+    generated_at: new Date().toISOString(),
+    data: qrInfo.value
+  }
+  const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `reporte_${qrInfo.value?.qr_code}_${format(new Date(), 'yyyy-MM-dd')}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  showToast('Reporte generado y descargado')
+}
+
+const exportData = () => {
+  generateReport()
+}
+
+// Utilidades
+const getTypeLabel = (type) => {
+  return qrService.getTypeLabel(type)
+}
+
+const getQRImageUrl = (qrCode) => {
+  return qrService.getQRImageUrl(qrCode)
 }
 
 const formatDate = (dateString) => {
+  if (!dateString) return 'No disponible'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy', { locale: es })
-  } catch {
+    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+  } catch (error) {
     return dateString
   }
 }
 
-const formatTime = (dateString) => {
-  try {
-    return format(new Date(dateString), 'HH:mm:ss', { locale: es })
-  } catch {
-    return ''
-  }
-}
-
-const exportData = () => {
-  const dataStr = JSON.stringify(qrInfo.value, null, 2)
-  const blob = new Blob([dataStr], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `qr-${qrInfo.value.qr_code}-${new Date().toISOString().split('T')[0]}.json`
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
-const viewInInventory = () => {
-  router.push('/inventory')
-}
-
-const printQRCode = () => {
-  // Implementar impresión del código QR
-  console.log('Imprimir QR:', qrInfo.value.qr_code)
-}
-
-const addMovement = () => {
-  // Implementar formulario para agregar movimiento
-  console.log('Agregar movimiento para:', qrInfo.value.qr_code)
-}
-
 // Lifecycle
 onMounted(() => {
-  // Verificar si hay información en el state de la navegación
-  if (history.state?.qrInfo) {
-    qrInfo.value = history.state.qrInfo
-  } else {
+  if (qrCode.value) {
     loadQRInfo()
+  } else {
+    error.value = 'Código QR no válido'
   }
 })
 </script>
+

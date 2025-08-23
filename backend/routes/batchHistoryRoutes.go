@@ -7,19 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// SetupBatchHistoryRoutes configura las rutas de historial de lotes
 func SetupBatchHistoryRoutes(router *gin.RouterGroup, batchHistoryService services.BatchHistoryService) {
 	batchHistoryController := controllers.NewBatchHistoryController(batchHistoryService)
-	histories := router.Group("/batch-histories")
+	batchHistory := router.Group("/batch-history")
 	{
-		histories.POST("/", batchHistoryController.CreateBatchHistory)
-		histories.GET("/", batchHistoryController.GetAllBatchHistories)
-		histories.GET("/:id", batchHistoryController.GetBatchHistoryByID)
-		histories.DELETE("/:id", batchHistoryController.DeleteBatchHistory)
-		histories.GET("/details", batchHistoryController.GetAllBatchHistoriesWithDetails)
-		histories.GET("/details/paginated", batchHistoryController.GetAllBatchHistoriesWithDetailsPaginated)
-
-		// Nuevas rutas para búsqueda por número de lote
-		histories.GET("/batch/:batchNumber", batchHistoryController.GetBatchHistoryByBatchNumber)
-		histories.GET("/search/:batchNumber", batchHistoryController.SearchBatchHistoryByBatchNumber)
+		batchHistory.POST("/", batchHistoryController.CreateBatchHistory)
+		batchHistory.GET("/", batchHistoryController.GetAllBatchHistory)
+		batchHistory.GET("/:id", batchHistoryController.GetBatchHistoryByID)
+		batchHistory.PUT("/:id", batchHistoryController.UpdateBatchHistory)
+		batchHistory.DELETE("/:id", batchHistoryController.DeleteBatchHistory)
+		batchHistory.GET("/search/:batchNumber", batchHistoryController.SearchBatchHistoryByBatchNumber)
 	}
 }

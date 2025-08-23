@@ -15,10 +15,10 @@ import (
 )
 
 func main() {
-	// Cargar configuración
+	// Cargar configuraciÃ³n
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Error al cargar configuración: %v", err)
+		log.Fatalf("Error al cargar configuraciÃ³n: %v", err)
 	}
 
 	// Inicializar el mailer

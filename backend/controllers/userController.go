@@ -23,13 +23,31 @@ func NewUserController(userService services.UserService) *UserController {
 
 // CreateUser crea un nuevo usuario
 func (c *UserController) CreateUser(ctx *gin.Context) {
-	var user models.User
-	if err := ctx.ShouldBindJSON(&user); err != nil {
+	var userRequest struct {
+		RUT             string `json:"rut" binding:"required"`
+		Name            string `json:"name" binding:"required"`
+		Email           string `json:"email"`
+		Password        string `json:"password" binding:"required"`
+		Role            string `json:"role" binding:"required"`
+		MedicalCenterID int    `json:"medical_center_id" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&userRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Error:   "Datos de usuario inválidos: " + err.Error(),
 		})
 		return
+	}
+
+	// Crear modelo - RUT es la primary key
+	user := models.User{
+		RUT:             userRequest.RUT,
+		Name:            userRequest.Name,
+		Email:           userRequest.Email,
+		Password:        userRequest.Password,
+		Role:            userRequest.Role,
+		MedicalCenterID: userRequest.MedicalCenterID,
 	}
 
 	if err := c.userService.CreateUser(&user); err != nil {

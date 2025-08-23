@@ -1,295 +1,380 @@
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900">Agregar Insumo Médico</h1>
-        <p class="text-gray-600 mt-1">Registra un nuevo insumo médico con código QR</p>
-      </div>
-      <router-link to="/inventory" class="btn-secondary">
-        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-        </svg>
-        Volver al Inventario
-      </router-link>
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <h2 class="text-2xl font-semibold text-gray-900">Agregar Nuevo Insumo Médico</h2>
+      <p class="text-gray-600 mt-1">Crea un lote de productos con códigos QR únicos para cada unidad individual</p>
     </div>
 
-    <div class="grid lg:grid-cols-2 gap-8">
-      <!-- Formulario para crear insumo -->
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title text-blue-700">
-            <svg class="h-6 w-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+    <!-- Formulario Principal -->
+    <div v-if="!generatedBatch" class="bg-white rounded-lg shadow-sm border p-6">
+      <form @submit.prevent="createSupply" class="space-y-8">
+        
+        <!-- Información del Insumo -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
             </svg>
             Información del Insumo
           </h3>
-        </div>
-
-        <form @submit.prevent="createSupply" class="space-y-6">
-          <!-- Código del insumo -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Código del Insumo *
-            </label>
-            <input
-              type="number"
-              required
-              class="form-input w-full"
-              v-model="supplyForm.code"
-              placeholder="Ej: 1001"
-            />
-            <p class="text-xs text-gray-500 mt-1">Código numérico único para identificar el insumo</p>
-          </div>
-
-          <!-- Nombre del insumo -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Nombre del Insumo *
-            </label>
-            <input
-              type="text"
-              required
-              class="form-input w-full"
-              v-model="supplyForm.name"
-              placeholder="Ej: Guantes de látex"
-            />
-          </div>
-
-          <!-- Código del proveedor -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Código del Proveedor *
-            </label>
-            <input
-              type="number"
-              required
-              class="form-input w-full"
-              v-model="supplyForm.codeSupplier"
-              placeholder="Ej: 5001"
-            />
-          </div>
-
-          <!-- Información del lote -->
-          <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-900 mb-4">Información del Lote</h4>
-            
-            <div class="grid md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha de Vencimiento *
-                </label>
-                <input
-                  type="date"
-                  required
-                  class="form-input w-full"
-                  v-model="batchForm.expirationDate"
-                />
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Cantidad del Lote *
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  class="form-input w-full"
-                  v-model="batchForm.amount"
-                  placeholder="Ej: 100"
-                />
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Proveedor *
+          
+          <div class="grid md:grid-cols-3 gap-6">
+            <div>
+              <label for="supply-code" class="block text-sm font-medium text-gray-700 mb-2">
+                Código del Insumo <span class="text-red-500">*</span>
               </label>
               <input
-                type="text"
+                id="supply-code"
+                v-model="supplyForm.code"
+                type="number"
+                placeholder="123456"
+                class="form-input"
                 required
-                class="form-input w-full"
-                v-model="batchForm.supplier"
-                placeholder="Ej: Proveedor Médico S.A."
               />
             </div>
-
-            <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                ID de Bodega *
+            
+            <div>
+              <label for="supply-name" class="block text-sm font-medium text-gray-700 mb-2">
+                Nombre del Insumo <span class="text-red-500">*</span>
               </label>
-              <select v-model="batchForm.storeId" required class="form-select w-full">
-                <option value="">Selecciona una bodega</option>
-                <option value="1">Bodega Principal</option>
-                <option value="2">Bodega Secundaria</option>
-              </select>
+              <input
+                id="supply-name"
+                v-model="supplyForm.name"
+                type="text"
+                placeholder="Ej: Jeringa 10ml"
+                class="form-input"
+                required
+              />
+            </div>
+            
+            <div>
+              <label for="supplier-code" class="block text-sm font-medium text-gray-700 mb-2">
+                Código de Proveedor <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="supplier-code"
+                v-model="supplyForm.codeSupplier"
+                type="number"
+                placeholder="789"
+                class="form-input"
+                required
+              />
             </div>
           </div>
+        </div>
 
-          <!-- Botones -->
-          <div class="flex space-x-4 pt-4">
-            <button
-              type="submit"
-              :disabled="creating"
-              class="btn-primary flex-1"
-            >
-              <svg v-if="!creating" class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <div v-else class="h-4 w-4 mr-2 spinner"></div>
-              {{ creating ? 'Creando...' : 'Crear Insumo con QR' }}
-            </button>
+        <!-- Información del Lote -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Información del Lote
+          </h3>
+          
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="space-y-6">
+              <div>
+                <label for="expiration-date" class="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha de Vencimiento <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="expiration-date"
+                  v-model="batchForm.expirationDate"
+                  type="date"
+                  class="form-input"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label for="supplier" class="block text-sm font-medium text-gray-700 mb-2">
+                  Proveedor <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="supplier"
+                  v-model="batchForm.supplier"
+                  type="text"
+                  placeholder="Nombre del proveedor"
+                  class="form-input"
+                  required
+                />
+              </div>
+            </div>
             
-            <button
-              type="button"
-              @click="resetForm"
-              class="btn-secondary px-6"
-            >
-              Limpiar
-            </button>
+            <div class="space-y-6">
+              <div>
+                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
+                  Cantidad de Productos <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="amount"
+                  v-model="batchForm.amount"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  placeholder="50"
+                  class="form-input"
+                  required
+                />
+                <p class="text-sm text-gray-500 mt-1">Se generará un QR único para cada producto individual</p>
+              </div>
+              
+              <div>
+                <label for="store-id" class="block text-sm font-medium text-gray-700 mb-2">
+                  ID del Almacén <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="store-id"
+                  v-model="batchForm.storeId"
+                  type="number"
+                  placeholder="1"
+                  class="form-input"
+                  required
+                />
+              </div>
+            </div>
           </div>
-        </form>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="flex justify-end">
+          <button
+            type="submit"
+            :disabled="creating"
+            class="btn-primary text-lg px-8 py-3"
+          >
+            <svg v-if="creating" class="animate-spin h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="h-5 w-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            {{ creating ? 'Creando Lote...' : 'Crear Lote con QR Codes' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Resultado Exitoso -->
+    <div v-if="generatedBatch && !error" class="space-y-6">
+      
+      <!-- Información del Lote Creado -->
+      <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <svg class="h-8 w-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="ml-4 flex-1">
+            <h3 class="text-lg font-medium text-green-800">¡Lote Creado Exitosamente!</h3>
+            <div class="mt-2 text-sm text-green-700">
+              <p>Se ha creado el lote <strong>ID: {{ generatedBatch.id }}</strong> con <strong>{{ generatedSupplies?.length || batchForm.amount }} productos individuales</strong></p>
+              <p class="mt-1">Cada producto tiene su propio código QR único para trazabilidad completa.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Panel de QR generado -->
-      <div class="space-y-6">
-        <!-- QR Code generado -->
-        <div v-if="generatedSupply" class="card">
-          <div class="card-header">
-            <h3 class="card-title text-green-700">
-              <svg class="h-6 w-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Insumo Creado Exitosamente
-            </h3>
-          </div>
-
-          <div class="text-center space-y-4">
-            <!-- QR Code -->
-            <div class="bg-white p-6 rounded-lg border-2 border-green-200 inline-block">
+      <!-- QR del Lote -->
+      <div class="bg-white rounded-lg shadow-sm border p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        Código QR del Lote
+        </h3>
+        
+        <div class="flex flex-col lg:flex-row lg:items-start lg:space-x-8">
+          <!-- Imagen QR del Lote -->
+          <div class="flex-shrink-0 text-center mb-4 lg:mb-0">
+            <div class="bg-gray-50 rounded-lg p-6 border">
               <img 
-                :src="`data:image/png;base64,${qrImageData}`"
-                :alt="`QR del insumo: ${generatedSupply.qr_code}`"
-                class="h-48 w-48 mx-auto"
+                v-if="batchQRImage" 
+                :src="batchQRImage" 
+                :alt="`QR del Lote: ${generatedBatch.qr_code}`"
+                class="w-48 h-48 mx-auto object-contain border rounded"
               />
-            </div>
-
-            <!-- Información del insumo creado -->
-            <div class="bg-green-50 rounded-lg p-4">
-              <h4 class="font-medium text-green-900 mb-3">Detalles del Insumo</h4>
-              <dl class="text-sm space-y-2">
-                <div class="flex justify-between">
-                  <dt class="text-green-700">ID:</dt>
-                  <dd class="font-medium">#{{ generatedSupply.id }}</dd>
-                </div>
-                <div class="flex justify-between">
-                  <dt class="text-green-700">Código:</dt>
-                  <dd class="font-medium">{{ generatedSupply.code }}</dd>
-                </div>
-                <div class="flex justify-between">
-                  <dt class="text-green-700">Código QR:</dt>
-                  <dd class="font-mono text-xs">{{ generatedSupply.qr_code }}</dd>
-                </div>
-              </dl>
-            </div>
-
-            <!-- Acciones para el QR -->
-            <div class="grid grid-cols-2 gap-3">
-              <button @click="downloadQR" class="btn-secondary text-sm">
-                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <div v-else class="w-48 h-48 mx-auto bg-gray-100 rounded flex items-center justify-center">
+                <svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                Descargar QR
-              </button>
+              </div>
               
-              <button @click="testQR" class="btn-secondary text-sm">
-                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                Probar Escáner
-              </button>
+              <div class="mt-4 space-y-2">
+                <button 
+                  @click="downloadBatchQR('normal')"
+                  class="w-full btn-secondary text-sm"
+                >
+                  Descargar QR Lote
+                </button>
+                <button 
+                  @click="downloadBatchQR('high')"
+                  class="w-full btn-primary text-sm"
+                >
+                  Descargar HD
+                </button>
+              </div>
             </div>
+          </div>
+          
+          <!-- Información del Lote -->
+          <div class="flex-1">
+            <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+              <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label class="text-sm font-medium text-gray-600">ID del Lote:</label>
+                  <p class="text-gray-900 font-semibold">{{ generatedBatch.id }}</p>
+                </div>
+                <div>
+                  <label class="text-sm font-medium text-gray-600">Código QR del Lote:</label>
+                  <code class="block text-sm text-gray-800 font-mono bg-white px-2 py-1 rounded border">
+                    {{ generatedBatch.qr_code }}
+                  </code>
+                </div>
+                <div>
+                  <label class="text-sm font-medium text-gray-600">Proveedor:</label>
+                  <p class="text-gray-900">{{ generatedBatch.supplier }}</p>
+                </div>
+                <div>
+                  <label class="text-sm font-medium text-gray-600">Fecha de Vencimiento:</label>
+                  <p class="text-gray-900">{{ formatDate(generatedBatch.expiration_date) }}</p>
+                </div>
+                <div>
+                  <label class="text-sm font-medium text-gray-600">Cantidad Total:</label>
+                  <p class="text-gray-900 font-semibold">{{ generatedBatch.amount }} unidades</p>
+                </div>
+                <div>
+                  <label class="text-sm font-medium text-gray-600">Almacén:</label>
+                  <p class="text-gray-900">ID: {{ generatedBatch.store_id }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            <button @click="createAnother" class="btn-success w-full">
+      <!-- Lista de Productos Individuales -->
+      <div v-if="generatedSupplies && generatedSupplies.length > 0" class="bg-white rounded-lg shadow-sm border p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-medium text-gray-900 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+            </svg>
+            Productos Individuales ({{ generatedSupplies.length }})
+          </h3>
+          
+          <div class="flex space-x-2">
+            <button @click="showAllQRs = !showAllQRs" class="btn-secondary text-sm">
+              {{ showAllQRs ? 'Ocultar QRs' : 'Mostrar QRs' }}
+            </button>
+            <button @click="downloadAllSupplyQRs" class="btn-primary text-sm">
               <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Crear Otro Insumo
+              Descargar Todos
             </button>
           </div>
         </div>
 
-        <!-- Instrucciones -->
-        <div v-else class="card">
-          <div class="card-header">
-            <h3 class="card-title text-gray-700">
-              <svg class="h-6 w-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Instrucciones
-            </h3>
-          </div>
-
-          <div class="space-y-4 text-sm text-gray-600">
-            <div class="flex items-start space-x-3">
-              <div class="bg-blue-100 text-blue-600 rounded-full p-1 mt-0.5">
-                <span class="text-xs font-bold">1</span>
-              </div>
-              <div>
-                <p class="font-medium text-gray-900">Completa la información</p>
-                <p>Llena todos los campos obligatorios del formulario</p>
-              </div>
+        <!-- Grid de Productos -->
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div 
+            v-for="(supply, index) in generatedSupplies" 
+            :key="supply.id"
+            class="bg-gray-50 rounded-lg p-4 border hover:shadow-sm transition-shadow"
+          >
+            <!-- Imagen QR del producto individual -->
+            <div v-if="showAllQRs" class="text-center mb-3">
+              <img 
+                :src="getSupplyQRImageUrl(supply.qr_code)" 
+                :alt="`QR Producto ${index + 1}`"
+                class="w-20 h-20 mx-auto object-contain border rounded bg-white"
+                @error="handleSupplyQRError"
+              />
             </div>
-
-            <div class="flex items-start space-x-3">
-              <div class="bg-blue-100 text-blue-600 rounded-full p-1 mt-0.5">
-                <span class="text-xs font-bold">2</span>
+            
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-sm font-medium text-gray-600">Producto:</span>
+                <span class="text-sm font-semibold text-gray-900">#{{ index + 1 }}</span>
               </div>
+              
               <div>
-                <p class="font-medium text-gray-900">Genera el insumo</p>
-                <p>Al crear el insumo, se generará automáticamente un código QR único</p>
+                <span class="text-xs text-gray-500">ID:</span>
+                <span class="text-xs text-gray-700 font-mono ml-1">{{ supply.id }}</span>
               </div>
-            </div>
-
-            <div class="flex items-start space-x-3">
-              <div class="bg-blue-100 text-blue-600 rounded-full p-1 mt-0.5">
-                <span class="text-xs font-bold">3</span>
-              </div>
+              
               <div>
-                <p class="font-medium text-gray-900">Descarga el QR</p>
-                <p>Puedes descargar la imagen del QR para imprimirla o usarla</p>
+                <span class="text-xs text-gray-500">QR:</span>
+                <code class="block text-xs text-gray-800 font-mono bg-white px-2 py-1 rounded border mt-1 break-all">
+                  {{ supply.qr_code }}
+                </code>
               </div>
-            </div>
-
-            <div class="flex items-start space-x-3">
-              <div class="bg-blue-100 text-blue-600 rounded-full p-1 mt-0.5">
-                <span class="text-xs font-bold">4</span>
-              </div>
-              <div>
-                <p class="font-medium text-gray-900">Prueba el escáner</p>
-                <p>Verifica que el QR funcione correctamente en el escáner</p>
+              
+              <div class="flex space-x-1 pt-2">
+                <button 
+                  @click="downloadSupplyQR(supply.qr_code, 'normal')"
+                  class="flex-1 text-xs bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded transition-colors"
+                >
+                  PNG
+                </button>
+                <button 
+                  @click="downloadSupplyQR(supply.qr_code, 'high')"
+                  class="flex-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
+                >
+                  HD
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Acciones Finales -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <router-link to="/inventory" class="btn-primary text-center">
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          Ver en Inventario
+        </router-link>
+        
+        <button @click="createAnother" class="btn-secondary">
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Crear Otro Lote
+        </button>
+        
+        <router-link :to="`/qr/${generatedBatch.qr_code}`" class="btn-secondary text-center">
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5l2 3h3l2-3h5v5M4 4v5m16-5v5" />
+          </svg>
+          Escanear QR del Lote
+        </router-link>
       </div>
     </div>
 
-    <!-- Mensaje de error -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-4">
-      <div class="flex">
+    <!-- Mensaje de Error -->
+    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
+      <div class="flex items-start">
         <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-red-800">Error al crear insumo</h3>
-          <div class="mt-2 text-sm text-red-700">{{ error }}</div>
+        <div class="ml-3 flex-1">
+          <h3 class="text-lg font-medium text-red-800">Error al crear el lote</h3>
+          <div class="mt-2 text-sm text-red-700">
+            <p>{{ error }}</p>
+          </div>
           <div class="mt-4">
             <button @click="clearError" class="btn-secondary text-sm">
-              Continuar
+              Intentar de Nuevo
             </button>
           </div>
         </div>
@@ -301,6 +386,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 import inventoryService from '@/services/inventoryService'
 import qrService from '@/services/qrService'
 
@@ -309,8 +396,10 @@ const router = useRouter()
 // Estado reactivo
 const creating = ref(false)
 const error = ref(null)
-const generatedSupply = ref(null)
-const qrImageData = ref(null)
+const generatedBatch = ref(null)
+const generatedSupplies = ref(null)
+const batchQRImage = ref(null)
+const showAllQRs = ref(false)
 
 // Formularios
 const supplyForm = ref({
@@ -326,7 +415,7 @@ const batchForm = ref({
   storeId: ''
 })
 
-// Método principal para crear insumo
+// Métodos principales
 const createSupply = async () => {
   creating.value = true
   error.value = null
@@ -349,124 +438,124 @@ const createSupply = async () => {
 
     // Crear el insumo completo usando el servicio mejorado
     const result = await inventoryService.createCompleteSupply(completeSupplyData)
-    
-    // El resultado contiene: supply, batch, supply_code
-    generatedSupply.value = result.supply
-    
-    // Generar la imagen del QR para mostrar
-    const qrResult = await qrService.generateSupplyQR()
-    if (qrResult.success && qrResult.data.image_data) {
-      qrImageData.value = qrResult.data.image_data
-      // Usar el QR code generado o el del resultado
-      if (!generatedSupply.value.qr_code && qrResult.data.qr_code) {
-        generatedSupply.value.qr_code = qrResult.data.qr_code
-      }
-    }
 
-    // Si el backend no generó QR automáticamente, usar el del servicio QR
-    if (!generatedSupply.value.qr_code && qrResult?.data?.qr_code) {
-      generatedSupply.value.qr_code = qrResult.data.qr_code
+    // Si la respuesta tiene los datos esperados, úsala directamente
+    if (result.batch && result.supply_code) {
+      generatedBatch.value = result.batch
+      generatedSupplies.value = result.supply_code.individual_supplies || []
+      error.value = null
+      await loadBatchQRImage()
+    } else {
+      error.value = result.error || 'Error desconocido al crear el lote'
     }
-
   } catch (err) {
-    error.value = err.response?.data?.error || 'Error al crear el insumo médico'
     console.error('Error creating supply:', err)
+    error.value = err.message || 'Error de conexión al crear el lote'
   } finally {
     creating.value = false
   }
 }
 
-// Métodos de utilidad
-const resetForm = () => {
+const loadBatchQRImage = async () => {
+  if (!generatedBatch.value?.qr_code) return
+  
+  try {
+    batchQRImage.value = qrService.getQRImageUrl(generatedBatch.value.qr_code)
+  } catch (error) {
+    console.error('Error loading batch QR image:', error)
+  }
+}
+
+// Métodos de descarga
+const downloadBatchQR = async (resolution = 'normal') => {
+  if (!generatedBatch.value?.qr_code) return
+  
+  try {
+    await qrService.downloadQRImage(generatedBatch.value.qr_code, resolution)
+  } catch (error) {
+    console.error('Error downloading batch QR:', error)
+  }
+}
+
+const downloadSupplyQR = async (qrCode, resolution = 'normal') => {
+  try {
+    await qrService.downloadQRImage(qrCode, resolution)
+  } catch (error) {
+    console.error('Error downloading supply QR:', error)
+  }
+}
+
+const downloadAllSupplyQRs = async () => {
+  if (!generatedSupplies.value || generatedSupplies.value.length === 0) return
+  
+  try {
+    // Descargar todos los QRs de productos individuales
+    for (const supply of generatedSupplies.value) {
+      await downloadSupplyQR(supply.qr_code, 'normal')
+      // Pequeña pausa entre descargas para evitar saturar el navegador
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+  } catch (error) {
+    console.error('Error downloading all supply QRs:', error)
+  }
+}
+
+// Métodos auxiliares
+const getSupplyQRImageUrl = (qrCode) => {
+  return qrService.getQRImageUrl(qrCode)
+}
+
+const handleSupplyQRError = (event) => {
+  // Manejar error de carga de imagen QR individual
+  event.target.style.display = 'none'
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'No disponible'
+  try {
+    return format(new Date(dateString), 'dd/MM/yyyy', { locale: es })
+  } catch (error) {
+    return dateString
+  }
+}
+
+const createAnother = () => {
+  // Reset form
+  generatedBatch.value = null
+  generatedSupplies.value = null
+  batchQRImage.value = null
+  showAllQRs.value = false
+  error.value = null
+  
   supplyForm.value = {
     code: '',
     name: '',
     codeSupplier: ''
   }
+  
   batchForm.value = {
     expirationDate: '',
     amount: '',
     supplier: '',
     storeId: ''
   }
-  generatedSupply.value = null
-  qrImageData.value = null
-  error.value = null
-}
-
-const createAnother = () => {
-  resetForm()
-}
-
-const downloadQR = async () => {
-  if (generatedSupply.value?.qr_code) {
-    try {
-      await qrService.downloadQRImage(
-        generatedSupply.value.qr_code, 
-        `insumo_${generatedSupply.value.code}_${generatedSupply.value.id}.png`
-      )
-    } catch (err) {
-      console.error('Error downloading QR:', err)
-    }
-  }
-}
-
-const testQR = () => {
-  if (generatedSupply.value?.qr_code) {
-    router.push({
-      name: 'QRScanner',
-      query: { test: generatedSupply.value.qr_code }
-    })
-  }
 }
 
 const clearError = () => {
   error.value = null
 }
-
-// Inicializar fecha por defecto (30 días desde hoy)
-const initDefaultDate = () => {
-  const future = new Date()
-  future.setDate(future.getDate() + 30)
-  batchForm.value.expirationDate = future.toISOString().split('T')[0]
-}
-
-// Inicializar al montar el componente
-initDefaultDate()
 </script>
 
 <style scoped>
-/* Transiciones suaves */
-.card {
-  transition: all 0.2s ease-in-out;
+.form-input {
+  @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm;
 }
 
-.card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 inline-flex items-center justify-center;
 }
 
-/* Colores específicos */
-.text-blue-700 {
-  color: #1d4ed8;
-}
-
-.text-green-700 {
-  color: #15803d;
-}
-
-.bg-green-50 {
-  background-color: #f0fdf4;
-}
-
-.border-green-200 {
-  border-color: #bbf7d0;
-}
-
-/* Inputs focus */
-.form-input:focus,
-.form-select:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.btn-secondary {
+  @apply bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 inline-flex items-center justify-center;
 }
 </style>

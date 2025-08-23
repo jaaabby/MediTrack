@@ -40,3 +40,16 @@ func (s *SupplyHistoryService) GetAllSupplyHistories() ([]models.SupplyHistory, 
 	}
 	return histories, nil
 }
+
+// UpdateSupplyHistory actualiza un SupplyHistory por ID
+func (s *SupplyHistoryService) UpdateSupplyHistory(id int, history *models.SupplyHistory) error {
+	var existing models.SupplyHistory
+	if err := s.DB.First(&existing, id).Error; err != nil {
+		return err
+	}
+	// Actualiza los campos necesarios
+	if err := s.DB.Model(&existing).Updates(history).Error; err != nil {
+		return err
+	}
+	return nil
+}
