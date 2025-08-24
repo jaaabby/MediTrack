@@ -12,6 +12,30 @@ type MedicalSupplyService struct {
 	QRService *QRService
 }
 
+// CreateMultipleIndividualSuppliesTx crea múltiples insumos individuales usando una transacción existente
+func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, batchID int, code int, quantity int) ([]models.MedicalSupply, error) {
+	var supplies []models.MedicalSupply
+	for i := 0; i < quantity; i++ {
+		supply := models.MedicalSupply{
+			Code:    code,
+			BatchID: batchID,
+		}
+		// Generar QR único para cada insumo individual si hay QRService
+		if s.QRService != nil {
+			qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
+			if err != nil {
+				return nil, fmt.Errorf("error generando QR para insumo %d: %v", i+1, err)
+			}
+			supply.QRCode = qrCode
+		}
+		if err := tx.Create(&supply).Error; err != nil {
+			return nil, fmt.Errorf("error creando insumo %d: %v", i+1, err)
+		}
+		supplies = append(supplies, supply)
+	}
+	return supplies, nil
+}
+
 func NewMedicalSupplyService(db *gorm.DB, qrService *QRService) *MedicalSupplyService {
 	return &MedicalSupplyService{
 		DB:        db,

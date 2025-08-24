@@ -202,7 +202,7 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="supply in paginatedSupplies" :key="supply.batch_id" class="hover:bg-gray-50">
+            <tr v-for="supply in paginatedSupplies" :key="supply.batch_id" class="hover:bg-gray-50 cursor-pointer" @click="openBatchDetailsModal(supply)">
               <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ supply.batch_id }}</td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div>
@@ -224,23 +224,15 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-gray-700">{{ supply.supplier }}</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-6 py-4 whitespace-nowrap" @click.stop>
                 <div class="flex space-x-2">
-                  <button class="text-primary-600 hover:text-primary-800" @click="viewSupply(supply)">
-                    <!--<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>-->
-                  </button>
-                  <button class="text-warning-600 hover:text-warning-800" @click="editSupply(supply)">
+                  <button class="text-warning-600 hover:text-warning-800" @click.stop="editSupply(supply)">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
-                  <button class="text-danger-600 hover:text-danger-800" @click="deleteSupply(supply)">
+                  <button class="text-danger-600 hover:text-danger-800" @click.stop="deleteSupply(supply)">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -254,6 +246,46 @@
       </div>
 
       <!-- Modal de edición -->
+      <!-- Modal de detalles de lote con QR -->
+      <div v-if="showBatchDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-8 border w-full max-w-2xl shadow-lg rounded-xl bg-white">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-2xl font-bold text-gray-900">Detalles del lote de {{ supplyName || '...' }}</h3>
+            <button @click="closeBatchDetailsModal" class="btn-secondary px-4 py-2 rounded-lg">Cerrar</button>
+          </div>
+          <div v-if="batchDetailsLoading" class="flex justify-center items-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <span class="ml-2 text-gray-600">Cargando insumos del lote...</span>
+          </div>
+          <div v-else-if="batchDetailsError" class="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+            <div class="text-red-700">{{ batchDetailsError }}</div>
+          </div>
+          <div v-else-if="batchDetails.length === 0" class="text-center py-8">
+            No se encontraron insumos para este lote.
+          </div>
+          <div v-else>
+            <table class="min-w-full divide-y divide-gray-200 mb-6 rounded-lg overflow-hidden shadow">
+              <thead class="bg-gray-100">
+                <tr>
+                  <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
+                  <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Código</th>
+                  <th class="px-6 py-3 text-center text-sm font-semibold text-gray-700">QR</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in batchDetails" :key="item.id" class="hover:bg-gray-50">
+                  <td class="px-6 py-4 text-gray-900 font-mono">{{ item.id }}</td>
+                  <td class="px-6 py-4 text-gray-900">{{ item.code }}</td>
+                  <td class="px-6 py-4 flex flex-col items-center justify-center text-center">
+                    <qrcode-vue :value="item.qr_code" :size="40" class="mb-2 mx-auto" />
+                    <button @click="handleDownloadQR(item.qr_code)" class="btn-secondary text-xs px-3 py-1 rounded mx-auto">Descargar QR</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       <div v-if="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
           <div class="mt-3">
@@ -437,8 +469,7 @@
                           <button @click="sortHistoryBy('type', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': sortHistoryField === 'type' && sortHistoryDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -457,8 +488,7 @@
                           <button @click="sortHistoryBy('amount', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': sortHistoryField === 'amount' && sortHistoryDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -477,8 +507,7 @@
                           <button @click="sortHistoryBy('user', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': sortHistoryField === 'user' && sortHistoryDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -713,8 +742,7 @@
                             class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -735,8 +763,7 @@
                             class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -757,8 +784,7 @@
                             class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -779,8 +805,7 @@
                             class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -802,8 +827,7 @@
                             class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -824,8 +848,7 @@
                             class="text-gray-400 hover:text-gray-600 p-1"
                             :class="{ 'text-primary-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'desc' }">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
                         </div>
@@ -946,6 +969,8 @@ import { useRoute } from 'vue-router';
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import inventoryService from '@/services/inventoryService'
+import qrService from '@/services/qrService'
+import QrcodeVue from 'qrcode.vue'
 
 const route = useRoute()
 
@@ -1221,7 +1246,7 @@ const formatDate = (dateString) => {
 const getExpirationClass = (expirationDate) => {
   const today = new Date()
   const expDate = new Date(expirationDate)
-  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 *  60 * 24))
 
   if (daysUntilExpiration < 0) return 'text-red-600 font-semibold'
   if (daysUntilExpiration <= 15) return 'text-red-600 font-semibold'
@@ -1230,6 +1255,7 @@ const getExpirationClass = (expirationDate) => {
 }
 
 const getAmountClass = (amount) => {
+
   if (amount < 5) return 'text-red-600 font-semibold'
   if (amount < 10) return 'text-orange-600 font-semibold'
   return 'text-gray-900'
@@ -1328,6 +1354,57 @@ const showNotification = (message, type = 'info') => {
 
 const hideNotification = () => {
   notification.value.show = false
+}
+
+// Modal de detalles de lote
+const showBatchDetailsModal = ref(false)
+const batchDetails = ref([])
+const batchDetailsLoading = ref(false)
+const batchDetailsError = ref(null)
+const selectedBatch = ref(null)
+const supplyName = ref('')
+const openBatchDetailsModal = async (batch) => {
+  showBatchDetailsModal.value = true
+  batchDetailsLoading.value = true
+  batchDetailsError.value = null
+  selectedBatch.value = batch
+  supplyName.value = ''
+  try {
+    // Obtener insumos individuales por lote
+    const supplies = await inventoryService.getAvailableSuppliesByBatch(batch.batch_id)
+    batchDetails.value = supplies
+    // Obtener el nombre del insumo usando el código del primer elemento
+    if (supplies.length > 0) {
+      const code = supplies[0].code
+      const supplyCodes = await inventoryService.getAllSupplyCodes()
+      const found = supplyCodes.find(sc => sc.code === code)
+      supplyName.value = found ? found.name : ''
+    }
+  } catch (err) {
+    batchDetailsError.value = 'Error al cargar insumos del lote: ' + err.message
+  } finally {
+    batchDetailsLoading.value = false
+  }
+}
+
+const closeBatchDetailsModal = () => {
+  showBatchDetailsModal.value = false
+  batchDetails.value = []
+  selectedBatch.value = null
+  batchDetailsError.value = null
+}
+
+const getQrDataUrl = (code) => {
+  return `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(code)}&size=200x200`
+}
+
+const handleDownloadQR = async (qrCode) => {
+  try {
+    await qrService.downloadQRImage(qrCode, 'normal')
+    showNotification('QR descargado correctamente', 'success')
+  } catch (error) {
+    showNotification('Error al descargar el QR', 'error')
+  }
 }
 
 // Métodos para historial global

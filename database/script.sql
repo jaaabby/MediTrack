@@ -27,22 +27,22 @@ INSERT INTO supply_code (code, name, code_supplier) VALUES
 (1001, 'Guantes', 5001),
 (1002, 'Mascarillas', 5002);
 
-INSERT INTO medical_supply (id, code, batch_id, qr_code) VALUES
-(1, 1001, 1, 'SUPPLY_1'),
-(2, 1001, 1, 'SUPPLY_2'),
-(3, 1001, 1, 'SUPPLY_3'),
-(4, 1001, 1, 'SUPPLY_4'),
-(5, 1001, 1, 'SUPPLY_5'),
-(6, 1001, 1, 'SUPPLY_6'),
-(7, 1001, 1, 'SUPPLY_7'),
-(8, 1001, 1, 'SUPPLY_8'),
-(9, 1001, 1, 'SUPPLY_9'),
-(10, 1001, 1, 'SUPPLY_10'),
-(11, 1002, 2, 'SUPPLY_11'),
-(12, 1002, 2, 'SUPPLY_12'),
-(13, 1002, 2, 'SUPPLY_13'),
-(14, 1002, 2, 'SUPPLY_14'),
-(15, 1002, 2, 'SUPPLY_15');
+INSERT INTO medical_supply (code, batch_id, qr_code) VALUES
+(1001, 1, 'SUPPLY_1'),
+(1001, 1, 'SUPPLY_2'),
+(1001, 1, 'SUPPLY_3'),
+(1001, 1, 'SUPPLY_4'),
+(1001, 1, 'SUPPLY_5'),
+(1001, 1, 'SUPPLY_6'),
+(1001, 1, 'SUPPLY_7'),
+(1001, 1, 'SUPPLY_8'),
+(1001, 1, 'SUPPLY_9'),
+(1001, 1, 'SUPPLY_10'),
+(1002, 2, 'SUPPLY_11'),
+(1002, 2, 'SUPPLY_12'),
+(1002, 2, 'SUPPLY_13'),
+(1002, 2, 'SUPPLY_14'),
+(1002, 2, 'SUPPLY_15');
 
 -- Corregir la secuencia de la tabla medical_supply para evitar errores de clave duplicada
 -- (Solo para PostgreSQL)
@@ -52,9 +52,9 @@ INSERT INTO "user" (rut, name, email, password, role, medical_center_id) VALUES
 ('12345678-9', 'Juan Pérez', 'juan@meditrack.com', 'password123', 'admin', 1),
 ('98765432-1', 'Ana Gómez', 'ana@meditrack.com', 'password456', 'doctor', 2);
 
-INSERT INTO supply_history (id, date_time, status, destination_type, destination_id, medical_supply_id, user_rut) VALUES
-(1, '2025-08-16 10:00:00', 'entregado', 'pavilion', 1, 1, '12345678-9'),
-(2, '2025-08-16 11:00:00', 'recibido', 'store', 2, 2, '98765432-1');
+INSERT INTO supply_history (date_time, status, destination_type, destination_id, medical_supply_id, user_rut) VALUES
+('2025-08-16 10:00:00', 'entregado', 'pavilion', 1, 1, '12345678-9'),
+('2025-08-16 11:00:00', 'recibido', 'store', 2, 2, '98765432-1');
 
 -- Poblar tabla batch_history
 INSERT INTO batch_history (date_time, change_details, previous_values, new_values, user_name, batch_id, user_rut, batch_number) VALUES
