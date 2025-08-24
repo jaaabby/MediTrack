@@ -14,6 +14,7 @@ func NewSupplyCodeService(db *gorm.DB) *SupplyCodeService {
 	return &SupplyCodeService{DB: db}
 }
 
+// Funcionalidades básicas de la versión anterior (MANTENIDAS)
 func (s *SupplyCodeService) CreateSupplyCode(supplyCode *models.SupplyCode) error {
 	return s.DB.Create(supplyCode).Error
 }
@@ -39,6 +40,7 @@ func (s *SupplyCodeService) UpdateSupplyCode(id int, newSupplyCode *models.Suppl
 	if err := s.DB.First(&supplyCode, id).Error; err != nil {
 		return nil, err
 	}
+
 	supplyCode.Name = newSupplyCode.Name
 	supplyCode.CodeSupplier = newSupplyCode.CodeSupplier
 

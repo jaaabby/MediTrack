@@ -44,6 +44,9 @@ func main() {
 	supplyCodeService := services.NewSupplyCodeService(db)
 	batchHistoryService := services.NewBatchHistoryService(db)
 
+	// Inicializar BatchHistoryService en BatchService
+	batchService.SetBatchHistoryService(batchHistoryService)
+
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()

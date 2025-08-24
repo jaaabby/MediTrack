@@ -14,6 +14,7 @@ func NewStoreService(db *gorm.DB) *StoreService {
 	return &StoreService{DB: db}
 }
 
+// Funcionalidades básicas de la versión anterior (MANTENIDAS)
 func (s *StoreService) CreateStore(store *models.Store) error {
 	return s.DB.Create(store).Error
 }
@@ -39,6 +40,7 @@ func (s *StoreService) UpdateStore(id int, newStore *models.Store) (*models.Stor
 	if err := s.DB.First(&store, id).Error; err != nil {
 		return nil, err
 	}
+
 	store.Name = newStore.Name
 	store.Type = newStore.Type
 	store.MedicalCenterID = newStore.MedicalCenterID

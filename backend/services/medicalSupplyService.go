@@ -19,10 +19,11 @@ func NewMedicalSupplyService(db *gorm.DB, qrService *QRService) *MedicalSupplySe
 	}
 }
 
-// CreateMedicalSupply crea un insumo médico individual con QR único
+// ===== FUNCIONALIDADES BÁSICAS (de la versión anterior) =====
+
 func (s *MedicalSupplyService) CreateMedicalSupply(supply *models.MedicalSupply) error {
-	// Generar QR único automáticamente si no existe
-	if supply.QRCode == "" {
+	// Si hay QRService disponible, generar QR automáticamente
+	if s.QRService != nil && supply.QRCode == "" {
 		qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
 		if err != nil {
 			return fmt.Errorf("error generando código QR: %v", err)
@@ -33,6 +34,181 @@ func (s *MedicalSupplyService) CreateMedicalSupply(supply *models.MedicalSupply)
 	return s.DB.Create(supply).Error
 }
 
+func (s *MedicalSupplyService) GetMedicalSupplyByID(id int) (*models.MedicalSupply, error) {
+	var supply models.MedicalSupply
+	if err := s.DB.First(&supply, id).Error; err != nil {
+		return nil, err
+	}
+	return &supply, nil
+}
+
+func (s *MedicalSupplyService) GetAllMedicalSupplies() ([]models.MedicalSupply, error) {
+	var supplies []models.MedicalSupply
+	if err := s.DB.Find(&supplies).Error; err != nil {
+		return nil, err
+	}
+	return supplies, nil
+}
+
+func (s *MedicalSupplyService) UpdateMedicalSupply(id int, newSupply *models.MedicalSupply) (*models.MedicalSupply, error) {
+	var supply models.MedicalSupply
+	if err := s.DB.First(&supply, id).Error; err != nil {
+		return nil, err
+	}
+
+	// Actualizar campos pero mantener el QR code original si existe
+	supply.Code = newSupply.Code
+	supply.BatchID = newSupply.BatchID
+	// No actualizamos supply.QRCode para mantener la trazabilidad
+
+	if err := s.DB.Save(&supply).Error; err != nil {
+		return nil, err
+	}
+	return &supply, nil
+}
+
+func (s *MedicalSupplyService) DeleteMedicalSupply(id int) error {
+	if err := s.DB.Delete(&models.MedicalSupply{}, id).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// ===== INVENTARIO BÁSICO (de la versión anterior - RESTAURADO) =====
+
+// GetInventoryList obtiene el inventario básico combinando datos de batch y supplyCode
+// VERSIÓN ANTERIOR RESTAURADA - funcionalidad simple y confiable
+func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, error) {
+	var result []map[string]interface{}
+
+	// Query simple de la versión anterior que funcionaba
+	query := `
+		SELECT DISTINCT ON (b.id)
+			b.id as batch_id,
+			b.expiration_date,
+			b.amount,
+			b.supplier,
+			sc.code as supply_code,
+			sc.name as supply_name
+		FROM batch b
+		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
+		LEFT JOIN supply_code sc ON ms.code = sc.code
+		ORDER BY b.id, sc.code
+	`
+
+	rows, err := s.DB.Raw(query).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item map[string]interface{} = make(map[string]interface{})
+		var batchID int
+		var expirationDate string
+		var amount int
+		var supplier string
+		var supplyCode *int
+		var supplyName *string
+
+		err := rows.Scan(&batchID, &expirationDate, &amount, &supplier, &supplyCode, &supplyName)
+		if err != nil {
+			return nil, err
+		}
+
+		item["batch_id"] = batchID
+		item["expiration_date"] = expirationDate
+		item["amount"] = amount
+		item["supplier"] = supplier
+		item["code"] = supplyCode
+		item["name"] = supplyName
+
+		result = append(result, item)
+	}
+
+	return result, nil
+}
+
+// ===== FUNCIONALIDADES AVANZADAS (de la versión actual - MANTENIDAS) =====
+
+// GetInventoryListAdvanced obtiene el inventario con información avanzada de productos consumidos
+// Para usar cuando necesites funcionalidades más complejas
+func (s *MedicalSupplyService) GetInventoryListAdvanced() ([]map[string]interface{}, error) {
+	var result []map[string]interface{}
+
+	query := `
+		SELECT DISTINCT
+			b.id as batch_id,
+			b.qr_code as batch_qr_code,
+			b.expiration_date,
+			b.amount as current_amount,
+			b.supplier,
+			sc.code as supply_code,
+			sc.name as supply_name,
+			COUNT(ms.id) as total_individual_supplies,
+			COUNT(CASE WHEN consumed_supplies.supply_id IS NOT NULL THEN 1 END) as consumed_supplies,
+			(COUNT(ms.id) - COUNT(CASE WHEN consumed_supplies.supply_id IS NOT NULL THEN 1 END)) as available_supplies
+		FROM batch b
+		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
+		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN (
+			SELECT DISTINCT sh.medical_supply_id as supply_id
+			FROM supply_history sh
+			WHERE sh.status = 'consumido'
+		) consumed_supplies ON ms.id = consumed_supplies.supply_id
+		GROUP BY b.id, b.qr_code, b.expiration_date, b.amount, b.supplier, sc.code, sc.name
+		ORDER BY b.id, sc.code
+	`
+
+	rows, err := s.DB.Raw(query).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item map[string]interface{} = make(map[string]interface{})
+		var batchID int
+		var batchQRCode *string
+		var expirationDate *string
+		var currentAmount int
+		var supplier string
+		var supplyCode *int
+		var supplyName *string
+		var totalIndividualSupplies int
+		var consumedSupplies int
+		var availableSupplies int
+
+		err := rows.Scan(
+			&batchID, &batchQRCode, &expirationDate, &currentAmount, &supplier,
+			&supplyCode, &supplyName, &totalIndividualSupplies,
+			&consumedSupplies, &availableSupplies,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		item["batch_id"] = batchID
+		item["batch_qr_code"] = batchQRCode
+		item["expiration_date"] = expirationDate
+		item["current_amount"] = currentAmount
+		item["supplier"] = supplier
+		item["code"] = supplyCode
+		item["name"] = supplyName
+		item["total_individual_supplies"] = totalIndividualSupplies
+		item["consumed_supplies"] = consumedSupplies
+		item["available_supplies"] = availableSupplies
+		item["sync_status"] = map[string]interface{}{
+			"batch_amount_matches": currentAmount == availableSupplies,
+			"needs_sync":           currentAmount != availableSupplies,
+		}
+
+		result = append(result, item)
+	}
+
+	return result, nil
+}
+
 // CreateMultipleIndividualSupplies crea múltiples insumos individuales para un lote
 func (s *MedicalSupplyService) CreateMultipleIndividualSupplies(batchID int, code int, quantity int) ([]models.MedicalSupply, error) {
 	var supplies []models.MedicalSupply
@@ -40,16 +216,18 @@ func (s *MedicalSupplyService) CreateMultipleIndividualSupplies(batchID int, cod
 	// Usar transacción para asegurar consistencia
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		for i := 0; i < quantity; i++ {
-			// Generar QR único para cada insumo individual
-			qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
-			if err != nil {
-				return fmt.Errorf("error generando QR para insumo %d: %v", i+1, err)
-			}
-
 			supply := models.MedicalSupply{
 				Code:    code,
-				QRCode:  qrCode,
 				BatchID: batchID,
+			}
+
+			// Generar QR único para cada insumo individual si hay QRService
+			if s.QRService != nil {
+				qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
+				if err != nil {
+					return fmt.Errorf("error generando QR para insumo %d: %v", i+1, err)
+				}
+				supply.QRCode = qrCode
 			}
 
 			if err := tx.Create(&supply).Error; err != nil {
@@ -196,123 +374,6 @@ func (s *MedicalSupplyService) GetSupplyWithBatchInfo(qrCode string) (map[string
 		"store_type":             storeType,
 		"is_consumed":            consumedCount > 0,
 		"available_for_use":      consumedCount == 0 && batchRemainingAmount > 0,
-	}
-
-	return result, nil
-}
-
-func (s *MedicalSupplyService) GetMedicalSupplyByID(id int) (*models.MedicalSupply, error) {
-	var supply models.MedicalSupply
-	if err := s.DB.First(&supply, id).Error; err != nil {
-		return nil, err
-	}
-	return &supply, nil
-}
-
-func (s *MedicalSupplyService) GetAllMedicalSupplies() ([]models.MedicalSupply, error) {
-	var supplies []models.MedicalSupply
-	if err := s.DB.Find(&supplies).Error; err != nil {
-		return nil, err
-	}
-	return supplies, nil
-}
-
-func (s *MedicalSupplyService) UpdateMedicalSupply(id int, newSupply *models.MedicalSupply) (*models.MedicalSupply, error) {
-	var supply models.MedicalSupply
-	if err := s.DB.First(&supply, id).Error; err != nil {
-		return nil, err
-	}
-
-	// Actualizar campos pero mantener el QR code original
-	supply.Code = newSupply.Code
-	supply.BatchID = newSupply.BatchID
-	// No actualizamos supply.QRCode para mantener la trazabilidad
-
-	if err := s.DB.Save(&supply).Error; err != nil {
-		return nil, err
-	}
-	return &supply, nil
-}
-
-func (s *MedicalSupplyService) DeleteMedicalSupply(id int) error {
-	if err := s.DB.Delete(&models.MedicalSupply{}, id).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// GetInventoryList obtiene el inventario con información actualizada de productos consumidos
-func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, error) {
-	var result []map[string]interface{}
-
-	query := `
-		SELECT DISTINCT
-			b.id as batch_id,
-			b.qr_code as batch_qr_code,
-			b.expiration_date,
-			b.amount as current_amount,
-			b.supplier,
-			sc.code as supply_code,
-			sc.name as supply_name,
-			COUNT(ms.id) as total_individual_supplies,
-			COUNT(CASE WHEN consumed_supplies.supply_id IS NOT NULL THEN 1 END) as consumed_supplies,
-			(COUNT(ms.id) - COUNT(CASE WHEN consumed_supplies.supply_id IS NOT NULL THEN 1 END)) as available_supplies
-		FROM batch b
-		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
-		LEFT JOIN supply_code sc ON ms.code = sc.code
-		LEFT JOIN (
-			SELECT DISTINCT sh.medical_supply_id as supply_id
-			FROM supply_history sh
-			WHERE sh.status = 'consumido'
-		) consumed_supplies ON ms.id = consumed_supplies.supply_id
-		GROUP BY b.id, b.qr_code, b.expiration_date, b.amount, b.supplier, sc.code, sc.name
-		ORDER BY b.id, sc.code
-	`
-
-	rows, err := s.DB.Raw(query).Rows()
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var item map[string]interface{} = make(map[string]interface{})
-		var batchID int
-		var batchQRCode *string
-		var expirationDate *string
-		var currentAmount int
-		var supplier string
-		var supplyCode *int
-		var supplyName *string
-		var totalIndividualSupplies int
-		var consumedSupplies int
-		var availableSupplies int
-
-		err := rows.Scan(
-			&batchID, &batchQRCode, &expirationDate, &currentAmount, &supplier,
-			&supplyCode, &supplyName, &totalIndividualSupplies,
-			&consumedSupplies, &availableSupplies,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		item["batch_id"] = batchID
-		item["batch_qr_code"] = batchQRCode
-		item["expiration_date"] = expirationDate
-		item["current_amount"] = currentAmount
-		item["supplier"] = supplier
-		item["code"] = supplyCode
-		item["name"] = supplyName
-		item["total_individual_supplies"] = totalIndividualSupplies
-		item["consumed_supplies"] = consumedSupplies
-		item["available_supplies"] = availableSupplies
-		item["sync_status"] = map[string]interface{}{
-			"batch_amount_matches": currentAmount == availableSupplies,
-			"needs_sync":           currentAmount != availableSupplies,
-		}
-
-		result = append(result, item)
 	}
 
 	return result, nil
