@@ -18,10 +18,15 @@ type BatchService struct {
 }
 
 func NewBatchService(db *gorm.DB, qrService *QRService) *BatchService {
-	return &BatchService{
+	bs := &BatchService{
 		DB:        db,
 		QRService: qrService,
 	}
+
+	// Iniciar el scheduler automáticamente cada 24 horas
+	go bs.startDailyScheduler()
+
+	return bs
 }
 
 // SetMedicalSupplyService establece el servicio de suministros médicos
@@ -395,6 +400,48 @@ func (s *BatchService) GetBatchesNeedingSync() ([]map[string]interface{}, error)
 	}
 
 	return results, nil
+}
+
+// startDailyScheduler inicia el scheduler diario para verificar vencimientos
+func (s *BatchService) startDailyScheduler() {
+	ticker := time.NewTicker(24 * time.Hour) // Verificar cada 24 horas
+	defer ticker.Stop()
+
+	// Ejecutar inmediatamente al iniciar
+	s.CheckAllBatchesExpiration()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.CheckAllBatchesExpiration()
+		}
+	}
+}
+
+// CheckAllBatchesExpiration verifica todos los lotes para alertas de vencimiento
+func (s *BatchService) CheckAllBatchesExpiration() error {
+
+	// Obtener lotes que no han vencido aún
+	var activeBatches []models.Batch
+	if err := s.DB.Where("expiration_date > ?", time.Now()).Find(&activeBatches).Error; err != nil {
+		return fmt.Errorf("error obteniendo lotes activos para verificación: %v", err)
+	}
+
+	alertsSent := 0
+	errors := 0
+
+	// Verificar lotes activos
+	for _, batch := range activeBatches {
+		// Verificar si está próximo a vencer (30 días por defecto)
+		if err := s.CheckExpirationAlert(batch.ID, 30); err != nil {
+			log.Printf("Error verificando alerta de vencimiento para lote %d: %v", batch.ID, err)
+			errors++
+			continue
+		}
+		alertsSent++
+	}
+
+	return nil
 }
 
 // sendLowStockAlert envía correo de alerta de stock bajo

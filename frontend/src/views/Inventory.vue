@@ -1235,19 +1235,6 @@ const getAmountClass = (amount) => {
   return 'text-gray-900'
 }
 
-const getStatusBadgeClass = (status) => {
-  switch (status) {
-    case 'active':
-      return 'badge badge-success'
-    case 'expired':
-      return 'badge badge-danger'
-    case 'low_stock':
-      return 'badge badge-warning'
-    default:
-      return 'badge badge-info'
-  }
-}
-
 const editSupply = (supply) => {
   // Preparar los datos para edición
   editingSupply.value = {
@@ -1443,11 +1430,6 @@ const loadHistory = async () => {
   } finally {
     historyLoading.value = false
   }
-}
-
-const viewMovementDetails = (movement) => {
-  // TODO: Implementar vista de detalles del movimiento
-  console.log('Ver detalles del movimiento:', movement)
 }
 
 // Métodos
