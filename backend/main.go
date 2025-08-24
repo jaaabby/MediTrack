@@ -44,6 +44,9 @@ func main() {
 	supplyCodeService := services.NewSupplyCodeService(db)
 	batchHistoryService := services.NewBatchHistoryService(db)
 
+	// Configurar el servicio de lotes con el servicio de suministros médicos
+	batchService.SetMedicalSupplyService(medicalSupplyService)
+
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()

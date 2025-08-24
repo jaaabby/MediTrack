@@ -1375,19 +1375,6 @@ const getAmountClass = (amount) => {
   return 'text-gray-900'
 }
 
-const getStatusBadgeClass = (status) => {
-  switch (status) {
-    case 'active':
-      return 'badge badge-success'
-    case 'expired':
-      return 'badge badge-danger'
-    case 'low_stock':
-      return 'badge badge-warning'
-    default:
-      return 'badge badge-info'
-  }
-}
-
 const editSupply = (supply) => {
   // Preparar los datos para edición
   editingSupply.value = {
@@ -1468,16 +1455,6 @@ const deleteSupply = async (supply) => {
   }
 }
 
-const scanQR = () => {
-  console.log('Escanear código QR')
-  // TODO: Implementar escáner QR
-}
-
-const exportInventory = () => {
-  console.log('Exportar inventario')
-  // TODO: Implementar exportación
-}
-
 const showNotification = (message, type = 'info') => {
   notification.value = {
     show: true,
@@ -1524,34 +1501,6 @@ const clearGlobalHistoryFilters = () => {
 
 const applyFilters = () => {
   globalHistoryCurrentPage.value = 1
-}
-
-const debugGlobalHistoryData = () => {
-  console.log('=== DEBUG: Datos del historial global ===')
-  console.log('Total de registros:', globalHistoryData.value.length)
-  console.log('Filtros activos:', {
-    changeType: globalHistoryChangeTypeFilter.value,
-    batch: globalHistoryBatchFilter.value,
-    user: globalHistoryUserFilter.value
-  })
-  
-  // Mostrar los primeros 5 registros con sus detalles
-  globalHistoryData.value.slice(0, 5).forEach((movement, index) => {
-    console.log(`Registro ${index + 1}:`, {
-      batch_id: movement.batch_id,
-      change_details: movement.change_details,
-      user_rut: movement.user_rut,
-      user_name: movement.user_name,
-      date_time: movement.date_time
-    })
-  })
-  
-  // Mostrar todos los tipos de change_details únicos
-  const uniqueChangeDetails = [...new Set(globalHistoryData.value.map(m => m.change_details))]
-  console.log('Tipos de cambio únicos disponibles:', uniqueChangeDetails)
-  
-  // Mostrar estadísticas de filtrado
-  console.log('Registros filtrados:', filteredGlobalHistory.value.length)
 }
 
 const sortGlobalHistoryBy = (field, direction) => {
@@ -1623,11 +1572,6 @@ const loadHistory = async () => {
   } finally {
     historyLoading.value = false
   }
-}
-
-const viewMovementDetails = (movement) => {
-  // TODO: Implementar vista de detalles del movimiento
-  console.log('Ver detalles del movimiento:', movement)
 }
 
 // Métodos

@@ -534,7 +534,7 @@ func (c *BatchController) CheckExpirationAlert(ctx *gin.Context) {
 	})
 }
 
-// Helper function para parsear fechas
+// parseDate convierte una fecha en string a time.Time
 func parseDate(dateStr string) (time.Time, error) {
 	// Intentar diferentes formatos de fecha
 	formats := []string{
