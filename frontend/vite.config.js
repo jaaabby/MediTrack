@@ -13,13 +13,14 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
+    // PROXY COMPLETAMENTE DESACTIVADO
+    // proxy: {
+    //   '/api': {
+    //     target: 'http://localhost:8080',
+    //     changeOrigin: true,
+    //     secure: false,
+    //   },
+    // },
   },
   build: {
     outDir: 'dist',
@@ -39,4 +40,4 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
   },
-}) 
+})

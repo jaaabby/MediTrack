@@ -7,7 +7,9 @@
           <!-- Logo y título -->
           <div class="flex items-center">
             <div class="flex-shrink-0">
-              <h1 class="text-2xl font-bold text-white">MediTrack</h1>
+              <router-link to="/" class="cursor-pointer hover:opacity-80 transition-opacity">
+                <h1 class="text-2xl font-bold text-white">MediTrack</h1>
+              </router-link>
             </div>
           </div>
           
@@ -59,6 +61,17 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
           Inventario
+        </router-link>
+        
+        <router-link
+          to="/qr"
+          class="flex flex-col items-center py-3 px-4 text-sm font-medium transition-colors"
+          :class="$route.path.startsWith('/qr') ? 'text-primary-600' : 'text-gray-500 hover:text-primary-600'"
+        >
+          <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
+          </svg>
+          Escáner QR
         </router-link>
         
         <!--<router-link
@@ -117,11 +130,12 @@ const handleSearch = () => {
 <style scoped>
 /* Estilos específicos del componente */
 .router-link-active {
-  @apply text-primary-600;
+  color: #2563eb; /* Use Tailwind's primary-600 color or your project's equivalent */
 }
 
 /* Transiciones suaves para la navegación */
 .router-link-active svg {
-  @apply transform scale-110 transition-transform duration-200;
+  transform: scale(1.10);
+  transition: transform 0.2s;
 }
-</style> 
+</style>

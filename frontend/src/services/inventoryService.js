@@ -12,14 +12,21 @@ class InventoryService {
     })
   }
 
-  // Obtener todo el inventario
+  // Obtener todo el inventario - Compatible con ambas versiones
   async getInventory() {
-    try {
-      const response = await this.api.get('/medical-supplies/list')
-      return response.data.data || []
-    } catch (error) {
-      console.error('Error al obtener inventario:', error)
-      throw error
+      try {
+        // Intentar primero con el endpoint correcto
+        const response = await this.api.get('/medical-supplies/inventory')
+        return response.data.data || response.data || []
+      } catch (error) {
+        // Si falla, intentar con el endpoint de la versión avanzada
+        try {
+          const response = await this.api.get('/medical-supplies/inventory/advanced')
+          return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al obtener inventario:', error)
+        throw error
+      }
     }
   }
 
@@ -27,10 +34,16 @@ class InventoryService {
   async getInventoryByStore(storeId) {
     try {
       const response = await this.api.get(`/medical-supplies/inventory/store?store_id=${storeId}`)
-      return response.data.data || []
+      return response.data.data || response.data || []
     } catch (error) {
-      console.error('Error al obtener inventario por bodega:', error)
-      throw error
+      // Fallback sin parámetros de query
+      try {
+        const response = await this.api.get(`/medical-supplies/inventory/store/?store_id=${storeId}`)
+        return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al obtener inventario por bodega:', error)
+        throw error
+      }
     }
   }
 
@@ -38,10 +51,16 @@ class InventoryService {
   async getInventoryBySupplier(supplier) {
     try {
       const response = await this.api.get(`/medical-supplies/inventory/supplier?supplier=${encodeURIComponent(supplier)}`)
-      return response.data.data || []
+      return response.data.data || response.data || []
     } catch (error) {
-      console.error('Error al obtener inventario por proveedor:', error)
-      throw error
+      // Fallback con slash final
+      try {
+        const response = await this.api.get(`/medical-supplies/inventory/supplier/?supplier=${encodeURIComponent(supplier)}`)
+        return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al obtener inventario por proveedor:', error)
+        throw error
+      }
     }
   }
 
@@ -49,20 +68,124 @@ class InventoryService {
   async getAllMedicalSupplies() {
     try {
       const response = await this.api.get('/medical-supplies')
-      return response.data.data || []
+      return response.data.data || response.data || []
     } catch (error) {
-      console.error('Error al obtener insumos médicos:', error)
-      throw error
+      // Fallback con slash final
+      try {
+        const response = await this.api.get('/medical-supplies/')
+        return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al obtener insumos médicos:', error)
+        throw error
+      }
     }
   }
 
-  // Crear insumo médico
+  // Crear insumo médico básico
   async createMedicalSupply(supply) {
     try {
       const response = await this.api.post('/medical-supplies', supply)
-      return response.data.data
+      return response.data.data || response.data
     } catch (error) {
-      console.error('Error al crear insumo médico:', error)
+      // Fallback con slash final
+      try {
+        const response = await this.api.post('/medical-supplies/', supply)
+        return response.data.data || response.data
+      } catch (fallbackError) {
+        console.error('Error al crear insumo médico:', error)
+        throw error
+      }
+    }
+  }
+
+  // Crear lote (batch)
+  async createBatch(batchData) {
+    try {
+      console.log('Creando lote:', batchData)
+
+      // Convertir fecha al formato RFC3339 que espera Go
+      const formattedData = {
+        ...batchData,
+        expiration_date: batchData.expiration_date + 'T00:00:00Z'
+      }
+
+      console.log('Datos formateados:', formattedData)
+      const response = await this.api.post('/batches', formattedData)
+      return response.data
+    } catch (error) {
+      // Fallback con slash final
+      try {
+        const formattedData = {
+          ...batchData,
+          expiration_date: batchData.expiration_date + 'T00:00:00Z'
+        }
+        const response = await this.api.post('/batches/', formattedData)
+        return response.data
+      } catch (fallbackError) {
+        const backendError = error.response?.data?.error || error.message
+        console.error('Error al crear lote:', backendError)
+        throw new Error(backendError)
+      }
+    }
+  }
+
+  // Crear código de insumo (supply code)
+  async createSupplyCode(supplyCodeData) {
+    try {
+      const response = await this.api.post('/supply-codes', supplyCodeData)
+      return response.data.data || response.data
+    } catch (error) {
+      // Fallback con slash final
+      try {
+        const response = await this.api.post('/supply-codes/', supplyCodeData)
+        return response.data.data || response.data
+      } catch (fallbackError) {
+        console.error('Error al crear código de insumo:', error)
+        throw error
+      }
+    }
+  }
+
+  // Crear insumo completo con lote y código
+  async createCompleteSupply(supplyData) {
+    try {
+      // 1. Crear el lote primero
+      const batchData = {
+        expiration_date: supplyData.batch.expiration_date,
+        amount: supplyData.batch.amount,
+        supplier: supplyData.batch.supplier,
+        store_id: supplyData.batch.store_id
+      }
+
+      const createdBatch = await this.createBatch(batchData)
+
+      // 2. Crear el código de insumo asociado al lote
+      const supplyCodeData = {
+        code: supplyData.supply_code.code,
+        name: supplyData.supply_code.name,
+        code_supplier: supplyData.supply_code.code_supplier,
+        batch_id: createdBatch.data?.id || createdBatch.id
+      }
+
+      const createdSupplyCode = await this.createSupplyCode(supplyCodeData)
+
+      // 3. Crear el insumo médico individual
+      const medicalSupplyData = {
+        code: createdSupplyCode.code,
+        batch_id: createdBatch.data?.id || createdBatch.id
+      }
+
+      const createdSupply = await this.createMedicalSupply(medicalSupplyData)
+
+      // Retornar toda la información combinada
+      return {
+        supply: createdSupply,
+        batch: createdBatch,
+        supply_code: createdSupplyCode
+      }
+
+    } catch (error) {
+      console.error('Error al crear insumo completo:', error)
       throw error
     }
   }
@@ -71,52 +194,169 @@ class InventoryService {
   async updateMedicalSupply(id, supply) {
     try {
       const response = await this.api.put(`/medical-supplies/${id}`, supply)
-      return response.data.data
+      return response.data.data || response.data
     } catch (error) {
-      console.error('Error al actualizar insumo médico:', error)
-      throw error
+      // Fallback con slash final
+      try {
+        const response = await this.api.put(`/medical-supplies/${id}/`, supply)
+        return response.data.data || response.data
+      } catch (fallbackError) {
+        console.error('Error al actualizar insumo médico:', error)
+        throw error
+      }
     }
   }
 
-  // Actualizar batch (lote)
+  // Actualizar batch (lote) - Compatible con ambas versiones
   async updateBatch(id, batchData) {
     try {
       const response = await this.api.put(`/batches/${id}`, batchData)
-      return response.data.data
+      return response.data.data || response.data
     } catch (error) {
-      console.error('Error al actualizar batch:', error)
-      throw error
+      // Fallback con slash final
+      try {
+        const response = await this.api.put(`/batches/${id}/`, batchData)
+        return response.data.data || response.data
+      } catch (fallbackError) {
+        console.error('Error al actualizar batch:', error)
+        throw error
+      }
     }
   }
 
-  // Eliminar insumo médico
+  // Eliminar batch (lote) - Compatible con ambas versiones
   async deleteBatch(id) {
     try {
       const response = await this.api.delete(`/batches/${id}`)
-      return response.data.data
+      return response.data.data || response.data
     } catch (error) {
-      console.error('Error al eliminar batch:', error)
-      throw error
+      // Fallback con slash final
+      try {
+        const response = await this.api.delete(`/batches/${id}/`)
+        return response.data.data || response.data
+      } catch (fallbackError) {
+        console.error('Error al eliminar batch:', error)
+        throw error
+      }
     }
   }
 
+  // Obtener historial de lotes con detalles - Compatible con ambas versiones
   async getBatchHistoryWithDetails() {
     try {
-      const response = await this.api.get('/batch-histories/details')
-      return response.data.data || []
+      // Usar el endpoint correcto expuesto en el backend
+      const response = await this.api.get('/batch-history/details')
+      return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener historial de lotes:', error)
       throw error
     }
   }
 
-  // Buscar historial por número de lote
+  // Obtener historial de un lote específico por batch_id - Compatible con ambas versiones
+  async getBatchHistory(batchId) {
+    try {
+      // Intentar primero con el endpoint de la versión original
+      const response = await this.api.get(`/batch-histories/search/${batchId}`)
+      return response.data.data || response.data || []
+    } catch (error) {
+      // Si falla, intentar con el endpoint de la nueva versión
+      try {
+        const response = await this.api.get(`/batch-history/search/${batchId}`)
+        return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al obtener historial del lote:', error)
+        throw error
+      }
+    }
+  }
+
+  // Buscar historial por número de lote - Compatible con ambas versiones
   async searchBatchHistoryByBatchNumber(batchNumber) {
     try {
+      // Intentar primero con el endpoint de la versión original
       const response = await this.api.get(`/batch-histories/search/${batchNumber}`)
-      return response.data.data || []
+      return response.data.data || response.data || []
     } catch (error) {
-      console.error('Error al buscar historial por número de lote:', error)
+      // Si falla, intentar con el endpoint de la nueva versión
+      try {
+        const response = await this.api.get(`/batch-history/search/${batchNumber}`)
+        return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al buscar historial por número de lote:', error)
+        throw error
+      }
+    }
+  }
+
+  // Obtener todas las bodegas
+  async getAllStores() {
+    try {
+      const response = await this.api.get('/stores')
+      return response.data.data || response.data || []
+    } catch (error) {
+      // Fallback con slash final
+      try {
+        const response = await this.api.get('/stores/')
+        return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al obtener bodegas:', error)
+        throw error
+      }
+    }
+  }
+
+  // Obtener todos los lotes
+  async getAllBatches() {
+    try {
+      const response = await this.api.get('/batches')
+      return response.data.data || response.data || []
+    } catch (error) {
+      // Fallback con slash final
+      try {
+        const response = await this.api.get('/batches/')
+        return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al obtener lotes:', error)
+        throw error
+      }
+    }
+  }
+
+  // Obtener todos los códigos de insumo
+  async getAllSupplyCodes() {
+    try {
+      const response = await this.api.get('/supply-codes')
+      return response.data.data || response.data || []
+    } catch (error) {
+      // Fallback con slash final
+      try {
+        const response = await this.api.get('/supply-codes/')
+        return response.data.data || response.data || []
+      } catch (fallbackError) {
+        console.error('Error al obtener códigos de insumo:', error)
+        throw error
+      }
+    }
+  }
+
+  // Buscar insumos por término
+  async searchSupplies(searchTerm) {
+    try {
+      const inventory = await this.getInventory()
+
+      if (!searchTerm) return inventory
+
+      const filtered = inventory.filter(item =>
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.code?.toString().includes(searchTerm) ||
+        item.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.batch_id?.toString().includes(searchTerm)
+      )
+
+      return filtered
+    } catch (error) {
+      console.error('Error al buscar insumos:', error)
       throw error
     }
   }

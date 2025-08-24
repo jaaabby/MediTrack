@@ -15,11 +15,49 @@ type SupplyHistory struct {
 	UserRUT         string    `json:"user_rut" db:"user_rut" gorm:"not null"`
 }
 
+// Constantes para los tipos de destino
 const (
 	DestinationTypePavilion = "pavilion"
 	DestinationTypeStore    = "store"
 )
 
+// Constantes para los estados
+const (
+	StatusReceived  = "recibido"
+	StatusDelivered = "entregado"
+	StatusConsumed  = "consumido"
+	StatusReturned  = "devuelto"
+	StatusLost      = "perdido"
+	StatusDamaged   = "dañado"
+)
+
 func (s SupplyHistory) TableName() string {
 	return "supply_history"
+}
+
+// CurrentTime retorna el tiempo actual - útil para testing y consistencia
+func CurrentTime() time.Time {
+	return time.Now()
+}
+
+// IsConsumed verifica si el estado indica que el insumo fue consumido
+func (s SupplyHistory) IsConsumed() bool {
+	return s.Status == StatusConsumed
+}
+
+// IsAvailable verifica si el estado indica que el insumo está disponible
+func (s SupplyHistory) IsAvailable() bool {
+	return s.Status == StatusReceived || s.Status == StatusDelivered
+}
+
+// GetDestinationDescription retorna una descripción del destino basada en el tipo
+func (s SupplyHistory) GetDestinationDescription() string {
+	switch s.DestinationType {
+	case DestinationTypePavilion:
+		return "Pabellón"
+	case DestinationTypeStore:
+		return "Almacén"
+	default:
+		return "Destino desconocido"
+	}
 }

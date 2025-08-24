@@ -14,6 +14,7 @@ func NewSupplyHistoryService(db *gorm.DB) *SupplyHistoryService {
 	return &SupplyHistoryService{DB: db}
 }
 
+// Funcionalidades básicas de la versión anterior (MANTENIDAS)
 func (s *SupplyHistoryService) CreateSupplyHistory(history *models.SupplyHistory) error {
 	return s.DB.Create(history).Error
 }
@@ -39,4 +40,17 @@ func (s *SupplyHistoryService) GetAllSupplyHistories() ([]models.SupplyHistory, 
 		return nil, err
 	}
 	return histories, nil
+}
+
+// Funcionalidades adicionales de la versión actual (MANTENIDAS)
+func (s *SupplyHistoryService) UpdateSupplyHistory(id int, history *models.SupplyHistory) error {
+	var existing models.SupplyHistory
+	if err := s.DB.First(&existing, id).Error; err != nil {
+		return err
+	}
+	// Actualiza los campos necesarios
+	if err := s.DB.Model(&existing).Updates(history).Error; err != nil {
+		return err
+	}
+	return nil
 }

@@ -10,12 +10,12 @@ import (
 // SetupMedicalCenterRoutes configura las rutas de medical center
 func SetupMedicalCenterRoutes(router *gin.RouterGroup, medicalCenterService services.MedicalCenterService) {
 	medicalCenterController := controllers.NewMedicalCenterController(medicalCenterService)
-	centers := router.Group("/medical-centers")
+	medicalCenters := router.Group("/medical-centers")
 	{
-		centers.POST("/", medicalCenterController.CreateMedicalCenter)
-		centers.GET("/", medicalCenterController.GetAllMedicalCenters)
-		centers.GET("/:id", medicalCenterController.GetMedicalCenterByID)
-		centers.PUT("/:id", medicalCenterController.UpdateMedicalCenter)
-		centers.DELETE("/:id", medicalCenterController.DeleteMedicalCenter)
+		medicalCenters.POST("/", medicalCenterController.CreateMedicalCenter)
+		medicalCenters.GET("/", medicalCenterController.GetAllMedicalCenters)
+		medicalCenters.GET("/:id", medicalCenterController.GetMedicalCenterByID)
+		medicalCenters.PUT("/:id", medicalCenterController.UpdateMedicalCenter)
+		medicalCenters.DELETE("/:id", medicalCenterController.DeleteMedicalCenter)
 	}
 }

@@ -45,6 +45,19 @@ func (s *BatchHistoryService) DeleteBatchHistory(id int) error {
 	return nil
 }
 
+// UpdateBatchHistory actualiza un BatchHistory por ID
+func (s *BatchHistoryService) UpdateBatchHistory(id int, history *models.BatchHistory) error {
+	var existing models.BatchHistory
+	if err := s.DB.First(&existing, id).Error; err != nil {
+		return err
+	}
+	// Actualiza los campos necesarios
+	if err := s.DB.Model(&existing).Updates(history).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 // RegisterBatchCreation registra la creación de un nuevo lote
 func (s *BatchHistoryService) RegisterBatchCreation(batchID int, userRUT string) error {
 	// RUT hardcodeado para el usuario

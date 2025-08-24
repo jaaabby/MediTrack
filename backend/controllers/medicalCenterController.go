@@ -18,11 +18,27 @@ func NewMedicalCenterController(medicalCenterService services.MedicalCenterServi
 }
 
 func (c *MedicalCenterController) CreateMedicalCenter(ctx *gin.Context) {
-	var center models.MedicalCenter
-	if err := ctx.ShouldBindJSON(&center); err != nil {
+	var centerRequest struct {
+		Name    string `json:"name" binding:"required"`
+		Address string `json:"address"`
+		Phone   string `json:"phone"`
+		Email   string `json:"email"`
+	}
+
+	if err := ctx.ShouldBindJSON(&centerRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
+
+	// Crear modelo sin ID
+	center := models.MedicalCenter{
+		Name:    centerRequest.Name,
+		Address: centerRequest.Address,
+		Phone:   centerRequest.Phone,
+		Email:   centerRequest.Email,
+		// ID se auto-generará
+	}
+
 	if err := c.medicalCenterService.CreateMedicalCenter(&center); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al crear centro médico: " + err.Error()})
 		return

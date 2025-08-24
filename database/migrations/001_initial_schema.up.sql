@@ -1,6 +1,6 @@
 -- Migración inicial: Crear esquema de base de datos para MediTrack
--- Fecha: 2025-08-16
--- Descripción: Tablas principales según modelos Go
+-- Fecha: 2025-08-19
+-- Descripción: Tablas principales según modelos Go con campos QR incluidos
 
 CREATE TABLE medical_center (
     id SERIAL PRIMARY KEY,
@@ -28,7 +28,8 @@ CREATE TABLE batch (
     expiration_date DATE NOT NULL,
     amount INTEGER NOT NULL,
     supplier VARCHAR(255) NOT NULL,
-    store_id INTEGER NOT NULL REFERENCES store(id)
+    store_id INTEGER NOT NULL REFERENCES store(id),
+    qr_code VARCHAR(255) NOT NULL UNIQUE
 );
 
 CREATE TABLE supply_code (
@@ -40,7 +41,8 @@ CREATE TABLE supply_code (
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,
     code INTEGER NOT NULL REFERENCES supply_code(code),
-    batch_id INTEGER NOT NULL REFERENCES batch(id)
+    batch_id INTEGER NOT NULL REFERENCES batch(id),
+    qr_code VARCHAR(255) NOT NULL UNIQUE
 );
 
 CREATE TABLE "user" (
@@ -76,6 +78,10 @@ CREATE TABLE batch_history (
 
 -- Crear índice para batch_number para optimizar búsquedas
 CREATE INDEX idx_batch_history_batch_number ON batch_history(batch_number);
+
+-- Crear índices únicos para códigos QR
+CREATE UNIQUE INDEX idx_batch_qr_code ON batch(qr_code);
+CREATE UNIQUE INDEX idx_medical_supply_qr_code ON medical_supply(qr_code);
 
 -- Función para establecer automáticamente batch_number en batch_history
 CREATE OR REPLACE FUNCTION trg_set_batch_number() RETURNS trigger AS $$

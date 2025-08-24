@@ -18,11 +18,23 @@ func NewPavilionController(pavilionService services.PavilionService) *PavilionCo
 }
 
 func (c *PavilionController) CreatePavilion(ctx *gin.Context) {
-	var pavilion models.Pavilion
-	if err := ctx.ShouldBindJSON(&pavilion); err != nil {
+	var pavilionRequest struct {
+		Name            string `json:"name" binding:"required"`
+		MedicalCenterID int    `json:"medical_center_id" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&pavilionRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
+
+	// Crear modelo sin ID
+	pavilion := models.Pavilion{
+		Name:            pavilionRequest.Name,
+		MedicalCenterID: pavilionRequest.MedicalCenterID,
+		// ID se auto-generará
+	}
+
 	if err := c.pavilionService.CreatePavilion(&pavilion); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al crear pavilion: " + err.Error()})
 		return

@@ -18,11 +18,25 @@ func NewStoreController(storeService services.StoreService) *StoreController {
 }
 
 func (c *StoreController) CreateStore(ctx *gin.Context) {
-	var store models.Store
-	if err := ctx.ShouldBindJSON(&store); err != nil {
+	var storeRequest struct {
+		Name            string `json:"name"`
+		Type            string `json:"type"`
+		MedicalCenterID int    `json:"medical_center_id"`
+	}
+
+	if err := ctx.ShouldBindJSON(&storeRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
+
+	// Crear modelo sin ID
+	store := models.Store{
+		Name:            storeRequest.Name,
+		Type:            storeRequest.Type,
+		MedicalCenterID: storeRequest.MedicalCenterID,
+		// ID se auto-generará
+	}
+
 	if err := c.storeService.CreateStore(&store); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al crear store: " + err.Error()})
 		return

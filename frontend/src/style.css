@@ -39,9 +39,17 @@
   .form-input {
     @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
   }
+  /* Variante para QRConsumer.vue */
+  .form-input.blue {
+    @apply focus:border-blue-500 focus:ring-blue-500;
+  }
   
   .form-select {
     @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
+  }
+  /* Variante para QRConsumer.vue */
+  .form-select.blue {
+    @apply focus:border-blue-500 focus:ring-blue-500;
   }
   
   /* Tarjetas */

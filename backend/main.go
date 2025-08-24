@@ -15,10 +15,10 @@ import (
 )
 
 func main() {
-	// Cargar configuración
+	// Cargar configuraciÃ³n
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Error al cargar configuración: %v", err)
+		log.Fatalf("Error al cargar configuraciÃ³n: %v", err)
 	}
 
 	// Inicializar el mailer
@@ -30,17 +30,24 @@ func main() {
 		log.Fatalf("Error al conectar a la base de datos con GORM: %v", err)
 	}
 
-	// Crear servicios
+	// Crear servicio QR primero (sin dependencias)
+	qrService := services.NewQRService(db)
+
+	// Crear servicios con dependencias de QR
 	userService := services.NewUserService(db)
-	medicalSupplyService := services.NewMedicalSupplyService(db)
+	medicalSupplyService := services.NewMedicalSupplyService(db, qrService)
 	medicalCenterService := services.NewMedicalCenterService(db)
-	batchService := services.NewBatchService(db)
+	batchService := services.NewBatchService(db, qrService)
 	pavilionService := services.NewPavilionService(db)
 	storeService := services.NewStoreService(db)
 	supplyHistoryService := services.NewSupplyHistoryService(db)
 	supplyCodeService := services.NewSupplyCodeService(db)
 	batchHistoryService := services.NewBatchHistoryService(db)
 
+	batchService.SetBatchHistoryService(batchHistoryService)
+	// Inicializar BatchHistoryService en BatchService
+	// Configurar el servicio de lotes con el servicio de suministros médicos
+	batchService.SetMedicalSupplyService(medicalSupplyService)
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -61,6 +68,7 @@ func main() {
 		*storeService,
 		*supplyHistoryService,
 		*supplyCodeService,
+		*qrService,
 		*batchHistoryService,
 	)
 
