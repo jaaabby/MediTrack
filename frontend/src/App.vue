@@ -7,7 +7,9 @@
           <!-- Logo y título -->
           <div class="flex items-center">
             <div class="flex-shrink-0">
-              <h1 class="text-2xl font-bold text-white">MediTrack</h1>
+              <router-link to="/" class="cursor-pointer hover:opacity-80 transition-opacity">
+                <h1 class="text-2xl font-bold text-white">MediTrack</h1>
+              </router-link>
             </div>
           </div>
           

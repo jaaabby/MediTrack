@@ -69,19 +69,39 @@
             <!-- Camera View -->
             <div 
               v-if="cameraActive" 
-              class="bg-gray-900 rounded-lg overflow-hidden aspect-video flex items-center justify-center"
+              class="bg-gray-900 rounded-lg overflow-hidden aspect-video flex items-center justify-center relative"
             >
+              <!-- Indicador de estado superior -->
+              <div v-if="detecting" class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium z-10">
+                <div class="flex items-center space-x-2">
+                  <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  <span>Detectando QR...</span>
+                </div>
+              </div>
+              
               <video 
                 ref="videoElement" 
                 autoplay 
                 muted 
                 playsinline
-                class="w-full h-full object-cover"
+                class="w-full h-full object-cover transform scale-x-[-1]"
               ></video>
               
-              <!-- Overlay -->
+              <!-- Overlay con indicador de detección -->
               <div class="absolute inset-0 border-2 border-blue-500 rounded-lg">
+                <!-- Marco de detección -->
                 <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-2 border-white opacity-50 rounded"></div>
+                
+                <!-- Indicador de escaneo -->
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32">
+                  <div class="absolute inset-0 border-2 border-blue-400 rounded animate-pulse"></div>
+                  <div class="absolute inset-0 border-2 border-blue-300 rounded animate-ping"></div>
+                </div>
+                
+                <!-- Texto de estado -->
+                <div class="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+                  {{ detecting ? 'Detectando...' : 'Posicione el código QR en el marco' }}
+                </div>
               </div>
               
               <!-- Controls -->
@@ -112,6 +132,17 @@
           <!-- Camera Error -->
           <div v-if="cameraError" class="text-sm text-red-600 bg-red-50 p-2 rounded">
             {{ cameraError }}
+          </div>
+          
+          <!-- Camera Instructions -->
+          <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+            <p class="font-medium mb-1">Instrucciones:</p>
+            <ul class="space-y-1 text-xs">
+              <li>• Posicione el código QR dentro del marco azul</li>
+              <li>• Mantenga el código estable y bien iluminado</li>
+              <li>• La detección es automática</li>
+              <li>• La cámara se detendrá automáticamente al detectar</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -235,6 +266,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qrService'
 import QRInfoDisplay from '@/components/QRInfoDisplay.vue'
+import jsQR from 'jsqr'
 
 const router = useRouter()
 const route = useRoute()
@@ -251,8 +283,12 @@ const cameraActive = ref(false)
 const cameraStarting = ref(false)
 const cameraError = ref(null)
 const scanHistory = ref([])
+const detecting = ref(false)
 
 let mediaStream = null
+let animationFrameId = null
+let canvas = null
+let canvasContext = null
 
 // Métodos principales
 const scanQRCode = async () => {
@@ -309,10 +345,14 @@ const startCamera = async () => {
     
     if (videoElement.value) {
       videoElement.value.srcObject = stream
+      
+      // Crear canvas para procesar frames
+      canvas = document.createElement('canvas')
+      canvasContext = canvas.getContext('2d')
+      
+      // Iniciar detección QR
+      startQRDetection()
     }
-    
-    // Implementar detección QR aquí si tienes una librería como jsQR
-    // Por ahora solo mostramos la cámara
     
   } catch (err) {
     console.error('Error accessing camera:', err)
@@ -322,16 +362,121 @@ const startCamera = async () => {
   }
 }
 
+const startQRDetection = () => {
+  detecting.value = true
+  
+  const detectQR = () => {
+    if (!videoElement.value || !canvas || !canvasContext || !cameraActive.value) {
+      detecting.value = false
+      return
+    }
+    
+    try {
+      // Configurar canvas con las dimensiones del video
+      canvas.width = videoElement.value.videoWidth
+      canvas.height = videoElement.value.videoHeight
+      
+      // Dibujar frame del video en el canvas
+      canvasContext.drawImage(videoElement.value, 0, 0, canvas.width, canvas.height)
+      
+      // Obtener datos de imagen para procesar
+      const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height)
+      
+      // Detectar código QR
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert",
+      })
+      
+      if (code) {
+        console.log('Código QR detectado:', code.data)
+        detecting.value = false
+        
+        // Procesar el código detectado
+        handleDetectedQR(code.data)
+        
+        // Detener la cámara después de detectar
+        stopCamera()
+        return
+      }
+      
+      // Continuar detectando si no se encontró código
+      if (cameraActive.value) {
+        animationFrameId = requestAnimationFrame(detectQR)
+      } else {
+        detecting.value = false
+      }
+      
+    } catch (error) {
+      console.error('Error en detección QR:', error)
+      detecting.value = false
+      // Continuar detectando incluso si hay error
+      if (cameraActive.value) {
+        animationFrameId = requestAnimationFrame(detectQR)
+      }
+    }
+  }
+  
+  // Iniciar detección
+  detectQR()
+}
+
+const handleDetectedQR = async (qrData) => {
+  // Limpiar input y establecer el código detectado
+  qrInput.value = qrData
+  
+  // Mostrar notificación de éxito
+  showDetectionSuccess(qrData)
+  
+  // Auto-escanear después de un breve delay
+  setTimeout(() => {
+    scanQRCode()
+  }, 500)
+}
+
+const showDetectionSuccess = (qrData) => {
+  // Crear notificación temporal
+  const notification = document.createElement('div')
+  notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300'
+  notification.innerHTML = `
+    <div class="flex items-center space-x-2">
+      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      <span>Código QR detectado: ${qrData.substring(0, 20)}...</span>
+    </div>
+  `
+  
+  document.body.appendChild(notification)
+  
+  // Remover notificación después de 3 segundos
+  setTimeout(() => {
+    notification.remove()
+  }, 3000)
+}
+
 const stopCamera = () => {
   if (mediaStream) {
     mediaStream.getTracks().forEach(track => track.stop())
     mediaStream = null
   }
+  
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+  
   cameraActive.value = false
   cameraError.value = null
+  detecting.value = false
   
   if (videoElement.value) {
     videoElement.value.srcObject = null
+  }
+  
+  // Limpiar canvas
+  if (canvas) {
+    canvas = null
+    canvasContext = null
   }
 }
 

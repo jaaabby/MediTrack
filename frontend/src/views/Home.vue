@@ -4,7 +4,6 @@
     <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold">¡Hola INNOVO!</h1>
           <p class="text-blue-100 mt-1">Sistema de gestión de inventario médico</p>
         </div>
         <div class="text-right">
@@ -148,55 +147,7 @@
       </div>
     </div>
 
-    <!-- Acceso rápido al inventario -->
-    <div class="card bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-      <div class="text-center">
-        <h3 class="text-xl font-semibold text-gray-900 mb-4">Acceso Rápido al Inventario</h3>
-        <div class="flex items-center justify-center gap-8 mb-6">
-          <button @click="navigateTo('/inventory')" class="p-3 rounded-lg bg-white shadow-sm hover:shadow-md transition-all">
-            <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          </button>
-          
-          <div class="bg-white p-6 rounded-xl shadow-sm">
-            <svg class="h-16 w-16 text-blue-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-          </div>
-          
-          <button @click="navigateTo('/add-supply')" class="p-3 rounded-lg bg-white shadow-sm hover:shadow-md transition-all">
-            <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          </button>
-        </div>
-        
-        <p class="text-gray-600 mb-4">Gestiona tu inventario médico de forma eficiente</p>
-        
-        <div class="flex justify-center gap-4">
-          <button 
-            @click="navigateTo('/inventory')"
-            class="btn-primary"
-          >
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            Ver Inventario
-          </button>
-          
-          <button 
-            @click="navigateTo('/add-supply')"
-            class="btn-success"
-          >
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Agregar Insumo
-          </button>
-        </div>
-      </div>
-    </div>
+    
   </div>
 </template>
 
