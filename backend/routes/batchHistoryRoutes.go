@@ -18,5 +18,6 @@ func SetupBatchHistoryRoutes(router *gin.RouterGroup, batchHistoryService servic
 		batchHistory.PUT("/:id", batchHistoryController.UpdateBatchHistory)
 		batchHistory.DELETE("/:id", batchHistoryController.DeleteBatchHistory)
 		batchHistory.GET("/search/:batchNumber", batchHistoryController.SearchBatchHistoryByBatchNumber)
+		batchHistory.GET("/details", batchHistoryController.GetAllBatchHistoriesWithDetails)
 	}
 }

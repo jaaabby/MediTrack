@@ -14,6 +14,7 @@ type BatchService struct {
 	DB                   *gorm.DB
 	QRService            *QRService
 	MedicalSupplyService *MedicalSupplyService
+	BatchHistoryService  *BatchHistoryService
 }
 
 func NewBatchService(db *gorm.DB, qrService *QRService) *BatchService {
@@ -31,6 +32,11 @@ func NewBatchService(db *gorm.DB, qrService *QRService) *BatchService {
 // SetMedicalSupplyService establece el servicio de suministros médicos
 func (s *BatchService) SetMedicalSupplyService(medicalSupplyService *MedicalSupplyService) {
 	s.MedicalSupplyService = medicalSupplyService
+}
+
+// SetBatchHistoryService establece el servicio de historial de lotes
+func (s *BatchService) SetBatchHistoryService(batchHistoryService *BatchHistoryService) {
+	s.BatchHistoryService = batchHistoryService
 }
 
 // CreateBatch crea un nuevo lote con QR único
@@ -188,16 +194,46 @@ func (s *BatchService) UpdateBatch(id int, newBatch *models.Batch) (*models.Batc
 		return nil, err
 	}
 
-	// Actualizar campos pero mantener el QR code original
+	// Guardar valores anteriores para el historial
+	previousBatch := batch
+
 	batch.ExpirationDate = newBatch.ExpirationDate
 	batch.Amount = newBatch.Amount
 	batch.Supplier = newBatch.Supplier
 	batch.StoreID = newBatch.StoreID
-	// No actualizamos batch.QRCode para mantener la trazabilidad
 
 	if err := s.DB.Save(&batch).Error; err != nil {
 		return nil, err
 	}
+
+	// Registrar en el historial (RUT hardcodeado por ahora)
+	userRUT := "12345678-9" // RUT hardcodeado temporalmente
+	if s.BatchHistoryService != nil {
+		if err := s.BatchHistoryService.RegisterBatchUpdate(batch.ID, userRUT, &previousBatch, &batch); err != nil {
+			// Solo log del error, no fallar la actualización
+			fmt.Printf("Error al registrar en historial: %v\n", err)
+		}
+	} else {
+		fmt.Printf("BatchHistoryService no inicializado, no se registra historial\n")
+	}
+
+	// Verificar si se debe enviar correo por stock bajo
+	if batch.Amount < 10 {
+		if err := s.sendLowStockAlert(batch); err != nil {
+			// Solo log del error, no fallar la actualización
+			fmt.Printf("Error al enviar alerta de stock bajo: %v\n", err)
+		}
+	}
+
+	// Verificar si se debe enviar correo por vencimiento próximo (30 días)
+	expirationThreshold := time.Now().AddDate(0, 0, 30)
+	if batch.ExpirationDate.Before(expirationThreshold) && batch.ExpirationDate.After(time.Now()) {
+		if err := s.sendExpirationAlert(batch); err != nil {
+			// Solo log del error, no fallar la actualización
+			fmt.Printf("Error al enviar alerta de vencimiento: %v\n", err)
+		}
+	}
+
 	return &batch, nil
 }
 
