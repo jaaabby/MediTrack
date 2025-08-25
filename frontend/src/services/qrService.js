@@ -23,17 +23,17 @@ class QRService {
       if (qrCode.includes('test')) {
         return this.generateTestResponse(qrCode)
       }
-      
+
       const response = await this.api.get(`/qr/scan/${encodeURIComponent(qrCode)}`)
-      
+
       // Extraer datos de la respuesta del backend
       let result = response.data
-      
+
       // Si la respuesta viene en formato {success: true, data: {...}}
       if (result && result.success && result.data) {
         result = result.data
       }
-      
+
       // Mapear tipos del backend al frontend si es necesario
       if (result.qr_type && !result.type) {
         if (result.qr_type === 'SUPPLY') {
@@ -42,18 +42,18 @@ class QRService {
           result.type = 'batch'
         }
       }
-      
+
       // Añadir información adicional para mejor UX
       if (result) {
         result.scan_timestamp = new Date()
         result.is_individual_supply = result.type === 'medical_supply'
         result.is_batch = result.type === 'batch'
-        
+
         // Para insumos individuales, verificar estado de consumo
         if (result.type === 'medical_supply') {
-          result.can_be_consumed = !result.is_consumed && 
-                                         result.available_for_use !== false
-          
+          result.can_be_consumed = !result.is_consumed &&
+            result.available_for_use !== false
+
           // Añadir información del lote si está disponible
           if (result.batch_status) {
             result.batch_context = {
@@ -63,7 +63,7 @@ class QRService {
             }
           }
         }
-        
+
         // Para lotes, añadir información sobre insumos individuales
         if (result.type === 'batch') {
           if (result.batch_status) {
@@ -71,18 +71,18 @@ class QRService {
               total: result.batch_status.total_individual_supplies,
               available: result.batch_status.available_supplies,
               consumed: result.batch_status.consumed_supplies,
-              consumption_rate: result.batch_status.total_individual_supplies > 0 
+              consumption_rate: result.batch_status.total_individual_supplies > 0
                 ? Math.round((result.batch_status.consumed_supplies / result.batch_status.total_individual_supplies) * 100)
                 : 0
             }
           }
         }
       }
-      
+
       return result
     } catch (error) {
       console.error('Error al escanear código QR:', error)
-      
+
       // Mejorar mensajes de error según el tipo
       if (error.response?.status === 404) {
         const qrType = this.getQRType(qrCode)
@@ -94,7 +94,7 @@ class QRService {
           throw new Error('Código QR no encontrado o inválido.')
         }
       }
-      
+
       throw error
     }
   }
@@ -121,17 +121,57 @@ class QRService {
       if (!this.isIndividualSupply(qrCode)) {
         throw new Error('Este endpoint está diseñado para insumos individuales. Use códigos QR que comiencen con SUPPLY_')
       }
-      
+
       const response = await this.api.get(`/qr/history/${encodeURIComponent(qrCode)}`)
-      
-      // Ordenar historial por fecha descendente
-      if (response.data && Array.isArray(response.data)) {
-        response.data.sort((a, b) => new Date(b.date_time) - new Date(a.date_time))
+
+      console.log('Raw history response:', response.data) // Debug adicional
+
+      // Manejar la estructura de respuesta del backend
+      let historyData = null
+
+      if (response.data) {
+        if (response.data.success && response.data.data) {
+          historyData = response.data.data
+        } else if (Array.isArray(response.data)) {
+          historyData = response.data
+        } else {
+          historyData = response.data
+        }
       }
-      
-      return response.data
+
+      // Ordenar historial por fecha descendente si es array
+      if (Array.isArray(historyData)) {
+        historyData.sort((a, b) => {
+          const dateA = new Date(a.date_time || a.DateTime)
+          const dateB = new Date(b.date_time || b.DateTime)
+          return dateB - dateA
+        })
+      }
+
+      console.log('Processed history data:', historyData) // Debug
+
+      return historyData
     } catch (error) {
       console.error('Error al obtener historial:', error)
+      throw error
+    }
+  }
+
+  async getBatchById(batchId) {
+    try {
+      const response = await this.api.get(`/batches/${batchId}`)
+
+      // Extraer datos de la respuesta del backend
+      let result = response.data
+
+      // Si la respuesta viene en formato {success: true, data: {...}}
+      if (result && result.success && result.data) {
+        result = result.data
+      }
+
+      return result
+    } catch (error) {
+      console.error('Error al obtener información del lote:', error)
       throw error
     }
   }
@@ -140,7 +180,7 @@ class QRService {
   async getSupplyDetails(qrCode) {
     try {
       const response = await this.api.get(`/qr/details/${encodeURIComponent(qrCode)}`)
-      
+
       if (response.data) {
         // Añadir información calculada útil para el frontend
         response.data.ui_info = {
@@ -150,25 +190,25 @@ class QRService {
           can_consume: !response.data.is_consumed && response.data.available_for_use,
           is_priority_scan: response.data.type === 'medical_supply'
         }
-        
+
         // Para insumos individuales, calcular días hasta vencimiento
         if (response.data.type === 'medical_supply' && response.data.supply_info?.expiration_date) {
           const expDate = new Date(response.data.supply_info.expiration_date)
           const today = new Date()
           const diffTime = expDate - today
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-          
+
           response.data.expiration_info = {
             days_until_expiration: diffDays,
             is_expired: diffDays < 0,
             is_expiring_soon: diffDays <= 30 && diffDays >= 0,
-            expiration_status: diffDays < 0 ? 'expired' : 
-                              diffDays <= 7 ? 'critical' :
-                              diffDays <= 30 ? 'warning' : 'good'
+            expiration_status: diffDays < 0 ? 'expired' :
+              diffDays <= 7 ? 'critical' :
+                diffDays <= 30 ? 'warning' : 'good'
           }
         }
       }
-      
+
       return response.data
     } catch (error) {
       console.error('Error al obtener detalles del insumo:', error)
@@ -206,12 +246,12 @@ class QRService {
   async generateMultipleSupplyQRs(quantity = 1) {
     try {
       const qrCodes = []
-      
+
       for (let i = 0; i < quantity; i++) {
         const response = await this.generateSupplyQR()
         qrCodes.push(response)
       }
-      
+
       return {
         success: true,
         quantity: quantity,
@@ -235,12 +275,12 @@ class QRService {
       if (!this.isIndividualSupply(consumptionData.qr_code)) {
         throw new Error('Solo se pueden consumir insumos individuales. Use códigos QR que comiencen con SUPPLY_')
       }
-      
+
       const response = await this.api.post('/qr/consume', {
         ...consumptionData,
         consumption_timestamp: new Date().toISOString()
       })
-      
+
       return {
         ...response.data,
         ui_message: 'Insumo individual consumido exitosamente',
@@ -252,14 +292,14 @@ class QRService {
       }
     } catch (error) {
       console.error('Error al consumir insumo:', error)
-      
+
       // Mejorar mensajes de error para insumos individuales
       if (error.response?.data?.message?.includes('ya ha sido consumido')) {
         throw new Error('Este insumo individual ya ha sido consumido anteriormente.')
       } else if (error.response?.data?.message?.includes('no encontrado')) {
         throw new Error('Insumo individual no encontrado. Verifique el código QR.')
       }
-      
+
       throw error
     }
   }
@@ -272,12 +312,12 @@ class QRService {
       if (invalidQRs && invalidQRs.length > 0) {
         throw new Error(`Los siguientes códigos QR no son insumos individuales: ${invalidQRs.join(', ')}`)
       }
-      
+
       const response = await this.api.post('/qr/consume/bulk', {
         ...bulkConsumptionData,
         consumption_timestamp: new Date().toISOString()
       })
-      
+
       return {
         ...response.data,
         ui_message: `${response.data.successful_consumptions || 0} insumos individuales consumidos exitosamente`
@@ -298,9 +338,9 @@ class QRService {
           message: 'Solo se pueden verificar insumos individuales'
         }
       }
-      
+
       const response = await this.api.get(`/qr/verify/${encodeURIComponent(qrCode)}`)
-      
+
       return {
         ...response.data,
         is_individual_supply: true,
@@ -329,17 +369,17 @@ class QRService {
   // Obtener tipo de QR (SUPPLY o BATCH)
   getQRType(qrCode) {
     if (!qrCode || typeof qrCode !== 'string') return null
-    
+
     if (qrCode.startsWith('SUPPLY_')) return 'SUPPLY'
     if (qrCode.startsWith('BATCH_')) return 'BATCH'
-    
+
     return null
   }
 
   // Validar formato de código QR con mensajes específicos
   isValidQRFormat(qrCode) {
     if (!qrCode || typeof qrCode !== 'string') return false
-    
+
     // Verificar que tenga el formato esperado: PREFIX_TIMESTAMP_RANDOM
     const qrPattern = /^(BATCH|SUPPLY)_\d+_[a-f0-9]+$/i
     return qrPattern.test(qrCode)
@@ -348,13 +388,13 @@ class QRService {
   // Extraer información básica del código QR con detalles del tipo
   parseQRCode(qrCode) {
     if (!this.isValidQRFormat(qrCode)) return null
-    
+
     const parts = qrCode.split('_')
     if (parts.length !== 3) return null
-    
+
     const type = parts[0].toLowerCase()
     const timestamp = parseInt(parts[1])
-    
+
     return {
       type: type,
       type_label: type === 'supply' ? 'Insumo Individual' : 'Lote',
@@ -370,7 +410,7 @@ class QRService {
   // Formatear información de QR para mostrar con enfoque en insumos individuales
   formatQRInfo(qrInfo) {
     if (!qrInfo) return null
-    
+
     const formatted = {
       ...qrInfo,
       typeLabel: this.getTypeLabel(qrInfo.type),
@@ -379,7 +419,7 @@ class QRService {
       is_recommended_scan: qrInfo.type === 'medical_supply', // Prioridad para insumos individuales
       ui_priority: qrInfo.type === 'medical_supply' ? 'high' : 'medium'
     }
-    
+
     return formatted
   }
 
@@ -396,7 +436,7 @@ class QRService {
   // Obtener etiqueta de estado con información detallada
   getStatusLabel(qrInfo) {
     if (!qrInfo) return 'Desconocido'
-    
+
     if (qrInfo.type === 'batch') {
       const batchStatus = qrInfo.batch_status
       if (batchStatus && batchStatus.available_supplies === 0) {
@@ -415,14 +455,14 @@ class QRService {
         return 'Insumo Listo para Usar'
       }
     }
-    
+
     return 'Estado Desconocido'
   }
 
   // Obtener color de estado con códigos específicos
   getStatusColor(qrInfo) {
     if (!qrInfo) return 'gray'
-    
+
     if (qrInfo.type === 'medical_supply') {
       if (qrInfo.is_consumed) return 'red'
       if (qrInfo.available_for_use === false) return 'orange'
@@ -433,14 +473,14 @@ class QRService {
       if (batchStatus && batchStatus.available_supplies < 5) return 'yellow'
       return 'blue'
     }
-    
+
     return 'gray'
   }
 
   // Obtener recomendaciones de disponibilidad para insumos individuales
   getAvailabilityRecommendations(availabilityData) {
     const recommendations = []
-    
+
     if (availabilityData.available && availabilityData.is_individual_supply) {
       recommendations.push({
         type: 'success',
@@ -448,7 +488,7 @@ class QRService {
         action: 'consume'
       })
     }
-    
+
     if (!availabilityData.available && availabilityData.reason === 'already_consumed') {
       recommendations.push({
         type: 'info',
@@ -456,7 +496,7 @@ class QRService {
         action: 'scan_another'
       })
     }
-    
+
     if (availabilityData.batch_info && availabilityData.batch_info.low_stock) {
       recommendations.push({
         type: 'warning',
@@ -464,7 +504,7 @@ class QRService {
         action: 'alert_low_stock'
       })
     }
-    
+
     return recommendations
   }
 
@@ -489,24 +529,24 @@ class QRService {
         params: { resolution },
         responseType: 'blob'
       })
-      
+
       // Crear URL para descarga
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
-      
+
       // Generar nombre de archivo descriptivo
       const qrType = this.getQRType(qrCode)
       const prefix = qrType === 'SUPPLY' ? 'insumo' : qrType === 'BATCH' ? 'lote' : 'qr'
       const suffix = resolution === 'high' ? '_hd' : ''
       const filename = `${prefix}_${qrCode}${suffix}.png`
-      
+
       link.setAttribute('download', filename)
       document.body.appendChild(link)
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
-      
+
       return true
     } catch (error) {
       console.error('Error al descargar imagen QR:', error)
@@ -543,28 +583,28 @@ class QRService {
   async getQRStats() {
     try {
       const response = await this.api.get('/qr/stats')
-      
+
       if (response.data) {
         // Añadir cálculos adicionales útiles para el frontend
         const data = response.data
-        
+
         response.data.individual_supplies_stats = {
           total_supplies: data.total_supplies,
           consumed_supplies: data.consumed_supplies,
           available_supplies: data.available_supplies,
           consumption_rate: data.consumption_rate,
-          average_supplies_per_batch: data.total_batches > 0 ? 
+          average_supplies_per_batch: data.total_batches > 0 ?
             Math.round(data.total_supplies / data.total_batches) : 0
         }
-        
+
         response.data.ui_insights = {
           primary_metric: `${data.available_supplies} insumos disponibles`,
-          consumption_trend: data.consumption_rate > 50 ? 'high' : 
-                            data.consumption_rate > 25 ? 'medium' : 'low',
+          consumption_trend: data.consumption_rate > 50 ? 'high' :
+            data.consumption_rate > 25 ? 'medium' : 'low',
           needs_attention: data.available_supplies < 100
         }
       }
-      
+
       return response.data
     } catch (error) {
       console.error('Error al obtener estadísticas:', error)
@@ -580,7 +620,7 @@ class QRService {
   generateTestQRCodes() {
     const timestamp = Math.floor(Date.now() / 1000)
     const randomId = Math.random().toString(16).substr(2, 8)
-    
+
     return {
       supply: `SUPPLY_${timestamp}_${randomId}`,
       batch: `BATCH_${timestamp}_${randomId}`
@@ -596,25 +636,25 @@ class QRService {
         suggestions: ['Escanee con la cámara o pegue el código QR']
       }
     }
-    
+
     const trimmed = input.trim().toUpperCase()
-    
+
     if (!this.isValidQRFormat(trimmed)) {
       const suggestions = ['Formato válido: SUPPLY_timestamp_random', 'Formato válido: BATCH_timestamp_random']
-      
+
       if (trimmed.includes('SUPPLY') || trimmed.includes('BATCH')) {
         suggestions.unshift('Verifique que el código esté completo')
       } else {
         suggestions.unshift('Los códigos QR deben comenzar con SUPPLY_ o BATCH_')
       }
-      
+
       return {
         valid: false,
         error: 'Formato de código QR inválido',
         suggestions
       }
     }
-    
+
     return {
       valid: true,
       formatted: trimmed,
@@ -626,7 +666,7 @@ class QRService {
   // Generar respuesta de prueba para desarrollo
   generateTestResponse(qrCode) {
     const qrType = this.getQRType(qrCode)
-    
+
     if (qrType === 'SUPPLY') {
       return {
         type: 'medical_supply',
@@ -692,7 +732,7 @@ class QRService {
         }
       }
     }
-    
+
     throw new Error('Tipo de QR de prueba no reconocido')
   }
 }

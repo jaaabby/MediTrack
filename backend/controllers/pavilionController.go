@@ -58,11 +58,14 @@ func (c *PavilionController) GetPavilionByID(ctx *gin.Context) {
 }
 
 func (c *PavilionController) GetAllPavilions(ctx *gin.Context) {
+	fmt.Println("[LOG] GET /pavilions llamado")
 	pavilions, err := c.pavilionService.GetAllPavilions()
 	if err != nil {
+		fmt.Println("[LOG] Error al obtener pavilions:", err)
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener pavilions: " + err.Error()})
 		return
 	}
+	fmt.Println("[LOG] Respuesta pavilions:", pavilions)
 	ctx.JSON(http.StatusOK, Response{Success: true, Data: pavilions})
 }
 
