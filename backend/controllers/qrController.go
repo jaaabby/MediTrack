@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"meditrack/services"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,30 +26,212 @@ func (c *QRController) SetMedicalSupplyService(medicalSupplyService services.Med
 	c.medicalSupplyService = medicalSupplyService
 }
 
+// determineQRType determina el tipo de código QR
+func determineQRType(qrCode string) string {
+	upperQR := strings.ToUpper(qrCode)
+	if strings.HasPrefix(upperQR, "SUPPLY_") {
+		return "SUPPLY"
+	} else if strings.HasPrefix(upperQR, "BATCH_") {
+		return "BATCH"
+	}
+	return "UNKNOWN"
+}
+
+// countAvailableSupplies cuenta los insumos disponibles
+func countAvailableSupplies(supplies []map[string]interface{}) int {
+	count := 0
+	for _, supply := range supplies {
+		if available, ok := supply["is_available"].(bool); ok && available {
+			count++
+		}
+	}
+	return count
+}
+
+// countConsumedSupplies cuenta los insumos consumidos
+func countConsumedSupplies(supplies []map[string]interface{}) int {
+	count := 0
+	for _, supply := range supplies {
+		if consumed, ok := supply["is_consumed"].(bool); ok && consumed {
+			count++
+		}
+	}
+	return count
+}
+
 // ScanQR obtiene toda la información de un código QR escaneado
 func (c *QRController) ScanQR(ctx *gin.Context) {
 	qrCode := ctx.Param("qrcode")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "Código QR requerido",
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Código QR requerido",
 		})
 		return
 	}
 
-	info, err := c.qrService.GetQRInfo(qrCode)
+	// Decodificar URL
+	decodedQR, err := url.QueryUnescape(qrCode)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
-			Success: false,
-			Error:   "Código QR no encontrado: " + err.Error(),
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Código QR inválido",
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
-		Success: true,
-		Message: "Información del código QR obtenida exitosamente",
-		Data:    info,
+	// Obtener información del QR usando el método existente
+	result, err := c.qrService.GetQRInfo(decodedQR)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Código QR no encontrado: " + err.Error(),
+		})
+		return
+	}
+
+	// PRIORIZAR INSUMOS INDIVIDUALES
+	qrType := determineQRType(decodedQR)
+
+	// Convertir QRInfo a map para añadir información contextual
+	resultMap := map[string]interface{}{
+		"type":                 result.Type,
+		"id":                   result.ID,
+		"qr_code":              result.QRCode,
+		"batch_info":           result.BatchInfo,
+		"supply_info":          result.SupplyInfo,
+		"supply_code":          result.SupplyCode,
+		"history":              result.History,
+		"is_consumed":          result.IsConsumed,
+		"can_consume":          result.CanConsume,
+		"batch_status":         result.BatchStatus,
+		"scan_timestamp":       time.Now(),
+		"qr_type":              qrType,
+		"is_individual_supply": qrType == "SUPPLY",
+	}
+
+	if qrType == "SUPPLY" {
+		// Información contextual para insumos individuales
+		resultMap["scan_priority"] = "high"
+		resultMap["recommended_actions"] = []string{"consume", "view_history", "check_batch"}
+		resultMap["ui_focus"] = "individual_supply"
+	} else if qrType == "BATCH" {
+		// Información de lote con recomendación de usar insumos individuales
+		resultMap["scan_priority"] = "medium"
+		resultMap["recommended_actions"] = []string{"view_batch", "scan_individual_supplies"}
+		resultMap["ui_focus"] = "batch_overview"
+		resultMap["user_guidance"] = "Para trazabilidad completa, escanee códigos QR de insumos individuales del lote"
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    resultMap,
+	})
+}
+
+func (c *QRController) ConsumeIndividualSupply(ctx *gin.Context) {
+	var request struct {
+		QRCode          string `json:"qr_code" binding:"required"`
+		UserRUT         string `json:"user_rut" binding:"required"`
+		DestinationType string `json:"destination_type" binding:"required"`
+		DestinationID   int    `json:"destination_id" binding:"required"`
+		Notes           string `json:"notes,omitempty"`
+		ConsumedAt      string `json:"consumed_at,omitempty"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Validar que sea un código QR de insumo individual
+	if !strings.HasPrefix(strings.ToUpper(request.QRCode), "SUPPLY_") {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Solo se pueden consumir insumos individuales. Use códigos QR que comiencen con SUPPLY_",
+			"qr_type": "invalid",
+		})
+		return
+	}
+
+	// Procesar consumo
+	result, err := c.qrService.ConsumeIndividualSupply(request.QRCode, request.UserRUT,
+		request.DestinationType, request.DestinationID, request.Notes)
+
+	if err != nil {
+		// Manejo específico de errores para insumos individuales
+		if strings.Contains(err.Error(), "ya ha sido consumido") {
+			ctx.JSON(http.StatusConflict, gin.H{
+				"success":    false,
+				"error":      "Este insumo individual ya fue consumido anteriormente",
+				"error_type": "already_consumed",
+				"suggestions": []string{
+					"Escanee otro insumo del mismo lote",
+					"Verifique el historial del insumo",
+				},
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Insumo individual consumido exitosamente",
+		"data":    result,
+		"next_actions": []string{
+			"scan_next_supply",
+			"view_batch_status",
+			"check_inventory",
+		},
+	})
+}
+
+func (c *QRController) GetIndividualSuppliesByBatch(ctx *gin.Context) {
+	batchID := ctx.Param("batch_id")
+	if batchID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "ID de lote requerido",
+		})
+		return
+	}
+
+	batchIDInt, err := strconv.Atoi(batchID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "ID de lote inválido",
+		})
+		return
+	}
+
+	supplies, err := c.qrService.GetIndividualSuppliesByBatch(batchIDInt)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"batch_id":            batchIDInt,
+			"individual_supplies": supplies,
+			"total_count":         len(supplies),
+			"available_count":     countAvailableSupplies(supplies),
+			"consumed_count":      countConsumedSupplies(supplies),
+		},
 	})
 }
 

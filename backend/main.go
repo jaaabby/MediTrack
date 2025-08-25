@@ -37,12 +37,12 @@ func main() {
 	userService := services.NewUserService(db)
 	medicalSupplyService := services.NewMedicalSupplyService(db, qrService)
 	medicalCenterService := services.NewMedicalCenterService(db)
-	batchService := services.NewBatchService(db, qrService)
+	batchHistoryService := services.NewBatchHistoryService(db)
+	batchService := services.NewBatchService(db, qrService, medicalSupplyService, batchHistoryService)
 	pavilionService := services.NewPavilionService(db)
 	storeService := services.NewStoreService(db)
 	supplyHistoryService := services.NewSupplyHistoryService(db)
 	supplyCodeService := services.NewSupplyCodeService(db)
-	batchHistoryService := services.NewBatchHistoryService(db)
 
 	batchService.SetBatchHistoryService(batchHistoryService)
 	// Inicializar BatchHistoryService en BatchService

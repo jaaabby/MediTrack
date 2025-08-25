@@ -14,15 +14,15 @@ class InventoryService {
 
   // Obtener todo el inventario - Compatible con ambas versiones
   async getInventory() {
+    try {
+      // Intentar primero con el endpoint correcto
+      const response = await this.api.get('/medical-supplies/inventory')
+      return response.data.data || response.data || []
+    } catch (error) {
+      // Si falla, intentar con el endpoint de la versión avanzada
       try {
-        // Intentar primero con el endpoint correcto
-        const response = await this.api.get('/medical-supplies/inventory')
+        const response = await this.api.get('/medical-supplies/inventory/advanced')
         return response.data.data || response.data || []
-      } catch (error) {
-        // Si falla, intentar con el endpoint de la versión avanzada
-        try {
-          const response = await this.api.get('/medical-supplies/inventory/advanced')
-          return response.data.data || response.data || []
       } catch (fallbackError) {
         console.error('Error al obtener inventario:', error)
         throw error
@@ -187,6 +187,86 @@ class InventoryService {
     } catch (error) {
       console.error('Error al crear insumo completo:', error)
       throw error
+    }
+  }
+
+
+  // Crear lote completo con múltiples insumos individuales (MÉTODO CORRECTO)
+  async createBatchWithIndividualSupplies(batchData) {
+    try {
+      console.log('Creando lote con insumos individuales:', batchData)
+
+      // Usar el endpoint correcto que ya existe en el backend
+      const response = await this.api.post('/batches/create-with-supplies', {
+        batch: {
+          expiration_date: batchData.batch.expiration_date,
+          amount: parseInt(batchData.batch.amount),
+          supplier: batchData.batch.supplier,
+          store_id: parseInt(batchData.batch.store_id)
+        },
+        supply_code: {
+          code: parseInt(batchData.supply_code.code),
+          name: batchData.supply_code.name,
+          code_supplier: parseInt(batchData.supply_code.code_supplier)
+        },
+        individual_count: parseInt(batchData.batch.amount) // Esta es la clave - cantidad de insumos individuales
+      })
+
+      console.log('Respuesta del backend:', response.data)
+      return response.data
+
+    } catch (error) {
+      // Fallback con slash final
+      try {
+        const response = await this.api.post('/batches/create-with-supplies/', {
+          batch: {
+            expiration_date: batchData.batch.expiration_date,
+            amount: parseInt(batchData.batch.amount),
+            supplier: batchData.batch.supplier,
+            store_id: parseInt(batchData.batch.store_id)
+          },
+          supply_code: {
+            code: parseInt(batchData.supply_code.code),
+            name: batchData.supply_code.name,
+            code_supplier: parseInt(batchData.supply_code.code_supplier)
+          },
+          individual_count: parseInt(batchData.batch.amount)
+        })
+        return response.data
+      } catch (fallbackError) {
+        const backendError = error.response?.data?.error || error.message
+        console.error('Error al crear lote con insumos individuales:', backendError)
+        throw new Error(backendError)
+      }
+    }
+  }
+
+  // Crear historial de lote
+  async createBatchHistory(batchId, userRUT = "12345678-9", batchData) {
+    try {
+      const userName = 'Juan Pérez'; // Puedes reemplazar por el nombre real si lo tienes
+      const now = new Date().toISOString();
+      // Usar los datos reales del lote si están disponibles
+      const realBatchData = batchData || {
+        expiration_date: '',
+        amount: '',
+        supplier: '',
+        store_id: ''
+      };
+      const response = await this.api.post('/batch-history/', {
+        date_time: now,
+        change_details: 'Lote creado',
+        previous_values: '{}',
+        new_values: JSON.stringify(realBatchData),
+        user_name: userName,
+        batch_id: batchId,
+        user_rut: userRUT,
+        batch_number: batchId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al crear historial de lote:', error);
+      return null;
     }
   }
 
@@ -357,6 +437,18 @@ class InventoryService {
       return filtered
     } catch (error) {
       console.error('Error al buscar insumos:', error)
+      throw error
+    }
+  }
+
+  // Obtener insumos individuales disponibles por batch
+  async getAvailableSuppliesByBatch(batchId) {
+    try {
+      const response = await this.api.get(`/medical-supplies/batch/${batchId}/available`)
+      // Ajuste para usar el array correcto de la respuesta
+      return response.data.data?.available_supplies || []
+    } catch (error) {
+      console.error('Error al obtener insumos individuales por lote:', error)
       throw error
     }
   }
