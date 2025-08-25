@@ -103,7 +103,7 @@ func (s *BatchHistoryService) RegisterBatchCreation(batchID int, userRUT string)
 		UserRUT:        userRUT,
 		UserName:       user.Name, // Agregar el nombre del usuario
 		ChangeDetails:  "Lote creado",
-		PreviousValues: "{}", // JSON vacío válido
+		PreviousValues: "", // Campo vacío para que se guarde como NULL en la base de datos
 		NewValues:      string(newValues),
 		BatchNumber:    batchID, // Agregar batch_number
 	}

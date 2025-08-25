@@ -58,5 +58,4 @@ INSERT INTO supply_history (date_time, status, destination_type, destination_id,
 
 -- Poblar tabla batch_history
 INSERT INTO batch_history (date_time, change_details, previous_values, new_values, user_name, batch_id, user_rut, batch_number) VALUES
-('2025-08-16 10:00:00', 'Lote creado', '{"expiration_date": "2026-12-31", "amount": 10, "supplier": "Proveedor Uno", "store_id": 1}', '{"expiration_date": "2026-12-31", "amount": 10, "supplier": "Proveedor Uno", "store_id": 1}', 'Juan Pérez', 1, '12345678-9', 1),
-('2025-08-16 11:00:00', 'Lote actualizado', '{"expiration_date": "2025-08-16", "amount": 5, "supplier": "Proveedor Dos", "store_id": 2}', '{"expiration_date": "2025-08-16", "amount": 5, "supplier": "Proveedor Dos", "store_id": 2}', 'Ana Gómez', 2, '98765432-1', 2);
+('2025-08-16 10:00:00', 'Lote creado', NULL, '{"expiration_date": "2026-12-31", "amount": 10, "supplier": "Proveedor Uno", "store_id": 1}', 'Juan Pérez', 1, '12345678-9', 1);

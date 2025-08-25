@@ -484,19 +484,6 @@ const createSupply = async () => {
       
       console.log(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales`)
       
-      // Crear historial de lote con datos reales
-      try {
-        const batchData = {
-          amount: generatedBatch.value.amount,
-          store_id: generatedBatch.value.store_id,
-          supplier: generatedBatch.value.supplier,
-          expiration_date: generatedBatch.value.expiration_date
-        };
-        await inventoryService.createBatchHistory(generatedBatch.value.id || generatedBatch.value.ID, '12345678-9', batchData)
-      } catch (historyError) {
-        console.warn('Advertencia: No se pudo crear el historial:', historyError)
-      }
-      
       error.value = null
       await loadBatchQRImage()
     } else {
