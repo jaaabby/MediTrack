@@ -19,45 +19,67 @@ class QRService {
   // Escanear un código QR con prioridad para insumos individuales
   async scanQRCode(qrCode) {
     try {
+      // Modo de prueba para desarrollo
+      if (qrCode.includes('test')) {
+        return this.generateTestResponse(qrCode)
+      }
+      
       const response = await this.api.get(`/qr/scan/${encodeURIComponent(qrCode)}`)
       
+      // Extraer datos de la respuesta del backend
+      let result = response.data
+      
+      // Si la respuesta viene en formato {success: true, data: {...}}
+      if (result && result.success && result.data) {
+        result = result.data
+      }
+      
+      // Mapear tipos del backend al frontend si es necesario
+      if (result.qr_type && !result.type) {
+        if (result.qr_type === 'SUPPLY') {
+          result.type = 'medical_supply'
+        } else if (result.qr_type === 'BATCH') {
+          result.type = 'batch'
+        }
+      }
+      
       // Añadir información adicional para mejor UX
-      if (response.data) {
-        response.data.scan_timestamp = new Date()
-        response.data.is_individual_supply = response.data.type === 'medical_supply'
-        response.data.is_batch = response.data.type === 'batch'
+      if (result) {
+        result.scan_timestamp = new Date()
+        result.is_individual_supply = result.type === 'medical_supply'
+        result.is_batch = result.type === 'batch'
         
         // Para insumos individuales, verificar estado de consumo
-        if (response.data.type === 'medical_supply') {
-          response.data.can_be_consumed = !response.data.is_consumed && 
-                                         response.data.available_for_use !== false
+        if (result.type === 'medical_supply') {
+          result.can_be_consumed = !result.is_consumed && 
+                                         result.available_for_use !== false
           
           // Añadir información del lote si está disponible
-          if (response.data.batch_status) {
-            response.data.batch_context = {
-              has_stock: response.data.batch_status.current_amount > 0,
-              low_stock: response.data.batch_status.current_amount < 10,
-              batch_id: response.data.batch_status.batch_id
+          if (result.batch_status) {
+            result.batch_context = {
+              has_stock: result.batch_status.current_amount > 0,
+              low_stock: result.batch_status.current_amount < 10,
+              batch_id: result.batch_status.batch_id
             }
           }
         }
         
         // Para lotes, añadir información sobre insumos individuales
-        if (response.data.type === 'batch') {
-          if (response.data.batch_status) {
-            response.data.individual_supplies_info = {
-              total: response.data.batch_status.total_individual_supplies,
-              available: response.data.batch_status.available_supplies,
-              consumed: response.data.batch_status.consumed_supplies,
-              consumption_rate: response.data.batch_status.total_individual_supplies > 0 
-                ? Math.round((response.data.batch_status.consumed_supplies / response.data.batch_status.total_individual_supplies) * 100)
+        if (result.type === 'batch') {
+          if (result.batch_status) {
+            result.individual_supplies_info = {
+              total: result.batch_status.total_individual_supplies,
+              available: result.batch_status.available_supplies,
+              consumed: result.batch_status.consumed_supplies,
+              consumption_rate: result.batch_status.total_individual_supplies > 0 
+                ? Math.round((result.batch_status.consumed_supplies / result.batch_status.total_individual_supplies) * 100)
                 : 0
             }
           }
         }
       }
       
-      return response.data
+      return result
     } catch (error) {
       console.error('Error al escanear código QR:', error)
       
@@ -599,6 +621,79 @@ class QRService {
       type: this.getQRType(trimmed),
       is_individual_supply: this.isIndividualSupply(trimmed)
     }
+  }
+
+  // Generar respuesta de prueba para desarrollo
+  generateTestResponse(qrCode) {
+    const qrType = this.getQRType(qrCode)
+    
+    if (qrType === 'SUPPLY') {
+      return {
+        type: 'medical_supply',
+        id: 1,
+        qr_code: qrCode,
+        is_consumed: false,
+        can_consume: true,
+        supply_info: {
+          supply_code: 12345,
+          supply_code_name: 'Paracetamol 500mg (PRUEBA)',
+          code_supplier: 'TEST_001',
+          supplier: 'Proveedor de Prueba S.A.',
+          expiration_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          store_name: 'Farmacia Central',
+          store_type: 'Farmacia',
+          batch_id: 10,
+          is_consumed: false
+        },
+        batch_status: {
+          batch_id: 10,
+          current_amount: 50,
+          expiration_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          supplier: 'Proveedor de Prueba S.A.',
+          has_available_stock: true
+        },
+        supply_code: {
+          code: 12345,
+          name: 'Paracetamol 500mg',
+          code_supplier: 'TEST_001'
+        },
+        history: [
+          {
+            id: 1,
+            status: 'creado',
+            date_time: new Date().toISOString(),
+            user_rut: '12345678-9',
+            destination_type: 'store',
+            destination_id: 1
+          }
+        ]
+      }
+    } else if (qrType === 'BATCH') {
+      return {
+        type: 'batch',
+        id: 10,
+        qr_code: qrCode,
+        is_consumed: false,
+        can_consume: false,
+        batch_info: {
+          id: 10,
+          qr_code: qrCode,
+          supplier: 'Proveedor de Prueba S.A.',
+          expiration_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          amount: 50,
+          store_id: 1
+        },
+        batch_status: {
+          total_individual_supplies: 100,
+          consumed_supplies: 50,
+          available_supplies: 50,
+          current_batch_amount: 50,
+          amounts_synchronized: true
+        }
+      }
+    }
+    
+    throw new Error('Tipo de QR de prueba no reconocido')
   }
 }
 

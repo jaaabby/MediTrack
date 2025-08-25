@@ -89,7 +89,7 @@
       <!-- QR Information Display -->
       <QRInfoDisplay 
         :qr-info="qrInfo" 
-        @view-details="() => {}" 
+        @view-details="handleViewDetails" 
         @consume-supply="consumeSupply"
         @view-batch="viewBatch"
       />
@@ -329,14 +329,14 @@ const loadQRInfo = async () => {
   error.value = null
   try {
     const result = await qrService.scanQRCode(qrCode.value)
-    if (result.success) {
-      qrInfo.value = result.data
+    if (result) {
+      qrInfo.value = result
     } else {
-      error.value = result.error || 'Error al cargar información del QR'
+      error.value = 'No se pudo cargar la información del QR'
     }
   } catch (err) {
     console.error('Error loading QR info:', err)
-    error.value = err.response?.data?.error || 'Error de conexión'
+    error.value = err.message || err.response?.data?.error || 'Error de conexión'
   } finally {
     loading.value = false
   }
@@ -345,6 +345,11 @@ const loadQRInfo = async () => {
 const refreshData = () => {
   loadQRInfo()
   showToast('Datos actualizados')
+}
+
+const handleViewDetails = (qrInfo) => {
+  // Ya estamos en la vista de detalles, mostrar mensaje informativo
+  showToast('Ya estás viendo los detalles completos de este QR')
 }
 
 // Métodos de acción
@@ -414,10 +419,10 @@ const openHistoryModal = async () => {
   historyData.value = []
   try {
     const result = await qrService.getSupplyHistory(qrInfo.value.qr_code)
-    if (result.success) {
-      historyData.value = result.data
+    if (result) {
+      historyData.value = Array.isArray(result) ? result : [result]
     } else {
-      historyError.value = result.error || 'Error al obtener el historial'
+      historyError.value = 'No se pudo obtener el historial'
     }
   } catch (error) {
     console.error('Error getting history:', error)
