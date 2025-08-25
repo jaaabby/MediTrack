@@ -112,6 +112,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 			b.expiration_date,
 			b.amount,
 			b.supplier,
+			b.store_id,
 			sc.code as supply_code,
 			sc.name as supply_name
 		FROM batch b
@@ -132,10 +133,11 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		var expirationDate string
 		var amount int
 		var supplier string
+		var storeID int
 		var supplyCode *int
 		var supplyName *string
 
-		err := rows.Scan(&batchID, &expirationDate, &amount, &supplier, &supplyCode, &supplyName)
+		err := rows.Scan(&batchID, &expirationDate, &amount, &supplier, &storeID, &supplyCode, &supplyName)
 		if err != nil {
 			return nil, err
 		}
@@ -144,6 +146,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		item["expiration_date"] = expirationDate
 		item["amount"] = amount
 		item["supplier"] = supplier
+		item["store_id"] = storeID
 		item["code"] = supplyCode
 		item["name"] = supplyName
 

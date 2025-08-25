@@ -38,9 +38,9 @@ func (s *BatchService) SetBatchHistoryService(batchHistoryService *BatchHistoryS
 
 // CreateBatch crea un nuevo lote con QR único
 func (s *BatchService) CreateBatch(batch *models.Batch) error {
-	// CRÍTICO: Limpiar ID para asegurar auto-generación y evitar conflictos
+
 	batch.ID = 0
-	batch.QRCode = "" // Vacío por ahora
+	batch.QRCode = ""
 
 	// Crear el lote
 	if err := s.DB.Create(batch).Error; err != nil {
