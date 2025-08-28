@@ -17,16 +17,13 @@ type BatchService struct {
 	BatchHistoryService  *BatchHistoryService
 }
 
-func NewBatchService(db *gorm.DB, qrService *QRService) *BatchService {
-	bs := &BatchService{
-		DB:        db,
-		QRService: qrService,
+func NewBatchService(db *gorm.DB, qrService *QRService, medicalSupplyService *MedicalSupplyService, batchHistoryService *BatchHistoryService) *BatchService {
+	return &BatchService{
+		DB:                   db,
+		QRService:            qrService,
+		MedicalSupplyService: medicalSupplyService,
+		BatchHistoryService:  batchHistoryService,
 	}
-
-	// Iniciar el scheduler automáticamente cada 24 horas
-	go bs.startDailyScheduler()
-
-	return bs
 }
 
 // SetMedicalSupplyService establece el servicio de suministros médicos
@@ -41,9 +38,9 @@ func (s *BatchService) SetBatchHistoryService(batchHistoryService *BatchHistoryS
 
 // CreateBatch crea un nuevo lote con QR único
 func (s *BatchService) CreateBatch(batch *models.Batch) error {
-	// CRÍTICO: Limpiar ID para asegurar auto-generación y evitar conflictos
+
 	batch.ID = 0
-	batch.QRCode = "" // Vacío por ahora
+	batch.QRCode = ""
 
 	// Crear el lote
 	if err := s.DB.Create(batch).Error; err != nil {
@@ -63,12 +60,7 @@ func (s *BatchService) CreateBatch(batch *models.Batch) error {
 }
 
 // CreateBatchWithIndividualSupplies crea un lote junto con sus insumos individuales
-func (s *BatchService) CreateBatchWithIndividualSupplies(
-	batch *models.Batch,
-	supplyCode *models.SupplyCode,
-	individualCount int,
-) (*models.Batch, []models.MedicalSupply, error) {
-
+func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, supplyCode *models.SupplyCode, individualCount int) (*models.Batch, []models.MedicalSupply, error) {
 	var individualSupplies []models.MedicalSupply
 
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
@@ -87,13 +79,29 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(
 		}
 
 		// 3. Crear o actualizar supply_code
-		if err := tx.Save(supplyCode).Error; err != nil {
-			return fmt.Errorf("error guardando código de insumo: %v", err)
+		var existingSupplyCode models.SupplyCode
+		if err := tx.Where("code = ?", supplyCode.Code).First(&existingSupplyCode).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				// No existe, crear nuevo
+				if err := tx.Create(supplyCode).Error; err != nil {
+					return fmt.Errorf("error creando código de insumo: %v", err)
+				}
+			} else {
+				return fmt.Errorf("error buscando código de insumo: %v", err)
+			}
+		} else {
+			// Existe, actualizar datos si es necesario
+			existingSupplyCode.Name = supplyCode.Name
+			existingSupplyCode.CodeSupplier = supplyCode.CodeSupplier
+			if err := tx.Save(&existingSupplyCode).Error; err != nil {
+				return fmt.Errorf("error actualizando código de insumo: %v", err)
+			}
 		}
 
 		// 4. Crear insumos individuales
 		if s.MedicalSupplyService != nil {
-			supplies, err := s.MedicalSupplyService.CreateMultipleIndividualSupplies(
+			supplies, err := s.MedicalSupplyService.CreateMultipleIndividualSuppliesTx(
+				tx,
 				batch.ID,
 				supplyCode.Code,
 				individualCount,
@@ -129,6 +137,39 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(
 
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// 5. CREAR HISTORIAL DE LOTE (después de la transacción exitosa)
+	if s.BatchHistoryService != nil {
+		go func() {
+			// Ejecutar en goroutine para no bloquear la respuesta
+			if err := s.BatchHistoryService.RegisterBatchCreation(batch.ID, "12345678-9"); err != nil {
+				// Log del error pero no fallar toda la operación
+				fmt.Printf("Advertencia: Error creando historial de lote %d: %v\n", batch.ID, err)
+			}
+		}()
+	}
+
+	// 6. CREAR HISTORIAL INICIAL PARA CADA INSUMO (opcional)
+	if len(individualSupplies) > 0 {
+		go func() {
+			// Ejecutar en goroutine para no bloquear
+			for _, supply := range individualSupplies {
+				// Crear historial inicial de "creado" para cada insumo
+				history := models.SupplyHistory{
+					DateTime:        time.Now(),
+					Status:          "creado",
+					DestinationType: "almacen",
+					DestinationID:   batch.StoreID,
+					MedicalSupplyID: supply.ID,
+					UserRUT:         "12345678-9",
+				}
+
+				if err := s.DB.Create(&history).Error; err != nil {
+					fmt.Printf("Advertencia: Error creando historial inicial para insumo %d: %v\n", supply.ID, err)
+				}
+			}
+		}()
 	}
 
 	return batch, individualSupplies, nil

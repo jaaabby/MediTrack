@@ -2,10 +2,12 @@ package services
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"meditrack/models"
+	"strings"
 	"time"
 
 	"github.com/skip2/go-qrcode"
@@ -45,6 +47,63 @@ type QRConsumptionResponse struct {
 	UpdatedBatch       map[string]interface{} `json:"updated_batch,omitempty"`
 	RemainingAmount    int                    `json:"remaining_amount"`
 	ConsumptionHistory map[string]interface{} `json:"consumption_history,omitempty"`
+}
+
+// QRInfo representa la información completa de un código QR escaneado
+type QRInfo struct {
+	Type        string                    `json:"type"` // "batch" o "medical_supply"
+	ID          int                       `json:"id"`
+	QRCode      string                    `json:"qr_code"`
+	BatchInfo   *models.Batch             `json:"batch_info,omitempty"`
+	SupplyInfo  *MedicalSupplyWithDetails `json:"supply_info,omitempty"`
+	SupplyCode  *models.SupplyCode        `json:"supply_code,omitempty"`
+	History     []models.SupplyHistory    `json:"history,omitempty"`
+	IsConsumed  bool                      `json:"is_consumed"`
+	CanConsume  bool                      `json:"can_consume"`
+	BatchStatus map[string]interface{}    `json:"batch_status,omitempty"`
+}
+
+type MedicalSupplyWithDetails struct {
+	models.MedicalSupply
+	SupplyCodeName string    `json:"supply_code_name"`
+	BatchID        int       `json:"batch_id"`
+	Supplier       string    `json:"supplier"`
+	ExpirationDate time.Time `json:"expiration_date"`
+	StoreName      string    `json:"store_name"`
+	IsConsumed     bool      `json:"is_consumed"`
+}
+
+// determineQRType determina el tipo de código QR
+func determineQRType(qrCode string) string {
+	upperQR := strings.ToUpper(qrCode)
+	if strings.HasPrefix(upperQR, "SUPPLY_") {
+		return "SUPPLY"
+	} else if strings.HasPrefix(upperQR, "BATCH_") {
+		return "BATCH"
+	}
+	return "UNKNOWN"
+}
+
+// countAvailableSupplies cuenta los insumos disponibles
+func countAvailableSupplies(supplies []map[string]interface{}) int {
+	count := 0
+	for _, supply := range supplies {
+		if available, ok := supply["is_available"].(bool); ok && available {
+			count++
+		}
+	}
+	return count
+}
+
+// countConsumedSupplies cuenta los insumos consumidos
+func countConsumedSupplies(supplies []map[string]interface{}) int {
+	count := 0
+	for _, supply := range supplies {
+		if consumed, ok := supply["is_consumed"].(bool); ok && consumed {
+			count++
+		}
+	}
+	return count
 }
 
 // GenerateUniqueQRCode genera un código QR único
@@ -135,6 +194,266 @@ func (s *QRService) GenerateMedicalSupplyQRCode() (*QRGenerationResponse, error)
 	return response, nil
 }
 
+// ConsumeIndividualSupply consume un insumo individual y actualiza el lote
+func (s *QRService) ConsumeIndividualSupply(qrCode, userRUT, destinationType string, destinationID int, notes string) (map[string]interface{}, error) {
+	var supply models.MedicalSupply
+	var result map[string]interface{}
+
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// Buscar el insumo individual
+		if err := tx.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+			return fmt.Errorf("insumo individual no encontrado")
+		}
+
+		// Verificar que no haya sido consumido
+		var existingHistory models.SupplyHistory
+		err := tx.Where("medical_supply_id = ? AND status = ?", supply.ID, "consumido").First(&existingHistory).Error
+		if err == nil {
+			return fmt.Errorf("este insumo individual ya ha sido consumido")
+		}
+
+		// Crear registro de consumo - CORREGIDO: usar time.Now() directamente
+		history := models.SupplyHistory{
+			DateTime:        time.Now(),
+			Status:          "consumido",
+			DestinationType: destinationType,
+			DestinationID:   destinationID,
+			MedicalSupplyID: supply.ID,
+			UserRUT:         userRUT,
+			// REMOVIDO: Notes field no existe en el modelo
+		}
+
+		if err := tx.Create(&history).Error; err != nil {
+			return fmt.Errorf("error registrando consumo: %v", err)
+		}
+
+		// Actualizar cantidad del lote
+		if err := tx.Model(&models.Batch{}).Where("id = ?", supply.BatchID).Update("amount", gorm.Expr("amount - 1")).Error; err != nil {
+			return fmt.Errorf("error actualizando lote: %v", err)
+		}
+
+		// Preparar resultado
+		result = map[string]interface{}{
+			"consumed_supply": map[string]interface{}{
+				"id":               supply.ID,
+				"qr_code":          supply.QRCode,
+				"batch_id":         supply.BatchID,
+				"consumption_date": history.DateTime,
+				"consumed_by":      userRUT,
+			},
+			"consumption_record": history,
+		}
+
+		return nil
+	})
+
+	return result, err
+}
+
+// GetIndividualSuppliesByBatch obtiene todos los insumos individuales de un lote
+func (s *QRService) GetIndividualSuppliesByBatch(batchID int) ([]map[string]interface{}, error) {
+	query := `
+		SELECT 
+			ms.id,
+			ms.qr_code,
+			ms.code,
+			CASE WHEN sh.id IS NOT NULL THEN 1 ELSE 0 END as is_consumed,
+			sh.date_time as consumption_date,
+			sh.user_rut as consumed_by
+		FROM medical_supply ms
+		LEFT JOIN supply_history sh ON ms.id = sh.medical_supply_id AND sh.status = 'consumido'
+		WHERE ms.batch_id = ?
+		ORDER BY ms.id ASC
+	`
+
+	rows, err := s.DB.Raw(query, batchID).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var supplies []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var qrCode string
+		var code int
+		var isConsumed bool
+		var consumptionDate sql.NullTime
+		var consumedBy sql.NullString
+
+		if err := rows.Scan(&id, &qrCode, &code, &isConsumed, &consumptionDate, &consumedBy); err != nil {
+			continue
+		}
+
+		supply := map[string]interface{}{
+			"id":           id,
+			"qr_code":      qrCode,
+			"code":         code,
+			"is_consumed":  isConsumed,
+			"is_available": !isConsumed,
+		}
+
+		if isConsumed {
+			if consumptionDate.Valid {
+				supply["consumption_date"] = consumptionDate.Time
+			}
+			if consumedBy.Valid {
+				supply["consumed_by"] = consumedBy.String
+			}
+		}
+
+		supplies = append(supplies, supply)
+	}
+
+	return supplies, nil
+}
+
+// GetIndividualSupplyInfo obtiene información completa de un insumo individual
+func (s *QRService) GetIndividualSupplyInfo(qrCode string) (map[string]interface{}, error) {
+	var supply models.MedicalSupply
+	if err := s.DB.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+		return nil, fmt.Errorf("insumo individual no encontrado")
+	}
+
+	// Query completa con joins para obtener toda la información necesaria
+	query := `
+		SELECT 
+			ms.id as supply_id,
+			ms.code as supply_code,
+			ms.qr_code,
+			ms.batch_id,
+			sc.name as supply_code_name,
+			sc.code_supplier,
+			b.expiration_date,
+			b.amount as batch_remaining_amount,
+			b.supplier,
+			b.qr_code as batch_qr_code,
+			st.name as store_name,
+			st.type as store_type,
+			CASE WHEN sh.id IS NOT NULL THEN 1 ELSE 0 END as is_consumed,
+			sh.date_time as consumption_date,
+			sh.user_rut as consumed_by,
+			sh.destination_type,
+			sh.destination_id
+		FROM medical_supply ms
+		JOIN supply_code sc ON ms.code = sc.code
+		JOIN batch b ON ms.batch_id = b.id
+		JOIN store st ON b.store_id = st.id
+		LEFT JOIN supply_history sh ON ms.id = sh.medical_supply_id AND sh.status = 'consumido'
+		WHERE ms.qr_code = ?
+	`
+
+	row := s.DB.Raw(query, qrCode).Row()
+
+	var result map[string]interface{}
+	var supplyID int
+	var supplyCode int
+	var qr string
+	var batchID int
+	var supplyName string
+	var codeSupplier int
+	var expirationDate time.Time
+	var batchRemainingAmount int
+	var supplier string
+	var batchQRCode string
+	var storeName string
+	var storeType string
+	var isConsumed bool
+	var consumptionDate sql.NullTime
+	var consumedBy sql.NullString
+	var destinationType sql.NullString
+	var destinationID sql.NullInt64
+
+	err := row.Scan(
+		&supplyID, &supplyCode, &qr, &batchID, &supplyName, &codeSupplier,
+		&expirationDate, &batchRemainingAmount, &supplier, &batchQRCode,
+		&storeName, &storeType, &isConsumed, &consumptionDate, &consumedBy,
+		&destinationType, &destinationID,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo información del insumo: %v", err)
+	}
+
+	// Construir respuesta estructurada
+	result = map[string]interface{}{
+		"type":              "medical_supply",
+		"id":                supplyID,
+		"qr_code":           qr,
+		"is_consumed":       isConsumed,
+		"available_for_use": !isConsumed && batchRemainingAmount > 0,
+		"can_consume":       !isConsumed && batchRemainingAmount > 0,
+
+		// Información del insumo específico
+		"supply_info": map[string]interface{}{
+			"supply_code":      supplyCode,
+			"supply_code_name": supplyName,
+			"code_supplier":    codeSupplier,
+			"supplier":         supplier,
+			"expiration_date":  expirationDate,
+			"store_name":       storeName,
+			"store_type":       storeType,
+		},
+
+		// Información del lote asociado
+		"batch_status": map[string]interface{}{
+			"batch_id":            batchID,
+			"batch_qr_code":       batchQRCode,
+			"current_amount":      batchRemainingAmount,
+			"expiration_date":     expirationDate,
+			"supplier":            supplier,
+			"has_available_stock": batchRemainingAmount > 0,
+		},
+	}
+
+	// Si está consumido, añadir información del consumo
+	if isConsumed {
+		consumptionInfo := map[string]interface{}{
+			"consumed": true,
+		}
+
+		if consumptionDate.Valid {
+			consumptionInfo["consumption_date"] = consumptionDate.Time
+		}
+		if consumedBy.Valid {
+			consumptionInfo["consumed_by"] = consumedBy.String
+		}
+		if destinationType.Valid {
+			consumptionInfo["destination_type"] = destinationType.String
+		}
+		if destinationID.Valid {
+			consumptionInfo["destination_id"] = destinationID.Int64
+		}
+
+		result["consumption_info"] = consumptionInfo
+	}
+
+	// Obtener historial completo
+	var history []models.SupplyHistory
+	s.DB.Where("medical_supply_id = ?", supplyID).Order("date_time DESC").Find(&history)
+	result["history"] = history
+
+	// Calcular estadísticas del lote para contexto
+	var totalSupplies, consumedSupplies int64
+	s.DB.Model(&models.MedicalSupply{}).Where("batch_id = ?", batchID).Count(&totalSupplies)
+
+	subquery := s.DB.Model(&models.SupplyHistory{}).
+		Select("medical_supply_id").
+		Where("status = ?", "consumido")
+	s.DB.Model(&models.MedicalSupply{}).
+		Where("batch_id = ? AND id IN (?)", batchID, subquery).
+		Count(&consumedSupplies)
+
+	result["batch_context"] = map[string]interface{}{
+		"total_supplies_in_batch":     totalSupplies,
+		"consumed_supplies_in_batch":  consumedSupplies,
+		"available_supplies_in_batch": totalSupplies - consumedSupplies,
+		"batch_consumption_rate":      float64(consumedSupplies) / float64(totalSupplies) * 100,
+	}
+
+	return result, nil
+}
+
 // ConsumeSupplyByQR procesa el consumo de un insumo y actualiza automáticamente las cantidades del lote
 func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumptionResponse, error) {
 	var supply models.MedicalSupply
@@ -164,7 +483,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 			return fmt.Errorf("no hay stock disponible en el lote %d", batch.ID)
 		}
 
-		// Crear historial de consumo
+		// Crear historial de consumo - CORREGIDO: usar time.Now() directamente
 		history := models.SupplyHistory{
 			DateTime:        time.Now(),
 			Status:          "consumido",
@@ -172,6 +491,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 			DestinationID:   request.DestinationID,
 			MedicalSupplyID: supply.ID,
 			UserRUT:         request.UserRUT,
+			// REMOVIDO: Notes field no existe en el modelo
 		}
 
 		if err := tx.Create(&history).Error; err != nil {
@@ -207,7 +527,6 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 			"consumed_by":      request.UserRUT,
 			"destination_type": request.DestinationType,
 			"destination_id":   request.DestinationID,
-			"notes":            request.Notes,
 		}
 		response.ConsumptionHistory = consumptionInfo
 
@@ -263,30 +582,6 @@ func (s *QRService) GetQRImageHighRes(qrCode string) ([]byte, error) {
 	}
 
 	return qrBytes, nil
-}
-
-// QRInfo representa la información completa de un código QR escaneado
-type QRInfo struct {
-	Type        string                    `json:"type"` // "batch" o "medical_supply"
-	ID          int                       `json:"id"`
-	QRCode      string                    `json:"qr_code"`
-	BatchInfo   *models.Batch             `json:"batch_info,omitempty"`
-	SupplyInfo  *MedicalSupplyWithDetails `json:"supply_info,omitempty"`
-	SupplyCode  *models.SupplyCode        `json:"supply_code,omitempty"`
-	History     []models.SupplyHistory    `json:"history,omitempty"`
-	IsConsumed  bool                      `json:"is_consumed"`
-	CanConsume  bool                      `json:"can_consume"`
-	BatchStatus map[string]interface{}    `json:"batch_status,omitempty"`
-}
-
-type MedicalSupplyWithDetails struct {
-	models.MedicalSupply
-	SupplyCodeName string    `json:"supply_code_name"`
-	BatchID        int       `json:"batch_id"`
-	Supplier       string    `json:"supplier"`
-	ExpirationDate time.Time `json:"expiration_date"`
-	StoreName      string    `json:"store_name"`
-	IsConsumed     bool      `json:"is_consumed"`
 }
 
 // GetQRInfo obtiene toda la información relacionada con un código QR

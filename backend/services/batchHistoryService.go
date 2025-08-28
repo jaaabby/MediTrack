@@ -98,13 +98,14 @@ func (s *BatchHistoryService) RegisterBatchCreation(batchID int, userRUT string)
 	})
 
 	history := &models.BatchHistory{
-		DateTime:      time.Now(),
-		BatchID:       &batchID,
-		UserRUT:       userRUT,
-		UserName:      user.Name, // Agregar el nombre del usuario
-		ChangeDetails: "Lote creado",
-		NewValues:     string(newValues),
-		BatchNumber:   batchID, // Agregar batch_number
+		DateTime:       time.Now(),
+		BatchID:        &batchID,
+		UserRUT:        userRUT,
+		UserName:       user.Name, // Agregar el nombre del usuario
+		ChangeDetails:  "Lote creado",
+		PreviousValues: "", // Campo vacío para que se guarde como NULL en la base de datos
+		NewValues:      string(newValues),
+		BatchNumber:    batchID, // Agregar batch_number
 	}
 
 	return s.CreateBatchHistory(history)

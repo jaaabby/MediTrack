@@ -384,14 +384,46 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
-import inventoryService from '@/services/inventoryService'
-import qrService from '@/services/qrService'
 
-const router = useRouter()
+import { ref } from 'vue'
+import qrService from '@/services/qrService'
+import inventoryService from '@/services/inventoryService'
+
+// Validación de formularios
+const validateForm = () => {
+  // Validar supplyForm
+  if (!supplyForm.value.code || isNaN(parseInt(supplyForm.value.code))) {
+    error.value = 'El código del insumo es obligatorio y debe ser numérico.'
+    return false
+  }
+  if (!supplyForm.value.name || supplyForm.value.name.trim() === '') {
+    error.value = 'El nombre del insumo es obligatorio.'
+    return false
+  }
+  if (!supplyForm.value.codeSupplier || isNaN(parseInt(supplyForm.value.codeSupplier))) {
+    error.value = 'El código de proveedor es obligatorio y debe ser numérico.'
+    return false
+  }
+  // Validar batchForm
+  if (!batchForm.value.expirationDate) {
+    error.value = 'La fecha de vencimiento es obligatoria.'
+    return false
+  }
+  if (!batchForm.value.amount || isNaN(parseInt(batchForm.value.amount)) || parseInt(batchForm.value.amount) < 1) {
+    error.value = 'La cantidad debe ser un número mayor a 0.'
+    return false
+  }
+  if (!batchForm.value.supplier || batchForm.value.supplier.trim() === '') {
+    error.value = 'El proveedor es obligatorio.'
+    return false
+  }
+  if (!batchForm.value.storeId || isNaN(parseInt(batchForm.value.storeId))) {
+    error.value = 'El ID de almacén es obligatorio y debe ser numérico.'
+    return false
+  }
+  error.value = null
+  return true
+}
 
 // Estado reactivo
 const creating = ref(false)
@@ -417,11 +449,13 @@ const batchForm = ref({
 
 // Métodos principales
 const createSupply = async () => {
+  if (!validateForm()) return
+  
   creating.value = true
   error.value = null
-  
+
   try {
-    // Preparar datos completos para crear el insumo
+    // Preparar datos para el método correcto
     const completeSupplyData = {
       batch: {
         expiration_date: batchForm.value.expirationDate,
@@ -436,18 +470,26 @@ const createSupply = async () => {
       }
     }
 
-    // Crear el insumo completo usando el servicio mejorado
-    const result = await inventoryService.createCompleteSupply(completeSupplyData)
+    console.log('Datos a enviar:', completeSupplyData)
 
-    // Si la respuesta tiene los datos esperados, úsala directamente
-    if (result.batch && result.supply_code) {
-      generatedBatch.value = result.batch
-      generatedSupplies.value = result.supply_code.individual_supplies || []
+    // USAR EL MÉTODO CORRECTO que crea múltiples insumos
+    const result = await inventoryService.createBatchWithIndividualSupplies(completeSupplyData)
+
+    console.log('Resultado completo:', result)
+
+    // Verificar la estructura de la respuesta
+    if (result.success && result.data) {
+      generatedBatch.value = result.data.batch
+      generatedSupplies.value = result.data.individual_supplies || []
+      
+      console.log(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales`)
+      
       error.value = null
       await loadBatchQRImage()
     } else {
       error.value = result.error || 'Error desconocido al crear el lote'
     }
+
   } catch (err) {
     console.error('Error creating supply:', err)
     error.value = err.message || 'Error de conexión al crear el lote'
