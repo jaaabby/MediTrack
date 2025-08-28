@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"meditrack/config"
 	"meditrack/mailer"
@@ -72,9 +71,9 @@ func main() {
 		*batchHistoryService,
 	)
 
-	// Iniciar servidor
+	// Iniciar servidor correctamente con Gin
 	log.Printf("Servidor iniciando en puerto %d", cfg.Server.Port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.Server.Port), router); err != nil {
+	if err := router.Run(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {
 		log.Fatalf("Error al iniciar servidor: %v", err)
 	}
 }

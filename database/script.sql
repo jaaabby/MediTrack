@@ -16,8 +16,8 @@ INSERT INTO store (id, name, type, medical_center_id) VALUES
 (2, 'Bodega Secundaria', 'secundaria', 2);
 
 INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code) VALUES
-(1, '2026-12-31', 10, 'Proveedor Uno', 1, 'BATCH_1'),
-(2, '2025-08-16', 5, 'Proveedor Dos', 2, 'BATCH_2');
+(1, '2026-12-31', 10, 'Proveedor Uno', 1, 'BATCH_1_1'),
+(2, '2025-08-16', 5, 'Proveedor Dos', 2, 'BATCH_2_1');
 
 -- Corregir la secuencia de la tabla batch para evitar errores de clave duplicada
 -- (Solo para PostgreSQL)
@@ -28,21 +28,21 @@ INSERT INTO supply_code (code, name, code_supplier) VALUES
 (1002, 'Mascarillas', 5002);
 
 INSERT INTO medical_supply (code, batch_id, qr_code) VALUES
-(1001, 1, 'SUPPLY_1'),
-(1001, 1, 'SUPPLY_2'),
-(1001, 1, 'SUPPLY_3'),
-(1001, 1, 'SUPPLY_4'),
-(1001, 1, 'SUPPLY_5'),
-(1001, 1, 'SUPPLY_6'),
-(1001, 1, 'SUPPLY_7'),
-(1001, 1, 'SUPPLY_8'),
-(1001, 1, 'SUPPLY_9'),
-(1001, 1, 'SUPPLY_10'),
-(1002, 2, 'SUPPLY_11'),
-(1002, 2, 'SUPPLY_12'),
-(1002, 2, 'SUPPLY_13'),
-(1002, 2, 'SUPPLY_14'),
-(1002, 2, 'SUPPLY_15');
+(1001, 1, 'SUPPLY_1_1'),
+(1001, 1, 'SUPPLY_2_1'),
+(1001, 1, 'SUPPLY_3_1'),
+(1001, 1, 'SUPPLY_4_1'),
+(1001, 1, 'SUPPLY_5_1'),
+(1001, 1, 'SUPPLY_6_1'),
+(1001, 1, 'SUPPLY_7_1'),
+(1001, 1, 'SUPPLY_8_1'),
+(1001, 1, 'SUPPLY_9_1'),
+(1001, 1, 'SUPPLY_10_1'),
+(1002, 2, 'SUPPLY_11_1'),
+(1002, 2, 'SUPPLY_12_1'),
+(1002, 2, 'SUPPLY_13_1'),
+(1002, 2, 'SUPPLY_14_1'),
+(1002, 2, 'SUPPLY_15_1');
 
 -- Corregir la secuencia de la tabla medical_supply para evitar errores de clave duplicada
 -- (Solo para PostgreSQL)

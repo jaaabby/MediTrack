@@ -68,35 +68,32 @@
               <strong>Prioridad: Insumos Individuales</strong>
             </p>
             <ul class="text-sm text-green-700 mt-1 space-y-1">
-              <li>• <code class="bg-green-100 px-1 rounded">SUPPLY_...</code> - Insumos individuales (recomendado)</li>
+              <li>• <code class="bg-green-100 px-1 rounded">SUPPLY_...</code> - Insumos individuales (trazabilidad)</li>
               <li>• <code class="bg-blue-100 px-1 rounded">BATCH_...</code> - Información del lote (solo consulta)</li>
             </ul>
           </div>
         </div>
 
-        <!-- Camera Scanner con Efectos Mejorados -->
+        <!-- Camera Scanner -->
         <div class="space-y-4">
           <label class="block text-sm font-medium text-gray-700">
             Escanear con Cámara:
           </label>
           
           <div class="relative">
-            <!-- Camera View con Múltiples Efectos -->
+            <!-- Camera View -->
             <div 
               v-if="cameraActive" 
-              class="bg-gray-900 rounded-lg overflow-hidden aspect-video flex items-center justify-center relative scanner-container"
+              class="bg-gray-900 rounded-lg overflow-hidden aspect-video flex items-center justify-center relative"
             >
-              <!-- Indicador de estado mejorado -->
-              <div class="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
-                <div class="bg-green-500 text-white px-4 py-2 rounded-full text-sm font-medium glow-effect">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-3 h-3 bg-white rounded-full animate-ping"></div>
-                    <span>{{ detecting ? 'Detectando QR de Insumo...' : 'Cámara Activa' }}</span>
-                  </div>
+              <!-- Indicador de estado superior -->
+              <div v-if="detecting" class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium z-10">
+                <div class="flex items-center space-x-2">
+                  <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  <span>Detectando QR...</span>
                 </div>
               </div>
               
-              <!-- Video element -->
               <video 
                 ref="videoElement" 
                 autoplay 
@@ -105,118 +102,56 @@
                 class="w-full h-full object-cover transform scale-x-[-1]"
               ></video>
               
-              <!-- Grid overlay para sensación tech -->
-              <div class="absolute inset-0 detection-grid opacity-30 pointer-events-none"></div>
-              
-              <!-- Marco de detección QR con efectos avanzados -->
-              <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div class="relative w-56 h-56">
-                  <!-- Marco principal con glow -->
-                  <div class="w-full h-full border-2 border-green-400 rounded-lg bg-transparent glow-effect"></div>
-                  
-                  <!-- Esquinas animadas -->
-                  <div class="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-green-300 corner-animation"></div>
-                  <div class="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-green-300 corner-animation corner-delay-1"></div>
-                  <div class="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-green-300 corner-animation corner-delay-2"></div>
-                  <div class="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-green-300 corner-animation corner-delay-3"></div>
-                  
-                  <!-- Línea de escaneo -->
-                  <div class="absolute inset-0 overflow-hidden rounded-lg">
-                    <div class="w-full h-1 scanning-line"></div>
-                  </div>
-                  
-                  <!-- Efecto radar -->
-                  <div class="absolute inset-0 overflow-hidden rounded-lg">
-                    <div class="absolute top-1/2 left-1/2 w-full h-0.5 radar-line transform -translate-y-1/2 origin-left"></div>
-                  </div>
-                  
-                  <!-- Partículas flotantes -->
-                  <div class="absolute inset-0">
-                    <div class="absolute top-4 left-4 w-2 h-2 bg-green-400 rounded-full floating-particle opacity-60"></div>
-                    <div class="absolute top-8 right-6 w-1.5 h-1.5 bg-blue-400 rounded-full floating-particle particle-delay-1 opacity-50"></div>
-                    <div class="absolute bottom-6 left-8 w-1 h-1 bg-yellow-400 rounded-full floating-particle particle-delay-2 opacity-40"></div>
-                    <div class="absolute bottom-4 right-4 w-2 h-2 bg-purple-400 rounded-full floating-particle particle-delay-3 opacity-70"></div>
-                    <div class="absolute top-1/2 left-2 w-1.5 h-1.5 bg-pink-400 rounded-full floating-particle particle-delay-4 opacity-60"></div>
-                  </div>
-                  
-                  <!-- Crosshair central -->
-                  <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                    <div class="w-6 h-6 border-2 border-green-300 rounded-full flex items-center justify-center animate-pulse">
-                      <div class="w-2 h-2 bg-green-300 rounded-full animate-ping"></div>
-                    </div>
-                  </div>
+              <!-- Overlay con indicador de detección -->
+              <div class="absolute inset-0 border-2 border-blue-500 rounded-lg">
+                <!-- Marco de detección -->
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white opacity-50 rounded"></div>
+                
+                <!-- Indicador de escaneo -->
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48">
+                  <div class="absolute inset-0 border-2 border-blue-400 rounded animate-pulse"></div>
+                  <div class="absolute inset-0 border-2 border-blue-300 rounded animate-ping"></div>
                 </div>
               </div>
               
-              <!-- Indicadores de estado adicionales -->
-              <div class="absolute top-4 right-4 pointer-events-none">
-                <div class="bg-black bg-opacity-50 text-green-400 px-3 py-1 rounded text-xs font-mono">
-                  SCANNER ACTIVE
-                </div>
-              </div>
-              
-              <div class="absolute bottom-4 left-4 pointer-events-none">
-                <div class="bg-black bg-opacity-50 text-blue-400 px-3 py-1 rounded text-xs font-mono">
-                  AI: {{ detecting ? 'DETECTANDO...' : 'ESPERA' }}
-                </div>
-              </div>
-              
-              <div class="absolute bottom-4 right-4 pointer-events-none">
-                <div class="bg-black bg-opacity-50 text-yellow-400 px-3 py-1 rounded text-xs font-mono">
-                  MODO QR
-                </div>
-              </div>
-              
-              <!-- Controles -->
-              <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
-                <button @click="stopCamera" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg transition-all duration-200 transform hover:scale-105">
-                  Detener Cámara
+              <!-- Controls -->
+              <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                <button @click="stopCamera" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                  Detener
                 </button>
               </div>
             </div>
             
-            <!-- Botón de activación de cámara -->
+            <!-- Camera Button -->
             <button
-              v-if="!cameraActive"
+              v-else
               @click="startCameraScanner"
+              class="w-full h-32 border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-lg flex flex-col items-center justify-center transition-colors"
               :disabled="cameraStarting"
-              class="w-full h-32 border-2 border-dashed border-gray-300 hover:border-gray-400 rounded-lg flex items-center justify-center space-y-2 flex-col bg-gray-50 hover:bg-gray-100 transition-colors"
             >
-              <svg class="h-10 w-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span class="text-sm font-medium text-gray-700">
-                {{ cameraStarting ? 'Iniciando Cámara...' : 'Activar Cámara' }}
+              <span class="text-sm text-gray-600">
+                {{ cameraStarting ? 'Iniciando Cámara...' : 'Activar Cámara para Escanear' }}
               </span>
             </button>
           </div>
           
-          <!-- Error de cámara -->
-          <div v-if="cameraError" class="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
-            <div class="flex items-start space-x-2">
-              <svg class="h-4 w-4 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <p class="font-medium">Error de cámara:</p>
-                <p>{{ cameraError }}</p>
-                <button @click="startCameraScanner" class="mt-2 text-blue-600 hover:text-blue-800 underline text-sm">
-                  Intentar de nuevo
-                </button>
-              </div>
-            </div>
+          <!-- Camera Error -->
+          <div v-if="cameraError" class="text-sm text-red-600 bg-red-50 p-2 rounded">
+            {{ cameraError }}
           </div>
           
-          <!-- Instrucciones mejoradas -->
-          <div class="text-sm text-gray-600 bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg border border-blue-200">
-            <p class="font-medium mb-2 text-blue-800">Instrucciones para escanear insumos:</p>
+          <!-- Camera Instructions -->
+          <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+            <p class="font-medium mb-1">Instrucciones:</p>
             <ul class="space-y-1 text-xs">
-              <li>• Coloque el QR frente a la cámara para escanear su código QR.</li>
-              <li>• Si lo prefiere, puede ingresar el código QR manualmente en el campo de texto.</li>
-              <li>• El sistema detecta automáticamente si el QR corresponde a un insumo individual o a un lote.</li>
-              <li>• Para trazabilidad completa, escanee los códigos QR individuales de cada insumo.</li>
-              <li>• Si tiene problemas con la cámara, revise los permisos o intente ingresar el código manualmente.</li>
+              <li>• Posicione el código QR dentro del marco azul</li>
+              <li>• Mantenga el código estable y bien iluminado</li>
+              <li>• La detección es automática</li>
+              <li>• La cámara se detendrá automáticamente al detectar</li>
             </ul>
           </div>
         </div>
@@ -239,177 +174,15 @@
       </div>
     </div>
 
-    <!-- Resto del componente igual que el original... -->
-    <!-- [El resto del template permanece igual] -->
-
     <!-- Scanned Supply Info Display -->
     <div v-if="scannedInfo && !error" class="bg-white rounded-lg shadow-sm border overflow-hidden">
-      <!-- [Contenido igual al original] -->
-      <!-- Individual Supply Display -->
-  <div v-if="scannedInfo.type === 'medical_supply' || scannedInfo.type === 'supply'" class="divide-y divide-gray-200">
-        <!-- Header -->
-        <div class="p-6 bg-gradient-to-r from-green-50 to-blue-50">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-              <div class="p-2 bg-green-100 rounded-full">
-                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="text-lg font-medium text-gray-900">Insumo Individual Encontrado</h3>
-                <p class="text-sm text-gray-600">{{ scannedInfo.supply_info?.supply_code_name || 'Información del producto' }}</p>
-              </div>
-            </div>
-            <div class="flex items-center space-x-2">
-              <span :class="[
-                'px-2 py-1 text-xs font-medium rounded-full',
-                scannedInfo.is_consumed 
-                  ? 'bg-red-100 text-red-800' 
-                  : 'bg-green-100 text-green-800'
-              ]">
-                {{ scannedInfo.is_consumed ? 'Consumido' : 'Disponible' }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Supply Details -->
-        <div class="p-6 grid md:grid-cols-2 gap-6">
-          <!-- Basic Info -->
-          <div class="space-y-4">
-            <h4 class="font-medium text-gray-900 border-b pb-2">Información del Insumo</h4>
-            
-            <div class="grid grid-cols-1 gap-3">
-              <div>
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Código QR</label>
-                <p class="text-sm font-mono text-gray-900 bg-gray-50 px-2 py-1 rounded border">{{ scannedInfo.qr_code }}</p>
-              </div>
-              
-              <div v-if="scannedInfo.supply_info?.supply_code_name">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre del Producto</label>
-                <p class="text-sm font-medium text-gray-900">{{ scannedInfo.supply_info.supply_code_name }}</p>
-              </div>
-              
-              <div v-if="scannedInfo.supply_info?.supplier">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Proveedor</label>
-                <p class="text-sm text-gray-900">{{ scannedInfo.supply_info.supplier }}</p>
-              </div>
-              
-              <div v-if="scannedInfo.supply_info?.expiration_date">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Fecha de Vencimiento</label>
-                <p class="text-sm text-gray-900">{{ formatDate(scannedInfo.supply_info.expiration_date) }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Batch Info -->
-          <div class="space-y-4">
-            <h4 class="font-medium text-gray-900 border-b pb-2">Información del Lote</h4>
-            
-            <div class="grid grid-cols-1 gap-3">
-              <div v-if="scannedInfo.batch_status?.batch_id">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">ID del Lote</label>
-                <p class="text-sm text-gray-900">#{{ scannedInfo.batch_status.batch_id }}</p>
-              </div>
-              
-              <div v-if="scannedInfo.batch_status?.current_amount !== undefined">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Stock Actual del Lote</label>
-                <p class="text-sm text-gray-900">{{ scannedInfo.batch_status.current_amount }} unidades</p>
-              </div>
-              
-              <div v-if="scannedInfo.supply_info?.store_name">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Ubicación</label>
-                <p class="text-sm text-gray-900">{{ scannedInfo.supply_info.store_name }} ({{ scannedInfo.supply_info.store_type }})</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="px-6 py-4 bg-gray-50 flex flex-wrap gap-3">
-          <button
-            v-if="!scannedInfo.is_consumed"
-            @click="consumeSupply(scannedInfo)"
-            class="btn-danger flex items-center space-x-2"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            <span>Consumir Insumo</span>
-          </button>
-          
-          <button @click="viewDetails(scannedInfo)" class="btn-primary flex items-center space-x-2">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Ver Historial Completo</span>
-          </button>
-          
-          <button v-if="scannedInfo.batch_status?.batch_id" @click="viewBatch(scannedInfo.batch_status.batch_id)" class="btn-secondary flex items-center space-x-2">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <span>Ver Lote Completo</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Batch Display (When batch QR is scanned) -->
-      <div v-else-if="scannedInfo.type === 'batch'" class="divide-y divide-gray-200">
-        <div class="p-6 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-              <div class="p-2 bg-blue-100 rounded-full">
-                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="text-lg font-medium text-gray-900">Información del Lote</h3>
-                <p class="text-sm text-gray-600">QR de lote detectado - Solo consulta</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="p-6">
-          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-            <div class="flex items-start space-x-3">
-              <svg class="h-5 w-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.882 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <div>
-                <h4 class="text-sm font-medium text-yellow-800">Código QR de Lote</h4>
-                <p class="text-sm text-yellow-700 mt-1">
-                  Has escaneado un código QR de lote completo. Para trazabilidad individual, escanea el código QR específico de cada insumo del lote.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid md:grid-cols-2 gap-6">
-            <div>
-              <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">ID del Lote</label>
-              <p class="text-sm font-medium text-gray-900">#{{ scannedInfo.id }}</p>
-            </div>
-            
-            <div v-if="scannedInfo.batch_status?.available_supplies !== undefined">
-              <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Insumos Disponibles</label>
-              <p class="text-sm text-gray-900">{{ scannedInfo.batch_status.available_supplies }} unidades</p>
-            </div>
-          </div>
-
-          <div class="mt-6 flex flex-wrap gap-3">
-            <button @click="viewBatch(scannedInfo.id)" class="btn-primary flex items-center space-x-2">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Ver Detalles del Lote</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <!-- Usar el componente QRInfoDisplay para mostrar la información -->
+      <QRInfoDisplay 
+        :qr-info="scannedInfo"
+        @view-details="viewDetails"
+        @view-batch="viewBatch"
+        @consume-supply="consumeSupply"
+      />
     </div>
 
     <!-- Scan History -->
@@ -501,6 +274,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qrService'
 import jsQR from 'jsqr'
+import QRInfoDisplay from '@/components/QRInfoDisplay.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -542,7 +316,7 @@ const startCameraScanner = async () => {
     cameraActive.value = true
     
     // Mostrar toast de activación con efectos
-  showDetectionToast('Cámara activada - Efectos visuales cargados', 'success')
+  showDetectionToast('Cámara activada', 'success')
     
     // Esperar a que el elemento video esté disponible
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -788,7 +562,6 @@ const scanQRCode = async () => {
       throw new Error('Formato de código QR inválido. Use SUPPLY_... para insumos individuales o BATCH_... para lotes.')
     }
     
-    console.log('Escaneando QR:', qrInput.value.trim())
     const result = await qrService.scanQRCode(qrInput.value.trim())
     scannedInfo.value = result
     
@@ -797,11 +570,9 @@ const scanQRCode = async () => {
     
     // Mostrar mensaje diferente según el tipo
     if (result.type === 'medical_supply') {
-      console.log('✅ Insumo individual escaneado correctamente')
-  showDetectionToast('Insumo individual procesado', 'success')
+      showDetectionToast('Insumo individual procesado', 'success')
     } else if (result.type === 'batch') {
-      console.log('ℹ️ Lote escaneado - Para trazabilidad individual, escanee códigos QR específicos de cada insumo')
-  showDetectionToast('Lote detectado - Use QR individuales para trazabilidad', 'info')
+      showDetectionToast('Lote detectado - Use QR individuales para trazabilidad', 'info')
     }
     
   } catch (err) {
@@ -828,6 +599,12 @@ const isValidQRFormat = (qrCode) => {
 }
 
 const quickRescan = (qrCode) => {
+  qrInput.value = qrCode
+  scanQRCode()
+}
+
+// Función de prueba para códigos QR de ejemplo
+const testQR = (qrCode) => {
   qrInput.value = qrCode
   scanQRCode()
 }
@@ -962,164 +739,16 @@ onUnmounted(() => {
   @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
-/* ===== EFECTOS VISUALES MEJORADOS ===== */
+/* ===== ESTILOS SIMPLES PARA LA CÁMARA ===== */
 
-/* Animaciones personalizadas */
-@keyframes scanning {
-  0% { 
-    transform: translateY(-100%); 
-    opacity: 0; 
-  }
-  10% { 
-    opacity: 1; 
-  }
-  90% { 
-    opacity: 1; 
-  }
-  100% { 
-    transform: translateY(200px); 
-    opacity: 0; 
-  }
+/* Efecto espejo para la cámara */
+.mirror-effect {
+  transform: scaleX(-1);
 }
 
-@keyframes corner-pulse {
-  0%, 100% { 
-    transform: scale(1);
-    opacity: 0.8;
-  }
-  50% { 
-    transform: scale(1.1);
-    opacity: 1;
-  }
-}
-
-@keyframes radar-sweep {
-  0% { 
-    transform: rotate(0deg) translateX(0); 
-  }
-  100% { 
-    transform: rotate(360deg) translateX(0); 
-  }
-}
-
-@keyframes float-particle {
-  0%, 100% { 
-    transform: translateY(0px) translateX(0px);
-    opacity: 0.3;
-  }
-  50% { 
-    transform: translateY(-20px) translateX(10px);
-    opacity: 0.7;
-  }
-}
-
-@keyframes glow {
-  0%, 100% { 
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
-  }
-  50% { 
-    box-shadow: 0 0 25px rgba(34, 197, 94, 0.8), 0 0 40px rgba(34, 197, 94, 0.3);
-  }
-}
-
-/* Clases de efectos */
-.scanning-line {
-  animation: scanning 2s infinite;
-  background: linear-gradient(to bottom, 
-    transparent 0%, 
-    rgba(34, 197, 94, 0.8) 45%, 
-    rgba(34, 197, 94, 1) 50%, 
-    rgba(34, 197, 94, 0.8) 55%, 
-    transparent 100%);
-}
-
-.corner-animation {
-  animation: corner-pulse 1.5s infinite;
-}
-
-.corner-delay-1 {
-  animation-delay: 0.2s;
-}
-
-.corner-delay-2 {
-  animation-delay: 0.4s;
-}
-
-.corner-delay-3 {
-  animation-delay: 0.6s;
-}
-
-.radar-line {
-  animation: radar-sweep 3s linear infinite;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(34, 197, 94, 0.1) 30%, 
-    rgba(34, 197, 94, 0.6) 50%, 
-    rgba(34, 197, 94, 0.1) 70%, 
-    transparent 100%);
-}
-
-.floating-particle {
-  animation: float-particle 3s infinite ease-in-out;
-}
-
-.particle-delay-1 {
-  animation-delay: 1s;
-}
-
-.particle-delay-2 {
-  animation-delay: 2s;
-}
-
-.particle-delay-3 {
-  animation-delay: 1.5s;
-}
-
-.particle-delay-4 {
-  animation-delay: 0.5s;
-}
-
-.glow-effect {
-  animation: glow 2s infinite alternate;
-}
-
-.detection-grid {
-  background-image: 
-    linear-gradient(rgba(34, 197, 94, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 197, 94, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
-  animation: float-particle 4s infinite ease-in-out;
-}
-
+/* Contenedor del scanner */
 .scanner-container {
   position: relative;
   overflow: hidden;
-}
-
-.scanner-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(34, 197, 94, 0.1),
-    transparent
-  );
-  animation: sweep 2s infinite;
-  z-index: 1;
-  pointer-events: none;
-}
-
-@keyframes sweep {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
 }
 </style>
