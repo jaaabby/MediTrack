@@ -66,7 +66,7 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Generar QR único para el lote
 		if batch.QRCode == "" {
-			qrCode, err := s.QRService.GenerateUniqueQRCode("BATCH")
+			qrCode, err := s.QRService.generateUniqueQRCode("BATCH", 0)
 			if err != nil {
 				return fmt.Errorf("error generando QR del lote: %v", err)
 			}
@@ -113,7 +113,7 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 		} else {
 			// Fallback: crear manualmente si el servicio no está disponible
 			for i := 0; i < individualCount; i++ {
-				qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
+				qrCode, err := s.QRService.generateUniqueQRCode("SUPPLY", 0)
 				if err != nil {
 					return fmt.Errorf("error generando QR para insumo %d: %v", i+1, err)
 				}

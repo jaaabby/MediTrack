@@ -22,7 +22,7 @@ func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, b
 		}
 		// Generar QR único para cada insumo individual si hay QRService
 		if s.QRService != nil {
-			qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
+			qrCode, err := s.QRService.generateUniqueQRCode("SUPPLY", 0)
 			if err != nil {
 				return nil, fmt.Errorf("error generando QR para insumo %d: %v", i+1, err)
 			}
@@ -48,7 +48,7 @@ func NewMedicalSupplyService(db *gorm.DB, qrService *QRService) *MedicalSupplySe
 func (s *MedicalSupplyService) CreateMedicalSupply(supply *models.MedicalSupply) error {
 	// Si hay QRService disponible, generar QR automáticamente
 	if s.QRService != nil && supply.QRCode == "" {
-		qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
+		qrCode, err := s.QRService.generateUniqueQRCode("SUPPLY", 0)
 		if err != nil {
 			return fmt.Errorf("error generando código QR: %v", err)
 		}
@@ -250,7 +250,7 @@ func (s *MedicalSupplyService) CreateMultipleIndividualSupplies(batchID int, cod
 
 			// Generar QR único para cada insumo individual si hay QRService
 			if s.QRService != nil {
-				qrCode, err := s.QRService.GenerateUniqueQRCode("SUPPLY")
+				qrCode, err := s.QRService.generateUniqueQRCode("SUPPLY", 0)
 				if err != nil {
 					return fmt.Errorf("error generando QR para insumo %d: %v", i+1, err)
 				}
