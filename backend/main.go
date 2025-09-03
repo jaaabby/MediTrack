@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"meditrack/config"
 	"meditrack/mailer"
@@ -14,10 +15,17 @@ import (
 )
 
 func main() {
-	// Cargar configuraciÃ³n
+	// Cargar configuración
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Error al cargar configuraciÃ³n: %v", err)
+		log.Fatalf("Error al cargar configuración: %v", err)
+	}
+
+	// Obtener secret key para JWT
+	secretKey := os.Getenv("JWT_SECRET_KEY")
+	if secretKey == "" {
+		secretKey = "default-secret-key-change-in-production"
+		log.Println("ADVERTENCIA: Usando secret key por defecto. Configura JWT_SECRET_KEY en producción.")
 	}
 
 	// Inicializar el mailer
@@ -69,6 +77,7 @@ func main() {
 		*supplyCodeService,
 		*qrService,
 		*batchHistoryService,
+		secretKey,
 	)
 
 	// Iniciar servidor correctamente con Gin

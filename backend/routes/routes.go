@@ -19,17 +19,21 @@ func SetupRoutes(
 	supplyCodeService services.SupplyCodeService,
 	qrService services.QRService,
 	batchHistoryService services.BatchHistoryService,
+	secretKey string,
 ) {
 	// API v1
 	v1 := router.Group("/api/v1")
 	{
-		// Configurar rutas de usuarios
-		SetupUserRoutes(v1, userService)
+		// Configurar rutas de autenticación
+		SetupAuthRoutes(v1, userService, secretKey)
 
-		// Configurar rutas de insumos mÃ©dicos
+		// Configurar rutas de usuarios
+		SetupUserRoutes(v1, userService, secretKey)
+
+		// Configurar rutas de insumos médicos
 		SetupMedicalSupplyRoutes(v1, medicalSupplyService)
 
-		// Configurar rutas de centros mÃ©dicos
+		// Configurar rutas de centros médicos
 		SetupMedicalCenterRoutes(v1, medicalCenterService)
 
 		// Configurar rutas de lotes
@@ -44,10 +48,10 @@ func SetupRoutes(
 		// Configurar rutas de historial de insumos
 		SetupSupplyHistoryRoutes(v1, supplyHistoryService)
 
-		// Configurar rutas de cÃ³digos de insumos
+		// Configurar rutas de códigos de insumos
 		SetupSupplyCodeRoutes(v1, supplyCodeService)
 
-		// Configurar rutas de cÃ³digos QR
+		// Configurar rutas de códigos QR
 		SetupQRRoutes(v1, qrService, medicalSupplyService)
 
 		// Configurar rutas de historial de lotes
@@ -63,7 +67,7 @@ func SetupRoutes(
 		})
 	})
 
-	// Ruta raÃ­z
+	// Ruta raíz
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Bienvenido a MediTrack API",

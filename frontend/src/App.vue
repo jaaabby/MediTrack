@@ -23,11 +23,23 @@
           
           <!-- Menú de usuario -->
           <div class="flex items-center space-x-4">
-            <button class="p-2 rounded-lg hover:bg-blue-700 transition-colors">
-              <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            <!-- Información del usuario autenticado -->
+            <div v-if="authStore.isAuthenticated" class="flex items-center space-x-3">
+              <div class="text-right text-white">
+                <p class="text-sm font-medium">{{ authStore.getUserName }}</p>
+                <p class="text-xs text-blue-200">{{ authStore.getUserRole }}</p>
+              </div>
+              <button 
+                @click="handleLogout"
+                class="p-2 rounded-lg hover:bg-blue-700 transition-colors"
+                title="Cerrar sesión"
+              >
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+            
           </div>
         </div>
       </div>
@@ -115,15 +127,27 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const searchQuery = ref('')
+
+// Inicializar autenticación al montar el componente
+onMounted(() => {
+  authStore.initializeAuth()
+})
 
 const handleSearch = () => {
   // TODO: Implementar lógica de búsqueda
   console.log('Buscando:', searchQuery.value)
+}
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/login')
 }
 </script>
 

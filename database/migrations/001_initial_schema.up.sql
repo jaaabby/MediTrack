@@ -49,9 +49,12 @@ CREATE TABLE "user" (
     rut VARCHAR(20) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    medical_center_id INTEGER NOT NULL REFERENCES medical_center(id)
+    password VARCHAR(255) NOT NULL, -- Este campo almacenará el hash de la contraseña
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega')),
+    medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 );
 
 CREATE TABLE supply_history (
@@ -82,6 +85,23 @@ CREATE INDEX idx_batch_history_batch_number ON batch_history(batch_number);
 -- Crear índices únicos para códigos QR
 CREATE UNIQUE INDEX idx_batch_qr_code ON batch(qr_code);
 CREATE UNIQUE INDEX idx_medical_supply_qr_code ON medical_supply(qr_code);
+
+
+
+-- Función para actualizar automáticamente updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = EXTRACT(EPOCH FROM NOW());
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para mantener updated_at actualizado en la tabla user
+CREATE TRIGGER update_user_updated_at
+    BEFORE UPDATE ON "user"
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Función para establecer automáticamente batch_number en batch_history
 CREATE OR REPLACE FUNCTION trg_set_batch_number() RETURNS trigger AS $$
@@ -159,3 +179,4 @@ CREATE TRIGGER trg_log_batch_delete
     AFTER DELETE ON batch 
     FOR EACH ROW 
     EXECUTE FUNCTION log_batch_delete();
+

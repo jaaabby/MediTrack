@@ -5,8 +5,32 @@ import QRScanner from '@/views/QRScanner.vue'
 import QRDetails from '@/views/QRDetails.vue'
 import QRConsumer from '@/views/QRConsumer.vue'
 import AddSupply from '@/views/AddSupply.vue'
+import Login from '@/views/Login.vue'
+import Register from '@/views/Register.vue'
 
 const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login,
+    meta: {
+      title: 'Iniciar Sesión - MediTrack',
+      description: 'Acceso al sistema de trazabilidad',
+      requiresAuth: false,
+      hideForAuth: true // Ocultar esta ruta si ya está autenticado
+    }
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: Register,
+    meta: {
+      title: 'Registro - MediTrack',
+      description: 'Crear nueva cuenta en el sistema de trazabilidad',
+      requiresAuth: false,
+      hideForAuth: true // Ocultar esta ruta si ya está autenticado
+    }
+  },
   {
     path: '/',
     name: 'Home',
@@ -14,7 +38,7 @@ const routes = [
     meta: {
       title: 'Inicio - MediTrack',
       description: 'Sistema de trazabilidad para dispositivos médicos',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   {
@@ -24,7 +48,7 @@ const routes = [
     meta: {
       title: 'Inventario - MediTrack',
       description: 'Gestión completa del inventario médico',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   {
@@ -34,7 +58,7 @@ const routes = [
     meta: {
       title: 'Agregar Insumo - MediTrack',
       description: 'Crear nuevos lotes con códigos QR únicos',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   {
@@ -44,7 +68,7 @@ const routes = [
     meta: {
       title: 'Escáner QR - MediTrack',
       description: 'Escanear códigos QR de productos y lotes',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   {
@@ -55,7 +79,7 @@ const routes = [
     meta: {
       title: 'Detalles QR - MediTrack',
       description: 'Información detallada del código QR escaneado',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   {
@@ -65,7 +89,7 @@ const routes = [
     meta: {
       title: 'Consumir Productos - MediTrack',
       description: 'Registrar consumo de insumos médicos',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   // Rutas de redirección para compatibilidad
@@ -129,7 +153,7 @@ const router = createRouter({
 })
 
 // Guard de navegación global - Antes de cada ruta
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   // Actualizar título de la página
   if (to.meta.title) {
     document.title = to.meta.title
@@ -149,11 +173,33 @@ router.beforeEach((to, from, next) => {
     }
   }
   
-  // Verificar autenticación cuando esté implementada
-  // if (to.meta.requiresAuth && !isAuthenticated()) {
-  //   next({ name: 'Login', query: { redirect: to.fullPath } })
-  //   return
-  // }
+  // Importar el store de autenticación dinámicamente para evitar dependencias circulares
+  const { useAuthStore } = await import('@/stores/auth')
+  const authStore = useAuthStore()
+  
+  // Inicializar autenticación si no está inicializada
+  if (!authStore.isAuthenticated && authStore.token === null) {
+    authStore.initializeAuth()
+  }
+  
+  // Verificar autenticación
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next({ name: 'Login', query: { redirect: to.fullPath } })
+    return
+  }
+  
+  // Redirigir al home si está autenticado y trata de acceder al login
+  if (to.meta.hideForAuth && authStore.isAuthenticated) {
+    next({ name: 'Home' })
+    return
+  }
+  
+  // Verificar permisos de acceso a la ruta
+  if (to.meta.requiresAuth && authStore.isAuthenticated && !authStore.canAccessRoute(to.name)) {
+    // Redirigir al home si no tiene permisos para la ruta
+    next({ name: 'Home' })
+    return
+  }
   
   // Logging para desarrollo (remover en producción)
   if (import.meta.env.DEV) {

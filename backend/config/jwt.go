@@ -9,16 +9,18 @@ import (
 
 // Claims representa los claims del token JWT
 type Claims struct {
-	UserID uint   `json:"user_id"`
+	UserID string `json:"user_id"`
 	Email  string `json:"email"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken genera un nuevo token JWT
-func GenerateToken(userID uint, email string, secretKey string, duration time.Duration) (string, error) {
+func GenerateToken(userID string, email string, role string, secretKey string, duration time.Duration) (string, error) {
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -48,4 +50,12 @@ func ValidateToken(tokenString string, secretKey string) (*Claims, error) {
 	}
 
 	return nil, fmt.Errorf("token inválido")
+}
+
+// ExtractTokenFromHeader extrae el token del header Authorization
+func ExtractTokenFromHeader(authHeader string) (string, error) {
+	if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
+		return "", fmt.Errorf("formato de autorización inválido")
+	}
+	return authHeader[7:], nil
 }

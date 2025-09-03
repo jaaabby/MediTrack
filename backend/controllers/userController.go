@@ -26,8 +26,8 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	var userRequest struct {
 		RUT             string `json:"rut" binding:"required"`
 		Name            string `json:"name" binding:"required"`
-		Email           string `json:"email"`
-		Password        string `json:"password" binding:"required"`
+		Email           string `json:"email" binding:"required,email"`
+		Password        string `json:"password" binding:"required,min=6"`
 		Role            string `json:"role" binding:"required"`
 		MedicalCenterID int    `json:"medical_center_id" binding:"required"`
 	}
@@ -40,7 +40,17 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	// Crear modelo - RUT es la primary key
+	// Validar rol
+	tempUser := models.User{Role: userRequest.Role}
+	if !tempUser.IsValidRole() {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Rol inválido. Roles permitidos: admin, pabellón, encargado de bodega",
+		})
+		return
+	}
+
+	// Crear modelo
 	user := models.User{
 		RUT:             userRequest.RUT,
 		Name:            userRequest.Name,
@@ -48,6 +58,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		Password:        userRequest.Password,
 		Role:            userRequest.Role,
 		MedicalCenterID: userRequest.MedicalCenterID,
+		IsActive:        true,
 	}
 
 	if err := c.userService.CreateUser(&user); err != nil {
@@ -61,7 +72,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, Response{
 		Success: true,
 		Message: "Usuario creado exitosamente",
-		Data:    user,
+		Data:    user.ToResponse(),
 	})
 }
 
@@ -87,7 +98,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
-		Data:    user,
+		Data:    user.ToResponse(),
 	})
 }
 
@@ -102,9 +113,55 @@ func (c *UserController) GetAllUsers(ctx *gin.Context) {
 		return
 	}
 
+	// Convertir a UserResponse
+	var userResponses []models.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, user.ToResponse())
+	}
+
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
-		Data:    users,
+		Data:    userResponses,
+	})
+}
+
+// GetUsersByRole obtiene usuarios por rol
+func (c *UserController) GetUsersByRole(ctx *gin.Context) {
+	role := ctx.Query("role")
+	if role == "" {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Rol requerido",
+		})
+		return
+	}
+
+	user := models.User{Role: role}
+	if !user.IsValidRole() {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Rol inválido",
+		})
+		return
+	}
+
+	users, err := c.userService.GetUsersByRole(role)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error al obtener usuarios: " + err.Error(),
+		})
+		return
+	}
+
+	var userResponses []models.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, user.ToResponse())
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    userResponses,
 	})
 }
 
@@ -119,8 +176,16 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := ctx.ShouldBindJSON(&user); err != nil {
+	var userRequest struct {
+		Name            string `json:"name"`
+		Email           string `json:"email"`
+		Password        string `json:"password"`
+		Role            string `json:"role"`
+		MedicalCenterID int    `json:"medical_center_id"`
+		IsActive        *bool  `json:"is_active"`
+	}
+
+	if err := ctx.ShouldBindJSON(&userRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Error:   "Datos de usuario inválidos: " + err.Error(),
@@ -128,7 +193,34 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	if _, err := c.userService.UpdateUser(rut, &user); err != nil {
+	// Validar rol si se proporciona
+	if userRequest.Role != "" {
+		user := models.User{Role: userRequest.Role}
+		if !user.IsValidRole() {
+			ctx.JSON(http.StatusBadRequest, Response{
+				Success: false,
+				Error:   "Rol inválido. Roles permitidos: admin, pabellón, encargado de bodega",
+			})
+			return
+		}
+	}
+
+	// Crear usuario para actualización
+	user := models.User{
+		RUT:             rut,
+		Name:            userRequest.Name,
+		Email:           userRequest.Email,
+		Password:        userRequest.Password,
+		Role:            userRequest.Role,
+		MedicalCenterID: userRequest.MedicalCenterID,
+	}
+
+	if userRequest.IsActive != nil {
+		user.IsActive = *userRequest.IsActive
+	}
+
+	updatedUser, err := c.userService.UpdateUser(rut, &user)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al actualizar usuario: " + err.Error(),
@@ -139,7 +231,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Usuario actualizado exitosamente",
-		Data:    user,
+		Data:    updatedUser.ToResponse(),
 	})
 }
 
@@ -165,5 +257,55 @@ func (c *UserController) DeleteUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Usuario eliminado exitosamente",
+	})
+}
+
+// DeactivateUser desactiva un usuario
+func (c *UserController) DeactivateUser(ctx *gin.Context) {
+	rut := ctx.Param("id")
+	if rut == "" {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "RUT de usuario requerido",
+		})
+		return
+	}
+
+	if err := c.userService.DeactivateUser(rut); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error al desactivar usuario: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Usuario desactivado exitosamente",
+	})
+}
+
+// ActivateUser activa un usuario
+func (c *UserController) ActivateUser(ctx *gin.Context) {
+	rut := ctx.Param("id")
+	if rut == "" {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "RUT de usuario requerido",
+		})
+		return
+	}
+
+	if err := c.userService.ActivateUser(rut); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error al activar usuario: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Usuario activado exitosamente",
 	})
 }

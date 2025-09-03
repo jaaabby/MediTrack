@@ -100,7 +100,7 @@
         </div>
       </div>
 
-      <!-- Reportes de inventario -->
+      <!-- Reportes de inventario 
       <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer opacity-75" @click="navigateTo('/inventory/reports')">
         <div class="flex items-center gap-4">
           <div class="bg-purple-100 p-3 rounded-lg">
@@ -113,9 +113,9 @@
             <p class="text-gray-600 text-sm">Análisis y estadísticas <span class="text-yellow-600">(Próximamente)</span></p>
           </div>
         </div>
-      </div>
+      </div>-->
 
-      <!-- Movimientos de stock -->
+      <!-- Movimientos de stock
       <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer opacity-75" @click="navigateTo('/inventory/movements')">
         <div class="flex items-center gap-4">
           <div class="bg-indigo-100 p-3 rounded-lg">
@@ -128,9 +128,9 @@
             <p class="text-gray-600 text-sm">Entradas y salidas de stock <span class="text-yellow-600">(Próximamente)</span></p>
           </div>
         </div>
-      </div>
+      </div>-->
 
-      <!-- Configuración -->
+      <!-- Configuración
       <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer opacity-75" @click="navigateTo('/inventory/settings')">
         <div class="flex items-center gap-4">
           <div class="bg-gray-100 p-3 rounded-lg">
@@ -144,7 +144,7 @@
             <p class="text-gray-600 text-sm">Ajustes del sistema <span class="text-yellow-600">(Próximamente)</span></p>
           </div>
         </div>
-      </div>
+      </div>-->
     </div>
 
     

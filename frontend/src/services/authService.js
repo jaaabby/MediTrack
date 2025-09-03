@@ -1,0 +1,196 @@
+// Servicio de autenticación para comunicarse con el backend
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+
+class AuthService {
+  constructor() {
+    this.baseURL = API_BASE_URL
+  }
+
+  // Realizar login
+  async login(email, password) {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al iniciar sesión')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al iniciar sesión')
+      }
+
+      return data.data
+    } catch (error) {
+      console.error('Error en AuthService.login:', error)
+      throw error
+    }
+  }
+
+  // Registrar nuevo usuario
+  async register(userData) {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al registrar usuario')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al registrar usuario')
+      }
+
+      return data.data
+    } catch (error) {
+      console.error('Error en AuthService.register:', error)
+      throw error
+    }
+  }
+
+  // Obtener perfil del usuario autenticado
+  async getProfile() {
+    try {
+      const token = this.getToken()
+      if (!token) {
+        throw new Error('No hay token de autenticación')
+      }
+
+      const response = await fetch(`${this.baseURL}/auth/profile`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al obtener perfil')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al obtener perfil')
+      }
+
+      return data.data
+    } catch (error) {
+      console.error('Error en AuthService.getProfile:', error)
+      throw error
+    }
+  }
+
+  // Cambiar contraseña
+  async changePassword(currentPassword, newPassword) {
+    try {
+      const token = this.getToken()
+      if (!token) {
+        throw new Error('No hay token de autenticación')
+      }
+
+      const response = await fetch(`${this.baseURL}/auth/change-password`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cambiar contraseña')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al cambiar contraseña')
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error en AuthService.changePassword:', error)
+      throw error
+    }
+  }
+
+  // Guardar token en localStorage
+  setToken(token) {
+    localStorage.setItem('auth_token', token)
+  }
+
+  // Obtener token de localStorage
+  getToken() {
+    return localStorage.getItem('auth_token')
+  }
+
+  // Remover token de localStorage
+  removeToken() {
+    localStorage.removeItem('auth_token')
+  }
+
+  // Verificar si el token ha expirado
+  isTokenExpired(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      return payload.exp * 1000 < Date.now()
+    } catch (error) {
+      return true
+    }
+  }
+
+  // Verificar si el usuario está autenticado
+  isAuthenticated() {
+    const token = this.getToken()
+    return token && !this.isTokenExpired(token)
+  }
+
+  // Obtener información del usuario del token
+  getUserFromToken(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      return {
+        rut: payload.sub,
+        email: payload.email,
+        role: payload.role,
+        exp: payload.exp
+      }
+    } catch (error) {
+      console.error('Error al decodificar token:', error)
+      return null
+    }
+  }
+
+  // Logout
+  logout() {
+    this.removeToken()
+    // Redirigir al login
+    window.location.href = '/login'
+  }
+}
+
+// Crear instancia única del servicio
+const authService = new AuthService()
+
+export default authService

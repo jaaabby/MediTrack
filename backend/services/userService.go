@@ -57,3 +57,33 @@ func (s *UserService) GetAllUsers() ([]models.User, error) {
 	}
 	return users, nil
 }
+
+func (s *UserService) GetUserByEmail(email string) (*models.User, error) {
+	var user models.User
+	if err := s.DB.First(&user, "email = ?", email).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (s *UserService) GetUsersByRole(role string) ([]models.User, error) {
+	var users []models.User
+	if err := s.DB.Where("role = ?", role).Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func (s *UserService) DeactivateUser(rut string) error {
+	if err := s.DB.Model(&models.User{}).Where("rut = ?", rut).Update("is_active", false).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UserService) ActivateUser(rut string) error {
+	if err := s.DB.Model(&models.User{}).Where("rut = ?", rut).Update("is_active", true).Error; err != nil {
+		return err
+	}
+	return nil
+}
