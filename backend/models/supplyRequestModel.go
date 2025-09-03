@@ -1,0 +1,208 @@
+package models
+
+import (
+	"time"
+)
+
+// SupplyRequest representa una solicitud de insumo con trazabilidad QR
+type SupplyRequest struct {
+	ID              int        `json:"id" gorm:"primaryKey;autoIncrement"`
+	RequestNumber   string     `json:"request_number" gorm:"unique;not null"`
+	PavilionID      int        `json:"pavilion_id" gorm:"not null"`
+	RequestedBy     string     `json:"requested_by" gorm:"not null"` // RUT del solicitante
+	RequestedByName string     `json:"requested_by_name" gorm:"not null"`
+	RequestDate     time.Time  `json:"request_date" gorm:"not null"`
+	Status          string     `json:"status" gorm:"not null;default:pending"`
+	Priority        string     `json:"priority" gorm:"not null;default:normal"`
+	Notes           string     `json:"notes" gorm:"type:text"`
+	ApprovedBy      *string    `json:"approved_by"`
+	ApprovedByName  *string    `json:"approved_by_name"`
+	ApprovalDate    *time.Time `json:"approval_date"`
+	CompletedDate   *time.Time `json:"completed_date"`
+	MedicalCenterID int        `json:"medical_center_id" gorm:"not null"`
+	CreatedAt       time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// SupplyRequestItem representa un item individual dentro de una solicitud
+type SupplyRequestItem struct {
+	ID                int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	SupplyRequestID   int       `json:"supply_request_id" gorm:"not null"`
+	SupplyCode        int       `json:"supply_code" gorm:"not null"`
+	SupplyName        string    `json:"supply_name" gorm:"not null"`
+	QuantityRequested int       `json:"quantity_requested" gorm:"not null"`
+	QuantityApproved  *int      `json:"quantity_approved"`
+	QuantityDelivered int       `json:"quantity_delivered" gorm:"default:0"`
+	Specifications    string    `json:"specifications" gorm:"type:text"`
+	IsPediatric       bool      `json:"is_pediatric" gorm:"default:false"`
+	Size              *string   `json:"size"`
+	Brand             *string   `json:"brand"`
+	SpecialRequests   string    `json:"special_requests" gorm:"type:text"`
+	UrgencyLevel      string    `json:"urgency_level" gorm:"default:normal"`
+	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+	// Relaciones
+	SupplyRequest  SupplyRequest `json:"supply_request,omitempty" gorm:"foreignKey:SupplyRequestID"`
+	SupplyCodeInfo SupplyCode    `json:"supply_code_info,omitempty" gorm:"foreignKey:SupplyCode;references:Code"`
+}
+
+// SupplyRequestQRAssignment vincula códigos QR específicos con items de solicitud
+type SupplyRequestQRAssignment struct {
+	ID                  int        `json:"id" gorm:"primaryKey;autoIncrement"`
+	SupplyRequestID     int        `json:"supply_request_id" gorm:"not null"`
+	SupplyRequestItemID int        `json:"supply_request_item_id" gorm:"not null"`
+	QRCode              string     `json:"qr_code" gorm:"not null"`
+	MedicalSupplyID     int        `json:"medical_supply_id" gorm:"not null"`
+	AssignedDate        time.Time  `json:"assigned_date" gorm:"not null"`
+	AssignedBy          string     `json:"assigned_by" gorm:"not null"`
+	AssignedByName      string     `json:"assigned_by_name" gorm:"not null"`
+	DeliveredDate       *time.Time `json:"delivered_date"`
+	DeliveredBy         *string    `json:"delivered_by"`
+	DeliveredByName     *string    `json:"delivered_by_name"`
+	Status              string     `json:"status" gorm:"not null;default:assigned"`
+	Notes               string     `json:"notes" gorm:"type:text"`
+	CreatedAt           time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt           time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+
+	// Relaciones
+	SupplyRequest     SupplyRequest     `json:"supply_request,omitempty" gorm:"foreignKey:SupplyRequestID"`
+	SupplyRequestItem SupplyRequestItem `json:"supply_request_item,omitempty" gorm:"foreignKey:SupplyRequestItemID"`
+	MedicalSupply     MedicalSupply     `json:"medical_supply,omitempty" gorm:"foreignKey:MedicalSupplyID"`
+}
+
+// Constantes para Status de SupplyRequest
+const (
+	RequestStatusPending   = "pending"
+	RequestStatusApproved  = "approved"
+	RequestStatusRejected  = "rejected"
+	RequestStatusInProcess = "in_process"
+	RequestStatusCompleted = "completed"
+	RequestStatusCancelled = "cancelled"
+)
+
+// Constantes para Priority de SupplyRequest
+const (
+	RequestPriorityLow      = "low"
+	RequestPriorityNormal   = "normal"
+	RequestPriorityHigh     = "high"
+	RequestPriorityCritical = "critical"
+)
+
+// Constantes para UrgencyLevel de SupplyRequestItem
+const (
+	UrgencyLevelLow      = "low"
+	UrgencyLevelNormal   = "normal"
+	UrgencyLevelHigh     = "high"
+	UrgencyLevelCritical = "critical"
+)
+
+// Constantes para Status de SupplyRequestQRAssignment
+const (
+	AssignmentStatusAssigned  = "assigned"
+	AssignmentStatusDelivered = "delivered"
+	AssignmentStatusConsumed  = "consumed"
+	AssignmentStatusReturned  = "returned"
+	AssignmentStatusLost      = "lost"
+)
+
+// TableName especifica el nombre de la tabla para SupplyRequest
+func (s SupplyRequest) TableName() string {
+	return "supply_request"
+}
+
+// TableName especifica el nombre de la tabla para SupplyRequestItem
+func (s SupplyRequestItem) TableName() string {
+	return "supply_request_item"
+}
+
+// TableName especifica el nombre de la tabla para SupplyRequestQRAssignment
+func (s SupplyRequestQRAssignment) TableName() string {
+	return "supply_request_qr_assignment"
+}
+
+// GetStatusLabel retorna una etiqueta legible para el estado
+func (s *SupplyRequest) GetStatusLabel() string {
+	switch s.Status {
+	case RequestStatusPending:
+		return "Pendiente"
+	case RequestStatusApproved:
+		return "Aprobada"
+	case RequestStatusRejected:
+		return "Rechazada"
+	case RequestStatusInProcess:
+		return "En Proceso"
+	case RequestStatusCompleted:
+		return "Completada"
+	case RequestStatusCancelled:
+		return "Cancelada"
+	default:
+		return "Desconocido"
+	}
+}
+
+// GetPriorityLabel retorna una etiqueta legible para la prioridad
+func (s *SupplyRequest) GetPriorityLabel() string {
+	switch s.Priority {
+	case RequestPriorityLow:
+		return "Baja"
+	case RequestPriorityNormal:
+		return "Normal"
+	case RequestPriorityHigh:
+		return "Alta"
+	case RequestPriorityCritical:
+		return "Crítica"
+	default:
+		return "Normal"
+	}
+}
+
+// IsEditable verifica si la solicitud puede ser editada
+func (s *SupplyRequest) IsEditable() bool {
+	return s.Status == RequestStatusPending
+}
+
+// CanBeApproved verifica si la solicitud puede ser aprobada
+func (s *SupplyRequest) CanBeApproved() bool {
+	return s.Status == RequestStatusPending
+}
+
+// CanBeProcessed verifica si la solicitud puede ser procesada (asignar QRs)
+func (s *SupplyRequest) CanBeProcessed() bool {
+	return s.Status == RequestStatusApproved
+}
+
+// GenerateRequestNumber genera un número de solicitud único
+func GenerateRequestNumber() string {
+	now := time.Now()
+	return "SOL-" + now.Format("20060102150405")
+}
+
+// GetTotalItemsRequested calcula el total de items solicitados
+func (s *SupplyRequest) GetTotalItemsRequested(items []SupplyRequestItem) int {
+	total := 0
+	for _, item := range items {
+		total += item.QuantityRequested
+	}
+	return total
+}
+
+// GetTotalItemsApproved calcula el total de items aprobados
+func (s *SupplyRequest) GetTotalItemsApproved(items []SupplyRequestItem) int {
+	total := 0
+	for _, item := range items {
+		if item.QuantityApproved != nil {
+			total += *item.QuantityApproved
+		}
+	}
+	return total
+}
+
+// GetTotalItemsDelivered calcula el total de items entregados
+func (s *SupplyRequest) GetTotalItemsDelivered(items []SupplyRequestItem) int {
+	total := 0
+	for _, item := range items {
+		total += item.QuantityDelivered
+	}
+	return total
+}

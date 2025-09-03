@@ -9,6 +9,7 @@ import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 
 const routes = [
+  // Ruta principal
   {
     path: '/login',
     name: 'Login',
@@ -34,87 +35,131 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: Home,
+    component: () => import('@/views/Home.vue'),
     meta: {
       title: 'Inicio - MediTrack',
       description: 'Sistema de trazabilidad para dispositivos médicos',
       requiresAuth: true
     }
   },
+  
+  // Rutas de inventario
   {
     path: '/inventory',
     name: 'Inventory',
-    component: Inventory,
+    component: () => import('@/views/Inventory.vue'),
     meta: {
       title: 'Inventario - MediTrack',
       description: 'Gestión completa del inventario médico',
       requiresAuth: true
+      description: 'Gestión de inventario médico',
+      requiresAuth: false
     }
   },
   {
-    path: '/add-supply',
+    path: '/inventory/add',
     name: 'AddSupply',
-    component: AddSupply,
+    component: () => import('@/views/AddSupply.vue'),
     meta: {
       title: 'Agregar Insumo - MediTrack',
       description: 'Crear nuevos lotes con códigos QR únicos',
       requiresAuth: true
+      description: 'Agregar nuevo insumo médico',
+      requiresAuth: false
     }
   },
+
+  // Rutas de códigos QR
   {
     path: '/qr',
     name: 'QRScanner',
-    component: QRScanner,
+    component: () => import('@/views/QRScanner.vue'),
     meta: {
       title: 'Escáner QR - MediTrack',
       description: 'Escanear códigos QR de productos y lotes',
       requiresAuth: true
+      description: 'Escanear códigos QR de insumos médicos',
+      requiresAuth: false
     }
   },
+
+  // ========================================
+  // NUEVAS RUTAS DE SOLICITUDES DE INSUMO
+  // ========================================
+  
   {
-    path: '/qr/:qrcode',
-    name: 'QRDetails',
-    component: QRDetails,
-    props: true,
+    path: '/supply-requests',
+    name: 'SupplyRequestList',
+    component: () => import('@/views/SupplyRequestList.vue'),
     meta: {
       title: 'Detalles QR - MediTrack',
       description: 'Información detallada del código QR escaneado',
       requiresAuth: true
+      title: 'Solicitudes de Insumo - MediTrack',
+      description: 'Gestión de solicitudes de insumo con trazabilidad QR',
+      requiresAuth: false
     }
   },
   {
-    path: '/consume',
-    name: 'QRConsumer',
-    component: QRConsumer,
+    path: '/supply-requests/new',
+    name: 'SupplyRequestForm',
+    component: () => import('@/views/SupplyRequestForm.vue'),
     meta: {
       title: 'Consumir Productos - MediTrack',
       description: 'Registrar consumo de insumos médicos',
       requiresAuth: true
+      title: 'Nueva Solicitud - MediTrack',
+      description: 'Crear nueva solicitud de insumo',
+      requiresAuth: false
     }
   },
-  // Rutas de redirección para compatibilidad
   {
-    path: '/scanner',
-    redirect: '/qr'
+    path: '/supply-requests/:id',
+    name: 'SupplyRequestDetail',
+    component: () => import('@/views/SupplyRequestDetail.vue'),
+    props: route => ({ id: parseInt(route.params.id) }),
+    meta: {
+      title: 'Detalle de Solicitud - MediTrack',
+      description: 'Ver detalles y trazabilidad de solicitud de insumo',
+      requiresAuth: false
+    }
   },
   {
-    path: '/scan',
-    redirect: '/qr'
+    path: '/supply-requests/:id/edit',
+    name: 'SupplyRequestEdit',
+    component: () => import('@/views/SupplyRequestForm.vue'),
+    props: route => ({ id: parseInt(route.params.id), editMode: true }),
+    meta: {
+      title: 'Editar Solicitud - MediTrack',
+      description: 'Editar solicitud de insumo existente',
+      requiresAuth: false
+    }
   },
+
+  // Ruta específica para trazabilidad QR avanzada
   {
-    path: '/qr-scanner',
-    redirect: '/qr'
+    path: '/qr/:qrCode/traceability',
+    name: 'QRTraceability',
+    component: () => import('@/views/QRTraceability.vue'),
+    props: route => ({ qrCode: route.params.qrCode }),
+    meta: {
+      title: 'Trazabilidad QR - MediTrack',
+      description: 'Trazabilidad completa del código QR',
+      requiresAuth: false
+    }
   },
+
+  // Redirecciones y rutas de error
   {
-    path: '/consumption',
-    redirect: '/consume'
+    path: '/404',
+    name: 'NotFound',
+    component: () => import('@/views/NotFound.vue'),
+    meta: {
+      title: 'Página no encontrada - MediTrack',
+      description: 'La página solicitada no existe',
+      requiresAuth: false
+    }
   },
-  {
-    path: '/consume-supply',
-    redirect: '/consume'
-  },
-  
-  // Ruta 404
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
@@ -201,6 +246,12 @@ router.beforeEach(async (to, from, next) => {
     return
   }
   
+  // Ocultar páginas de auth si ya está autenticado
+  // if (to.meta.hideForAuth && isAuthenticated()) {
+  //   next({ name: 'Home' })
+  //   return
+  // }
+  
   // Logging para desarrollo (remover en producción)
   if (import.meta.env.DEV) {
     console.log(`Navegando de ${from.fullPath} a ${to.fullPath}`)
@@ -240,46 +291,11 @@ router.onError((error) => {
 // function isTokenExpired(token) {
 //   try {
 //     const payload = JSON.parse(atob(token.split('.')[1]))
-//     return payload.exp * 1000 < Date.now()
-//   } catch (error) {
+//     const currentTime = Date.now() / 1000
+//     return payload.exp < currentTime
+//   } catch {
 //     return true
 //   }
 // }
-
-// Verificar permisos del usuario
-// function hasPermission(permission) {
-//   const userPermissions = JSON.parse(localStorage.getItem('user_permissions') || '[]')
-//   return userPermissions.includes(permission)
-// }
-
-// Funciones para validación de rutas QR
-export function validateQRRoute(qrcode) {
-  // Validar formato de código QR
-  const qrPattern = /^(BATCH|SUPPLY)_\d+_[a-f0-9]+$/i
-  return qrPattern.test(qrcode)
-}
-
-// Función para generar rutas programáticas
-export function generateQRRoute(qrcode) {
-  return {
-    name: 'QRDetails',
-    params: { qrcode }
-  }
-}
-
-export function generateConsumeRoute(qrcode = null) {
-  const route = { name: 'QRConsumer' }
-  if (qrcode) {
-    route.query = { qr: qrcode }
-  }
-  return route
-}
-
-// Función para obtener la ruta anterior válida
-export function getPreviousRoute(currentRoute, fallback = { name: 'Home' }) {
-  const history = router.getRoutes()
-  // Implementar lógica para obtener ruta anterior si es necesario
-  return fallback
-}
 
 export default router

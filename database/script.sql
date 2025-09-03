@@ -172,3 +172,20 @@ INSERT INTO batch_history (date_time, change_details, previous_values, new_value
 ('2025-08-16 13:00:00', 'Lote creado', NULL, '{"expiration_date": "2025-10-15", "amount": 8, "supplier": "Proveedor Cuatro", "store_id": 2}', 'Administrador del Sistema', 4, '12345678-9', 4),
 ('2025-08-16 14:00:00', 'Cantidad actualizada', '{"amount": 10}', '{"amount": 8}', 'Encargado Bodega', 1, '11111111-1', 1)
 ON CONFLICT DO NOTHING;
+-- Insertar solicitud de ejemplo
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, status, priority, notes, medical_center_id
+) VALUES (
+    'SOL-20250120140000', 1, '12345678-9', 'Juan Pérez',
+    NOW() - INTERVAL '1 hour', 'pending', 'normal',
+    'Solicitud de prueba para implementación de trazabilidad QR', 1
+);
+-- Insertar items de ejemplo
+
+INSERT INTO supply_request_item (
+    supply_request_id, supply_code, supply_name, quantity_requested,
+    specifications, is_pediatric, size, urgency_level
+) VALUES 
+(1, 1001, 'Guantes', 50, 'Talla M, látex libre', FALSE, 'M', 'normal'),
+(1, 1002, 'Mascarillas', 100, 'N95, uso pediátrico', TRUE, 'Pediatric', 'high');

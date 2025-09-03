@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"meditrack/config"
+	"meditrack/controllers"
 	"meditrack/mailer"
 	"meditrack/middleware"
 	"meditrack/routes"
@@ -64,7 +65,7 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORSMiddleware())
 
-	// Configurar rutas
+	// Configurar rutas principales
 	routes.SetupRoutes(
 		router,
 		*userService,
@@ -79,6 +80,13 @@ func main() {
 		*batchHistoryService,
 		secretKey,
 	)
+
+	// Inicializar servicio y controlador de SupplyRequest
+	supplyRequestService := services.NewSupplyRequestService(db)
+	supplyRequestController := controllers.NewSupplyRequestController(supplyRequestService, qrService)
+
+	// Registrar rutas de supply requests y trazabilidad QR
+	routes.SetupSupplyRequestRoutes(router, supplyRequestController)
 
 	// Iniciar servidor correctamente con Gin
 	log.Printf("Servidor iniciando en puerto %d", cfg.Server.Port)

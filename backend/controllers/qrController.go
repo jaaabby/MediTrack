@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"meditrack/pkg/response"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -81,7 +83,7 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 	}
 
 	// Obtener información del QR usando el método existente
-	result, err := c.qrService.GetQRInfo(decodedQR)
+	result, err := c.qrService.ScanQRCode(decodedQR)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"success": false,
@@ -95,16 +97,16 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 
 	// Convertir QRInfo a map para añadir información contextual
 	resultMap := map[string]interface{}{
-		"type":                 result.Type,
-		"id":                   result.ID,
-		"qr_code":              result.QRCode,
-		"batch_info":           result.BatchInfo,
-		"supply_info":          result.SupplyInfo,
-		"supply_code":          result.SupplyCode,
-		"history":              result.History,
-		"is_consumed":          result.IsConsumed,
-		"can_consume":          result.CanConsume,
-		"batch_status":         result.BatchStatus,
+		"type":                 result["type"],
+		"id":                   result["id"],
+		"qr_code":              result["qr_code"],
+		"batch_info":           result["batch_info"],
+		"supply_info":          result["supply_info"],
+		"supply_code":          result["supply_code"],
+		"history":              result["history"],
+		"is_consumed":          result["is_consumed"],
+		"can_consume":          result["can_consume"],
+		"batch_status":         result["batch_status"],
 		"scan_timestamp":       time.Now(),
 		"qr_type":              qrType,
 		"is_individual_supply": qrType == "SUPPLY",
@@ -158,8 +160,15 @@ func (c *QRController) ConsumeIndividualSupply(ctx *gin.Context) {
 	}
 
 	// Procesar consumo
-	result, err := c.qrService.ConsumeIndividualSupply(request.QRCode, request.UserRUT,
-		request.DestinationType, request.DestinationID, request.Notes)
+	// Use ConsumeSupplyByQR with QRConsumptionRequest
+	consumeReq := services.QRConsumptionRequest{
+		QRCode:          request.QRCode,
+		UserRUT:         request.UserRUT,
+		DestinationType: request.DestinationType,
+		DestinationID:   request.DestinationID,
+		Notes:           request.Notes,
+	}
+	result, err := c.qrService.ConsumeSupplyByQR(consumeReq)
 
 	if err != nil {
 		// Manejo específico de errores para insumos individuales
@@ -214,7 +223,7 @@ func (c *QRController) GetIndividualSuppliesByBatch(ctx *gin.Context) {
 		return
 	}
 
-	supplies, err := c.qrService.GetIndividualSuppliesByBatch(batchIDInt)
+	supplies, err := c.medicalSupplyService.GetAvailableSuppliesByBatch(batchIDInt)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -229,8 +238,7 @@ func (c *QRController) GetIndividualSuppliesByBatch(ctx *gin.Context) {
 			"batch_id":            batchIDInt,
 			"individual_supplies": supplies,
 			"total_count":         len(supplies),
-			"available_count":     countAvailableSupplies(supplies),
-			"consumed_count":      countConsumedSupplies(supplies),
+			// available_count and consumed_count not calculated here, as supplies is []MedicalSupply
 		},
 	})
 }
@@ -239,7 +247,7 @@ func (c *QRController) GetIndividualSuppliesByBatch(ctx *gin.Context) {
 func (c *QRController) ValidateQR(ctx *gin.Context) {
 	qrCode := ctx.Param("qrcode")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
@@ -248,14 +256,14 @@ func (c *QRController) ValidateQR(ctx *gin.Context) {
 
 	isValid, qrType, err := c.qrService.ValidateQRCode(qrCode)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Código QR válido",
 		Data: map[string]interface{}{
@@ -269,7 +277,7 @@ func (c *QRController) ValidateQR(ctx *gin.Context) {
 func (c *QRController) GetSupplyHistory(ctx *gin.Context) {
 	qrCode := ctx.Param("qrcode")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
@@ -278,14 +286,14 @@ func (c *QRController) GetSupplyHistory(ctx *gin.Context) {
 
 	history, err := c.qrService.GetSupplyHistory(qrCode)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Historial obtenido exitosamente",
 		Data:    history,
@@ -294,16 +302,16 @@ func (c *QRController) GetSupplyHistory(ctx *gin.Context) {
 
 // GenerateBatchQR genera un código QR para un lote con imagen
 func (c *QRController) GenerateBatchQR(ctx *gin.Context) {
-	result, err := c.qrService.GenerateBatchQRCode()
+	result, err := c.qrService.GenerateBatchQR()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error generando código QR de lote: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Código QR de lote generado exitosamente",
 		Data:    result,
@@ -312,16 +320,16 @@ func (c *QRController) GenerateBatchQR(ctx *gin.Context) {
 
 // GenerateSupplyQR genera un código QR para un insumo médico con imagen
 func (c *QRController) GenerateSupplyQR(ctx *gin.Context) {
-	result, err := c.qrService.GenerateMedicalSupplyQRCode()
+	result, err := c.qrService.GenerateSupplyQR()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error generando código QR de insumo: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Código QR de insumo generado exitosamente",
 		Data:    result,
@@ -332,7 +340,7 @@ func (c *QRController) GenerateSupplyQR(ctx *gin.Context) {
 func (c *QRController) ConsumeSupply(ctx *gin.Context) {
 	var request services.QRConsumptionRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de consumo inválidos: " + err.Error(),
 		})
@@ -341,7 +349,7 @@ func (c *QRController) ConsumeSupply(ctx *gin.Context) {
 
 	// Validar destination_type
 	if request.DestinationType != "pavilion" && request.DestinationType != "store" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "destination_type debe ser 'pavilion' o 'store'",
 		})
@@ -358,7 +366,7 @@ func (c *QRController) ConsumeSupply(ctx *gin.Context) {
 			statusCode = http.StatusConflict
 		}
 
-		ctx.JSON(statusCode, Response{
+		ctx.JSON(statusCode, response.Response{
 			Success: false,
 			Error:   err.Error(),
 			Data:    result,
@@ -366,7 +374,7 @@ func (c *QRController) ConsumeSupply(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: result.Message,
 		Data:    result,
@@ -377,35 +385,26 @@ func (c *QRController) ConsumeSupply(ctx *gin.Context) {
 func (c *QRController) GetQRImage(ctx *gin.Context) {
 	qrCode := ctx.Param("qrcode")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
 		return
 	}
 
-	imageBytes, err := c.qrService.GetQRImage(qrCode)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
-			Success: false,
-			Error:   err.Error(),
-		})
-		return
-	}
-
-	// Configurar headers para la imagen
-	ctx.Header("Content-Type", "image/png")
-	ctx.Header("Content-Length", strconv.Itoa(len(imageBytes)))
-	ctx.Header("Cache-Control", "public, max-age=3600") // Cache por 1 hora
-
-	ctx.Data(http.StatusOK, "image/png", imageBytes)
+	// Not implemented in QRService, return error
+	ctx.JSON(http.StatusNotImplemented, response.Response{
+		Success: false,
+		Error:   "Funcionalidad de imagen QR no implementada en QRService",
+	})
+	return
 }
 
 // DownloadQRImage permite descargar la imagen QR con un nombre específico
 func (c *QRController) DownloadQRImage(ctx *gin.Context) {
 	qrCode := ctx.Param("qrcode")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
@@ -413,43 +412,19 @@ func (c *QRController) DownloadQRImage(ctx *gin.Context) {
 	}
 
 	// Obtener resolución solicitada (por defecto: normal)
-	resolution := ctx.DefaultQuery("resolution", "normal")
 
-	var imageBytes []byte
-	var err error
-
-	if resolution == "high" {
-		imageBytes, err = c.qrService.GetQRImageHighRes(qrCode)
-	} else {
-		imageBytes, err = c.qrService.GetQRImage(qrCode)
-	}
-
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
-			Success: false,
-			Error:   err.Error(),
-		})
-		return
-	}
-
-	// Configurar headers para descarga
-	filename := qrCode + "_qr.png"
-	if resolution == "high" {
-		filename = qrCode + "_qr_hd.png"
-	}
-
-	ctx.Header("Content-Type", "image/png")
-	ctx.Header("Content-Disposition", "attachment; filename=\""+filename+"\"")
-	ctx.Header("Content-Length", strconv.Itoa(len(imageBytes)))
-
-	ctx.Data(http.StatusOK, "image/png", imageBytes)
+	ctx.JSON(http.StatusNotImplemented, response.Response{
+		Success: false,
+		Error:   "Funcionalidad de imagen QR no implementada en QRService",
+	})
+	return
 }
 
 // GetSupplyDetails obtiene información detallada de un insumo por su código QR
 func (c *QRController) GetSupplyDetails(ctx *gin.Context) {
 	qrCode := ctx.Param("qrcode")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
@@ -458,14 +433,14 @@ func (c *QRController) GetSupplyDetails(ctx *gin.Context) {
 
 	details, err := c.medicalSupplyService.GetSupplyWithBatchInfo(qrCode)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Detalles del insumo obtenidos exitosamente",
 		Data:    details,
@@ -476,14 +451,14 @@ func (c *QRController) GetSupplyDetails(ctx *gin.Context) {
 func (c *QRController) SyncBatchAmounts(ctx *gin.Context) {
 	err := c.medicalSupplyService.SyncBatchAmounts()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error sincronizando cantidades de lotes: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Cantidades de lotes sincronizadas exitosamente",
 	})
@@ -491,36 +466,27 @@ func (c *QRController) SyncBatchAmounts(ctx *gin.Context) {
 
 // GetQRStats obtiene estadísticas generales de uso de QR codes
 func (c *QRController) GetQRStats(ctx *gin.Context) {
-	stats, err := c.qrService.GetQRStats()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
-			Success: false,
-			Error:   "Error obteniendo estadísticas: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, Response{
-		Success: true,
-		Message: "Estadísticas obtenidas exitosamente",
-		Data:    stats,
+	ctx.JSON(http.StatusNotImplemented, response.Response{
+		Success: false,
+		Error:   "Funcionalidad de estadísticas QR no implementada en QRService",
 	})
+	return
 }
 
 // VerifySupplyAvailability verifica si un insumo está disponible para consumo
 func (c *QRController) VerifySupplyAvailability(ctx *gin.Context) {
 	qrCode := ctx.Param("qrcode")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
 		return
 	}
 
-	info, err := c.qrService.GetQRInfo(qrCode)
+	info, err := c.qrService.ScanQRCode(qrCode)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -528,30 +494,30 @@ func (c *QRController) VerifySupplyAvailability(ctx *gin.Context) {
 	}
 
 	// Solo verificar disponibilidad para insumos individuales
-	if info.Type != "medical_supply" {
-		ctx.JSON(http.StatusBadRequest, Response{
+	if info["type"] != "medical_supply" {
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "La verificación de disponibilidad solo aplica para insumos individuales",
 		})
 		return
 	}
 
-	response := map[string]interface{}{
+	resp := map[string]interface{}{
 		"qr_code":      qrCode,
-		"is_available": info.CanConsume,
-		"is_consumed":  info.IsConsumed,
-		"supply_info":  info.SupplyInfo,
-		"batch_status": info.BatchStatus,
+		"is_available": info["can_consume"],
+		"is_consumed":  info["is_consumed"],
+		"supply_info":  info["supply_info"],
+		"batch_status": info["batch_status"],
 	}
 
-	if !info.CanConsume {
-		response["reason"] = "Insumo ya consumido o lote sin stock"
+	if available, ok := info["can_consume"].(bool); ok && !available {
+		resp["reason"] = "Insumo ya consumido o lote sin stock"
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Verificación de disponibilidad completada",
-		Data:    response,
+		Data:    resp,
 	})
 }
 
@@ -566,7 +532,7 @@ func (c *QRController) BulkConsumeSupplies(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -575,7 +541,7 @@ func (c *QRController) BulkConsumeSupplies(ctx *gin.Context) {
 
 	// Validar destination_type
 	if request.DestinationType != "pavilion" && request.DestinationType != "store" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "destination_type debe ser 'pavilion' o 'store'",
 		})
@@ -610,7 +576,7 @@ func (c *QRController) BulkConsumeSupplies(ctx *gin.Context) {
 		}
 	}
 
-	response := map[string]interface{}{
+	resp := map[string]interface{}{
 		"total_requested": len(request.QRCodes),
 		"successful":      successCount,
 		"failed":          len(errors),
@@ -625,9 +591,9 @@ func (c *QRController) BulkConsumeSupplies(ctx *gin.Context) {
 		statusCode = http.StatusPartialContent
 	}
 
-	ctx.JSON(statusCode, Response{
+	ctx.JSON(statusCode, response.Response{
 		Success: successCount > 0,
 		Message: fmt.Sprintf("Procesados %d de %d códigos QR exitosamente", successCount, len(request.QRCodes)),
-		Data:    response,
+		Data:    resp,
 	})
 }

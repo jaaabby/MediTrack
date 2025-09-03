@@ -1,230 +1,283 @@
 <template>
-  <div class="text-xs text-gray-500 mt-2">Valor seleccionado: {{ selectedPavilion }}</div>
   <div class="space-y-6">
-    <!-- Información básica del QR con imagen -->
-    <div class="bg-gray-50 rounded-lg p-6">
-      <div class="flex flex-col lg:flex-row lg:items-start lg:space-x-6">
-
-        <!-- Imagen QR -->
-        <div class="flex-shrink-0 mb-4 lg:mb-0">
-          <div class="bg-white rounded-lg p-4 shadow-sm border text-center">
-            <img v-if="qrImageUrl" :src="qrImageUrl" :alt="`Código QR: ${qrInfo.qr_code}`"
-              class="w-32 h-32 mx-auto object-contain" @error="handleImageError" @load="imageLoaded = true" />
-            <div v-else-if="imageError" class="w-32 h-32 mx-auto bg-gray-100 rounded flex items-center justify-center">
-              <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <div v-else class="w-32 h-32 mx-auto bg-gray-100 rounded flex items-center justify-center animate-pulse">
-              <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-
-            <!-- Solo botón de descarga -->
-            <div v-if="imageLoaded" class="mt-3">
-              <button @click="downloadQRImage('normal')"
-                class="w-full text-xs bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded transition-colors">
-                Descargar
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Información del Insumo y Acciones -->
-        <div class="flex-1 space-y-4">
-          <!-- Información del Insumo -->
-          <div v-if="qrInfo.supply_code" class="bg-white rounded border p-4">
-            <h4 class="font-semibold text-gray-900 flex items-center mb-3">
-              <svg class="h-5 w-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-              </svg>
-              Información del Insumo
-            </h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="text-sm font-medium text-gray-600">Código:</label>
-                <p class="text-gray-900 font-semibold">{{ qrInfo.supply_code.code }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Nombre:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_code.name }}</p>
-              </div>
-              <div class="sm:col-span-2">
-                <label class="text-sm font-medium text-gray-600">Código de Proveedor:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_code.code_supplier }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Enviar a Pabellón -->
-          <div class="bg-white rounded border p-4">
-            <h4 class="font-semibold text-gray-900 flex items-center mb-3">
-              <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-              Enviar a Pabellón
-            </h4>
-
-            <div class="space-y-3">
-              <!-- Búsqueda de Pabellón -->
-              <!-- <div>
-                <label class="text-sm font-medium text-gray-600 block mb-1">Buscar Pabellón:</label>
-                <div class="relative">
-                  <input 
-                    type="text" 
-                    v-model="pavilionSearch"
-                    @input="filterPavilions"
-                    placeholder="Buscar pabellón..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <svg class="absolute right-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
-            -->
-
-              <!-- Selector de Pabellón -->
-              <div>
-                <label class="text-sm font-medium text-gray-600 block mb-1">Seleccionar Pabellón:</label>
-                <div v-if="loadingPavilions" class="text-blue-500 text-sm py-2">Cargando pabellones...</div>
-                <div v-else-if="pavilionsError" class="text-red-500 text-sm py-2">Error cargando pabellones: {{
-                  pavilionsError }}</div>
-                <select v-model="selectedPavilion"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  <option value="">Seleccione un pabellón</option>
-                  <option v-for="pavilion in filteredPavilions" :key="pavilion.id" :value="String(pavilion.id)">
-                    {{ pavilion.name }}
-                  </option>
-                  <option v-if="filteredPavilions.length === 0 && !loadingPavilions" disabled>No se encontraron
-                    coincidencias</option>
-                </select>
-              </div>
-
-              <!-- Botón de Enviar -->
-              <button @click="sendToPavilion" :disabled="!selectedPavilion" :class="[
-                'w-full py-2 px-4 rounded-md text-sm font-medium transition-colors',
-                selectedPavilion
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              ]">
-                <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-                Enviar a Pabellón
-              </button>
-            </div>
-          </div>
-
-          <!-- Código QR y acciones -->
-          <div class="bg-white rounded border p-4">
-            <h4 class="font-semibold text-gray-900 flex items-center mb-3">
-              <svg class="h-5 w-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2" />
-              </svg>
-              Código QR
-            </h4>
-            <div class="flex items-center justify-between">
-              <code class="text-sm text-gray-800 font-mono bg-gray-50 px-2 py-1 rounded flex-1 mr-2">
-                {{ qrInfo.qr_code }}
-              </code>
-              <button @click="copyToClipboard(qrInfo.qr_code)"
-                class="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded transition-colors"
-                title="Copiar código">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Historial (si existe) -->
-    <div v-if="qrInfo.history && qrInfo.history.length > 0" class="bg-white rounded-lg border p-6">
-      <h4 class="font-semibold text-gray-900 flex items-center mb-4">
-        <svg class="h-5 w-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Historial de Movimientos
-      </h4>
-
-      <div class="space-y-3">
-        <div v-for="(item, index) in qrInfo.history" :key="index"
-          class="flex items-center justify-between p-3 bg-gray-50 rounded">
+    <!-- Información principal del QR -->
+    <div class="bg-white rounded-lg shadow border overflow-hidden">
+      <!-- Header del QR -->
+      <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div class="flex items-center justify-between">
           <div class="flex items-center">
-            <div :class="getHistoryIconClass(item.status)" class="p-2 rounded-full mr-3">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path v-if="item.status === 'consumido'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <div :class="getTypeIconClass(qrInfo.type)" class="w-10 h-10 rounded-full flex items-center justify-center mr-3">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path v-if="qrInfo.type === 'medical_supply'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
             <div>
-              <p class="font-medium text-gray-900">{{ item.status.charAt(0).toUpperCase() + item.status.slice(1) }}</p>
-              <p class="text-sm text-gray-600">{{ formatDate(item.date_time) }}</p>
+              <h3 class="text-lg font-semibold text-gray-900">
+                {{ getTypeLabel(qrInfo.type) }}
+              </h3>
+              <p class="text-sm text-gray-600">Código: {{ qrInfo.qr_code }}</p>
             </div>
           </div>
-          <div class="text-right">
-            <p class="text-sm text-gray-600">Usuario: {{ item.user_rut }}</p>
-            <p class="text-sm text-gray-600">{{ item.destination_type }}: {{ item.destination_id }}</p>
+          
+          <div class="flex items-center space-x-2">
+            <span :class="getStatusBadgeClass()" class="inline-flex px-3 py-1 text-sm font-semibold rounded-full">
+              {{ getStatusLabel() }}
+            </span>
+            
+            <!-- Nuevo botón de trazabilidad avanzada -->
+            <router-link
+              :to="`/qr/${qrInfo.qr_code}/traceability`"
+              class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+            >
+              <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Ver Trazabilidad
+            </router-link>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenido del QR -->
+      <div class="p-6">
+        <!-- Información de asignación a solicitud -->
+        <div v-if="qrInfo.request_assignment" class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex items-center mb-3">
+            <svg class="h-5 w-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <h4 class="font-semibold text-blue-900">Asignado a Solicitud</h4>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-medium text-blue-700">Número de Solicitud:</label>
+              <router-link
+                v-if="qrInfo.supply_request"
+                :to="`/supply-requests/${qrInfo.supply_request.id}`"
+                class="block text-sm text-blue-900 hover:text-blue-700 underline"
+              >
+                {{ qrInfo.supply_request.request_number }}
+              </router-link>
+              <p v-else class="text-sm text-blue-900">N/A</p>
+            </div>
+            
+            <div>
+              <label class="text-sm font-medium text-blue-700">Estado de Asignación:</label>
+              <span :class="getAssignmentStatusBadgeClass(qrInfo.request_assignment.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-1">
+                {{ getAssignmentStatusLabel(qrInfo.request_assignment.status) }}
+              </span>
+            </div>
+            
+            <div>
+              <label class="text-sm font-medium text-blue-700">Fecha de Asignación:</label>
+              <p class="text-sm text-blue-900">{{ formatDate(qrInfo.request_assignment.assigned_date) }}</p>
+            </div>
+            
+            <div v-if="qrInfo.request_assignment.delivered_date">
+              <label class="text-sm font-medium text-blue-700">Fecha de Entrega:</label>
+              <p class="text-sm text-blue-900">{{ formatDate(qrInfo.request_assignment.delivered_date) }}</p>
+            </div>
+          </div>
+          
+          <div v-if="qrInfo.request_assignment.notes" class="mt-3">
+            <label class="text-sm font-medium text-blue-700">Notas:</label>
+            <p class="text-sm text-blue-900 bg-white p-2 rounded border mt-1">{{ qrInfo.request_assignment.notes }}</p>
+          </div>
+        </div>
+
+        <!-- Resto del contenido existente -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Información del insumo individual -->
+          <div v-if="qrInfo.supply_info" class="space-y-4">
+            <h4 class="font-semibold text-gray-900 flex items-center">
+              <svg class="h-5 w-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Información del Insumo
+            </h4>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <label class="font-medium text-gray-600">ID Insumo:</label>
+                <p class="text-gray-900">{{ qrInfo.supply_info.id }}</p>
+              </div>
+              <div>
+                <label class="font-medium text-gray-600">Código:</label>
+                <p class="text-gray-900">{{ qrInfo.supply_info.code }}</p>
+              </div>
+              <div>
+                <label class="font-medium text-gray-600">Estado:</label>
+                <span :class="qrInfo.supply_info.is_consumed ? 'text-red-600' : 'text-green-600'" class="font-medium">
+                  {{ qrInfo.supply_info.is_consumed ? 'Consumido' : 'Disponible' }}
+                </span>
+              </div>
+              <div v-if="qrInfo.supply_info.batch">
+                <label class="font-medium text-gray-600">ID Lote:</label>
+                <p class="text-gray-900">{{ qrInfo.supply_info.batch.id }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Información del lote -->
+          <div v-if="qrInfo.batch_info" class="space-y-4">
+            <h4 class="font-semibold text-gray-900 flex items-center">
+              <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              Información del Lote
+            </h4>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <label class="font-medium text-gray-600">ID Lote:</label>
+                <p class="text-gray-900">{{ qrInfo.batch_info.id }}</p>
+              </div>
+              <div>
+                <label class="font-medium text-gray-600">Proveedor:</label>
+                <p class="text-gray-900">{{ qrInfo.batch_info.supplier }}</p>
+              </div>
+              <div>
+                <label class="font-medium text-gray-600">Cantidad Total:</label>
+                <p class="text-gray-900">{{ qrInfo.batch_info.amount }}</p>
+              </div>
+              <div>
+                <label class="font-medium text-gray-600">Vencimiento:</label>
+                <p class="text-gray-900">{{ formatDate(qrInfo.batch_info.expiration_date) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Información del código de insumo -->
+        <div v-if="qrInfo.supply_code" class="mt-6 bg-gray-50 rounded-lg p-4">
+          <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+            </svg>
+            Código de Insumo
+          </h4>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div>
+              <label class="font-medium text-gray-600">Código:</label>
+              <p class="text-gray-900">{{ qrInfo.supply_code.code }}</p>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="font-medium text-gray-600">Nombre:</label>
+              <p class="text-gray-900">{{ qrInfo.supply_code.name }}</p>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="font-medium text-gray-600">Código de Proveedor:</label>
+              <p class="text-gray-900">{{ qrInfo.supply_code.code_supplier }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acciones rápidas -->
+        <div v-if="qrInfo.type === 'medical_supply' && !qrInfo.supply_info?.is_consumed" class="mt-6">
+          <h4 class="font-semibold text-gray-900 mb-3">Acciones Disponibles</h4>
+          <div class="flex flex-wrap gap-3">
+            <!-- Crear solicitud para este insumo -->
+            <router-link
+              to="/supply-requests/new"
+              :state="{ preSelectedSupplyCode: qrInfo.supply_info?.code, preSelectedSupplyName: qrInfo.supply_code?.name }"
+              class="inline-flex items-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
+            >
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Crear Solicitud
+            </router-link>
+
+            <!-- Consumir insumo (acción existente) -->
+            <button
+              v-if="!qrInfo.request_assignment"
+              @click="$emit('consume-supply', qrInfo.qr_code)"
+              class="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
+            >
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Consumir Insumo
+            </button>
+
+            <!-- Marcar como entregado (si está asignado pero no entregado) -->
+            <button
+              v-if="qrInfo.request_assignment && qrInfo.request_assignment.status === 'assigned'"
+              @click="$emit('mark-as-delivered', qrInfo.qr_code)"
+              class="inline-flex items-center px-4 py-2 border border-purple-300 text-sm font-medium rounded-md text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors"
+            >
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Marcar como Entregado
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Acciones Disponibles -->
-    <div class="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
-      <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-4 text-center">
-        Acciones Disponibles
-      </h3>
-
-      <!-- Contenedor de botones completamente responsivo -->
-      <div class="qr-main-actions">
-        <button @click="$emit('view-details', qrInfo)" class="qr-action-button qr-action-primary">
-          <div class="flex items-center justify-center">
-            <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            <span class="font-medium">Ver Detalles Completos</span>
-          </div>
-        </button>
-
-        <button v-if="qrInfo.type === 'medical_supply'" @click="$emit('view-batch', qrInfo.supply_info?.batch_id)"
-          class="qr-action-button qr-action-secondary">
-          <div class="flex items-center justify-center">
-            <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <span class="font-medium">Ver Lote Relacionado</span>
-          </div>
-        </button>
+    <!-- Historial de movimientos (versión resumida) -->
+    <div v-if="qrInfo.history && qrInfo.history.length > 0" class="bg-white rounded-lg shadow border">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h4 class="font-semibold text-gray-900">Historial Reciente</h4>
+        <router-link
+          :to="`/qr/${qrInfo.qr_code}/traceability`"
+          class="text-sm text-blue-600 hover:text-blue-800"
+        >
+          Ver historial completo →
+        </router-link>
+      </div>
+      
+      <div class="p-6">
+        <div class="flow-root">
+          <ul class="-mb-8">
+            <li
+              v-for="(movement, index) in qrInfo.history.slice(0, 3)"
+              :key="movement.id || index"
+              class="relative pb-8"
+            >
+              <span
+                v-if="index !== Math.min(qrInfo.history.length - 1, 2)"
+                class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                aria-hidden="true"
+              ></span>
+              
+              <div class="relative flex space-x-3">
+                <div>
+                  <span :class="getHistoryIconClass(movement.status || movement.Status)" class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white">
+                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                </div>
+                <div class="min-w-0 flex-1 pt-1.5">
+                  <div>
+                    <p class="text-sm text-gray-900">
+                      <span class="font-medium">{{ movement.status || movement.Status }}</span>
+                    </p>
+                    <p class="text-sm text-gray-500">{{ formatDate(movement.date_time || movement.DateTime) }}</p>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+        
+        <div v-if="qrInfo.history.length > 3" class="mt-4 text-center">
+          <p class="text-sm text-gray-500">{{ qrInfo.history.length - 3 }} movimientos adicionales</p>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import qrService from '@/services/qrService'
-import pavilionService from '@/services/pavilionService'
+import qrService from '../services/qrService'
 
 // Props
 const props = defineProps({
@@ -235,96 +288,9 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits([
-  'view-details',
-  'view-batch',
-  'consume-supply',
-  'send-to-pavilion'
-])
+const emit = defineEmits(['consume-supply', 'mark-as-delivered'])
 
-// Estado reactivo
-const imageLoaded = ref(false)
-const imageError = ref(false)
-const pavilionSearch = ref('')
-const selectedPavilion = ref('') // Siempre string para coincidir con el value del select
-const pavilions = ref([])
-const loadingPavilions = ref(false)
-const pavilionsError = ref("")
-
-// Computed
-const filteredPavilions = computed(() => {
-  const search = pavilionSearch.value.trim().toLowerCase()
-  if (!search) return pavilions.value.map(p => ({ ...p }))
-  const result = pavilions.value
-    .filter(pavilion => pavilion.name && pavilion.name.toLowerCase().includes(search))
-    .map(p => ({ ...p }))
-  console.log('Filtrando pabellones:', search, result)
-  return result
-})
-
-// URLs de imagen
-const qrImageUrl = computed(() => {
-
-  // Watcher para limpiar selección si no hay coincidencias
-  watch(filteredPavilions, (newVal) => {
-    if (newVal.length === 0) {
-      selectedPavilion.value = ''
-    }
-  })
-  if (!props.qrInfo?.qr_code) return null
-  return qrService.getQRImageUrl(props.qrInfo.qr_code)
-})
-
-// Métodos
-const handleImageError = () => {
-  imageError.value = true
-  imageLoaded.value = false
-}
-
-const downloadQRImage = async (resolution = 'normal') => {
-  try {
-    await qrService.downloadQRImage(props.qrInfo.qr_code, resolution)
-  } catch (error) {
-    console.error('Error al descargar imagen QR:', error)
-  }
-}
-
-const copyToClipboard = async (text) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    // Podrías mostrar una notificación aquí
-  } catch (error) {
-    console.error('Error al copiar al portapapeles:', error)
-  }
-}
-
-const filterPavilions = () => {
-  // La función computed ya maneja esto automáticamente
-}
-
-const sendToPavilion = async () => {
-  if (!selectedPavilion.value) return
-
-  try {
-    const pavilionData = pavilions.value.find(p => String(p.id) === selectedPavilion.value)
-
-    // Emitir evento al componente padre con los datos del envío
-    emit('send-to-pavilion', {
-      qrCode: props.qrInfo.qr_code,
-      pavilionId: selectedPavilion.value,
-      pavilionName: pavilionData?.name,
-      supplyInfo: props.qrInfo.supply_code
-    })
-
-    // Limpiar selección
-    selectedPavilion.value = ''
-    pavilionSearch.value = ''
-
-  } catch (error) {
-    console.error('Error al enviar a pabellón:', error)
-  }
-}
-
+// Métodos de formato
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
@@ -367,126 +333,47 @@ const getTypeIconClass = (type) => {
 
 const getHistoryIconClass = (status) => {
   const classes = {
-    'consumido': 'bg-red-100 text-red-600',
-    'creado': 'bg-green-100 text-green-600',
-    'movido': 'bg-blue-100 text-blue-600'
+    'consumido': 'bg-red-500',
+    'creado': 'bg-green-500',
+    'movido': 'bg-blue-500'
   }
-  return classes[status] || 'bg-gray-100 text-gray-600'
+  return classes[status] || 'bg-gray-500'
 }
 
-// Lifecycle
-onMounted(async () => {
-  // Verificar si la imagen existe al montar el componente
-  if (props.qrInfo?.qr_code) {
-    qrService.checkQRImageExists(props.qrInfo.qr_code)
-      .then(exists => {
-        if (!exists) {
-          imageError.value = true
-        }
-      })
-      .catch(() => {
-        imageError.value = true
-      })
+// Nuevos métodos para solicitudes
+const getAssignmentStatusLabel = (status) => {
+  const labels = {
+    'assigned': 'Asignado',
+    'delivered': 'Entregado',
+    'consumed': 'Consumido',
+    'returned': 'Devuelto'
   }
-  // Obtener pabellones desde el backend
-  loadingPavilions.value = true
-  pavilionsError.value = ""
-  try {
-    const result = await pavilionService.getAllPavilions()
-    console.log("Respuesta pabellones (raw):", result)
-    // Si la respuesta tiene la estructura { data: { success: true, data: [...] } }
-    if (result && result.data && Array.isArray(result.data.data)) {
-      pavilions.value = result.data.data
-      if (result.data.data.length === 0) {
-        pavilionsError.value = "No se encontraron pabellones."
-      }
-    } else if (Array.isArray(result)) {
-      pavilions.value = result
-      if (result.length === 0) {
-        pavilionsError.value = "No se encontraron pabellones."
-      }
-    } else {
-      pavilions.value = []
-      pavilionsError.value = "La respuesta no es un array."
-      console.error('Estructura inesperada de pabellones:', result)
-    }
-  } catch (error) {
-    pavilions.value = []
-    pavilionsError.value = error?.message || "Error desconocido"
-    console.error('Error cargando pabellones:', error)
-  } finally {
-    loadingPavilions.value = false
+  return labels[status] || status
+}
+
+const getAssignmentStatusBadgeClass = (status) => {
+  const classes = {
+    'assigned': 'bg-blue-100 text-blue-800',
+    'delivered': 'bg-green-100 text-green-800',
+    'consumed': 'bg-gray-100 text-gray-800',
+    'returned': 'bg-yellow-100 text-yellow-800'
   }
-})
+  return classes[status] || 'bg-gray-100 text-gray-800'
+}
 </script>
 
 <style scoped>
-/* Estilos específicos para los botones de QR */
-.qr-main-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: stretch;
+/* Estilos específicos */
+.flow-root {
+  overflow: hidden;
 }
 
-.qr-action-button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem 1.5rem;
-  border-radius: 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.2s ease-in-out;
-  border: 2px solid transparent;
-  min-height: 52px;
-  text-align: center;
-  cursor: pointer;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+.transition-colors {
+  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
 
-.qr-action-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
-}
-
-.qr-action-primary:hover {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.qr-action-secondary {
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-  color: white;
-}
-
-.qr-action-secondary:hover {
-  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-/* Responsive adjustments */
-@media (min-width: 640px) {
-  .qr-main-actions {
-    flex-direction: row;
-    justify-content: center;
-  }
-
-  .qr-action-button {
-    flex: 1;
-    max-width: 300px;
-  }
-}
-
-/* Badge styles */
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+/* Ring styles for timeline */
+.ring-8 {
+  box-shadow: 0 0 0 8px #fff;
 }
 </style>
