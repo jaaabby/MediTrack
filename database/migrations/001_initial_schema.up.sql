@@ -48,7 +48,7 @@ CREATE TABLE medical_supply (
 CREATE TABLE "user" (
     rut VARCHAR(20) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL, -- Este campo almacenará el hash de la contraseña
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega')),
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
@@ -56,6 +56,8 @@ CREATE TABLE "user" (
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
     updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 );
+
+CREATE INDEX idx_user_email ON "user"(email);
 
 CREATE TABLE supply_history (
     id SERIAL PRIMARY KEY,
@@ -482,58 +484,3 @@ LEFT JOIN LATERAL (
     ORDER BY date_time DESC 
     LIMIT 1
 ) sh ON TRUE;
-
--- =======================
--- COMENTARIOS Y DOCUMENTACIÓN
--- =======================
-
-COMMENT ON TABLE supply_request IS 'Solicitudes de insumo con trazabilidad QR';
-COMMENT ON TABLE supply_request_item IS 'Items individuales dentro de una solicitud de insumo';
-COMMENT ON TABLE supply_request_qr_assignment IS 'Asignaciones específicas de códigos QR a items de solicitud';
-
-COMMENT ON COLUMN supply_request.request_number IS 'Número único de solicitud generado automáticamente';
-COMMENT ON COLUMN supply_request.status IS 'Estado: pending, approved, rejected, in_process, completed, cancelled';
-COMMENT ON COLUMN supply_request.priority IS 'Prioridad: low, normal, high, critical';
-
-COMMENT ON COLUMN supply_request_item.specifications IS 'Especificaciones técnicas del insumo (medidas, tipo pediátrico, etc.)';
-COMMENT ON COLUMN supply_request_item.is_pediatric IS 'Indica si el insumo es para uso pediátrico';
-COMMENT ON COLUMN supply_request_item.urgency_level IS 'Nivel de urgencia específico del item';
-
-COMMENT ON COLUMN supply_request_qr_assignment.qr_code IS 'Código QR específico asignado al item';
-COMMENT ON COLUMN supply_request_qr_assignment.status IS 'Estado de la asignación: assigned, delivered, consumed, returned, lost';
-
-COMMENT ON VIEW v_supply_requests_detail IS 'Vista con información completa de solicitudes incluyendo totales';
-COMMENT ON VIEW v_qr_traceability IS 'Vista para trazabilidad completa de códigos QR';
-
--- =======================
--- PERMISOS (ajustar según necesidades)
--- =======================
-
--- Otorgar permisos básicos (ajustar según roles en tu aplicación)
--- GRANT SELECT, INSERT, UPDATE ON supply_request TO app_user;
--- GRANT SELECT, INSERT, UPDATE ON supply_request_item TO app_user;
--- GRANT SELECT, INSERT, UPDATE ON supply_request_qr_assignment TO app_user;
--- GRANT SELECT ON v_supply_requests_detail TO app_user;
--- GRANT SELECT ON v_qr_traceability TO app_user;
-
--- =======================
--- VERIFICACIÓN DE INSTALACIÓN
--- =======================
-
--- Consulta para verificar que las tablas se crearon correctamente
-SELECT 
-    schemaname, 
-    tablename, 
-    tableowner
-FROM pg_tables 
-WHERE tablename IN ('supply_request', 'supply_request_item', 'supply_request_qr_assignment')
-ORDER BY tablename;
-
--- Consulta para verificar las vistas
-SELECT 
-    schemaname,
-    viewname,
-    viewowner
-FROM pg_views
-WHERE viewname IN ('v_supply_requests_detail', 'v_qr_traceability')
-ORDER BY viewname;

@@ -1,19 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '@/views/Home.vue'
-import Inventory from '@/views/Inventory.vue'
-import QRScanner from '@/views/QRScanner.vue'
-import QRDetails from '@/views/QRDetails.vue'
-import QRConsumer from '@/views/QRConsumer.vue'
-import AddSupply from '@/views/AddSupply.vue'
-import Login from '@/views/Login.vue'
-import Register from '@/views/Register.vue'
 
 const routes = [
   // Ruta principal
   {
     path: '/login',
     name: 'Login',
-    component: Login,
+    component: () => import('@/views/Login.vue'),
     meta: {
       title: 'Iniciar Sesión - MediTrack',
       description: 'Acceso al sistema de trazabilidad',
@@ -24,7 +16,7 @@ const routes = [
   {
     path: '/register',
     name: 'Register',
-    component: Register,
+    component: () => import('@/views/Register.vue'),
     meta: {
       title: 'Registro - MediTrack',
       description: 'Crear nueva cuenta en el sistema de trazabilidad',
@@ -52,8 +44,6 @@ const routes = [
       title: 'Inventario - MediTrack',
       description: 'Gestión completa del inventario médico',
       requiresAuth: true
-      description: 'Gestión de inventario médico',
-      requiresAuth: false
     }
   },
   {
@@ -64,8 +54,6 @@ const routes = [
       title: 'Agregar Insumo - MediTrack',
       description: 'Crear nuevos lotes con códigos QR únicos',
       requiresAuth: true
-      description: 'Agregar nuevo insumo médico',
-      requiresAuth: false
     }
   },
 
@@ -78,8 +66,6 @@ const routes = [
       title: 'Escáner QR - MediTrack',
       description: 'Escanear códigos QR de productos y lotes',
       requiresAuth: true
-      description: 'Escanear códigos QR de insumos médicos',
-      requiresAuth: false
     }
   },
 
@@ -92,12 +78,9 @@ const routes = [
     name: 'SupplyRequestList',
     component: () => import('@/views/SupplyRequestList.vue'),
     meta: {
-      title: 'Detalles QR - MediTrack',
-      description: 'Información detallada del código QR escaneado',
-      requiresAuth: true
       title: 'Solicitudes de Insumo - MediTrack',
       description: 'Gestión de solicitudes de insumo con trazabilidad QR',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   {
@@ -105,12 +88,9 @@ const routes = [
     name: 'SupplyRequestForm',
     component: () => import('@/views/SupplyRequestForm.vue'),
     meta: {
-      title: 'Consumir Productos - MediTrack',
-      description: 'Registrar consumo de insumos médicos',
-      requiresAuth: true
       title: 'Nueva Solicitud - MediTrack',
       description: 'Crear nueva solicitud de insumo',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   {
@@ -121,7 +101,7 @@ const routes = [
     meta: {
       title: 'Detalle de Solicitud - MediTrack',
       description: 'Ver detalles y trazabilidad de solicitud de insumo',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
   {
@@ -132,7 +112,7 @@ const routes = [
     meta: {
       title: 'Editar Solicitud - MediTrack',
       description: 'Editar solicitud de insumo existente',
-      requiresAuth: false
+      requiresAuth: true
     }
   },
 
@@ -145,7 +125,19 @@ const routes = [
     meta: {
       title: 'Trazabilidad QR - MediTrack',
       description: 'Trazabilidad completa del código QR',
-      requiresAuth: false
+      requiresAuth: true
+    }
+  },
+
+  // Ruta de perfil de usuario
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/Profile.vue'),
+    meta: {
+      title: 'Mi Perfil - MediTrack',
+      description: 'Información personal y configuración de cuenta',
+      requiresAuth: true
     }
   },
 
@@ -162,7 +154,7 @@ const routes = [
   },
   {
     path: '/:pathMatch(.*)*',
-    name: 'NotFound',
+    name: 'CatchAll',
     component: () => import('@/views/NotFound.vue'),
     meta: {
       title: 'Página no encontrada - MediTrack',

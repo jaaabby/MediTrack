@@ -309,3 +309,27 @@ func (c *UserController) ActivateUser(ctx *gin.Context) {
 		Message: "Usuario activado exitosamente",
 	})
 }
+
+func (c *UserController) GetUserProfileByEmail(ctx *gin.Context) {
+	email := ctx.Query("email")
+	if email == "" {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Email requerido",
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserProfileByEmail(email)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, Response{
+			Success: false,
+			Error:   "Usuario no encontrado: " + err.Error(),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    user.ToResponse(),
+	})
+}

@@ -38,5 +38,6 @@ func SetupUserRoutes(router *gin.RouterGroup, userService services.UserService, 
 
 		// Rutas para todos los usuarios autenticados
 		users.GET("/:id", userController.GetUserByID)
+		users.GET("/profile", userController.GetUserProfileByEmail)
 	}
 }

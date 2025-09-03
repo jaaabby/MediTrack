@@ -3,7 +3,7 @@
     <!-- Header principal -->
     <header class="bg-blue-600 shadow-sm border-b border-blue-700">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
+        <div  class="flex justify-between items-center h-16">
           <!-- Logo y título -->
           <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -15,7 +15,7 @@
           
           <!-- Navegación principal (desktop) -->
           <nav class="hidden md:flex space-x-8">
-            <router-link
+            <router-link v-if="authStore.isAuthenticated"
               to="/"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path === '/' }"
@@ -23,7 +23,7 @@
               Inicio
             </router-link>
             
-            <router-link
+            <router-link v-if="authStore.isAuthenticated"
               to="/inventory"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/inventory') }"
@@ -31,7 +31,7 @@
               Inventario
             </router-link>
             
-            <router-link
+            <router-link v-if="authStore.isAuthenticated"
               to="/supply-requests"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/supply-requests') }"
@@ -39,7 +39,7 @@
               Solicitudes
             </router-link>
             
-            <router-link
+            <router-link v-if="authStore.isAuthenticated"
               to="/qr"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/qr') }"
@@ -47,7 +47,7 @@
               Escáner QR
             </router-link>
             
-            <router-link
+            <router-link v-if="authStore.isAuthenticated"
               to="/reports"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/reports') }"
@@ -61,7 +61,13 @@
             <!-- Información del usuario autenticado -->
             <div v-if="authStore.isAuthenticated" class="flex items-center space-x-3">
               <div class="text-right text-white">
-                <p class="text-sm font-medium">{{ authStore.getUserName }}</p>
+                <router-link 
+                  to="/profile"
+                  class="text-sm font-medium hover:text-blue-200 transition-colors cursor-pointer"
+                  title="Ver mi perfil"
+                >
+                  {{ authStore.getUserName }}
+                </router-link>
                 <p class="text-xs text-blue-200">{{ authStore.getUserRole }}</p>
               </div>
               <button 
@@ -74,15 +80,6 @@
                 </svg>
               </button>
             </div>
-            
-            <!-- Notificaciones (futuro) -->
-            <button class="p-2 rounded-lg hover:bg-blue-700 transition-colors relative">
-              <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5-5 5-5H15m-5-3v5l-3 3 3 3v-5h5" />
-              </svg>
-              <!-- Badge de notificaciones -->
-              <!-- <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400"></span> -->
-            </button>
             
             <!-- Menú hamburguesa (móvil) -->
             <button 

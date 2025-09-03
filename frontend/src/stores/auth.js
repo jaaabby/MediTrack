@@ -36,7 +36,16 @@ export const useAuthStore = defineStore('auth', {
     getUserEmail: (state) => state.user?.email,
     
     // Obtener el RUT del usuario
-    getUserRut: (state) => state.user?.rut
+    getUserRut: (state) => state.user?.rut,
+
+    // Obtener fecha de creación del usuario
+    getUserCreatedAt: (state) => state.user?.created_at,
+    
+    // Obtener fecha de actualización del usuario
+    getUserUpdatedAt: (state) => state.user?.updated_at,
+    
+    // Obtener el nombre del centro médico
+    getUserMedicalCenterName: (state) => state.user?.medical_center?.name,
   },
 
   actions: {
@@ -168,13 +177,20 @@ export const useAuthStore = defineStore('auth', {
 
       // Definir rutas protegidas por rol
       const routePermissions = {
-        'admin': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRConsumer'],
-        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRConsumer'],
-        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails']
+        'admin': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
+        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'Profile'],
+        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
       }
 
       const allowedRoutes = routePermissions[this.user.role] || []
       return allowedRoutes.includes(routeName)
+    },
+
+    // Actualizar información del usuario
+    updateUser(userData) {
+      if (this.user) {
+        this.user = { ...this.user, ...userData }
+      }
     },
 
     // Limpiar errores
