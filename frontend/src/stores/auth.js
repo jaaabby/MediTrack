@@ -177,9 +177,9 @@ export const useAuthStore = defineStore('auth', {
 
       // Definir rutas protegidas por rol
       const routePermissions = {
-        'admin': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
-        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'Profile'],
-        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
+        'admin': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
+        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'Profile'],
+        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
       }
 
       const allowedRoutes = routePermissions[this.user.role] || []

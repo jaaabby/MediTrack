@@ -19,7 +19,12 @@ class PavilionService {
       console.log('URL usada:', API_BASE_URL + '/pavilions/');
       let response = await this.api.get('/pavilions/');
       console.log('Respuesta Axios:', response);
-      return response.data.data || response.data.Data || response.data || [];
+      console.log('Datos específicos:', response.data);
+      
+      const data = response.data.data || response.data.Data || response.data || [];
+      console.log('Datos finales procesados:', data);
+      
+      return data;
     } catch (error) {
       console.error('Error al obtener pabellones:', error);
       if (error.response) {
@@ -36,6 +41,21 @@ class PavilionService {
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener pabellón:', error)
+      throw error
+    }
+  }
+
+  // Obtener pabellones por centro médico
+  async getByMedicalCenter(medicalCenterId) {
+    try {
+      console.log('Fetching pavilions for medical center:', medicalCenterId)
+      const allPavilions = await this.getAllPavilions()
+      console.log('All pavilions:', allPavilions)
+      const filtered = allPavilions.filter(p => p.medical_center_id === parseInt(medicalCenterId))
+      console.log('Filtered pavilions:', filtered)
+      return { data: filtered }
+    } catch (error) {
+      console.error('Error al obtener pabellones por centro médico:', error)
       throw error
     }
   }

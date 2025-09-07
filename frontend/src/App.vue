@@ -54,6 +54,13 @@
             >
               Reportes
             </router-link>
+              <router-link v-if="authStore.isAuthenticated"
+                to="/inventory/add"
+                class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                :class="{ 'bg-blue-700': $route.path === '/inventory/add' }"
+              >
+                Agregar Insumo
+              </router-link>
           </nav>
           
           <!-- Menú de usuario -->
@@ -142,6 +149,14 @@
           >
             Reportes
           </router-link>
+            <router-link
+              to="/inventory/add"
+              @click="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/add' }"
+            >
+              Agregar Insumo
+            </router-link>
         </div>
       </div>
     </header>
