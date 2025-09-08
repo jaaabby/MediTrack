@@ -1,41 +1,65 @@
 <template>
   <div class="space-y-6">
-    <!-- Información principal del QR -->
+    <!-- Información principal del QR con indicadores de trazabilidad -->
     <div class="bg-white rounded-lg shadow border overflow-hidden">
-      <!-- Header del QR -->
-      <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center">
-            <div :class="getTypeIconClass(qrInfo.type)" class="w-10 h-10 rounded-full flex items-center justify-center mr-3">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path v-if="qrInfo.type === 'medical_supply'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900">
-                {{ getTypeLabel(qrInfo.type) }}
-              </h3>
-              <p class="text-sm text-gray-600">Código: {{ qrInfo.qr_code }}</p>
-            </div>
+      <!-- Header reorganizado con imagen QR y datos principales -->
+      <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between">
+        <div class="flex items-center space-x-4">
+          <!-- Imagen del QR: usa la URL si existe, si no genera el QR dinámicamente -->
+          <div class="w-20 h-20 flex items-center justify-center bg-white border rounded-lg mr-4">
+            <img v-if="qrInfo.qr_image_url" :src="qrInfo.qr_image_url" alt="QR" class="w-16 h-16 object-contain" />
+            <qrcode-vue v-else :value="qrInfo.qr_code" :size="64" :level="'M'" />
           </div>
-          
-          <div class="flex items-center space-x-2">
-            <span :class="getStatusBadgeClass()" class="inline-flex px-3 py-1 text-sm font-semibold rounded-full">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">{{ getTypeLabel(qrInfo.type) }}</h3>
+            <p class="text-sm text-gray-600">Código: {{ qrInfo.qr_code }}</p>
+            <span :class="getStatusBadgeClass()" class="inline-flex px-3 py-1 text-sm font-semibold rounded-full mt-2">
               {{ getStatusLabel() }}
             </span>
-            
-            <!-- Nuevo botón de trazabilidad avanzada -->
-            <router-link
-              :to="`/qr/${qrInfo.qr_code}/traceability`"
-              class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
-            >
-              <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Ver Trazabilidad
-            </router-link>
           </div>
+        </div>
+        <div class="flex flex-col md:flex-row md:items-center md:space-x-4 mt-4 md:mt-0">
+          <router-link
+            :to="`/qr/${qrInfo.qr_code}/traceability`"
+            class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+          >
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Ver Trazabilidad
+          </router-link>
+          <div v-if="scanActivity" class="flex items-center space-x-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded ml-2">
+            <svg class="h-3 w-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>{{ scanActivity.total_scans }} escaneos</span>
+          </div>
+        </div>
+      </div>
+      <!-- Último escaneo -->
+      <div v-if="lastScanInfo" class="px-6 py-2 border-b border-gray-200 bg-white">
+        <div class="flex flex-wrap items-center text-sm gap-4">
+          <div class="flex items-center text-gray-600">
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span>Último escaneo: {{ lastScanInfo.user_name || 'Usuario no identificado' }}</span>
+          </div>
+          <div class="flex items-center text-gray-600">
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{{ formatDate(lastScanInfo.scanned_at) }}</span>
+          </div>
+          <div v-if="lastScanInfo.location" class="flex items-center text-gray-600">
+            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            </svg>
+            <span>{{ lastScanInfo.location }}</span>
+          </div>
+          <span v-if="lastScanInfo.scan_purpose" :class="['px-2 py-1 rounded-full text-xs font-medium', getScanPurposeBadgeClass(lastScanInfo.scan_purpose)]">
+            {{ getScanPurposeLabel(lastScanInfo.scan_purpose) }}
+          </span>
         </div>
       </div>
 
@@ -87,135 +111,102 @@
           </div>
         </div>
 
+        <!-- Estadísticas de escaneo básicas 
+        <div v-if="showTraceability && scanActivity" class="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
+          <div class="flex items-center mb-3">
+            <svg class="h-5 w-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <h4 class="font-semibold text-purple-900">Actividad de Escaneo</h4>
+          </div>
+          
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-purple-900">{{ scanActivity.total_scans }}</div>
+              <div class="text-xs text-purple-700">Total Escaneos</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-indigo-900">{{ scanActivity.unique_users || 0 }}</div>
+              <div class="text-xs text-indigo-700">Usuarios Únicos</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-blue-900">{{ scanActivity.locations_count || 0 }}</div>
+              <div class="text-xs text-blue-700">Ubicaciones</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-gray-900">{{ scanActivity.today_scans || 0 }}</div>
+              <div class="text-xs text-gray-700">Hoy</div>
+            </div>
+          </div>
+        </div>-->
+
+        <!-- Información de contexto de escaneo 
+        <div v-if="showTraceability && scanContext" class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div class="flex items-center mb-3">
+            <svg class="h-5 w-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h4 class="font-semibold text-yellow-900">Contexto del Escaneo Actual</h4>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <label class="font-medium text-yellow-700">Propósito:</label>
+              <span 
+                :class="[
+                  'inline-flex px-2 py-1 rounded-full text-xs font-medium ml-1',
+                  getScanPurposeBadgeClass(scanContext.scan_purpose)
+                ]"
+              >
+                {{ getScanPurposeLabel(scanContext.scan_purpose) }}
+              </span>
+            </div>
+            <div v-if="scanContext.scan_source">
+              <label class="font-medium text-yellow-700">Fuente:</label>
+              <p class="text-yellow-900">{{ scanContext.scan_source }}</p>
+            </div>
+            <div v-if="scanContext.device_info">
+              <label class="font-medium text-yellow-700">Dispositivo:</label>
+              <p class="text-yellow-900">{{ scanContext.device_info.platform || 'Desconocido' }}</p>
+            </div>
+          </div>
+        </div>-->
+
         <!-- Resto del contenido existente -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Información del insumo individual -->
-          <div v-if="qrInfo.supply_info" class="space-y-4">
+        <!-- Información resumida y no redundante del insumo y lote -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div v-if="qrInfo.supply_info" class="space-y-2">
             <h4 class="font-semibold text-gray-900 flex items-center">
               <svg class="h-5 w-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Información del Insumo
             </h4>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <label class="font-medium text-gray-600">ID Insumo:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_info.id }}</p>
-              </div>
-              <div>
-                <label class="font-medium text-gray-600">Código:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_info.code }}</p>
-              </div>
-              <div>
-                <label class="font-medium text-gray-600">Estado:</label>
-                <span :class="qrInfo.supply_info.is_consumed ? 'text-red-600' : 'text-green-600'" class="font-medium">
-                  {{ qrInfo.supply_info.is_consumed ? 'Consumido' : 'Disponible' }}
-                </span>
-              </div>
-              <div v-if="qrInfo.supply_info.batch">
-                <label class="font-medium text-gray-600">ID Lote:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_info.batch.id }}</p>
-              </div>
+            <div class="text-sm">
+              <div><span class="font-medium text-gray-600">ID:</span> {{ qrInfo.supply_info.id }}</div>
+              <div><span class="font-medium text-gray-600">Código:</span> {{ qrInfo.supply_info.code }}</div>
+              <div><span class="font-medium text-gray-600">Estado:</span> <span :class="qrInfo.supply_info.is_consumed ? 'text-red-600' : 'text-green-600'" class="font-medium">{{ qrInfo.supply_info.is_consumed ? 'Consumido' : 'Disponible' }}</span></div>
+              <div v-if="qrInfo.supply_info.batch"><span class="font-medium text-gray-600">Lote:</span> {{ qrInfo.supply_info.batch.id }}</div>
+              <div v-if="qrInfo.supply_code"><span class="font-medium text-gray-600">Nombre:</span> {{ qrInfo.supply_code.name }}</div>
+              <div v-if="qrInfo.supply_code"><span class="font-medium text-gray-600">Código Proveedor:</span> {{ qrInfo.supply_code.code_supplier }}</div>
             </div>
           </div>
-
-          <!-- Información del lote -->
-          <div v-if="qrInfo.batch_info" class="space-y-4">
+          <div v-if="qrInfo.batch_info" class="space-y-2">
             <h4 class="font-semibold text-gray-900 flex items-center">
               <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
               Información del Lote
             </h4>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <label class="font-medium text-gray-600">ID Lote:</label>
-                <p class="text-gray-900">{{ qrInfo.batch_info.id }}</p>
-              </div>
-              <div>
-                <label class="font-medium text-gray-600">Proveedor:</label>
-                <p class="text-gray-900">{{ qrInfo.batch_info.supplier }}</p>
-              </div>
-              <div>
-                <label class="font-medium text-gray-600">Cantidad Total:</label>
-                <p class="text-gray-900">{{ qrInfo.batch_info.amount }}</p>
-              </div>
-              <div>
-                <label class="font-medium text-gray-600">Vencimiento:</label>
-                <p class="text-gray-900">{{ formatDate(qrInfo.batch_info.expiration_date) }}</p>
-              </div>
+            <div class="text-sm">
+              <div><span class="font-medium text-gray-600">ID:</span> {{ qrInfo.batch_info.id }}</div>
+              <div><span class="font-medium text-gray-600">Proveedor:</span> {{ qrInfo.batch_info.supplier }}</div>
+              <div><span class="font-medium text-gray-600">Cantidad Total:</span> {{ qrInfo.batch_info.amount }}</div>
+              <div><span class="font-medium text-gray-600">Vencimiento:</span> {{ formatDate(qrInfo.batch_info.expiration_date) }}</div>
             </div>
           </div>
         </div>
 
-        <!-- Información del código de insumo -->
-        <div v-if="qrInfo.supply_code" class="mt-6 bg-gray-50 rounded-lg p-4">
-          <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
-            <svg class="h-5 w-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-            </svg>
-            Código de Insumo
-          </h4>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <label class="font-medium text-gray-600">Código:</label>
-              <p class="text-gray-900">{{ qrInfo.supply_code.code }}</p>
-            </div>
-            <div class="sm:col-span-2">
-              <label class="font-medium text-gray-600">Nombre:</label>
-              <p class="text-gray-900">{{ qrInfo.supply_code.name }}</p>
-            </div>
-            <div class="sm:col-span-2">
-              <label class="font-medium text-gray-600">Código de Proveedor:</label>
-              <p class="text-gray-900">{{ qrInfo.supply_code.code_supplier }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Acciones rápidas -->
-        <div v-if="qrInfo.type === 'medical_supply' && !qrInfo.supply_info?.is_consumed" class="mt-6">
-          <h4 class="font-semibold text-gray-900 mb-3">Acciones Disponibles</h4>
-          <div class="flex flex-wrap gap-3">
-            <!-- Crear solicitud para este insumo -->
-            <router-link
-              to="/supply-requests/new"
-              :state="{ preSelectedSupplyCode: qrInfo.supply_info?.code, preSelectedSupplyName: qrInfo.supply_code?.name }"
-              class="inline-flex items-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
-            >
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              Crear Solicitud
-            </router-link>
-
-            <!-- Consumir insumo (acción existente) -->
-            <button
-              v-if="!qrInfo.request_assignment"
-              @click="$emit('consume-supply', qrInfo.qr_code)"
-              class="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
-            >
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Consumir Insumo
-            </button>
-
-            <!-- Marcar como entregado (si está asignado pero no entregado) -->
-            <button
-              v-if="qrInfo.request_assignment && qrInfo.request_assignment.status === 'assigned'"
-              @click="$emit('mark-as-delivered', qrInfo.qr_code)"
-              class="inline-flex items-center px-4 py-2 border border-purple-300 text-sm font-medium rounded-md text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors"
-            >
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              Marcar como Entregado
-            </button>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -275,20 +266,56 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
+import QrcodeVue from 'qrcode.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import qrService from '../services/qrService'
+import qrService from '@/services/qrService'
 
 // Props
 const props = defineProps({
   qrInfo: {
     type: Object,
     required: true
+  },
+  showTraceability: {
+    type: Boolean,
+    default: false
+  },
+  scanContext: {
+    type: Object,
+    default: null
   }
 })
 
 // Emits
 const emit = defineEmits(['consume-supply', 'mark-as-delivered'])
+
+// Registrar el componente QR
+defineExpose({ QrcodeVue })
+
+// Estado reactivo para información de trazabilidad
+const scanActivity = ref(null)
+const lastScanInfo = ref(null)
+
+// Cargar información de trazabilidad si está habilitada
+onMounted(async () => {
+  if (props.showTraceability && props.qrInfo?.qr_code) {
+    try {
+      // Cargar estadísticas básicas de escaneo
+      const stats = await qrService.getScanStatistics(props.qrInfo.qr_code)
+      scanActivity.value = stats
+      
+      // Cargar información del último escaneo
+      const scanHistory = await qrService.getScanHistory(props.qrInfo.qr_code, 1)
+      if (scanHistory && scanHistory.length > 0) {
+        lastScanInfo.value = scanHistory[0]
+      }
+    } catch (error) {
+      console.warn('No se pudo cargar información de trazabilidad:', error)
+    }
+  }
+})
 
 // Métodos de formato
 const formatDate = (dateString) => {
@@ -340,7 +367,7 @@ const getHistoryIconClass = (status) => {
   return classes[status] || 'bg-gray-500'
 }
 
-// Nuevos métodos para solicitudes
+// Métodos para solicitudes (manteniendo los originales)
 const getAssignmentStatusLabel = (status) => {
   const labels = {
     'assigned': 'Asignado',
@@ -359,6 +386,29 @@ const getAssignmentStatusBadgeClass = (status) => {
     'returned': 'bg-yellow-100 text-yellow-800'
   }
   return classes[status] || 'bg-gray-100 text-gray-800'
+}
+
+// Nuevos métodos para trazabilidad
+const getScanPurposeBadgeClass = (purpose) => {
+  const classes = {
+    'lookup': 'bg-green-100 text-green-800',
+    'consume': 'bg-red-100 text-red-800',
+    'verify': 'bg-blue-100 text-blue-800',
+    'inventory_check': 'bg-purple-100 text-purple-800',
+    'assign': 'bg-yellow-100 text-yellow-800'
+  }
+  return classes[purpose] || 'bg-gray-100 text-gray-800'
+}
+
+const getScanPurposeLabel = (purpose) => {
+  const labels = {
+    'lookup': 'Consulta',
+    'consume': 'Consumo',
+    'verify': 'Verificación',
+    'inventory_check': 'Inventario',
+    'assign': 'Asignación'
+  }
+  return labels[purpose] || purpose
 }
 </script>
 

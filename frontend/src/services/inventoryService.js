@@ -326,7 +326,42 @@ class InventoryService {
     try {
       // Usar el endpoint correcto expuesto en el backend
       const response = await this.api.get('/batch-history/details')
-      return response.data.data || response.data || []
+      const data = response.data.data || response.data || []
+      
+      // Parsear los JSON strings de previous_values y new_values con verificación de tipo
+      return data.map(entry => {
+        let previousValues = entry.previous_values;
+        let newValues = entry.new_values;
+        
+        // Solo parsear si es string y parece JSON
+        if (typeof previousValues === 'string' && previousValues.trim().startsWith('{')) {
+          try {
+            previousValues = JSON.parse(previousValues);
+          } catch (e) {
+            console.warn('Could not parse previous_values:', previousValues, e);
+            previousValues = {};
+          }
+        } else if (!previousValues) {
+          previousValues = {};
+        }
+        
+        if (typeof newValues === 'string' && newValues.trim().startsWith('{')) {
+          try {
+            newValues = JSON.parse(newValues);
+          } catch (e) {
+            console.warn('Could not parse new_values:', newValues, e);
+            newValues = {};
+          }
+        } else if (!newValues) {
+          newValues = {};
+        }
+        
+        return {
+          ...entry,
+          previous_values: previousValues,
+          new_values: newValues
+        };
+      })
     } catch (error) {
       console.error('Error al obtener historial de lotes:', error)
       throw error
@@ -338,12 +373,82 @@ class InventoryService {
     try {
       // Intentar primero con el endpoint de la versión original
       const response = await this.api.get(`/batch-histories/search/${batchId}`)
-      return response.data.data || response.data || []
+      const data = response.data.data || response.data || []
+      
+      // Parsear los JSON strings de previous_values y new_values con verificación de tipo
+      return data.map(entry => {
+        let previousValues = entry.previous_values;
+        let newValues = entry.new_values;
+        
+        // Solo parsear si es string y parece JSON
+        if (typeof previousValues === 'string' && previousValues.trim().startsWith('{')) {
+          try {
+            previousValues = JSON.parse(previousValues);
+          } catch (e) {
+            console.warn('Could not parse previous_values:', previousValues, e);
+            previousValues = {};
+          }
+        } else if (!previousValues) {
+          previousValues = {};
+        }
+        
+        if (typeof newValues === 'string' && newValues.trim().startsWith('{')) {
+          try {
+            newValues = JSON.parse(newValues);
+          } catch (e) {
+            console.warn('Could not parse new_values:', newValues, e);
+            newValues = {};
+          }
+        } else if (!newValues) {
+          newValues = {};
+        }
+        
+        return {
+          ...entry,
+          previous_values: previousValues,
+          new_values: newValues
+        };
+      })
     } catch (error) {
       // Si falla, intentar con el endpoint de la nueva versión
       try {
         const response = await this.api.get(`/batch-history/search/${batchId}`)
-        return response.data.data || response.data || []
+        const data = response.data.data || response.data || []
+        
+        // Parsear los JSON strings de previous_values y new_values con verificación de tipo
+        return data.map(entry => {
+          let previousValues = entry.previous_values;
+          let newValues = entry.new_values;
+          
+          // Solo parsear si es string y parece JSON
+          if (typeof previousValues === 'string' && previousValues.trim().startsWith('{')) {
+            try {
+              previousValues = JSON.parse(previousValues);
+            } catch (e) {
+              console.warn('Could not parse previous_values:', previousValues, e);
+              previousValues = {};
+            }
+          } else if (!previousValues) {
+            previousValues = {};
+          }
+          
+          if (typeof newValues === 'string' && newValues.trim().startsWith('{')) {
+            try {
+              newValues = JSON.parse(newValues);
+            } catch (e) {
+              console.warn('Could not parse new_values:', newValues, e);
+              newValues = {};
+            }
+          } else if (!newValues) {
+            newValues = {};
+          }
+          
+          return {
+            ...entry,
+            previous_values: previousValues,
+            new_values: newValues
+          };
+        })
       } catch (fallbackError) {
         console.error('Error al obtener historial del lote:', error)
         throw error

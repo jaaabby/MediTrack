@@ -1,4 +1,6 @@
 import axios from 'axios'
+import inventoryService from './inventoryService.js'
+import { useAuthStore } from '@/stores/auth.js'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
 
@@ -10,32 +12,87 @@ class QRService {
         'Content-Type': 'application/json'
       }
     })
+
+    // Información de sesión y contexto para trazabilidad
+    this.sessionId = this.generateSessionId()
+    this.deviceInfo = this.detectDeviceInfo()
+    this.browserInfo = this.detectBrowserInfo()
+    this.setupRequestInterceptors()
   }
 
   // ========================
-  // ESCANEO Y VALIDACIÓN - ENFOCADO EN INSUMOS INDIVIDUALES
+  // CONFIGURACIÓN DE INTERCEPTORS PARA TRAZABILIDAD
   // ========================
 
-  // Escanear un código QR con prioridad para insumos individuales
-  async scanQRCode(qrCode) {
+  setupRequestInterceptors() {
+    // Interceptor para agregar headers de trazabilidad automáticamente
+    this.api.interceptors.request.use((config) => {
+      // Agregar headers de trazabilidad en todas las requests
+      config.headers['X-Session-ID'] = this.sessionId
+      config.headers['X-Device-Info'] = JSON.stringify(this.deviceInfo)
+      config.headers['X-Browser-Info'] = JSON.stringify(this.browserInfo)
+
+      // Nota: La información del usuario se envía via query parameters, no headers
+      // para evitar problemas de CORS
+
+      return config
+    })
+  }
+
+  // ========================
+  // ESCANEO CON TRAZABILIDAD AUTOMÁTICA
+  // ========================
+
+  // Escanear un código QR con contexto completo para trazabilidad
+  async scanQRCode(qrCode, scanContext = {}) {
     try {
       // Modo de prueba para desarrollo
       if (qrCode.includes('test')) {
         return this.generateTestResponse(qrCode)
       }
 
-      const response = await this.api.get(`/qr/scan/${encodeURIComponent(qrCode)}`)
+      // Construir contexto completo de escaneo
+      const fullContext = {
+        scan_purpose: 'lookup',
+        scan_source: 'web',
+        session_id: this.sessionId,
+        user_rut: this.getCurrentUserRUT(),
+        user_name: this.getCurrentUserName(),
+        pavilion_id: this.getCurrentPavilionId(),
+        medical_center_id: this.getCurrentMedicalCenterId(),
+        notes: '',
+        ...scanContext // Override con contexto específico
+      }
+
+      // Construir query params para contexto
+      const queryParams = new URLSearchParams()
+      Object.keys(fullContext).forEach(key => {
+        if (fullContext[key] !== null && fullContext[key] !== undefined && fullContext[key] !== '') {
+          queryParams.append(key, fullContext[key])
+        }
+      })
+
+      const response = await this.api.get(`/qr/scan/${encodeURIComponent(qrCode)}?${queryParams.toString()}`)
 
       // Extraer datos de la respuesta del backend
       let result = response.data
 
-      // Si la respuesta viene en formato {success: true, data: {...}}
+      // Si la respuesta viene en formato {success: true, data: {...}}, preservar la estructura
       if (result && result.success && result.data) {
-        result = result.data
+        const originalSuccess = result.success
+        const originalMessage = result.message
+        const dataContent = result.data
+        
+        // Crear nuevo objeto que mantenga la estructura esperada
+        result = {
+          ...dataContent,
+          success: originalSuccess,
+          ...(originalMessage && { backend_message: originalMessage })
+        }
       }
 
       // Mapear tipos del backend al frontend si es necesario
-      if (result.qr_type && !result.type) {
+      if (result && result.qr_type && !result.type) {
         if (result.qr_type === 'SUPPLY') {
           result.type = 'medical_supply'
         } else if (result.qr_type === 'BATCH') {
@@ -48,11 +105,11 @@ class QRService {
         result.scan_timestamp = new Date()
         result.is_individual_supply = result.type === 'medical_supply'
         result.is_batch = result.type === 'batch'
+        result.scan_context = fullContext
 
         // Para insumos individuales, verificar estado de consumo
         if (result.type === 'medical_supply') {
-          result.can_be_consumed = !result.is_consumed &&
-            result.available_for_use !== false
+          result.can_be_consumed = !result.is_consumed && result.available_for_use !== false
 
           // Añadir información del lote si está disponible
           if (result.batch_status) {
@@ -77,6 +134,18 @@ class QRService {
             }
           }
         }
+
+        // Agregar información de trazabilidad si está disponible
+        result.traceability_available = !!(result.traceability || result.scan_events || result.scan_statistics)
+      }
+
+      // Asegurar que siempre retornemos la estructura esperada por el frontend
+      if (!result.hasOwnProperty('success')) {
+        return {
+          success: true,
+          data: result,
+          message: result.backend_message || 'QR escaneado correctamente'
+        }
       }
 
       return result
@@ -99,6 +168,129 @@ class QRService {
     }
   }
 
+  // Escanear para consumo específico con registro automático
+  async scanForConsumption(qrCode, consumptionContext = {}) {
+    return this.scanQRCode(qrCode, {
+      scan_purpose: 'consume',
+      ...consumptionContext
+    })
+  }
+
+  // Escanear para verificación con registro automático
+  async scanForVerification(qrCode, verificationContext = {}) {
+    return this.scanQRCode(qrCode, {
+      scan_purpose: 'verify',
+      ...verificationContext
+    })
+  }
+
+  // Escanear para inventario con registro automático
+  async scanForInventory(qrCode, inventoryContext = {}) {
+    return this.scanQRCode(qrCode, {
+      scan_purpose: 'inventory_check',
+      ...inventoryContext
+    })
+  }
+
+  // ========================
+  // NUEVAS FUNCIONALIDADES DE TRAZABILIDAD COMPLETA
+  // ========================
+
+  // Obtener trazabilidad completa de un QR
+  async getCompleteTraceability(qrCode) {
+    try {
+      const response = await this.api.get(`/qr/traceability/${encodeURIComponent(qrCode)}`)
+
+      if (response.data && response.data.success) {
+        return response.data.data
+      }
+
+      return response.data
+    } catch (error) {
+      console.error('Error obteniendo trazabilidad completa:', error)
+      throw error
+    }
+  }
+
+  // Obtener historial de escaneos específicamente
+  async getScanHistory(qrCode, limit = 50) {
+    try {
+      const response = await this.api.get(`/qr/scan-history/${encodeURIComponent(qrCode)}?limit=${limit}`)
+
+      if (response.data && response.data.success) {
+        return response.data.data
+      }
+
+      return response.data
+    } catch (error) {
+      console.error('Error obteniendo historial de escaneos:', error)
+      
+      // Si es un 404, devolver array vacío en lugar de lanzar el error
+      if (error.response?.status === 404) {
+        return []
+      }
+      
+      throw error
+    }
+  }
+
+  // Obtener estadísticas de escaneo
+  async getScanStatistics(qrCode) {
+    try {
+      const response = await this.api.get(`/qr/scan-stats/${encodeURIComponent(qrCode)}`)
+
+      if (response.data && response.data.success) {
+        return response.data.data
+      }
+
+      return response.data
+    } catch (error) {
+      console.error('Error obteniendo estadísticas de escaneo:', error)
+      
+      // Si es un 404, devolver datos por defecto en lugar de lanzar el error
+      if (error.response?.status === 404) {
+        return {
+          total_scans: 0,
+          last_scan: null,
+          scan_sources: [],
+          scan_purposes: []
+        }
+      }
+      
+      throw error
+    }
+  }
+
+  // Registrar evento de escaneo manualmente
+  async registerScanEvent(qrCode, eventContext = {}) {
+    try {
+      const payload = {
+        qr_code: qrCode,
+        user_rut: this.getCurrentUserRUT(),
+        user_name: this.getCurrentUserName(),
+        pavilion_id: this.getCurrentPavilionId(),
+        medical_center_id: this.getCurrentMedicalCenterId(),
+        scan_source: 'web',
+        ...eventContext
+      }
+
+      const response = await this.api.post('/qr/register-scan', payload)
+
+      if (response.data && response.data.success) {
+        return response.data.data
+      }
+
+      return response.data
+    } catch (error) {
+      console.error('Error registrando evento de escaneo:', error)
+      throw error
+    }
+  }
+
+  // ========================
+  // VALIDACIÓN Y DETECCIÓN DE CONTEXTO
+  // ========================
+
   // Validar si un código QR es válido con información detallada
   async validateQRCode(qrCode) {
     try {
@@ -115,6 +307,152 @@ class QRService {
     }
   }
 
+  // Obtener información del usuario actual
+  getCurrentUserInfo() {
+    return {
+      rut: this.getCurrentUserRUT(),
+      name: this.getCurrentUserName(),
+      pavilionId: this.getCurrentPavilionId(),
+      medicalCenterId: this.getCurrentMedicalCenterId()
+    }
+  }
+
+  // Obtener RUT del usuario actual
+  getCurrentUserRUT() {
+    try {
+      const authStore = useAuthStore()
+      return authStore.user?.rut || 
+             localStorage.getItem('user_rut') ||
+             null
+    } catch (error) {
+      return localStorage.getItem('user_rut') || null
+    }
+  }
+
+  // Obtener nombre del usuario actual
+  getCurrentUserName() {
+    try {
+      const authStore = useAuthStore()
+      return authStore.user?.name || 
+             localStorage.getItem('user_name') ||
+             null
+    } catch (error) {
+      return localStorage.getItem('user_name') || null
+    }
+  }
+
+  // Obtener ID del pabellón actual
+  getCurrentPavilionId() {
+    const pavilionId = localStorage.getItem('current_pavilion_id') ||
+      this.$store?.state?.location?.pavilionId ||
+      null
+    return pavilionId ? parseInt(pavilionId) : null
+  }
+
+  // Obtener ID del centro médico actual
+  getCurrentMedicalCenterId() {
+    const medicalCenterId = localStorage.getItem('current_medical_center_id') ||
+      this.$store?.state?.location?.medicalCenterId ||
+      null
+    return medicalCenterId ? parseInt(medicalCenterId) : null
+  }
+
+  // Establecer ubicación actual para todos los escaneos
+  setCurrentLocation(pavilionId, medicalCenterId) {
+    if (pavilionId) {
+      localStorage.setItem('current_pavilion_id', pavilionId.toString())
+    }
+    if (medicalCenterId) {
+      localStorage.setItem('current_medical_center_id', medicalCenterId.toString())
+    }
+  }
+
+  // Limpiar ubicación actual
+  clearCurrentLocation() {
+    localStorage.removeItem('current_pavilion_id')
+    localStorage.removeItem('current_medical_center_id')
+  }
+
+  // ========================
+  // DETECCIÓN DE DISPOSITIVO Y NAVEGADOR
+  // ========================
+
+  // Detectar información del dispositivo
+  detectDeviceInfo() {
+    const ua = navigator.userAgent
+
+    return {
+      platform: this.detectPlatform(ua),
+      device_type: this.detectDeviceType(ua),
+      screen_size: `${screen.width}x${screen.height}`,
+      touch_enabled: 'ontouchstart' in window,
+      language: navigator.language || navigator.userLanguage
+    }
+  }
+
+  // Detectar información del navegador
+  detectBrowserInfo() {
+    const ua = navigator.userAgent
+
+    return {
+      name: this.detectBrowserName(ua),
+      version: this.detectBrowserVersion(ua),
+      engine: this.detectBrowserEngine(ua),
+      cookies_enabled: navigator.cookieEnabled,
+      javascript_enabled: true
+    }
+  }
+
+  // Detectar plataforma
+  detectPlatform(ua) {
+    if (ua.includes('Windows')) return 'Windows'
+    if (ua.includes('Mac')) return 'Mac'
+    if (ua.includes('Linux')) return 'Linux'
+    if (ua.includes('Android')) return 'Android'
+    if (ua.includes('iOS') || ua.includes('iPhone') || ua.includes('iPad')) return 'iOS'
+    return 'Unknown'
+  }
+
+  // Detectar tipo de dispositivo
+  detectDeviceType(ua) {
+    if (ua.includes('Mobile') || ua.includes('Android')) return 'mobile'
+    if (ua.includes('Tablet') || ua.includes('iPad')) return 'tablet'
+    return 'desktop'
+  }
+
+  // Detectar nombre del navegador
+  detectBrowserName(ua) {
+    if (ua.includes('Chrome')) return 'Chrome'
+    if (ua.includes('Firefox')) return 'Firefox'
+    if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari'
+    if (ua.includes('Edge')) return 'Edge'
+    if (ua.includes('Opera')) return 'Opera'
+    return 'Unknown'
+  }
+
+  // Detectar versión del navegador
+  detectBrowserVersion(ua) {
+    const match = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)\/([0-9.]+)/)
+    return match ? match[2] : 'Unknown'
+  }
+
+  // Detectar motor del navegador
+  detectBrowserEngine(ua) {
+    if (ua.includes('Blink') || ua.includes('Chrome')) return 'Blink'
+    if (ua.includes('Gecko') && ua.includes('Firefox')) return 'Gecko'
+    if (ua.includes('WebKit') && ua.includes('Safari')) return 'WebKit'
+    return 'Unknown'
+  }
+
+  // Generar ID de sesión único
+  generateSessionId() {
+    return 'qr_session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+  }
+
+  // ========================
+  // HISTORIAL Y DETALLE DE INSUMOS (FUNCIONES EXISTENTES MEJORADAS)
+  // ========================
+
   // Obtener historial de un insumo individual por código QR
   async getSupplyHistory(qrCode) {
     try {
@@ -124,7 +462,7 @@ class QRService {
 
       const response = await this.api.get(`/qr/history/${encodeURIComponent(qrCode)}`)
 
-      console.log('Raw history response:', response.data) // Debug adicional
+      console.log('Raw history response:', response.data)
 
       // Manejar la estructura de respuesta del backend
       let historyData = null
@@ -148,7 +486,7 @@ class QRService {
         })
       }
 
-      console.log('Processed history data:', historyData) // Debug
+      console.log('Processed history data:', historyData)
 
       return historyData
     } catch (error) {
@@ -217,6 +555,315 @@ class QRService {
   }
 
   // ========================
+  // CONSUMO DE INSUMOS CON TRAZABILIDAD Y HISTORIAL DE LOTES
+  // ========================
+
+  // Consumir un insumo individual por su código QR con trazabilidad y actualización de lote
+  async consumeSupply(consumptionData) {
+    try {
+      // Validar que sea un insumo individual
+      if (!this.isIndividualSupply(consumptionData.qr_code)) {
+        throw new Error('Solo se pueden consumir insumos individuales. Use códigos QR que comiencen con SUPPLY_')
+      }
+
+      // Obtener información del insumo antes del consumo para saber su lote
+      const supplyInfo = await this.getQRInfo(consumptionData.qr_code)
+      
+      if (!supplyInfo.supply_info || !supplyInfo.supply_info.batch) {
+        throw new Error('No se pudo obtener información del lote del insumo')
+      }
+
+      const batchId = supplyInfo.supply_info.batch.id
+      const currentBatchAmount = supplyInfo.supply_info.batch.amount
+
+      // Consumir el insumo individual
+      const response = await this.api.post('/qr/consume', {
+        ...consumptionData,
+        consumption_timestamp: new Date().toISOString()
+      })
+
+      // Si el consumo fue exitoso, actualizar el historial del lote
+      if (response.data && response.data.success) {
+        try {
+          await this.updateBatchHistoryAfterConsumption({
+            batchId: batchId,
+            previousAmount: currentBatchAmount,
+            newAmount: currentBatchAmount - 1,
+            userRUT: consumptionData.user_rut,
+            userName: consumptionData.user_name || 'Usuario',
+            consumedQRCode: consumptionData.qr_code,
+            destination: `${consumptionData.destination_type} ${consumptionData.destination_id}`
+          })
+        } catch (historyError) {
+          console.warn('Error al actualizar historial del lote:', historyError)
+        }
+      }
+
+      return {
+        ...response.data,
+        ui_message: 'Insumo individual consumido exitosamente y historial actualizado',
+        next_actions: [
+          { label: 'Ver historial del lote', action: 'view_batch_history' },
+          { label: 'Ver historial del insumo', action: 'view_supply_history' },
+          { label: 'Escanear otro', action: 'scan_next' },
+          { label: 'Ver inventario', action: 'view_inventory' }
+        ]
+      }
+    } catch (error) {
+      console.error('Error al consumir insumo:', error)
+
+      // Mejorar mensajes de error para insumos individuales
+      if (error.response?.data?.message?.includes('ya ha sido consumido')) {
+        throw new Error('Este insumo individual ya ha sido consumido anteriormente.')
+      } else if (error.response?.data?.message?.includes('no encontrado')) {
+        throw new Error('Insumo individual no encontrado. Verifique el código QR.')
+      }
+
+      throw error
+    }
+  }
+
+  // Método para actualizar el historial del lote después del consumo
+  async updateBatchHistoryAfterConsumption(historyData) {
+    try {
+      const {
+        batchId,
+        previousAmount,
+        newAmount,
+        userRUT,
+        userName,
+        consumedQRCode,
+        destination
+      } = historyData
+
+      // Formatear la fecha en el formato específico
+      const now = new Date()
+      const formattedDate = now.toLocaleDateString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).replace(/\//g, '/')
+
+      // Crear el registro de historial con el formato específico
+      const historyEntry = {
+        date_time: now.toISOString(),
+        change_details: 'Cantidad actualizada',
+        previous_values: JSON.stringify({
+          amount: previousAmount,
+          observaciones: `Antes del consumo del insumo ${consumedQRCode}`
+        }),
+        new_values: JSON.stringify({
+          amount: newAmount,
+          observaciones: `Después del consumo del insumo ${consumedQRCode}`,
+          destino: destination
+        }),
+        user_name: userName,
+        user_rut: userRUT,
+        batch_id: batchId,
+        batch_number: batchId
+      }
+
+      // Crear el registro usando el servicio de inventario existente
+      const response = await this.api.post('/batch-history/', historyEntry)
+
+      console.log('Historial del lote actualizado exitosamente:', response.data)
+      return response.data
+
+    } catch (error) {
+      console.error('Error al crear historial del lote:', error)
+      throw error
+    }
+  }
+
+  // Método para obtener el historial formateado de un lote con los consumos
+  async getBatchHistoryFormatted(batchId) {
+    try {
+      const history = await inventoryService.getBatchHistory(batchId)
+      
+      // Formatear el historial para mostrar en el formato específico
+      return history.map(entry => {
+        const date = new Date(entry.date_time)
+        const formattedDate = date.toLocaleDateString('es-CL', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        })
+
+        let previousValues = {}
+        let newValues = {}
+        
+        try {
+          previousValues = JSON.parse(entry.previous_values || '{}')
+          newValues = JSON.parse(entry.new_values || '{}')
+        } catch (parseError) {
+          console.warn('Error parsing values:', parseError)
+        }
+
+        return {
+          ...entry,
+          formatted_date: formattedDate,
+          display_format: {
+            date: formattedDate,
+            action: entry.change_details,
+            previous_amount: previousValues.cantidad || '',
+            new_amount: newValues.cantidad || '',
+            user_rut: entry.user_rut,
+            user_name: entry.user_name,
+            destination: newValues.destino || '',
+            observations: newValues.observaciones || ''
+          }
+        }
+      })
+    } catch (error) {
+      console.error('Error al obtener historial formateado:', error)
+      throw error
+    }
+  }
+
+  // Obtener información QR como alias para scanQRCode
+  async getQRInfo(qrCode) {
+    return this.scanQRCode(qrCode)
+  }
+
+  // Consumir insumo individual con endpoint específico y trazabilidad
+  async consumeIndividualSupply(consumeData) {
+    try {
+      const payload = {
+        qr_code: consumeData.qr_code,
+        user_rut: consumeData.user_rut || this.getCurrentUserRUT(),
+        user_name: consumeData.user_name || 'Encargado Bodega',
+        destination_type: consumeData.destination_type,
+        destination_id: consumeData.destination_id,
+        notes: consumeData.notes || '',
+        consumed_at: consumeData.consumed_at || new Date().toISOString()
+      }
+
+      // Usar el método principal que incluye actualización de historial
+      return this.consumeSupply(payload)
+    } catch (error) {
+      console.error('Error consuming individual supply:', error)
+      throw error
+    }
+  }
+
+  // Consumir múltiples insumos individuales en lote con actualización de historial
+  async bulkConsumeSupplies(bulkConsumptionData) {
+    try {
+      // Validar que todos sean insumos individuales
+      const invalidQRs = bulkConsumptionData.qr_codes?.filter(qr => !this.isIndividualSupply(qr))
+      if (invalidQRs && invalidQRs.length > 0) {
+        throw new Error(`Los siguientes códigos QR no son insumos individuales: ${invalidQRs.join(', ')}`)
+      }
+
+      const results = []
+      const batchUpdates = new Map()
+
+      // Procesar cada QR individualmente
+      for (const qrCode of bulkConsumptionData.qr_codes) {
+        try {
+          // Obtener info del insumo para conocer su lote
+          const supplyInfo = await this.getQRInfo(qrCode)
+          const batchId = supplyInfo.supply_info?.batch?.id
+
+          if (batchId) {
+            // Acumular cambios por lote
+            if (!batchUpdates.has(batchId)) {
+              batchUpdates.set(batchId, {
+                batchId: batchId,
+                currentAmount: supplyInfo.supply_info.batch.amount,
+                consumedCount: 0,
+                consumedQRCodes: []
+              })
+            }
+            batchUpdates.get(batchId).consumedCount++
+            batchUpdates.get(batchId).consumedQRCodes.push(qrCode)
+          }
+
+          // Consumir el insumo individual
+          const consumptionResult = await this.api.post('/qr/consume', {
+            qr_code: qrCode,
+            user_rut: bulkConsumptionData.user_rut,
+            user_name: bulkConsumptionData.user_name || 'Usuario',
+            destination_type: bulkConsumptionData.destination_type,
+            destination_id: bulkConsumptionData.destination_id,
+            notes: bulkConsumptionData.notes || '',
+            consumed_at: new Date().toISOString()
+          })
+
+          results.push({
+            qr_code: qrCode,
+            success: true,
+            data: consumptionResult.data
+          })
+
+        } catch (error) {
+          results.push({
+            qr_code: qrCode,
+            success: false,
+            error: error.message
+          })
+        }
+      }
+
+      // Actualizar historial de lotes agrupado
+      for (const [batchId, updateInfo] of batchUpdates) {
+        try {
+          await this.updateBatchHistoryAfterConsumption({
+            batchId: updateInfo.batchId,
+            previousAmount: updateInfo.currentAmount,
+            newAmount: updateInfo.currentAmount - updateInfo.consumedCount,
+            userRUT: bulkConsumptionData.user_rut,
+            userName: bulkConsumptionData.user_name || 'Usuario',
+            consumedQRCode: `Múltiples: ${updateInfo.consumedQRCodes.join(', ')}`,
+            destination: `${bulkConsumptionData.destination_type} ${bulkConsumptionData.destination_id}`
+          })
+        } catch (historyError) {
+          console.warn(`Error al actualizar historial del lote ${batchId}:`, historyError)
+        }
+      }
+
+      const successfulConsumptions = results.filter(r => r.success).length
+
+      return {
+        success: true,
+        successful_consumptions: successfulConsumptions,
+        failed_consumptions: results.length - successfulConsumptions,
+        results: results,
+        batch_history_updated: batchUpdates.size,
+        ui_message: `${successfulConsumptions} insumos consumidos exitosamente. Historial de ${batchUpdates.size} lote(s) actualizado.`
+      }
+
+    } catch (error) {
+      console.error('Error al consumir múltiples insumos:', error)
+      throw error
+    }
+  }
+
+  // Verificar disponibilidad de un insumo individual para consumo
+  async verifySupplyAvailability(qrCode) {
+    try {
+      if (!this.isIndividualSupply(qrCode)) {
+        return {
+          available: false,
+          reason: 'not_individual_supply',
+          message: 'Solo se pueden verificar insumos individuales'
+        }
+      }
+
+      const response = await this.api.get(`/qr/verify/${encodeURIComponent(qrCode)}`)
+
+      return {
+        ...response.data,
+        is_individual_supply: true,
+        ui_recommendations: this.getAvailabilityRecommendations(response.data)
+      }
+    } catch (error) {
+      console.error('Error al verificar disponibilidad:', error)
+      throw error
+    }
+  }
+
+  // ========================
   // GENERACIÓN DE QR CODES PARA INSUMOS INDIVIDUALES
   // ========================
 
@@ -260,94 +907,6 @@ class QRService {
       }
     } catch (error) {
       console.error('Error al generar múltiples códigos QR:', error)
-      throw error
-    }
-  }
-
-  // ========================
-  // CONSUMO DE INSUMOS INDIVIDUALES
-  // ========================
-
-  // Consumir un insumo individual por su código QR
-  async consumeSupply(consumptionData) {
-    try {
-      // Validar que sea un insumo individual
-      if (!this.isIndividualSupply(consumptionData.qr_code)) {
-        throw new Error('Solo se pueden consumir insumos individuales. Use códigos QR que comiencen con SUPPLY_')
-      }
-
-      const response = await this.api.post('/qr/consume', {
-        ...consumptionData,
-        consumption_timestamp: new Date().toISOString()
-      })
-
-      return {
-        ...response.data,
-        ui_message: 'Insumo individual consumido exitosamente',
-        next_actions: [
-          { label: 'Ver historial', action: 'view_history' },
-          { label: 'Escanear otro', action: 'scan_next' },
-          { label: 'Ver inventario', action: 'view_inventory' }
-        ]
-      }
-    } catch (error) {
-      console.error('Error al consumir insumo:', error)
-
-      // Mejorar mensajes de error para insumos individuales
-      if (error.response?.data?.message?.includes('ya ha sido consumido')) {
-        throw new Error('Este insumo individual ya ha sido consumido anteriormente.')
-      } else if (error.response?.data?.message?.includes('no encontrado')) {
-        throw new Error('Insumo individual no encontrado. Verifique el código QR.')
-      }
-
-      throw error
-    }
-  }
-
-  // Consumir múltiples insumos individuales en lote
-  async bulkConsumeSupplies(bulkConsumptionData) {
-    try {
-      // Validar que todos sean insumos individuales
-      const invalidQRs = bulkConsumptionData.qr_codes?.filter(qr => !this.isIndividualSupply(qr))
-      if (invalidQRs && invalidQRs.length > 0) {
-        throw new Error(`Los siguientes códigos QR no son insumos individuales: ${invalidQRs.join(', ')}`)
-      }
-
-      const response = await this.api.post('/qr/consume/bulk', {
-        ...bulkConsumptionData,
-        consumption_timestamp: new Date().toISOString()
-      })
-
-      return {
-        ...response.data,
-        ui_message: `${response.data.successful_consumptions || 0} insumos individuales consumidos exitosamente`
-      }
-    } catch (error) {
-      console.error('Error al consumir múltiples insumos:', error)
-      throw error
-    }
-  }
-
-  // Verificar disponibilidad de un insumo individual para consumo
-  async verifySupplyAvailability(qrCode) {
-    try {
-      if (!this.isIndividualSupply(qrCode)) {
-        return {
-          available: false,
-          reason: 'not_individual_supply',
-          message: 'Solo se pueden verificar insumos individuales'
-        }
-      }
-
-      const response = await this.api.get(`/qr/verify/${encodeURIComponent(qrCode)}`)
-
-      return {
-        ...response.data,
-        is_individual_supply: true,
-        ui_recommendations: this.getAvailabilityRecommendations(response.data)
-      }
-    } catch (error) {
-      console.error('Error al verificar disponibilidad:', error)
       throw error
     }
   }
@@ -403,7 +962,7 @@ class QRService {
       date: new Date(timestamp * 1000),
       is_individual_supply: type === 'supply',
       is_batch: type === 'batch',
-      priority_level: type === 'supply' ? 'high' : 'medium' // Prioridad para insumos individuales
+      priority_level: type === 'supply' ? 'high' : 'medium'
     }
   }
 
@@ -416,7 +975,7 @@ class QRService {
       typeLabel: this.getTypeLabel(qrInfo.type),
       statusLabel: this.getStatusLabel(qrInfo),
       statusColor: this.getStatusColor(qrInfo),
-      is_recommended_scan: qrInfo.type === 'medical_supply', // Prioridad para insumos individuales
+      is_recommended_scan: qrInfo.type === 'medical_supply',
       ui_priority: qrInfo.type === 'medical_supply' ? 'high' : 'medium'
     }
 
@@ -466,7 +1025,7 @@ class QRService {
     if (qrInfo.type === 'medical_supply') {
       if (qrInfo.is_consumed) return 'red'
       if (qrInfo.available_for_use === false) return 'orange'
-      return 'green' // Listo para usar
+      return 'green'
     } else if (qrInfo.type === 'batch') {
       const batchStatus = qrInfo.batch_status
       if (batchStatus && batchStatus.available_supplies === 0) return 'red'
@@ -683,7 +1242,11 @@ class QRService {
           store_name: 'Farmacia Central',
           store_type: 'Farmacia',
           batch_id: 10,
-          is_consumed: false
+          is_consumed: false,
+          batch: {
+            id: 10,
+            amount: 50
+          }
         },
         batch_status: {
           batch_id: 10,
@@ -706,7 +1269,18 @@ class QRService {
             destination_type: 'store',
             destination_id: 1
           }
-        ]
+        ],
+        scan_events: [],
+        scan_statistics: {
+          total_scans: 1,
+          unique_scanners: 1,
+          last_scan: new Date().toISOString()
+        },
+        traceability: {
+          qr_code: qrCode,
+          current_status: 'available',
+          total_movements: 1
+        }
       }
     } else if (qrType === 'BATCH') {
       return {
@@ -729,11 +1303,34 @@ class QRService {
           available_supplies: 50,
           current_batch_amount: 50,
           amounts_synchronized: true
+        },
+        scan_events: [],
+        scan_statistics: {
+          total_scans: 1,
+          unique_scanners: 1,
+          last_scan: new Date().toISOString()
         }
       }
     }
 
     throw new Error('Tipo de QR de prueba no reconocido')
+  }
+
+  // ========================
+  // OBTENER CONTEXTO ACTUAL
+  // ========================
+
+  // Obtener información de contexto actual completa
+  getCurrentContext() {
+    return {
+      userRUT: this.getCurrentUserRUT(),
+      userName: this.getCurrentUserName(),
+      pavilionId: this.getCurrentPavilionId(),
+      medicalCenterId: this.getCurrentMedicalCenterId(),
+      sessionId: this.sessionId,
+      deviceInfo: this.deviceInfo,
+      browserInfo: this.browserInfo
+    }
   }
 }
 

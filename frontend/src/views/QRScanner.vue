@@ -1,28 +1,55 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div class="bg-white rounded-lg shadow-sm border p-6">
-      <h2 class="text-2xl font-semibold text-gray-900">Escáner de Insumos Médicos</h2>
-      <p class="text-gray-600 mt-1">Escanea códigos QR de insumos individuales para ver su información y estado</p>
-      
-      <!-- Info Panel -->
-      <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div class="flex items-start space-x-3">
-          <svg class="h-5 w-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <h4 class="text-sm font-medium text-blue-800">Enfoque en Insumos Individuales</h4>
-            <p class="text-sm text-blue-700 mt-1">
-              Este escáner está optimizado para insumos individuales. Cada producto de un lote tiene su propio código QR único que permite trazabilidad completa.
-            </p>
-          </div>
+  <div class="max-w-4xl mx-auto p-6">
+    <!-- Header con estadísticas 
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 mb-2">Escáner QR con Trazabilidad</h1>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div class="text-xs font-medium text-blue-600 uppercase">Escaneos Hoy</div>
+          <div class="text-xl font-bold text-blue-900">{{ todayScans }}</div>
+        </div>
+        <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+          <div class="text-xs font-medium text-green-600 uppercase">Exitosos</div>
+          <div class="text-xl font-bold text-green-900">{{ successfulScans }}</div>
+        </div>
+        <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+          <div class="text-xs font-medium text-purple-600 uppercase">Ubicación</div>
+          <div class="text-sm font-medium text-purple-900">{{ currentLocation?.name || 'No seleccionada' }}</div>
+        </div>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+          <div class="text-xs font-medium text-gray-600 uppercase">Usuario</div>
+          <div class="text-sm font-medium text-gray-900">{{ currentUser?.name || 'No logueado' }}</div>
         </div>
       </div>
-    </div>
+    </div>-->
+
+    <!-- Selector de propósito de escaneo 
+    <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Propósito del Escaneo</h3>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <button
+          v-for="purpose in scanPurposes"
+          :key="purpose.value"
+          @click="selectedPurpose = purpose.value"
+          :class="[
+            'p-3 rounded-lg border-2 text-sm font-medium transition-all',
+            selectedPurpose === purpose.value
+              ? 'border-blue-500 bg-blue-50 text-blue-700'
+              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+          ]"
+        >
+          <div class="flex flex-col items-center">
+            <svg class="h-6 w-6 mb-1" :class="purpose.iconClass" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="purpose.icon" />
+            </svg>
+            <span>{{ purpose.label }}</span>
+          </div>
+        </button>
+      </div>
+    </div>-->
 
     <!-- Scanner Input -->
-    <div class="bg-white rounded-lg shadow-sm border p-6">
+    <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
       <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
         <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5l2 3h3l2-3h5v5M4 4v5m16-5v5" />
@@ -45,6 +72,7 @@
               class="form-input flex-1"
               @keyup.enter="scanQRCode"
               @paste="handlePaste"
+              :disabled="loading"
             />
             <button
               @click="scanQRCode"
@@ -59,7 +87,7 @@
             </button>
           </div>
           
-          <!-- Format Helper - Focused on Individual Supplies -->
+          <!-- Format Helper -->
           <div class="mt-3 p-3 bg-green-50 rounded-lg">
             <p class="text-sm text-green-800">
               <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,7 +187,7 @@
     </div>
 
     <!-- Error Display -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
+    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
       <div class="flex items-start space-x-3">
         <svg class="h-5 w-5 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -175,109 +203,120 @@
     </div>
 
     <!-- Scanned Supply Info Display -->
-    <div v-if="scannedInfo && !error" class="bg-white rounded-lg shadow-sm border overflow-hidden">
-      <!-- Usar el componente QRInfoDisplay para mostrar la información -->
+    <div v-if="scannedInfo && !error" class="bg-white rounded-lg shadow-sm border overflow-hidden mb-6">
       <QRInfoDisplay 
         :qr-info="scannedInfo"
+        :show-traceability="true"
+        :scan-context="lastScanContext"
         @view-details="viewDetails"
         @view-batch="viewBatch"
         @consume-supply="consumeSupply"
       />
+      
+      <!-- Botones de acción adicionales con trazabilidad -->
+      <div class="p-4 border-t border-gray-200 bg-gray-50">
+        <div class="flex flex-wrap gap-3">
+          
+          <button
+            v-if="scannedInfo.supply_info && !scannedInfo.is_consumed"
+            @click="quickConsume"
+            class="btn-primary text-sm"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            Consumir Rápido
+          </button>
+          
+          <button
+            v-if="scannedInfo.supply_info && !scannedInfo.is_consumed"
+            @click="quickTransfer"
+            class="btn-secondary text-sm"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            Transferir Rápido
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- Scan History -->
-    <div v-if="scanHistory.length > 0" class="bg-white rounded-lg shadow-sm border p-6">
+    <!-- Scan History con información de trazabilidad -->
+    <div v-if="scanHistory.length > 0" class="bg-white rounded-lg shadow-sm border p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-medium text-gray-900 flex items-center">
           <svg class="h-5 w-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Historial de Escaneos
+          Historial de Escaneos Recientes
         </h3>
         <button @click="clearHistory" class="text-sm text-gray-500 hover:text-gray-700">
           Limpiar Historial
         </button>
       </div>
       
-      <div class="space-y-2 max-h-60 overflow-y-auto">
-        <div 
+      <div class="space-y-3 max-h-80 overflow-y-auto">
+        <button 
           v-for="(item, index) in scanHistory" 
           :key="index"
-          class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
           @click="quickRescan(item.qr_code)"
+          class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors flex flex-col"
         >
-          <div class="flex items-center space-x-3">
-            <div :class="[
-              'p-1 rounded',
-              item.type === 'medical_supply' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
-            ]">
+          <div class="flex items-center space-x-2">
+            <span class="p-1.5 rounded-full bg-gray-100 text-gray-600">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path v-if="item.type === 'medical_supply'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </div>
-            <div>
-              <p class="text-sm font-medium text-gray-900">{{ item.qr_code }}</p>
-              <p class="text-xs text-gray-500">{{ formatDate(item.scanned_at) }}</p>
-            </div>
+            </span>
+            <code class="text-sm font-mono text-gray-900 truncate">{{ item.qr_code }}</code>
+            <span 
+              :class="[
+                'px-2 py-0.5 rounded-full text-xs font-medium',
+                item.scan_purpose === 'consume' ? 'bg-red-100 text-red-800' :
+                item.scan_purpose === 'verify' ? 'bg-blue-100 text-blue-800' :
+                item.scan_purpose === 'lookup' ? 'bg-green-100 text-green-800' :
+                item.scan_purpose === 'transfer' ? 'bg-orange-100 text-orange-800' :
+                'bg-gray-100 text-gray-800'
+              ]"
+            >
+              {{ item.scan_purpose || 'lookup' }}
+            </span>
+            <span :class="[
+              'px-2 py-1 text-xs font-medium rounded',
+              item.type === 'medical_supply' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+            ]">
+              {{ item.type === 'medical_supply' ? 'Insumo' : 'Lote' }}
+            </span>
           </div>
-          <span :class="[
-            'px-2 py-1 text-xs font-medium rounded',
-            item.type === 'medical_supply' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-          ]">
-            {{ item.type === 'medical_supply' ? 'Insumo' : 'Lote' }}
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="bg-white rounded-lg shadow-sm border p-6">
-      <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <router-link to="/consume" class="p-4 text-center block text-white bg-red-600 hover:bg-red-700 rounded-md shadow font-medium flex flex-col items-center justify-center transition-colors">
-          <svg class="h-6 w-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          <div class="text-sm font-medium">Consumir</div>
-        </router-link>
-
-        <router-link to="/inventory" class="p-4 text-center block text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-md shadow font-medium flex flex-col items-center justify-center transition-colors">
-          <svg class="h-6 w-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-          <div class="text-sm font-medium">Inventario</div>
-        </router-link>
-
-        <button @click="clearAll" class="p-4 text-center block text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-md shadow font-medium flex flex-col items-center justify-center transition-colors">
-          <svg class="h-6 w-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <div class="text-sm font-medium">Limpiar</div>
+          <div class="flex items-center space-x-4 text-xs text-gray-500 mt-1">
+            <span>{{ formatDate(item.scanned_at) }}</span>
+            <span v-if="item.location">📍 {{ item.location }}</span>
+            <span v-if="item.user_name">👤 {{ item.user_name }}</span>
+          </div>
+          <div v-if="item.supply_name" class="text-sm text-gray-700 mt-1 truncate">
+            {{ item.supply_name }}
+          </div>
         </button>
-
-        <router-link to="/" class="p-4 text-center block text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-md shadow font-medium flex flex-col items-center justify-center transition-colors">
-          <svg class="h-6 w-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          <div class="text-sm font-medium">Inicio</div>
-        </router-link>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useAuthStore } from '@/stores/auth'
 import qrService from '@/services/qrService'
 import jsQR from 'jsqr'
 import QRInfoDisplay from '@/components/QRInfoDisplay.vue'
+import LocationSelector from '@/components/LocationSelector.vue'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 // Referencias
 const videoElement = ref(null)
@@ -292,11 +331,56 @@ const cameraStarting = ref(false)
 const cameraError = ref(null)
 const scanHistory = ref([])
 const detecting = ref(false)
+const selectedPurpose = ref('lookup')
+const currentLocation = ref(null)
+const lastScanContext = ref(null)
+
+// Computed properties para datos del usuario desde el store
+const currentUser = computed(() => authStore.user)
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+
+// Estadísticas
+const todayScans = ref(0)
+const successfulScans = ref(0)
 
 let mediaStream = null
 let animationFrameId = null
 
-// Camera Functions - Manteniendo la lógica original pero agregando efectos
+// Propósitos de escaneo
+const scanPurposes = [
+  {
+    value: 'lookup',
+    label: 'Consultar',
+    icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z',
+    iconClass: 'text-green-600'
+  },
+  {
+    value: 'consume',
+    label: 'Consumir',
+    icon: 'M5 13l4 4L19 7',
+    iconClass: 'text-red-600'
+  },
+  {
+    value: 'verify',
+    label: 'Verificar',
+    icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+    iconClass: 'text-blue-600'
+  },
+  {
+    value: 'transfer',
+    label: 'Transferir',
+    icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
+    iconClass: 'text-orange-600'
+  },
+  {
+    value: 'inventory_check',
+    label: 'Inventario',
+    icon: 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+    iconClass: 'text-purple-600'
+  }
+]
+
+// Funciones de cámara con efectos visuales originales
 const startCameraScanner = async () => {
   if (cameraActive.value) return
   
@@ -316,7 +400,7 @@ const startCameraScanner = async () => {
     cameraActive.value = true
     
     // Mostrar toast de activación con efectos
-  showDetectionToast('Cámara activada', 'success')
+    showDetectionToast('Cámara activada', 'success')
     
     // Esperar a que el elemento video esté disponible
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -543,12 +627,10 @@ const stopCamera = () => {
   detecting.value = false
   cameraError.value = null
   
-  //showDetectionToast('Cámara detenida', 'info')
-  
   console.log('Cámara detenida correctamente')
 }
 
-// Scanner Functions - mantener igual
+// Funciones principales de escaneo
 const scanQRCode = async () => {
   if (!qrInput.value.trim() || loading.value) return
   
@@ -562,11 +644,20 @@ const scanQRCode = async () => {
       throw new Error('Formato de código QR inválido. Use SUPPLY_... para insumos individuales o BATCH_... para lotes.')
     }
     
-    const result = await qrService.scanQRCode(qrInput.value.trim())
-    scannedInfo.value = result
+    // Crear contexto de escaneo con trazabilidad
+    const scanContext = buildScanContext()
     
-    // Añadir al historial con prioridad para insumos individuales
-    addToHistory(qrInput.value.trim(), result.type)
+    // Usar el método de escaneo con trazabilidad automática
+    const result = await qrService.scanQRCode(qrInput.value.trim(), scanContext)
+    
+    scannedInfo.value = result
+    lastScanContext.value = scanContext
+    
+    // Actualizar estadísticas
+    updateScanStatistics(result, true)
+    
+    // Añadir al historial con información de trazabilidad
+    addToHistory(qrInput.value.trim(), result.type, result, scanContext)
     
     // Mostrar mensaje diferente según el tipo
     if (result.type === 'medical_supply') {
@@ -578,10 +669,41 @@ const scanQRCode = async () => {
   } catch (err) {
     console.error('Error scanning QR:', err)
     error.value = err.response?.data?.error || err.message || 'Error al escanear el código QR'
-  showDetectionToast('Error al escanear QR', 'error')
+    showDetectionToast('Error al escanear QR', 'error')
+    updateScanStatistics(null, false)
   } finally {
     loading.value = false
   }
+}
+
+const buildScanContext = () => {
+  return {
+    scan_purpose: selectedPurpose.value,
+    pavilion_id: currentLocation.value?.pavilion_id,
+    medical_center_id: currentLocation.value?.medical_center_id,
+    scan_source: 'web',
+    user_agent: navigator.userAgent,
+    device_info: {
+      platform: navigator.platform,
+      language: navigator.language,
+      screen_resolution: `${screen.width}x${screen.height}`
+    }
+  }
+}
+
+const updateScanStatistics = (result, success) => {
+  if (success) {
+    successfulScans.value++
+  }
+  todayScans.value++
+  
+  // Guardar estadísticas locales
+  const stats = {
+    today_scans: todayScans.value,
+    successful_scans: successfulScans.value,
+    last_updated: new Date().toISOString()
+  }
+  localStorage.setItem('qr-scan-stats', JSON.stringify(stats))
 }
 
 const handlePaste = (event) => {
@@ -603,20 +725,20 @@ const quickRescan = (qrCode) => {
   scanQRCode()
 }
 
-// Función de prueba para códigos QR de ejemplo
-const testQR = (qrCode) => {
-  qrInput.value = qrCode
-  scanQRCode()
-}
-
-// History Management - mantener igual
-const addToHistory = (qrCode, type) => {
+// Funciones de historial mejoradas
+const addToHistory = (qrCode, type, qrInfo = null, scanContext = null) => {
   const existing = scanHistory.value.findIndex(item => item.qr_code === qrCode)
   
   const historyItem = {
     qr_code: qrCode,
     type: type,
-    scanned_at: new Date()
+    scanned_at: new Date(),
+    scan_purpose: scanContext?.scan_purpose || 'lookup',
+    location: currentLocation.value?.name,
+    user_name: currentUser.value?.name,
+    supply_name: qrInfo?.supply_info?.supply_code_name,
+    success: true,
+    scan_context: scanContext
   }
   
   if (existing >= 0) {
@@ -625,9 +747,9 @@ const addToHistory = (qrCode, type) => {
   
   scanHistory.value.unshift(historyItem)
   
-  // Mantener solo los últimos 10 escaneos
-  if (scanHistory.value.length > 10) {
-    scanHistory.value = scanHistory.value.slice(0, 10)
+  // Mantener solo los últimos 20 escaneos
+  if (scanHistory.value.length > 20) {
+    scanHistory.value = scanHistory.value.slice(0, 20)
   }
   
   saveHistory()
@@ -642,6 +764,14 @@ const loadHistory = () => {
         ...item,
         scanned_at: new Date(item.scanned_at)
       }))
+    }
+    
+    // Cargar estadísticas
+    const stats = localStorage.getItem('qr-scan-stats')
+    if (stats) {
+      const parsed = JSON.parse(stats)
+      todayScans.value = parsed.today_scans || 0
+      successfulScans.value = parsed.successful_scans || 0
     }
   } catch (error) {
     console.error('Error loading scan history:', error)
@@ -658,10 +788,58 @@ const saveHistory = () => {
 
 const clearHistory = () => {
   scanHistory.value = []
+  todayScans.value = 0
+  successfulScans.value = 0
   saveHistory()
+  localStorage.removeItem('qr-scan-stats')
 }
 
-// Navigation - mantener igual
+// Funciones de navegación y acciones con trazabilidad
+const viewCompleteTraceability = () => {
+  if (scannedInfo.value) {
+    router.push({
+      name: 'QRTraceability',
+      params: { qrcode: scannedInfo.value.qr_code }
+    })
+  }
+}
+
+const quickConsume = () => {
+  if (scannedInfo.value) {
+    router.push({
+      name: 'QRConsumer',
+      query: { 
+        qr: scannedInfo.value.qr_code,
+        quick: 'true',
+        purpose: 'consume'
+      }
+    })
+  }
+}
+
+const quickTransfer = () => {
+  if (scannedInfo.value) {
+    router.push({
+      name: 'QRConsumer',
+      query: { 
+        qr: scannedInfo.value.qr_code,
+        quick: 'true',
+        purpose: 'consume',
+        consumption_purpose: 'transfer'
+      }
+    })
+  }
+}
+
+const viewScanStatistics = () => {
+  if (scannedInfo.value) {
+    router.push({
+      name: 'QRAnalytics',
+      params: { qrcode: scannedInfo.value.qr_code }
+    })
+  }
+}
+
 const viewDetails = (qrInfo) => {
   router.push({
     name: 'QRDetails',
@@ -683,7 +861,11 @@ const viewBatch = (batchId) => {
   })
 }
 
-// Utilities - mantener igual
+const onLocationChanged = (location) => {
+  currentLocation.value = location
+}
+
+// Utilidades
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
@@ -704,7 +886,7 @@ const clearAll = () => {
   stopCamera()
 }
 
-// Lifecycle - mantener igual
+// Lifecycle
 onMounted(() => {
   loadHistory()
   
@@ -713,6 +895,11 @@ onMounted(() => {
     const testQR = route.query.qr || route.query.test
     qrInput.value = testQR
     scanQRCode()
+  }
+  
+  // Inicializar autenticación si no está inicializada
+  if (!authStore.isAuthenticated) {
+    authStore.initializeAuth()
   }
 })
 

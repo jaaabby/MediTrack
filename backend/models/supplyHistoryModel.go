@@ -61,3 +61,11 @@ func (s SupplyHistory) GetDestinationDescription() string {
 		return "Destino desconocido"
 	}
 }
+
+// SupplyHistoryWithDestination extiende SupplyHistory con información del destino
+type SupplyHistoryWithDestination struct {
+	SupplyHistory
+	DestinationName   *string `json:"destination_name,omitempty"`
+	MedicalCenterName *string `json:"medical_center_name,omitempty"`
+	UserName          *string `json:"user_name,omitempty"`
+}

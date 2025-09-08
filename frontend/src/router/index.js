@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  // Ruta principal
+  // Rutas de autenticación
   {
     path: '/login',
     name: 'Login',
@@ -10,7 +10,7 @@ const routes = [
       title: 'Iniciar Sesión - MediTrack',
       description: 'Acceso al sistema de trazabilidad',
       requiresAuth: false,
-      hideForAuth: true // Ocultar esta ruta si ya está autenticado
+      hideForAuth: true
     }
   },
   {
@@ -21,9 +21,11 @@ const routes = [
       title: 'Registro - MediTrack',
       description: 'Crear nueva cuenta en el sistema de trazabilidad',
       requiresAuth: false,
-      hideForAuth: true // Ocultar esta ruta si ya está autenticado
+      hideForAuth: true
     }
   },
+
+  // Ruta principal
   {
     path: '/',
     name: 'Home',
@@ -68,11 +70,55 @@ const routes = [
       requiresAuth: true
     }
   },
+  {
+    path: '/qr/consumer',
+    name: 'QRConsumer',
+    component: () => import('@/views/QRConsumer.vue'),
+    meta: {
+      title: 'Consumo QR - MediTrack',
+      description: 'Consumir insumos médicos mediante códigos QR',
+      requiresAuth: true
+    }
+  },
 
-  // ========================================
-  // NUEVAS RUTAS DE SOLICITUDES DE INSUMO
-  // ========================================
-  
+  // Rutas específicas de QR con historial y trazabilidad
+  {
+    path: '/qr/:qrCode/details',
+    name: 'QRDetails',
+    component: () => import('@/views/QRDetails.vue'),
+    props: route => ({ qrCode: route.params.qrCode }),
+    meta: {
+      title: 'Detalles QR - MediTrack',
+      description: 'Información detallada del código QR',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/qr/:qrCode/traceability',
+    name: 'QRTraceability',
+    component: () => import('@/views/QRTraceability.vue'),
+    props: route => ({ qrCode: route.params.qrCode }),
+    meta: {
+      title: 'Trazabilidad QR - MediTrack',
+      description: 'Trazabilidad completa del código QR',
+      requiresAuth: true
+    }
+  },
+
+  // Ruta para historial de lotes
+  {
+    path: '/batch/:batchId/history',
+    name: 'BatchHistory',
+    component: () => import('@/components/BatchHistory.vue'),
+    props: route => ({ batchId: parseInt(route.params.batchId) }),
+    meta: {
+      title: 'Historial del Lote - MediTrack',
+      description: 'Historial completo de movimientos del lote',
+      requiresAuth: true
+    }
+  },
+
+  // Rutas de solicitudes de insumo
   {
     path: '/supply-requests',
     name: 'SupplyRequestList',
@@ -116,19 +162,6 @@ const routes = [
     }
   },
 
-  // Ruta específica para trazabilidad QR avanzada
-  {
-    path: '/qr/:qrCode/traceability',
-    name: 'QRTraceability',
-    component: () => import('@/views/QRTraceability.vue'),
-    props: route => ({ qrCode: route.params.qrCode }),
-    meta: {
-      title: 'Trazabilidad QR - MediTrack',
-      description: 'Trazabilidad completa del código QR',
-      requiresAuth: true
-    }
-  },
-
   // Ruta de perfil de usuario
   {
     path: '/profile',
@@ -141,7 +174,24 @@ const routes = [
     }
   },
 
-  // Redirecciones y rutas de error
+  // Redirecciones inteligentes para QR codes
+  {
+    path: '/qr/:qrCode',
+    name: 'QRRedirect',
+    redirect: to => {
+      const qrCode = to.params.qrCode
+      
+      // Todos los QR codes van a detalles por ahora
+      return `/qr/${qrCode}/details`
+    },
+    meta: {
+      title: 'Redirigiendo QR - MediTrack',
+      description: 'Procesando código QR',
+      requiresAuth: true
+    }
+  },
+
+  // Rutas de error
   {
     path: '/404',
     name: 'NotFound',
@@ -168,12 +218,10 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior(to, from, savedPosition) {
-    // Si hay una posición guardada (navegación con botón atrás/adelante)
     if (savedPosition) {
       return savedPosition
     }
     
-    // Si hay un hash en la URL, ir a ese elemento
     if (to.hash) {
       return {
         el: to.hash,
@@ -181,7 +229,6 @@ const router = createRouter({
       }
     }
     
-    // Por defecto, ir al inicio de la página
     return { 
       top: 0,
       behavior: 'smooth'
@@ -191,18 +238,15 @@ const router = createRouter({
 
 // Guard de navegación global - Antes de cada ruta
 router.beforeEach(async (to, from, next) => {
-  // Actualizar título de la página
   if (to.meta.title) {
     document.title = to.meta.title
   }
   
-  // Actualizar meta description
   if (to.meta.description) {
     const metaDescription = document.querySelector('meta[name="description"]')
     if (metaDescription) {
       metaDescription.setAttribute('content', to.meta.description)
     } else {
-      // Crear meta description si no existe
       const meta = document.createElement('meta')
       meta.name = 'description'
       meta.content = to.meta.description
@@ -210,41 +254,36 @@ router.beforeEach(async (to, from, next) => {
     }
   }
   
-  // Importar el store de autenticación dinámicamente para evitar dependencias circulares
   const { useAuthStore } = await import('@/stores/auth')
   const authStore = useAuthStore()
   
-  // Inicializar autenticación si no está inicializada
   if (!authStore.isAuthenticated && authStore.token === null) {
     authStore.initializeAuth()
   }
   
-  // Verificar autenticación
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
     return
   }
   
-  // Redirigir al home si está autenticado y trata de acceder al login
   if (to.meta.hideForAuth && authStore.isAuthenticated) {
     next({ name: 'Home' })
     return
   }
   
-  // Verificar permisos de acceso a la ruta
-  if (to.meta.requiresAuth && authStore.isAuthenticated && !authStore.canAccessRoute(to.name)) {
-    // Redirigir al home si no tiene permisos para la ruta
+  if (to.meta.requiresAuth && authStore.isAuthenticated && authStore.canAccessRoute && !authStore.canAccessRoute(to.name)) {
     next({ name: 'Home' })
     return
   }
   
-  // Ocultar páginas de auth si ya está autenticado
-  // if (to.meta.hideForAuth && isAuthenticated()) {
-  //   next({ name: 'Home' })
-  //   return
-  // }
+  if (to.name === 'BatchHistory' && to.params.batchId) {
+    const batchId = parseInt(to.params.batchId)
+    if (isNaN(batchId) || batchId <= 0) {
+      next({ name: 'NotFound' })
+      return
+    }
+  }
   
-  // Logging para desarrollo (remover en producción)
   if (import.meta.env.DEV) {
     console.log(`Navegando de ${from.fullPath} a ${to.fullPath}`)
   }
@@ -252,42 +291,25 @@ router.beforeEach(async (to, from, next) => {
   next()
 })
 
-// Guard de navegación global - Después de cada ruta
 router.afterEach((to, from) => {
-  // Analytics o tracking aquí cuando sea necesario
-  // gtag('config', 'GA_MEASUREMENT_ID', {
-  //   page_path: to.fullPath
-  // })
-  
-  // Limpieza de estados globales si es necesario
-  // Ej: cerrar modales, limpiar notificaciones temporales, etc.
+  const notifications = document.querySelectorAll('[data-notification]')
+  notifications.forEach(notification => {
+    if (notification.dataset.temporary === 'true') {
+      notification.remove()
+    }
+  })
 })
 
-// Manejo de errores de navegación
 router.onError((error) => {
   console.error('Error de navegación:', error)
   
-  // En producción, podrías enviar este error a un servicio de logging
-  // logError('Navigation Error', error)
+  if (error.type === 'NavigationDuplicated') {
+    return
+  }
+  
+  router.push({ name: 'NotFound' }).catch(() => {
+    window.location.reload()
+  })
 })
-
-// Funciones auxiliares para guards (implementar cuando sea necesario)
-
-// Verificar si el usuario está autenticado
-// function isAuthenticated() {
-//   const token = localStorage.getItem('auth_token')
-//   return token && !isTokenExpired(token)
-// }
-
-// Verificar si el token ha expirado
-// function isTokenExpired(token) {
-//   try {
-//     const payload = JSON.parse(atob(token.split('.')[1]))
-//     const currentTime = Date.now() / 1000
-//     return payload.exp < currentTime
-//   } catch {
-//     return true
-//   }
-// }
 
 export default router

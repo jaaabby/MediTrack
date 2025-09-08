@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"meditrack/models"
+	"net"
+	"strings"
 	"time"
 
 	"github.com/skip2/go-qrcode"
@@ -47,33 +49,51 @@ type QRConsumptionResponse struct {
 	ConsumptionHistory map[string]interface{} `json:"consumption_history,omitempty"`
 }
 
+// ScanContext contiene información contextual para el escaneo
+type ScanContext struct {
+	UserRUT         *string             `json:"user_rut,omitempty"`
+	UserName        *string             `json:"user_name,omitempty"`
+	PavilionID      *int                `json:"pavilion_id,omitempty"`
+	MedicalCenterID *int                `json:"medical_center_id,omitempty"`
+	ScanSource      string              `json:"scan_source"` // web, mobile, api
+	ScanPurpose     *string             `json:"scan_purpose,omitempty"`
+	UserAgent       *string             `json:"user_agent,omitempty"`
+	IPAddress       *net.IP             `json:"ip_address,omitempty"`
+	DeviceInfo      *models.DeviceInfo  `json:"device_info,omitempty"`
+	BrowserInfo     *models.BrowserInfo `json:"browser_info,omitempty"`
+	SessionID       *string             `json:"session_id,omitempty"`
+	RequestID       *string             `json:"request_id,omitempty"`
+	Notes           *string             `json:"notes,omitempty"`
+}
+
 // QRInfo representa la información completa de un código QR escaneado
 type QRInfo struct {
-	Type       string                    `json:"type"` // "batch" o "medical_supply"
-	ID         int                       `json:"id"`
-	QRCode     string                    `json:"qr_code"`
-	BatchInfo  *models.Batch             `json:"batch_info,omitempty"`
-	SupplyInfo *MedicalSupplyWithDetails `json:"supply_info,omitempty"`
-	SupplyCode *models.SupplyCode        `json:"supply_code,omitempty"`
-	History    []models.SupplyHistory    `json:"history,omitempty"`
-
-	// NUEVOS CAMPOS PARA TRAZABILIDAD
+	Type              string                            `json:"type"` // "batch" o "medical_supply"
+	ID                int                               `json:"id"`
+	QRCode            string                            `json:"qr_code"`
+	BatchInfo         *models.Batch                     `json:"batch_info,omitempty"`
+	SupplyInfo        *MedicalSupplyWithDetails         `json:"supply_info,omitempty"`
+	SupplyCode        *models.SupplyCode                `json:"supply_code,omitempty"`
+	History           []models.SupplyHistory            `json:"history,omitempty"`
 	RequestAssignment *models.SupplyRequestQRAssignment `json:"request_assignment,omitempty"`
 	SupplyRequest     *models.SupplyRequest             `json:"supply_request,omitempty"`
 	Traceability      *QRTraceability                   `json:"traceability,omitempty"`
+	ScanEvents        []models.QRScanEvent              `json:"scan_events,omitempty"`
+	ScanStatistics    *models.QRScanStatistics          `json:"scan_statistics,omitempty"`
 }
 
 // QRTraceability contiene información completa de trazabilidad
 type QRTraceability struct {
-	QRCode              string                             `json:"qr_code"`
-	CurrentStatus       string                             `json:"current_status"`
-	IsAssignedToRequest bool                               `json:"is_assigned_to_request"`
-	RequestHistory      []models.SupplyRequestQRAssignment `json:"request_history"`
-	SupplyHistory       []models.SupplyHistory             `json:"supply_history"`
-	CreatedDate         time.Time                          `json:"created_date"`
-	LastUpdated         time.Time                          `json:"last_updated"`
-	TotalMovements      int                                `json:"total_movements"`
-	CurrentLocation     *LocationInfo                      `json:"current_location,omitempty"`
+	QRCode              string                                `json:"qr_code"`
+	CurrentStatus       string                                `json:"current_status"`
+	IsAssignedToRequest bool                                  `json:"is_assigned_to_request"`
+	RequestHistory      []models.SupplyRequestQRAssignment    `json:"request_history"`
+	SupplyHistory       []models.SupplyHistoryWithDestination `json:"supply_history"`
+	ScanHistory         []models.QRCompleteTraceability       `json:"scan_history"`
+	CreatedDate         time.Time                             `json:"created_date"`
+	LastUpdated         time.Time                             `json:"last_updated"`
+	TotalMovements      int                                   `json:"total_movements"`
+	CurrentLocation     *LocationInfo                         `json:"current_location,omitempty"`
 }
 
 // LocationInfo representa información de ubicación actual
@@ -92,6 +112,300 @@ type MedicalSupplyWithDetails struct {
 	IsConsumed   bool                  `json:"is_consumed"`
 	LastMovement *models.SupplyHistory `json:"last_movement,omitempty"`
 	DaysToExpire *int                  `json:"days_to_expire,omitempty"`
+}
+
+// =============================================
+// MÉTODO PRINCIPAL CON REGISTRO AUTOMÁTICO
+// =============================================
+
+// ScanQRWithAutoLogging escanea un QR y registra automáticamente el evento
+func (s *QRService) ScanQRWithAutoLogging(qrCode string, context *ScanContext) (*QRInfo, error) {
+	// Primero obtener la información del QR
+	qrInfo, err := s.ScanQRWithTraceability(qrCode)
+	if err != nil {
+		// Registrar el escaneo fallido
+		s.logScanEvent(qrCode, context, nil, models.ScanResultError, err.Error())
+		return nil, err
+	}
+
+	// Registrar el escaneo exitoso
+	scanEvent, logErr := s.logScanEvent(qrCode, context, qrInfo, models.ScanResultSuccess, "")
+	if logErr != nil {
+		// Log el error pero no fallar el escaneo
+		fmt.Printf("Error logging scan event: %v\n", logErr)
+	}
+
+	// Agregar el evento de escaneo a la respuesta
+	if scanEvent != nil {
+		qrInfo.ScanEvents = append(qrInfo.ScanEvents, *scanEvent)
+	}
+
+	// Obtener estadísticas actualizadas
+	stats, _ := s.GetQRScanStatistics(qrCode)
+	qrInfo.ScanStatistics = stats
+
+	// Log para debug del frontend
+	fmt.Printf("DEBUG - QR Response from ScanQRWithAutoLogging for %s:\n", qrInfo.QRCode)
+	fmt.Printf("  - SupplyInfo exists: %v\n", qrInfo.SupplyInfo != nil)
+	if qrInfo.SupplyInfo != nil {
+		fmt.Printf("  - BatchInfo exists: %v\n", qrInfo.SupplyInfo.BatchInfo != nil)
+		if qrInfo.SupplyInfo.BatchInfo != nil {
+			fmt.Printf("  - Batch ID: %d, Amount: %d\n", qrInfo.SupplyInfo.BatchInfo.ID, qrInfo.SupplyInfo.BatchInfo.Amount)
+		}
+	}
+
+	return qrInfo, nil
+}
+
+// logScanEvent registra automáticamente un evento de escaneo
+func (s *QRService) logScanEvent(qrCode string, context *ScanContext, qrInfo *QRInfo, result string, errorMsg string) (*models.QRScanEvent, error) {
+	event := &models.QRScanEvent{
+		QRCode:     qrCode,
+		ScannedAt:  time.Now(),
+		ScanSource: models.ScanSourceWeb, // default
+		ScanResult: result,
+	}
+
+	// Aplicar contexto si está disponible
+	if context != nil {
+		event.ScannedByRUT = context.UserRUT
+		event.ScannedByName = context.UserName
+		event.PavilionID = context.PavilionID
+		event.MedicalCenterID = context.MedicalCenterID
+		event.ScanPurpose = context.ScanPurpose
+		event.UserAgent = context.UserAgent
+		event.IPAddress = context.IPAddress
+		event.DeviceInfo = context.DeviceInfo
+		event.BrowserInfo = context.BrowserInfo
+		event.SessionID = context.SessionID
+		event.RequestID = context.RequestID
+		event.Notes = context.Notes
+
+		if context.ScanSource != "" {
+			event.ScanSource = context.ScanSource
+		}
+	}
+
+	// Si hay error, registrarlo
+	if errorMsg != "" {
+		event.ErrorMessage = &errorMsg
+	}
+
+	// Si el escaneo fue exitoso, agregar información del QR
+	if qrInfo != nil && result == models.ScanResultSuccess {
+		// Mapear el tipo interno al formato de la base de datos
+		dbQRType := mapQRTypeToDatabase(qrInfo.Type)
+		event.QRType = &dbQRType
+
+		if qrInfo.SupplyInfo != nil {
+			event.SupplyID = &qrInfo.SupplyInfo.ID
+			event.SupplyCode = &qrInfo.SupplyInfo.Code
+			if qrInfo.SupplyCode != nil {
+				event.SupplyName = &qrInfo.SupplyCode.Name
+			}
+			event.BatchID = &qrInfo.SupplyInfo.BatchID
+		}
+
+		if qrInfo.BatchInfo != nil {
+			if event.BatchID == nil {
+				event.BatchID = &qrInfo.BatchInfo.ID
+			}
+			event.BatchSupplier = &qrInfo.BatchInfo.Supplier
+		}
+
+		// Determinar status actual
+		currentStatus := "available"
+		if qrInfo.SupplyInfo != nil {
+			// Verificar si está consumido
+			var consumedHistory models.SupplyHistory
+			if err := s.DB.Where("medical_supply_id = ? AND status = ?",
+				qrInfo.SupplyInfo.ID, "consumido").First(&consumedHistory).Error; err == nil {
+				currentStatus = "consumed"
+			}
+		}
+		event.CurrentStatus = &currentStatus
+
+		// Determinar ubicación actual
+		if context != nil && context.PavilionID != nil {
+			var pavilion models.Pavilion
+			if err := s.DB.First(&pavilion, *context.PavilionID).Error; err == nil {
+				location := pavilion.Name
+				event.CurrentLocation = &location
+				event.PavilionName = &pavilion.Name
+			}
+		}
+
+		if context != nil && context.MedicalCenterID != nil {
+			var medicalCenter models.MedicalCenter
+			if err := s.DB.First(&medicalCenter, *context.MedicalCenterID).Error; err == nil {
+				event.MedicalCenterName = &medicalCenter.Name
+			}
+		}
+
+		// Determinar tipo de movimiento
+		movementType := models.MovementTypeScanOnly
+		if context != nil && context.ScanPurpose != nil {
+			switch *context.ScanPurpose {
+			case models.ScanPurposeConsume:
+				movementType = models.MovementTypeStatusChange
+			case models.ScanPurposeAssign:
+				movementType = models.MovementTypeLocationChange
+			}
+		}
+		event.MovementType = &movementType
+	}
+
+	// Guardar el evento en la base de datos
+	if err := s.DB.Create(event).Error; err != nil {
+		return nil, fmt.Errorf("error guardando evento de escaneo: %v", err)
+	}
+
+	return event, nil
+}
+
+// =============================================
+// MÉTODOS DE TRAZABILIDAD AVANZADA
+// =============================================
+
+// GetCompleteTraceability obtiene la trazabilidad completa de un QR incluyendo escaneos
+func (s *QRService) GetCompleteTraceability(qrCode string) (*QRTraceability, error) {
+	traceability := &QRTraceability{
+		QRCode:         qrCode,
+		CurrentStatus:  "disponible", // Estado por defecto más descriptivo
+		RequestHistory: []models.SupplyRequestQRAssignment{},
+		SupplyHistory:  []models.SupplyHistoryWithDestination{},
+		ScanHistory:    []models.QRCompleteTraceability{},
+	}
+
+	// Obtener información del insumo médico
+	var supply models.MedicalSupply
+	if err := s.DB.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+		return nil, fmt.Errorf("insumo no encontrado: %v", err)
+	}
+
+	traceability.CreatedDate = time.Now() // Replace with actual creation time if available
+
+	// Obtener historial de solicitudes
+	if err := s.DB.Where("qr_code = ?", qrCode).
+		Preload("SupplyRequest").
+		Preload("SupplyRequestItem").
+		Order("assigned_date DESC").
+		Find(&traceability.RequestHistory).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo historial de solicitudes: %v", err)
+	}
+
+	// Obtener historial de movimientos del insumo con información de destino
+	if err := s.DB.Table("supply_history sh").
+		Select(`sh.*, 
+			CASE 
+				WHEN sh.destination_type = 'pavilion' THEN p.name
+				WHEN sh.destination_type = 'store' THEN st.name
+				ELSE NULL
+			END as destination_name,
+			CASE
+				WHEN sh.destination_type = 'pavilion' THEN mc.name
+				ELSE NULL
+			END as medical_center_name,
+			u.name as user_name`).
+		Joins("LEFT JOIN pavilion p ON sh.destination_type = 'pavilion' AND sh.destination_id = p.id").
+		Joins("LEFT JOIN store st ON sh.destination_type = 'store' AND sh.destination_id = st.id").
+		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
+		Joins("LEFT JOIN \"user\" u ON sh.user_rut = u.rut").
+		Where("sh.medical_supply_id = ?", supply.ID).
+		Order("sh.date_time DESC").
+		Find(&traceability.SupplyHistory).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo historial de movimientos: %v", err)
+	}
+
+	// Obtener historial de escaneos
+	if err := s.DB.Where("qr_code = ?", qrCode).
+		Order("scanned_at DESC").
+		Find(&traceability.ScanHistory).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo historial de escaneos: %v", err)
+	}
+
+	// Determinar estado actual y ubicación
+	traceability.IsAssignedToRequest = len(traceability.RequestHistory) > 0
+	traceability.TotalMovements = len(traceability.SupplyHistory) + len(traceability.RequestHistory) + len(traceability.ScanHistory)
+
+	// Determinar estado actual basado en el historial más reciente
+	if len(traceability.RequestHistory) > 0 {
+		latestAssignment := traceability.RequestHistory[0]
+		traceability.CurrentStatus = latestAssignment.Status
+		traceability.LastUpdated = latestAssignment.UpdatedAt
+
+		// Determinar ubicación actual
+		if latestAssignment.Status == models.AssignmentStatusDelivered {
+			// Obtener información del pabellón
+			var pavilion models.Pavilion
+			if err := s.DB.First(&pavilion, latestAssignment.SupplyRequest.PavilionID).Error; err == nil {
+				traceability.CurrentLocation = &LocationInfo{
+					Type:      "pavilion",
+					ID:        pavilion.ID,
+					Name:      pavilion.Name,
+					UpdatedAt: *latestAssignment.DeliveredDate,
+				}
+			}
+		}
+	} else if len(traceability.SupplyHistory) > 0 {
+		latestHistory := traceability.SupplyHistory[0]
+		traceability.CurrentStatus = latestHistory.Status
+		traceability.LastUpdated = latestHistory.DateTime
+
+		// Determinar ubicación basada en el historial
+		if latestHistory.DestinationType == "pavilion" {
+			var pavilion models.Pavilion
+			if err := s.DB.First(&pavilion, latestHistory.DestinationID).Error; err == nil {
+				traceability.CurrentLocation = &LocationInfo{
+					Type:      "pavilion",
+					ID:        pavilion.ID,
+					Name:      pavilion.Name,
+					UpdatedAt: latestHistory.DateTime,
+				}
+			}
+		} else if latestHistory.DestinationType == "store" {
+			var store models.Store
+			if err := s.DB.First(&store, latestHistory.DestinationID).Error; err == nil {
+				traceability.CurrentLocation = &LocationInfo{
+					Type:      "store",
+					ID:        store.ID,
+					Name:      store.Name,
+					UpdatedAt: latestHistory.DateTime,
+				}
+			}
+		}
+	}
+
+	return traceability, nil
+}
+
+// GetQRScanStatistics obtiene estadísticas de escaneo para un QR específico
+func (s *QRService) GetQRScanStatistics(qrCode string) (*models.QRScanStatistics, error) {
+	var stats models.QRScanStatistics
+
+	err := s.DB.Where("qr_code = ?", qrCode).First(&stats).Error
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo estadísticas de escaneo: %v", err)
+	}
+
+	return &stats, nil
+}
+
+// GetScanEventHistory obtiene el historial completo de eventos de escaneo
+func (s *QRService) GetScanEventHistory(qrCode string, limit int) ([]models.QRCompleteTraceability, error) {
+	var history []models.QRCompleteTraceability
+
+	query := s.DB.Where("qr_code = ?", qrCode).Order("scanned_at DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Find(&history).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo historial de escaneos: %v", err)
+	}
+
+	return history, nil
 }
 
 // ScanQRWithTraceability escanea un QR con información completa de trazabilidad
@@ -188,9 +502,9 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 func (s *QRService) GetQRTraceability(qrCode string) (*QRTraceability, error) {
 	traceability := &QRTraceability{
 		QRCode:         qrCode,
-		CurrentStatus:  "unknown",
+		CurrentStatus:  "disponible", // Estado por defecto más descriptivo
 		RequestHistory: []models.SupplyRequestQRAssignment{},
-		SupplyHistory:  []models.SupplyHistory{},
+		SupplyHistory:  []models.SupplyHistoryWithDestination{},
 	}
 
 	// Obtener información del insumo médico
@@ -211,9 +525,25 @@ func (s *QRService) GetQRTraceability(qrCode string) (*QRTraceability, error) {
 		return nil, fmt.Errorf("error obteniendo historial de solicitudes: %v", err)
 	}
 
-	// Obtener historial de movimientos del insumo
-	if err := s.DB.Where("medical_supply_id = ?", supply.ID).
-		Order("date_time DESC").
+	// Obtener historial de movimientos del insumo con información de destino
+	if err := s.DB.Table("supply_history sh").
+		Select(`sh.*, 
+			CASE 
+				WHEN sh.destination_type = 'pavilion' THEN p.name
+				WHEN sh.destination_type = 'store' THEN st.name
+				ELSE NULL
+			END as destination_name,
+			CASE
+				WHEN sh.destination_type = 'pavilion' THEN mc.name
+				ELSE NULL
+			END as medical_center_name,
+			u.name as user_name`).
+		Joins("LEFT JOIN pavilion p ON sh.destination_type = 'pavilion' AND sh.destination_id = p.id").
+		Joins("LEFT JOIN store st ON sh.destination_type = 'store' AND sh.destination_id = st.id").
+		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
+		Joins("LEFT JOIN \"user\" u ON sh.user_rut = u.rut").
+		Where("sh.medical_supply_id = ?", supply.ID).
+		Order("sh.date_time DESC").
 		Find(&traceability.SupplyHistory).Error; err != nil {
 		return nil, fmt.Errorf("error obteniendo historial de movimientos: %v", err)
 	}
@@ -440,12 +770,20 @@ func (s *QRService) GetAvailableQRsForSupplyCode(supplyCode int, limit int) ([]m
 	return availableSupplies, nil
 }
 
+// =============================================
 // MÉTODOS ORIGINALES ACTUALIZADOS
+// =============================================
 
-// ScanQRCode escanea un código QR (método original actualizado)
+// ScanQRCode escanea un código QR (método original actualizado para compatibilidad)
 func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
-	// Usar el nuevo método con trazabilidad y convertir al formato original
-	qrInfo, err := s.ScanQRWithTraceability(qrCode)
+	// Crear contexto básico para el escaneo
+	context := &ScanContext{
+		ScanSource:  models.ScanSourceWeb,
+		ScanPurpose: stringPtr(models.ScanPurposeLookup),
+	}
+
+	// Usar el nuevo método con logging automático
+	qrInfo, err := s.ScanQRWithAutoLogging(qrCode, context)
 	if err != nil {
 		return nil, err
 	}
@@ -458,13 +796,36 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 	}
 
 	if qrInfo.SupplyInfo != nil {
-		result["supply_info"] = qrInfo.SupplyInfo
+		// Crear una copia del SupplyInfo con la información del batch anidada
+		supplyInfoMap := map[string]interface{}{
+			"ID":           qrInfo.SupplyInfo.ID,
+			"Code":         qrInfo.SupplyInfo.Code,
+			"BatchID":      qrInfo.SupplyInfo.BatchID,
+			"QRCode":       qrInfo.SupplyInfo.QRCode,
+			"IsConsumed":   qrInfo.SupplyInfo.IsConsumed,
+			"LastMovement": qrInfo.SupplyInfo.LastMovement,
+			"DaysToExpire": qrInfo.SupplyInfo.DaysToExpire,
+		}
+
+		// Agregar información del batch dentro de supply_info
+		if qrInfo.SupplyInfo.BatchInfo != nil {
+			supplyInfoMap["batch"] = qrInfo.SupplyInfo.BatchInfo
+		}
+
+		// Agregar información del código de insumo
+		if qrInfo.SupplyInfo.SupplyCode != nil {
+			supplyInfoMap["SupplyCode"] = qrInfo.SupplyInfo.SupplyCode
+		}
+
+		result["supply_info"] = supplyInfoMap
 		result["is_consumed"] = qrInfo.SupplyInfo.IsConsumed
 		result["available_for_use"] = !qrInfo.SupplyInfo.IsConsumed
+		result["can_consume"] = !qrInfo.SupplyInfo.IsConsumed
 	}
 
 	if qrInfo.BatchInfo != nil {
 		result["batch_info"] = qrInfo.BatchInfo
+		result["batch_status"] = "active"
 	}
 
 	if qrInfo.SupplyCode != nil {
@@ -487,107 +848,21 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 		result["assigned_to_request"] = false
 	}
 
+	// Agregar información de escaneos
+	result["scan_events"] = qrInfo.ScanEvents
+	result["scan_statistics"] = qrInfo.ScanStatistics
+
+	// Log para debug del frontend
+	fmt.Printf("DEBUG - QR Response for %s:\n", qrInfo.QRCode)
+	fmt.Printf("  - SupplyInfo exists: %v\n", qrInfo.SupplyInfo != nil)
+	if qrInfo.SupplyInfo != nil {
+		fmt.Printf("  - BatchInfo exists: %v\n", qrInfo.SupplyInfo.BatchInfo != nil)
+		if qrInfo.SupplyInfo.BatchInfo != nil {
+			fmt.Printf("  - Batch ID: %d, Amount: %d\n", qrInfo.SupplyInfo.BatchInfo.ID, qrInfo.SupplyInfo.BatchInfo.Amount)
+		}
+	}
+
 	return result, nil
-}
-
-// Mantener métodos originales existentes...
-// GenerateBatchQR, GenerateSupplyQR, ConsumeSupplyByQR, etc.
-// (El resto de métodos permanecen igual que en tu implementación original)
-
-// generateSecureToken genera un token seguro
-func generateSecureToken() (string, error) {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-// generateUniqueQRCode genera un código QR único
-func (s *QRService) generateUniqueQRCode(prefix string, id int) (string, error) {
-	token, err := generateSecureToken()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s_%d_%s", prefix, id, token[:8]), nil
-}
-
-// GenerateBatchQR genera un código QR para un lote
-func (s *QRService) GenerateBatchQR() (*QRGenerationResponse, error) {
-	// Crear un lote temporal para generar el QR
-	// (Este método necesitaría ser ajustado según tu lógica de negocio)
-	qrCode, err := s.generateUniqueQRCode("BATCH", 1)
-	if err != nil {
-		return nil, err
-	}
-
-	// Generar imagen QR
-	qrImage, err := qrcode.Encode(qrCode, qrcode.Medium, 256)
-	if err != nil {
-		return nil, err
-	}
-
-	return &QRGenerationResponse{
-		QRCode:    qrCode,
-		Type:      "batch",
-		ImageData: base64.StdEncoding.EncodeToString(qrImage),
-	}, nil
-}
-
-// GenerateSupplyQR genera un código QR para un insumo médico
-func (s *QRService) GenerateSupplyQR() (*QRGenerationResponse, error) {
-	// Crear un insumo temporal para generar el QR
-	// (Este método necesitaría ser ajustado según tu lógica de negocio)
-	qrCode, err := s.generateUniqueQRCode("SUPPLY", 1)
-	if err != nil {
-		return nil, err
-	}
-
-	// Generar imagen QR
-	qrImage, err := qrcode.Encode(qrCode, qrcode.Medium, 256)
-	if err != nil {
-		return nil, err
-	}
-
-	return &QRGenerationResponse{
-		QRCode:    qrCode,
-		Type:      "medical_supply",
-		ImageData: base64.StdEncoding.EncodeToString(qrImage),
-	}, nil
-}
-
-// ValidateQRCode valida si un código QR existe y retorna su tipo
-func (s *QRService) ValidateQRCode(qrCode string) (bool, string, error) {
-	// Buscar en batch
-	var batchCount int64
-	s.DB.Model(&models.Batch{}).Where("qr_code = ?", qrCode).Count(&batchCount)
-	if batchCount > 0 {
-		return true, "batch", nil
-	}
-
-	// Buscar en medical_supply
-	var supplyCount int64
-	s.DB.Model(&models.MedicalSupply{}).Where("qr_code = ?", qrCode).Count(&supplyCount)
-	if supplyCount > 0 {
-		return true, "medical_supply", nil
-	}
-
-	return false, "", fmt.Errorf("código QR no válido: %s", qrCode)
-}
-
-// GetSupplyHistory obtiene el historial completo de un insumo por su código QR
-func (s *QRService) GetSupplyHistory(qrCode string) ([]models.SupplyHistory, error) {
-	var supply models.MedicalSupply
-	if err := s.DB.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
-		return nil, fmt.Errorf("insumo no encontrado con QR: %s", qrCode)
-	}
-
-	var history []models.SupplyHistory
-	if err := s.DB.Where("medical_supply_id = ?", supply.ID).Order("date_time DESC").Find(&history).Error; err != nil {
-		return nil, err
-	}
-
-	return history, nil
 }
 
 // ConsumeSupplyByQR procesa el consumo de un insumo (método original mantenido)
@@ -684,4 +959,129 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 	}
 
 	return &response, nil
+}
+
+// mapQRTypeToDatabase mapea tipos internos a tipos de base de datos
+func mapQRTypeToDatabase(internalType string) string {
+	switch internalType {
+	case "medical_supply":
+		return "SUPPLY"
+	case "batch":
+		return "BATCH"
+	default:
+		return internalType
+	}
+}
+
+// mapQRTypeFromDatabase mapea tipos de base de datos a tipos internos
+func mapQRTypeFromDatabase(dbType string) string {
+	switch dbType {
+	case "SUPPLY":
+		return "medical_supply"
+	case "BATCH":
+		return "batch"
+	default:
+		return strings.ToLower(dbType)
+	}
+}
+
+// ValidateQRCode valida si un código QR existe y retorna su tipo
+func (s *QRService) ValidateQRCode(qrCode string) (bool, string, error) {
+	// Buscar en batch
+	var batchCount int64
+	s.DB.Model(&models.Batch{}).Where("qr_code = ?", qrCode).Count(&batchCount)
+	if batchCount > 0 {
+		return true, "batch", nil
+	}
+
+	// Buscar en medical_supply
+	var supplyCount int64
+	s.DB.Model(&models.MedicalSupply{}).Where("qr_code = ?", qrCode).Count(&supplyCount)
+	if supplyCount > 0 {
+		return true, "medical_supply", nil
+	}
+
+	return false, "", fmt.Errorf("código QR no válido: %s", qrCode)
+}
+
+// GetSupplyHistory obtiene el historial completo de un insumo por su código QR
+func (s *QRService) GetSupplyHistory(qrCode string) ([]models.SupplyHistory, error) {
+	var supply models.MedicalSupply
+	if err := s.DB.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+		return nil, fmt.Errorf("insumo no encontrado con QR: %s", qrCode)
+	}
+
+	var history []models.SupplyHistory
+	if err := s.DB.Where("medical_supply_id = ?", supply.ID).Order("date_time DESC").Find(&history).Error; err != nil {
+		return nil, err
+	}
+
+	return history, nil
+}
+
+// generateSecureToken genera un token seguro
+func generateSecureToken() (string, error) {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// generateUniqueQRCode genera un código QR único
+func (s *QRService) generateUniqueQRCode(prefix string, id int) (string, error) {
+	token, err := generateSecureToken()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s_%d_%s", prefix, id, token[:8]), nil
+}
+
+// GenerateBatchQR genera un código QR para un lote
+func (s *QRService) GenerateBatchQR() (*QRGenerationResponse, error) {
+	// Crear un lote temporal para generar el QR
+	// (Este método necesitaría ser ajustado según tu lógica de negocio)
+	qrCode, err := s.generateUniqueQRCode("BATCH", 1)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generar imagen QR
+	qrImage, err := qrcode.Encode(qrCode, qrcode.Medium, 256)
+	if err != nil {
+		return nil, err
+	}
+
+	return &QRGenerationResponse{
+		QRCode:    qrCode,
+		Type:      "batch",
+		ImageData: base64.StdEncoding.EncodeToString(qrImage),
+	}, nil
+}
+
+// GenerateSupplyQR genera un código QR para un insumo médico
+func (s *QRService) GenerateSupplyQR() (*QRGenerationResponse, error) {
+	// Crear un insumo temporal para generar el QR
+	// (Este método necesitaría ser ajustado según tu lógica de negocio)
+	qrCode, err := s.generateUniqueQRCode("SUPPLY", 1)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generar imagen QR
+	qrImage, err := qrcode.Encode(qrCode, qrcode.Medium, 256)
+	if err != nil {
+		return nil, err
+	}
+
+	return &QRGenerationResponse{
+		QRCode:    qrCode,
+		Type:      "medical_supply",
+		ImageData: base64.StdEncoding.EncodeToString(qrImage),
+	}, nil
+}
+
+// stringPtr helper para crear punteros a string
+func stringPtr(s string) *string {
+	return &s
 }

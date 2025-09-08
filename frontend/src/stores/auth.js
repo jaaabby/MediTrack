@@ -61,12 +61,31 @@ export const useAuthStore = defineStore('auth', {
         if (userInfo) {
           this.user = {
             rut: userInfo.rut,
+            name: userInfo.name || localStorage.getItem('user_name'),
             email: userInfo.email,
             role: userInfo.role
+          }
+        } else {
+          // Respaldo: usar información de localStorage si el token no tiene datos de usuario
+          const rut = localStorage.getItem('user_rut')
+          const name = localStorage.getItem('user_name')
+          const email = localStorage.getItem('user_email')
+          const role = localStorage.getItem('user_role')
+          
+          if (rut && name && email && role) {
+            this.user = { rut, name, email, role }
           }
         }
       } else {
         this.logout()
+      }
+      
+      // Método temporal para sincronizar localStorage con usuario actual
+      if (this.user && this.isAuthenticated) {
+        localStorage.setItem('user_rut', this.user.rut || '')
+        localStorage.setItem('user_name', this.user.name || '')
+        localStorage.setItem('user_email', this.user.email || '')
+        localStorage.setItem('user_role', this.user.role || '')
       }
     },
 
@@ -85,6 +104,14 @@ export const useAuthStore = defineStore('auth', {
         
         // Guardar en localStorage
         authService.setToken(response.token)
+        
+        // Guardar información del usuario para servicios
+        if (response.user) {
+          localStorage.setItem('user_rut', response.user.rut || '')
+          localStorage.setItem('user_name', response.user.name || '')
+          localStorage.setItem('user_email', response.user.email || '')
+          localStorage.setItem('user_role', response.user.role || '')
+        }
         
         return response
       } catch (error) {
@@ -150,6 +177,12 @@ export const useAuthStore = defineStore('auth', {
       
       // Remover token del localStorage
       authService.removeToken()
+      
+      // Limpiar información del usuario
+      localStorage.removeItem('user_rut')
+      localStorage.removeItem('user_name') 
+      localStorage.removeItem('user_email')
+      localStorage.removeItem('user_role')
     },
 
     // Verificar permisos
@@ -177,9 +210,9 @@ export const useAuthStore = defineStore('auth', {
 
       // Definir rutas protegidas por rol
       const routePermissions = {
-        'admin': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
-        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'Profile'],
-        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
+        'admin': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
+        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'Profile'],
+        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
       }
 
       const allowedRoutes = routePermissions[this.user.role] || []

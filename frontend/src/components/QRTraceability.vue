@@ -11,65 +11,96 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Trazabilidad QR</h1>
-          <p class="text-gray-600 mt-1">Seguimiento completo del código {{ qrCode }}</p>
+        <div class="flex-1">
+          <h1 class="text-2xl font-bold text-gray-900">Trazabilidad Completa</h1>
+          <p class="text-gray-600 mt-1">Seguimiento completo del código QR {{ qrCode }}</p>
+        </div>
+        <div class="flex space-x-2">
+          <button
+            @click="loadTraceability"
+            :disabled="loading"
+            class="btn-secondary"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Actualizar
+          </button>
+          <button
+            @click="exportData"
+            :disabled="!traceabilityData"
+            class="btn-primary"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Exportar
+          </button>
         </div>
       </div>
       
-      <!-- Código QR destacado -->
-      <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+      <!-- QR Code Info Card con estadísticas -->
+      <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
-            <div class="bg-white p-2 rounded border border-blue-300">
+            <div class="bg-white p-3 rounded-lg border border-blue-300 shadow-sm">
               <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
               </svg>
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-700">Código QR</p>
-              <code class="text-lg font-mono text-blue-900 bg-white px-2 py-1 rounded border">{{ qrCode }}</code>
+              <code class="text-lg font-mono text-blue-900 bg-white px-3 py-1 rounded border">{{ qrCode }}</code>
             </div>
           </div>
-          <button
-            @click="loadTraceability"
-            :disabled="loading"
-            class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 disabled:opacity-50"
-          >
-            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Actualizar
-          </button>
+          
+          <!-- Estadísticas Rápidas 
+          <div v-if="scanStatistics" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-blue-900">{{ scanStatistics.total_scans }}</div>
+              <div class="text-xs text-blue-700">Total Escaneos</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-green-900">{{ scanStatistics.unique_scanners }}</div>
+              <div class="text-xs text-green-700">Usuarios Únicos</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-purple-900">{{ scanStatistics.locations_visited }}</div>
+              <div class="text-xs text-purple-700">Ubicaciones</div>
+            </div>
+          </div> -->
         </div>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-12">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-      <p class="text-gray-600">Cargando trazabilidad...</p>
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <div class="text-center">
+        <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-blue-600 mx-auto" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="text-gray-600 mt-2">Cargando trazabilidad completa...</p>
+      </div>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="text-center py-12">
-      <svg class="h-16 w-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <h3 class="text-lg font-medium text-gray-900 mb-2">Error al cargar trazabilidad</h3>
-      <p class="text-gray-600 mb-4">{{ error }}</p>
-      <button
-        @click="loadTraceability"
-        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-      >
-        Reintentar
-      </button>
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
+      <div class="flex items-center">
+        <svg class="h-6 w-6 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <h3 class="text-red-800 font-medium">Error al cargar trazabilidad</h3>
+          <p class="text-red-700 text-sm mt-1">{{ error }}</p>
+        </div>
+      </div>
     </div>
 
-    <!-- Contenido principal -->
-    <div v-else-if="traceability" class="space-y-6">
+    <!-- Content -->
+    <div v-else-if="traceabilityData">
       <!-- Información general del insumo -->
-      <div v-if="qrInfo" class="bg-white rounded-lg shadow border p-6">
+      <div v-if="qrInfo" class="bg-white rounded-lg shadow border p-6 mb-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Información del Insumo</h2>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -132,9 +163,147 @@
         </div>
       </div>
 
-      <!-- Estado actual y resumen -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Estado actual -->
+      <!-- Filtros -->
+      <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Filtros de Eventos</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Evento</label>
+            <select v-model="selectedEventType" class="form-select w-full">
+              <option value="">Todos los eventos</option>
+              <option value="scan">Escaneos</option>
+              <option value="movement">Movimientos</option>
+              <option value="status_change">Cambios de Estado</option>
+              <option value="request">Solicitudes</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Usuario</label>
+            <select v-model="selectedUser" class="form-select w-full">
+              <option value="">Todos los usuarios</option>
+              <option
+                v-for="user in uniqueUsers"
+                :key="user"
+                :value="user"
+              >
+                {{ user }}
+              </option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Ubicación</label>
+            <select v-model="selectedLocation" class="form-select w-full">
+              <option value="">Todas las ubicaciones</option>
+              <option
+                v-for="location in uniqueLocations"
+                :key="location"
+                :value="location"
+              >
+                {{ location }}
+              </option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Período</label>
+            <select v-model="selectedPeriod" class="form-select w-full">
+              <option value="">Todo el tiempo</option>
+              <option value="today">Hoy</option>
+              <option value="week">Última semana</option>
+              <option value="month">Último mes</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estadísticas Detalladas -->
+      <div v-if="scanStatistics" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center">
+            <div class="bg-blue-100 rounded-lg p-3">
+              <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">Total Escaneos</p>
+              <p class="text-2xl font-bold text-gray-900">{{ scanStatistics.total_scans }}</p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="flex items-center text-sm">
+              <span class="text-green-600 font-medium">{{ scanStatistics.successful_scans }}</span>
+              <span class="text-gray-500 ml-1">exitosos</span>
+              <span class="text-red-600 font-medium ml-4">{{ scanStatistics.error_scans }}</span>
+              <span class="text-gray-500 ml-1">errores</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center">
+            <div class="bg-green-100 rounded-lg p-3">
+              <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">Usuarios Únicos</p>
+              <p class="text-2xl font-bold text-gray-900">{{ scanStatistics.unique_scanners }}</p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="text-sm text-gray-500">
+              {{ Math.round(scanStatistics.total_scans / scanStatistics.unique_scanners * 10) / 10 }} escaneos promedio por usuario
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center">
+            <div class="bg-purple-100 rounded-lg p-3">
+              <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">Ubicaciones</p>
+              <p class="text-2xl font-bold text-gray-900">{{ scanStatistics.locations_visited }}</p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="text-sm text-gray-500">
+              Visitadas desde el primer escaneo
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center">
+            <div class="bg-yellow-100 rounded-lg p-3">
+              <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">Tiempo en Sistema</p>
+              <p class="text-2xl font-bold text-gray-900">{{ Math.round(scanStatistics.hours_in_system) }}h</p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="text-sm text-gray-500">
+              Desde: {{ formatDate(scanStatistics.first_scan) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado actual y resumen 
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Estado actual 
         <div class="bg-white rounded-lg shadow border p-6">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Estado Actual</h3>
           
@@ -142,42 +311,47 @@
             <div>
               <label class="block text-sm font-medium text-gray-700">Estado</label>
               <span :class="getCurrentStatusBadgeClass()" class="inline-flex px-3 py-1 text-sm font-semibold rounded-full mt-1">
-                {{ traceability.current_status || 'Desconocido' }}
+                {{ traceabilityData.current_status || 'Desconocido' }}
               </span>
             </div>
             
             <div>
               <label class="block text-sm font-medium text-gray-700">Asignado a Solicitud</label>
               <p class="text-sm mt-1">
-                {{ traceability.is_assigned_to_request ? 'Sí' : 'No' }}
+                {{ traceabilityData.is_assigned_to_request ? 'Sí' : 'No' }}
               </p>
             </div>
             
             <div>
               <label class="block text-sm font-medium text-gray-700">Última Actualización</label>
-              <p class="text-sm text-gray-900 mt-1">{{ formatDate(traceability.last_updated) }}</p>
+              <p class="text-sm text-gray-900 mt-1">{{ formatDate(traceabilityData.last_updated) }}</p>
             </div>
             
             <div>
               <label class="block text-sm font-medium text-gray-700">Fecha de Creación</label>
-              <p class="text-sm text-gray-900 mt-1">{{ formatDate(traceability.created_date) }}</p>
+              <p class="text-sm text-gray-900 mt-1">{{ formatDate(traceabilityData.created_date) }}</p>
             </div>
           </div>
         </div>
 
-        <!-- Estadísticas -->
+        <!-- Estadísticas
         <div class="bg-white rounded-lg shadow border p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Estadísticas</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Estadísticas de Historial</h3>
           
           <div class="space-y-4">
             <div class="flex justify-between items-center">
               <span class="text-sm text-gray-600">Total de Asignaciones:</span>
-              <span class="text-sm font-medium text-gray-900">{{ traceability.request_history?.length || 0 }}</span>
+              <span class="text-sm font-medium text-gray-900">{{ traceabilityData.request_history?.length || 0 }}</span>
             </div>
             
             <div class="flex justify-between items-center">
               <span class="text-sm text-gray-600">Movimientos de Supply:</span>
-              <span class="text-sm font-medium text-gray-900">{{ traceability.supply_history?.length || 0 }}</span>
+              <span class="text-sm font-medium text-gray-900">{{ traceabilityData.supply_history?.length || 0 }}</span>
+            </div>
+            
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-600">Eventos de Escaneo:</span>
+              <span class="text-sm font-medium text-gray-900">{{ traceabilityData.scan_history?.length || 0 }}</span>
             </div>
             
             <div class="flex justify-between items-center">
@@ -186,65 +360,106 @@
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
 
-      <!-- Historial de Solicitudes -->
-      <div v-if="traceability.request_history && traceability.request_history.length > 0" class="bg-white rounded-lg shadow border">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Historial de Solicitudes</h3>
+      <!-- Timeline de Eventos -->
+      <div class="bg-white rounded-lg shadow-sm border">
+        <div class="p-6 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Timeline de Eventos</h3>
+          <p class="text-sm text-gray-600 mt-1">
+            {{ filteredEvents.length }} eventos
+            <span v-if="selectedEventType || selectedUser || selectedLocation || selectedPeriod">
+              (filtrados de {{ allEvents.length }} total)
+            </span>
+          </p>
         </div>
         
         <div class="p-6">
+          <!-- Historial de Escaneos -->
+          <ScanEventHistory 
+            :events="filteredScanEvents"
+            :show-filters="false"
+            class="mb-8"
+            @view-details="handleScanEventDetails"
+            @scan-again="handleScanAgain"
+          />
+          
+          <!-- Timeline Completo -->
           <div class="flow-root">
             <ul class="-mb-8">
               <li
-                v-for="(assignment, index) in traceability.request_history"
-                :key="assignment.id"
+                v-for="(event, index) in filteredEvents"
+                :key="index"
                 class="relative pb-8"
               >
                 <span
-                  v-if="index !== traceability.request_history.length - 1"
+                  v-if="index !== filteredEvents.length - 1"
                   class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
                   aria-hidden="true"
                 ></span>
                 
                 <div class="relative flex space-x-3">
-                  <!-- Icono del evento -->
+                  <!-- Icon -->
                   <div>
-                    <span :class="getAssignmentIconClass(assignment.status)" class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white">
-                      <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path v-if="assignment.status === 'assigned'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        <path v-else-if="assignment.status === 'delivered'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        <path v-else-if="assignment.status === 'consumed'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-9 4h12" />
+                    <span
+                      :class="[
+                        'h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white',
+                        getEventIconClass(event)
+                      ]"
+                    >
+                      <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getEventIcon(event)" />
                       </svg>
                     </span>
                   </div>
                   
-                  <!-- Contenido del evento -->
-                  <div class="min-w-0 flex-1 pt-1.5">
-                    <div class="flex justify-between items-start">
+                  <!-- Content -->
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
                       <div>
-                        <p class="text-sm text-gray-900">
-                          <span class="font-medium">{{ getAssignmentStatusLabel(assignment.status) }}</span>
-                          <span v-if="assignment.supply_request" class="ml-2">
-                            - Solicitud {{ assignment.supply_request.request_number }}
-                          </span>
+                        <p class="text-sm font-medium text-gray-900">
+                          {{ getEventTitle(event) }}
                         </p>
-                        <p v-if="assignment.assigned_by_name" class="text-sm text-gray-500 mt-1">
-                          Por: {{ assignment.assigned_by_name }}
-                        </p>
-                        <p v-if="assignment.notes" class="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
-                          {{ assignment.notes }}
+                        <p class="text-sm text-gray-500">
+                          {{ getEventDescription(event) }}
                         </p>
                       </div>
-                      
                       <div class="text-right">
-                        <span :class="getAssignmentStatusBadgeClass(assignment.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                          {{ getAssignmentStatusLabel(assignment.status) }}
-                        </span>
-                        <p class="text-xs text-gray-500 mt-1">{{ formatDate(assignment.assigned_date) }}</p>
+                        <time class="text-sm text-gray-500">
+                          {{ formatDate(event.date_time || event.scanned_at || event.assigned_date) }}
+                        </time>
+                        <div v-if="event.user_name || event.scanned_by_name" class="text-xs text-gray-400">
+                          {{ event.user_name || event.scanned_by_name }}
+                        </div>
                       </div>
+                    </div>
+                    
+                    <!-- Detalles adicionales -->
+                    <div v-if="event.current_location || event.pavilion_name" class="mt-2">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        </svg>
+                        {{ event.current_location || event.pavilion_name }}
+                      </span>
+                    </div>
+                    
+                    <!-- Contexto del escaneo -->
+                    <div v-if="event.scan_purpose" class="mt-2">
+                      <span 
+                        :class="[
+                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                          getScanPurposeBadgeClass(event.scan_purpose)
+                        ]"
+                      >
+                        {{ getScanPurposeLabel(event.scan_purpose) }}
+                      </span>
+                    </div>
+                    
+                    <!-- Error message para escaneos fallidos -->
+                    <div v-if="event.error_message" class="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
+                      <div class="text-red-800 font-medium">Error:</div>
+                      <div class="text-red-700">{{ event.error_message }}</div>
                     </div>
                   </div>
                 </div>
@@ -254,58 +469,8 @@
         </div>
       </div>
 
-      <!-- Historial de Movimientos del Insumo -->
-      <div v-if="traceability.supply_history && traceability.supply_history.length > 0" class="bg-white rounded-lg shadow border">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Historial de Movimientos</h3>
-        </div>
-        
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha/Hora
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Destino
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Observaciones
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr
-                v-for="movement in traceability.supply_history"
-                :key="movement.id"
-                class="hover:bg-gray-50"
-              >
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span :class="getMovementStatusBadgeClass(movement.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                    {{ movement.status }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ formatDate(movement.date_time) }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ movement.destination_type }} {{ movement.destination_id }}
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-900">
-                  {{ movement.observations || '-' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- Información adicional si no hay historial -->
-      <div v-if="(!traceability.request_history || traceability.request_history.length === 0) && (!traceability.supply_history || traceability.supply_history.length === 0)" class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+      <div v-if="allEvents.length === 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mt-6">
         <div class="flex">
           <svg class="h-5 w-5 text-yellow-400 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -313,7 +478,7 @@
           <div>
             <h3 class="text-sm font-medium text-yellow-800">Sin historial disponible</h3>
             <p class="text-sm text-yellow-700 mt-2">
-              Este código QR no tiene movimientos registrados aún. Esto puede significar que es un insumo recién creado que no ha sido procesado en el sistema.
+              Este código QR no tiene eventos registrados aún. Esto puede significar que es un insumo recién creado que no ha sido procesado en el sistema.
             </p>
           </div>
         </div>
@@ -323,14 +488,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import supplyRequestService from '../services/supplyRequestService'
-import qrService from '../services/qrService'
-import { format, differenceInDays, differenceInHours } from 'date-fns'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { format, isToday, isThisWeek, isThisMonth, differenceInDays, differenceInHours } from 'date-fns'
 import { es } from 'date-fns/locale'
+import qrService from '@/services/qrService'
+import ScanEventHistory from '@/components/ScanEventHistory.vue'
 
 const route = useRoute()
+const router = useRouter()
 
 // Props
 const props = defineProps({
@@ -343,54 +509,205 @@ const props = defineProps({
 // Estado reactivo
 const loading = ref(false)
 const error = ref(null)
-const traceability = ref(null)
+const traceabilityData = ref(null)
+const scanStatistics = ref(null)
 const qrInfo = ref(null)
 
-// Computed
-const qrCode = computed(() => props.qrCode || route.params.qrCode)
+// Filtros
+const selectedEventType = ref('')
+const selectedUser = ref('')
+const selectedLocation = ref('')
+const selectedPeriod = ref('')
 
-// Métodos principales
+// Computed properties
+const qrCode = computed(() => props.qrCode || route.params.qrcode)
+
+const allEvents = computed(() => {
+  if (!traceabilityData.value) return []
+  
+  const events = []
+  
+  // Agregar escaneos
+  if (traceabilityData.value.scan_history) {
+    events.push(...traceabilityData.value.scan_history.map(scan => ({
+      ...scan,
+      event_type: 'scan',
+      date_time: scan.scanned_at
+    })))
+  }
+  
+  // Agregar historial de movimientos
+  if (traceabilityData.value.supply_history) {
+    events.push(...traceabilityData.value.supply_history.map(movement => ({
+      ...movement,
+      event_type: 'movement'
+    })))
+  }
+  
+  // Agregar historial de solicitudes
+  if (traceabilityData.value.request_history) {
+    events.push(...traceabilityData.value.request_history.map(request => ({
+      ...request,
+      event_type: 'request',
+      date_time: request.assigned_date
+    })))
+  }
+  
+  // Ordenar por fecha (más reciente primero)
+  return events.sort((a, b) => {
+    const dateA = new Date(a.date_time || a.scanned_at || a.assigned_date)
+    const dateB = new Date(b.date_time || b.scanned_at || b.assigned_date)
+    return dateB - dateA
+  })
+})
+
+const filteredEvents = computed(() => {
+  let events = allEvents.value
+  
+  // Filtrar por tipo de evento
+  if (selectedEventType.value) {
+    events = events.filter(event => event.event_type === selectedEventType.value)
+  }
+  
+  // Filtrar por usuario
+  if (selectedUser.value) {
+    events = events.filter(event => 
+      event.scanned_by_name === selectedUser.value || 
+      event.user_name === selectedUser.value ||
+      event.assigned_by_name === selectedUser.value
+    )
+  }
+  
+  // Filtrar por ubicación
+  if (selectedLocation.value) {
+    events = events.filter(event => 
+      event.current_location === selectedLocation.value ||
+      event.pavilion_name === selectedLocation.value
+    )
+  }
+  
+  // Filtrar por período
+  if (selectedPeriod.value) {
+    events = events.filter(event => {
+      const eventDate = new Date(event.date_time || event.scanned_at || event.assigned_date)
+      switch (selectedPeriod.value) {
+        case 'today':
+          return isToday(eventDate)
+        case 'week':
+          return isThisWeek(eventDate)
+        case 'month':
+          return isThisMonth(eventDate)
+        default:
+          return true
+      }
+    })
+  }
+  
+  return events
+})
+
+const filteredScanEvents = computed(() => {
+  return filteredEvents.value.filter(event => event.event_type === 'scan')
+})
+
+const uniqueUsers = computed(() => {
+  const users = new Set()
+  allEvents.value.forEach(event => {
+    if (event.scanned_by_name) users.add(event.scanned_by_name)
+    if (event.user_name) users.add(event.user_name)
+    if (event.assigned_by_name) users.add(event.assigned_by_name)
+  })
+  return Array.from(users).sort()
+})
+
+const uniqueLocations = computed(() => {
+  const locations = new Set()
+  allEvents.value.forEach(event => {
+    if (event.current_location) locations.add(event.current_location)
+    if (event.pavilion_name) locations.add(event.pavilion_name)
+  })
+  return Array.from(locations).sort()
+})
+
+// Funciones principales
 const loadTraceability = async () => {
+  if (!qrCode.value) {
+    error.value = 'Código QR requerido'
+    return
+  }
+  
   loading.value = true
   error.value = null
-
+  
   try {
     // Cargar información básica del QR
     const qrResult = await qrService.scanQRCode(qrCode.value)
     qrInfo.value = qrResult
 
-    // Cargar trazabilidad específica
-    const traceResult = await supplyRequestService.getQRTraceability(qrCode.value)
-    if (traceResult.success && traceResult.data) {
-      traceability.value = traceResult.data
-    } else {
-      // Si no hay trazabilidad específica, crear una básica
-      traceability.value = {
-        qr_code: qrCode.value,
-        current_status: qrInfo.value.is_consumed ? 'consumed' : 'available',
-        is_assigned_to_request: false,
-        request_history: [],
-        supply_history: qrInfo.value.history || [],
-        created_date: new Date(),
-        last_updated: new Date()
-      }
-    }
-
-    console.log('Trazabilidad cargada:', traceability.value)
+    // Cargar trazabilidad completa
+    const traceabilityResponse = await qrService.getCompleteTraceability(qrCode.value)
+    traceabilityData.value = traceabilityResponse
+    
+    // Cargar estadísticas de escaneo
+    const statsResponse = await qrService.getScanStatistics(qrCode.value)
+    scanStatistics.value = statsResponse
+    
   } catch (err) {
-    console.error('Error cargando trazabilidad:', err)
-    error.value = 'Error al cargar la información de trazabilidad'
+    console.error('Error loading traceability:', err)
+    error.value = err.message || 'Error al cargar la trazabilidad'
   } finally {
     loading.value = false
   }
 }
 
-// Métodos auxiliares
+const exportData = () => {
+  if (!traceabilityData.value) return
+  
+  const data = {
+    qr_code: qrCode.value,
+    export_date: new Date().toISOString(),
+    scan_statistics: scanStatistics.value,
+    traceability: traceabilityData.value,
+    qr_info: qrInfo.value,
+    filtered_events: filteredEvents.value,
+    filters_applied: {
+      event_type: selectedEventType.value,
+      user: selectedUser.value,
+      location: selectedLocation.value,
+      period: selectedPeriod.value
+    }
+  }
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `traceability-${qrCode.value}-${format(new Date(), 'yyyy-MM-dd')}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+const handleScanEventDetails = (event) => {
+  // Mostrar detalles del evento de escaneo en un modal o navegación
+  console.log('Ver detalles del evento:', event)
+}
+
+const handleScanAgain = (qrCode) => {
+  // Redirigir al escáner con el QR code
+  router.push({
+    name: 'QRScanner',
+    query: { qr: qrCode }
+  })
+}
+
+// Funciones de utilidad
 const calculateTimeInSystem = () => {
-  if (!traceability.value?.created_date) return 'N/A'
+  if (!traceabilityData.value?.created_date) return 'N/A'
   
   try {
-    const created = new Date(traceability.value.created_date)
+    const created = new Date(traceabilityData.value.created_date)
     const now = new Date()
     const days = differenceInDays(now, created)
     
@@ -414,7 +731,7 @@ const formatDate = (dateString) => {
   }
 }
 
-// Métodos de estilo
+// Funciones de estilo y etiquetas (manteniendo las originales)
 const getTypeLabel = (type) => {
   const labels = {
     'batch': 'Lote de Productos',
@@ -433,23 +750,16 @@ const getTypeIconClass = (type) => {
 
 const getStatusLabel = () => {
   if (!qrInfo.value) return 'Desconocido'
-  return qrService.getStatusLabel(qrInfo.value)
+  return qrInfo.value.is_consumed ? 'Consumido' : 'Disponible'
 }
 
 const getStatusBadgeClass = () => {
   if (!qrInfo.value) return 'bg-gray-100 text-gray-800'
-  const color = qrService.getStatusColor(qrInfo.value)
-  const classes = {
-    'green': 'bg-green-100 text-green-800',
-    'red': 'bg-red-100 text-red-800',
-    'yellow': 'bg-yellow-100 text-yellow-800',
-    'gray': 'bg-gray-100 text-gray-800'
-  }
-  return classes[color] || classes.gray
+  return qrInfo.value.is_consumed ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
 }
 
 const getCurrentStatusBadgeClass = () => {
-  const status = traceability.value?.current_status || 'unknown'
+  const status = traceabilityData.value?.current_status || 'unknown'
   const classes = {
     'available': 'bg-green-100 text-green-800',
     'assigned': 'bg-blue-100 text-blue-800',
@@ -461,44 +771,91 @@ const getCurrentStatusBadgeClass = () => {
   return classes[status] || classes.unknown
 }
 
-const getAssignmentStatusLabel = (status) => {
+// Funciones para eventos del timeline
+const getEventTitle = (event) => {
+  switch (event.event_type) {
+    case 'scan':
+      return 'Código QR Escaneado'
+    case 'movement':
+      if (event.status === 'consumido' && event.destination_name) {
+        return 'Producto Consumido'
+      }
+      return `Movimiento: ${event.movement_type || event.status || 'Cambio'}`
+    case 'request':
+      return 'Asignado a Solicitud'
+    default:
+      return 'Evento'
+  }
+}
+
+const getEventDescription = (event) => {
+  switch (event.event_type) {
+    case 'scan':
+      return `Escaneado por ${event.scanned_by_name || 'Usuario desconocido'} desde ${event.scan_source || 'web'}`
+    case 'movement':
+      // Si hay información de destino, mostrarla
+      if (event.destination_name) {
+        const destinationType = event.destination_type === 'pavilion' ? 'Pabellón' : 'Almacén'
+        let description = `${event.status || 'Procesado'} - Enviado a ${destinationType}: ${event.destination_name}`
+        if (event.medical_center_name) {
+          description += ` (${event.medical_center_name})`
+        }
+        return description
+      }
+      return event.observations || `Estado: ${event.status}`
+    case 'request':
+      return `Solicitud #${event.supply_request?.request_number || event.id || 'N/A'}`
+    default:
+      return 'Información no disponible'
+  }
+}
+
+const getEventIcon = (event) => {
+  switch (event.event_type) {
+    case 'scan':
+      return 'M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z'
+    case 'movement':
+      return 'M13 10V3L4 14h7v7l9-11h-7z'
+    case 'request':
+      return 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
+    default:
+      return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+  }
+}
+
+const getEventIconClass = (event) => {
+  switch (event.event_type) {
+    case 'scan':
+      return 'bg-blue-500'
+    case 'movement':
+      return 'bg-green-500'
+    case 'request':
+      return 'bg-purple-500'
+    default:
+      return 'bg-gray-500'
+  }
+}
+
+const getScanPurposeBadgeClass = (purpose) => {
+  const classes = {
+    'lookup': 'bg-green-100 text-green-800',
+    'consume': 'bg-red-100 text-red-800',
+    'verify': 'bg-blue-100 text-blue-800',
+    'inventory_check': 'bg-purple-100 text-purple-800',
+    'assign': 'bg-yellow-100 text-yellow-800'
+  }
+  return classes[purpose] || 'bg-gray-100 text-gray-800'
+}
+
+const getScanPurposeLabel = (purpose) => {
   const labels = {
-    'assigned': 'Asignado',
-    'delivered': 'Entregado',
-    'consumed': 'Consumido',
-    'returned': 'Devuelto'
+    'lookup': 'Consulta',
+    'consume': 'Consumo',
+    'verify': 'Verificación',
+    'inventory_check': 'Inventario',
+    'assign': 'Asignación'
   }
-  return labels[status] || status
-}
-
-const getAssignmentStatusBadgeClass = (status) => {
-  const classes = {
-    'assigned': 'bg-blue-100 text-blue-800',
-    'delivered': 'bg-green-100 text-green-800',
-    'consumed': 'bg-gray-100 text-gray-800',
-    'returned': 'bg-yellow-100 text-yellow-800'
-  }
-  return classes[status] || 'bg-gray-100 text-gray-800'
-}
-
-const getAssignmentIconClass = (status) => {
-  const classes = {
-    'assigned': 'bg-blue-500',
-    'delivered': 'bg-green-500',
-    'consumed': 'bg-gray-500',
-    'returned': 'bg-yellow-500'
-  }
-  return classes[status] || 'bg-gray-500'
-}
-
-const getMovementStatusBadgeClass = (status) => {
-  const classes = {
-    'creado': 'bg-green-100 text-green-800',
-    'movido': 'bg-blue-100 text-blue-800',
-    'consumido': 'bg-red-100 text-red-800',
-    'vencido': 'bg-red-100 text-red-800'
-  }
-  return classes[status] || 'bg-gray-100 text-gray-800'
+  return labels[purpose] || purpose
 }
 
 // Lifecycle
@@ -512,27 +869,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Estilos adicionales si son necesarios */
+.form-select {
+  @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm;
+}
+
+.btn-primary {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
 .flow-root {
   overflow: hidden;
-}
-
-/* Animaciones suaves */
-.transition-all {
-  transition: all 0.3s ease;
-}
-
-/* Gradientes */
-.bg-gradient-to-r {
-  background-image: linear-gradient(to right, var(--tw-gradient-stops));
-}
-
-.from-blue-50 {
-  --tw-gradient-from: #eff6ff;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(239, 246, 255, 0));
-}
-
-.to-indigo-50 {
-  --tw-gradient-to: #eef2ff;
 }
 </style>
