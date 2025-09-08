@@ -84,16 +84,16 @@ type QRInfo struct {
 
 // QRTraceability contiene información completa de trazabilidad
 type QRTraceability struct {
-	QRCode              string                             `json:"qr_code"`
-	CurrentStatus       string                             `json:"current_status"`
-	IsAssignedToRequest bool                               `json:"is_assigned_to_request"`
-	RequestHistory      []models.SupplyRequestQRAssignment `json:"request_history"`
-	SupplyHistory       []models.SupplyHistory             `json:"supply_history"`
-	ScanHistory         []models.QRCompleteTraceability    `json:"scan_history"`
-	CreatedDate         time.Time                          `json:"created_date"`
-	LastUpdated         time.Time                          `json:"last_updated"`
-	TotalMovements      int                                `json:"total_movements"`
-	CurrentLocation     *LocationInfo                      `json:"current_location,omitempty"`
+	QRCode              string                                `json:"qr_code"`
+	CurrentStatus       string                                `json:"current_status"`
+	IsAssignedToRequest bool                                  `json:"is_assigned_to_request"`
+	RequestHistory      []models.SupplyRequestQRAssignment    `json:"request_history"`
+	SupplyHistory       []models.SupplyHistoryWithDestination `json:"supply_history"`
+	ScanHistory         []models.QRCompleteTraceability       `json:"scan_history"`
+	CreatedDate         time.Time                             `json:"created_date"`
+	LastUpdated         time.Time                             `json:"last_updated"`
+	TotalMovements      int                                   `json:"total_movements"`
+	CurrentLocation     *LocationInfo                         `json:"current_location,omitempty"`
 }
 
 // LocationInfo representa información de ubicación actual
@@ -271,9 +271,9 @@ func (s *QRService) logScanEvent(qrCode string, context *ScanContext, qrInfo *QR
 func (s *QRService) GetCompleteTraceability(qrCode string) (*QRTraceability, error) {
 	traceability := &QRTraceability{
 		QRCode:         qrCode,
-		CurrentStatus:  "unknown",
+		CurrentStatus:  "disponible", // Estado por defecto más descriptivo
 		RequestHistory: []models.SupplyRequestQRAssignment{},
-		SupplyHistory:  []models.SupplyHistory{},
+		SupplyHistory:  []models.SupplyHistoryWithDestination{},
 		ScanHistory:    []models.QRCompleteTraceability{},
 	}
 
@@ -294,9 +294,25 @@ func (s *QRService) GetCompleteTraceability(qrCode string) (*QRTraceability, err
 		return nil, fmt.Errorf("error obteniendo historial de solicitudes: %v", err)
 	}
 
-	// Obtener historial de movimientos del insumo
-	if err := s.DB.Where("medical_supply_id = ?", supply.ID).
-		Order("date_time DESC").
+	// Obtener historial de movimientos del insumo con información de destino
+	if err := s.DB.Table("supply_history sh").
+		Select(`sh.*, 
+			CASE 
+				WHEN sh.destination_type = 'pavilion' THEN p.name
+				WHEN sh.destination_type = 'store' THEN st.name
+				ELSE NULL
+			END as destination_name,
+			CASE
+				WHEN sh.destination_type = 'pavilion' THEN mc.name
+				ELSE NULL
+			END as medical_center_name,
+			u.name as user_name`).
+		Joins("LEFT JOIN pavilion p ON sh.destination_type = 'pavilion' AND sh.destination_id = p.id").
+		Joins("LEFT JOIN store st ON sh.destination_type = 'store' AND sh.destination_id = st.id").
+		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
+		Joins("LEFT JOIN \"user\" u ON sh.user_rut = u.rut").
+		Where("sh.medical_supply_id = ?", supply.ID).
+		Order("sh.date_time DESC").
 		Find(&traceability.SupplyHistory).Error; err != nil {
 		return nil, fmt.Errorf("error obteniendo historial de movimientos: %v", err)
 	}
@@ -486,9 +502,9 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 func (s *QRService) GetQRTraceability(qrCode string) (*QRTraceability, error) {
 	traceability := &QRTraceability{
 		QRCode:         qrCode,
-		CurrentStatus:  "unknown",
+		CurrentStatus:  "disponible", // Estado por defecto más descriptivo
 		RequestHistory: []models.SupplyRequestQRAssignment{},
-		SupplyHistory:  []models.SupplyHistory{},
+		SupplyHistory:  []models.SupplyHistoryWithDestination{},
 	}
 
 	// Obtener información del insumo médico
@@ -509,9 +525,25 @@ func (s *QRService) GetQRTraceability(qrCode string) (*QRTraceability, error) {
 		return nil, fmt.Errorf("error obteniendo historial de solicitudes: %v", err)
 	}
 
-	// Obtener historial de movimientos del insumo
-	if err := s.DB.Where("medical_supply_id = ?", supply.ID).
-		Order("date_time DESC").
+	// Obtener historial de movimientos del insumo con información de destino
+	if err := s.DB.Table("supply_history sh").
+		Select(`sh.*, 
+			CASE 
+				WHEN sh.destination_type = 'pavilion' THEN p.name
+				WHEN sh.destination_type = 'store' THEN st.name
+				ELSE NULL
+			END as destination_name,
+			CASE
+				WHEN sh.destination_type = 'pavilion' THEN mc.name
+				ELSE NULL
+			END as medical_center_name,
+			u.name as user_name`).
+		Joins("LEFT JOIN pavilion p ON sh.destination_type = 'pavilion' AND sh.destination_id = p.id").
+		Joins("LEFT JOIN store st ON sh.destination_type = 'store' AND sh.destination_id = st.id").
+		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
+		Joins("LEFT JOIN \"user\" u ON sh.user_rut = u.rut").
+		Where("sh.medical_supply_id = ?", supply.ID).
+		Order("sh.date_time DESC").
 		Find(&traceability.SupplyHistory).Error; err != nil {
 		return nil, fmt.Errorf("error obteniendo historial de movimientos: %v", err)
 	}

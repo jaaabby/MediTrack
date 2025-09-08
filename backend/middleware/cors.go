@@ -12,7 +12,7 @@ func CORSMiddleware() gin.HandlerFunc {
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{
 			"Origin", "Content-Type", "Authorization", "X-Requested-With",
-			"x-device-info", "x-browser-info", "x-session-id", "x-requested-with",
+			"X-Session-ID", "X-Device-Info", "X-Browser-Info",
 		},
 		AllowCredentials: true,
 	})

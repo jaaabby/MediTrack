@@ -1,5 +1,6 @@
 import axios from 'axios'
 import inventoryService from './inventoryService.js'
+import { useAuthStore } from '@/stores/auth.js'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
 
@@ -31,14 +32,8 @@ class QRService {
       config.headers['X-Device-Info'] = JSON.stringify(this.deviceInfo)
       config.headers['X-Browser-Info'] = JSON.stringify(this.browserInfo)
 
-      // Agregar información de usuario si está disponible
-      const currentUser = this.getCurrentUserInfo()
-      if (currentUser.rut) {
-        config.headers['X-User-RUT'] = currentUser.rut
-      }
-      if (currentUser.name) {
-        config.headers['X-User-Name'] = currentUser.name
-      }
+      // Nota: La información del usuario se envía via query parameters, no headers
+      // para evitar problemas de CORS
 
       return config
     })
@@ -324,16 +319,26 @@ class QRService {
 
   // Obtener RUT del usuario actual
   getCurrentUserRUT() {
-    return localStorage.getItem('user_rut') ||
-      this.$store?.state?.auth?.user?.rut ||
-      null
+    try {
+      const authStore = useAuthStore()
+      return authStore.user?.rut || 
+             localStorage.getItem('user_rut') ||
+             null
+    } catch (error) {
+      return localStorage.getItem('user_rut') || null
+    }
   }
 
   // Obtener nombre del usuario actual
   getCurrentUserName() {
-    return localStorage.getItem('user_name') ||
-      this.$store?.state?.auth?.user?.name ||
-      null
+    try {
+      const authStore = useAuthStore()
+      return authStore.user?.name || 
+             localStorage.getItem('user_name') ||
+             null
+    } catch (error) {
+      return localStorage.getItem('user_name') || null
+    }
   }
 
   // Obtener ID del pabellón actual

@@ -26,7 +26,7 @@
     <!-- Selector de propósito de escaneo -->
     <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
       <h3 class="text-lg font-medium text-gray-900 mb-4">Propósito del Escaneo</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
         <button
           v-for="purpose in scanPurposes"
           :key="purpose.value"
@@ -238,6 +238,17 @@
           </button>
           
           <button
+            v-if="scannedInfo.supply_info && !scannedInfo.is_consumed"
+            @click="quickTransfer"
+            class="btn-secondary text-sm"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            Transferir Rápido
+          </button>
+          
+          <button
             @click="viewScanStatistics"
             class="btn-secondary text-sm"
           >
@@ -284,6 +295,7 @@
                 item.scan_purpose === 'consume' ? 'bg-red-100 text-red-800' :
                 item.scan_purpose === 'verify' ? 'bg-blue-100 text-blue-800' :
                 item.scan_purpose === 'lookup' ? 'bg-green-100 text-green-800' :
+                item.scan_purpose === 'transfer' ? 'bg-orange-100 text-orange-800' :
                 'bg-gray-100 text-gray-800'
               ]"
             >
@@ -376,6 +388,12 @@ const scanPurposes = [
     label: 'Verificar',
     icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
     iconClass: 'text-blue-600'
+  },
+  {
+    value: 'transfer',
+    label: 'Transferir',
+    icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
+    iconClass: 'text-orange-600'
   },
   {
     value: 'inventory_check',
@@ -817,6 +835,20 @@ const quickConsume = () => {
         qr: scannedInfo.value.qr_code,
         quick: 'true',
         purpose: 'consume'
+      }
+    })
+  }
+}
+
+const quickTransfer = () => {
+  if (scannedInfo.value) {
+    router.push({
+      name: 'QRConsumer',
+      query: { 
+        qr: scannedInfo.value.qr_code,
+        quick: 'true',
+        purpose: 'consume',
+        consumption_purpose: 'transfer'
       }
     })
   }

@@ -777,7 +777,10 @@ const getEventTitle = (event) => {
     case 'scan':
       return 'Código QR Escaneado'
     case 'movement':
-      return `Movimiento: ${event.movement_type || 'Cambio'}`
+      if (event.status === 'consumido' && event.destination_name) {
+        return 'Producto Consumido'
+      }
+      return `Movimiento: ${event.movement_type || event.status || 'Cambio'}`
     case 'request':
       return 'Asignado a Solicitud'
     default:
@@ -790,6 +793,15 @@ const getEventDescription = (event) => {
     case 'scan':
       return `Escaneado por ${event.scanned_by_name || 'Usuario desconocido'} desde ${event.scan_source || 'web'}`
     case 'movement':
+      // Si hay información de destino, mostrarla
+      if (event.destination_name) {
+        const destinationType = event.destination_type === 'pavilion' ? 'Pabellón' : 'Almacén'
+        let description = `${event.status || 'Procesado'} - Enviado a ${destinationType}: ${event.destination_name}`
+        if (event.medical_center_name) {
+          description += ` (${event.medical_center_name})`
+        }
+        return description
+      }
       return event.observations || `Estado: ${event.status}`
     case 'request':
       return `Solicitud #${event.supply_request?.request_number || event.id || 'N/A'}`

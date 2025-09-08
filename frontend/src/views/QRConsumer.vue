@@ -40,7 +40,7 @@
     <!-- Selector de propósito de consumo -->
     <div v-if="!scannedProduct || isQuickMode" class="bg-white rounded-lg shadow-sm border p-6">
       <h3 class="text-lg font-medium text-gray-900 mb-4">Tipo de Consumo</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <button
           v-for="purpose in consumptionPurposes"
           :key="purpose.value"
@@ -158,6 +158,7 @@
             <select
               id="destinationType"
               v-model="consumptionForm.destinationType"
+              @change="onDestinationTypeChange"
               class="form-select"
               required
             >
@@ -167,18 +168,77 @@
             </select>
           </div>
 
-          <div>
-            <label for="destinationID" class="block text-sm font-medium text-gray-700 mb-2">
-              ID de Destino <span class="text-red-500">*</span>
+          <!-- Selector de Centro Médico (solo si destination es pavilion) -->
+          <div v-if="consumptionForm.destinationType === 'pavilion'">
+            <label for="medicalCenter" class="block text-sm font-medium text-gray-700 mb-2">
+              Centro Médico <span class="text-red-500">*</span>
             </label>
-            <input
-              id="destinationID"
-              v-model="consumptionForm.destinationID"
-              type="number"
-              placeholder="ID del pabellón o almacén"
-              class="form-input"
+            <select
+              id="medicalCenter"
+              v-model="consumptionForm.medicalCenterId"
+              @change="onMedicalCenterChange"
+              class="form-select"
+              :disabled="loadingMedicalCenters"
               required
-            />
+            >
+              <option value="">Seleccionar centro médico</option>
+              <option
+                v-for="center in medicalCenters"
+                :key="center.id"
+                :value="center.id"
+              >
+                {{ center.name }}
+              </option>
+            </select>
+            <p v-if="loadingMedicalCenters" class="text-xs text-gray-500 mt-1">Cargando centros médicos...</p>
+          </div>
+
+          <!-- Selector de Pabellón (solo si destination es pavilion y se ha seleccionado centro médico) -->
+          <div v-if="consumptionForm.destinationType === 'pavilion' && consumptionForm.medicalCenterId">
+            <label for="pavilion" class="block text-sm font-medium text-gray-700 mb-2">
+              Pabellón <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="pavilion"
+              v-model="consumptionForm.destinationID"
+              class="form-select"
+              :disabled="loadingPavilions"
+              required
+            >
+              <option value="">Seleccionar pabellón</option>
+              <option
+                v-for="pavilion in availablePavilions"
+                :key="pavilion.id"
+                :value="pavilion.id"
+              >
+                {{ pavilion.name }}
+              </option>
+            </select>
+            <p v-if="loadingPavilions" class="text-xs text-gray-500 mt-1">Cargando pabellones...</p>
+          </div>
+
+          <!-- Selector de Almacén (solo si destination es store) -->
+          <div v-if="consumptionForm.destinationType === 'store'">
+            <label for="store" class="block text-sm font-medium text-gray-700 mb-2">
+              Almacén <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="store"
+              v-model="consumptionForm.destinationID"
+              class="form-select"
+              :disabled="loadingStores"
+              required
+            >
+              <option value="">Seleccionar almacén</option>
+              <option
+                v-for="store in stores"
+                :key="store.id"
+                :value="store.id"
+              >
+                {{ store.name }} - {{ store.location }}
+              </option>
+            </select>
+            <p v-if="loadingStores" class="text-xs text-gray-500 mt-1">Cargando almacenes...</p>
           </div>
 
           <div>
@@ -250,6 +310,9 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuthStore } from '@/stores/auth'
 import qrService from '@/services/qrService'
+import medicalCenterService from '@/services/medicalCenterService'
+import pavilionService from '@/services/pavilionService'
+import storeService from '@/services/storeService'
 import LocationSelector from '@/components/LocationSelector.vue'
 
 // Componentes optimizados para reutilización
@@ -530,13 +593,15 @@ const RecentConsumptions = {
       const labels = {
         'routine': 'Rutina',
         'emergency': 'Emergencia',
-        'maintenance': 'Mantenimiento'
+        'maintenance': 'Mantenimiento',
+        'transfer': 'Transferir'
       }
       return labels[purpose] || purpose
     },
     getPurposeBadgeClass(purpose) {
       return purpose === 'emergency' ? 'bg-red-100 text-red-800' :
              purpose === 'routine' ? 'bg-blue-100 text-blue-800' :
+             purpose === 'transfer' ? 'bg-purple-100 text-purple-800' :
              'bg-green-100 text-green-800'
     }
   },
@@ -617,14 +682,23 @@ const state = reactive({
   currentLocation: null,
   lastScanContext: null,
   sessionStart: new Date(),
-  isQuickMode: false
+  isQuickMode: false,
+  // Nuevos estados para las listas de destinos
+  medicalCenters: [],
+  pavilions: [],
+  stores: [],
+  loadingMedicalCenters: false,
+  loadingPavilions: false,
+  loadingStores: false
 })
 
 // Usar destructuring para mantener compatibilidad
 const {
   qrInput, scanning, consuming, cameraActive, scannedProduct,
   consumptionSuccess, error, recentConsumptions, selectedConsumptionPurpose,
-  currentLocation, lastScanContext, sessionStart, isQuickMode
+  currentLocation, lastScanContext, sessionStart, isQuickMode,
+  medicalCenters, pavilions, stores,
+  loadingMedicalCenters, loadingPavilions, loadingStores
 } = toRefs(state)
 
 // Estadísticas consolidadas
@@ -639,6 +713,12 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 const canConsumeProduct = computed(() => 
   scannedProduct.value && !scannedProduct.value.is_consumed && scannedProduct.value.can_consume
 )
+
+// Pabellones disponibles según el centro médico seleccionado
+const availablePavilions = computed(() => {
+  if (!consumptionForm.value.medicalCenterId) return []
+  return pavilions.value.filter(p => p.medical_center_id === parseInt(consumptionForm.value.medicalCenterId))
+})
 
 // Datos de configuración
 const consumptionPurposes = [
@@ -662,6 +742,13 @@ const consumptionPurposes = [
     description: 'Uso en mantenimiento',
     icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
     iconClass: 'text-green-600'
+  },
+  {
+    value: 'transfer',
+    label: 'Transferir',
+    description: 'Envío a otro pabellón o centro médico',
+    icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
+    iconClass: 'text-purple-600'
   }
 ]
 
@@ -670,6 +757,7 @@ const consumptionForm = ref({
   userRUT: '',
   destinationType: '',
   destinationID: '',
+  medicalCenterId: '',
   notes: ''
 })
 
@@ -706,15 +794,34 @@ const validateConsumptionForm = () => {
   if (!scannedProduct.value?.qr_code) errors.push('Código QR requerido')
   if (!consumptionForm.value.userRUT) errors.push('RUT del usuario requerido')
   if (!consumptionForm.value.destinationType) errors.push('Tipo de destino requerido')
-  if (!consumptionForm.value.destinationID) errors.push('ID de destino requerido')
+  
+  // Validaciones específicas según el tipo de destino
+  if (consumptionForm.value.destinationType === 'pavilion') {
+    if (!consumptionForm.value.medicalCenterId) errors.push('Centro médico requerido')
+    if (!consumptionForm.value.destinationID) errors.push('Pabellón requerido')
+  } else if (consumptionForm.value.destinationType === 'store') {
+    if (!consumptionForm.value.destinationID) errors.push('Almacén requerido')
+  }
   
   const destinationIdNum = parseInt(consumptionForm.value.destinationID)
-  if (isNaN(destinationIdNum)) errors.push('ID de destino debe ser un número válido')
+  if (isNaN(destinationIdNum)) errors.push('Destino debe ser un número válido')
   
   return { isValid: errors.length === 0, errors, destinationIdNum }
 }
 
 const updateConsumptionStats = (consumptionData) => {
+  // Determinar el nombre del destino
+  let destinationName = `${consumptionForm.value.destinationType} ${consumptionForm.value.destinationID}`
+  
+  if (consumptionForm.value.destinationType === 'pavilion') {
+    const pavilion = availablePavilions.value.find(p => p.id === parseInt(consumptionForm.value.destinationID))
+    const medicalCenter = medicalCenters.value.find(c => c.id === parseInt(consumptionForm.value.medicalCenterId))
+    destinationName = pavilion ? `${medicalCenter?.name || 'Centro'} - ${pavilion.name}` : destinationName
+  } else if (consumptionForm.value.destinationType === 'store') {
+    const store = stores.value.find(s => s.id === parseInt(consumptionForm.value.destinationID))
+    destinationName = store ? `Almacén ${store.name}` : destinationName
+  }
+
   recentConsumptions.value.unshift({
     qr_code: scannedProduct.value.qr_code,
     product_name: scannedProduct.value.supply_info?.supply_code_name || 'N/A',
@@ -723,7 +830,7 @@ const updateConsumptionStats = (consumptionData) => {
     consumed_at: new Date().toISOString(),
     consumption_purpose: selectedConsumptionPurpose.value,
     location: currentLocation.value?.name,
-    destination: `${consumptionForm.value.destinationType} ${consumptionForm.value.destinationID}`,
+    destination: destinationName,
     batch_id: scannedProduct.value.supply_info?.batch?.id
   })
   
@@ -734,6 +841,70 @@ const updateConsumptionStats = (consumptionData) => {
   consumptionStats.today += 1
   consumptionStats.week += 1
   saveConsumptionStats()
+}
+
+// Métodos para cargar datos de destinos
+const loadMedicalCenters = async () => {
+  loadingMedicalCenters.value = true
+  try {
+    const response = await medicalCenterService.getAll()
+    medicalCenters.value = response.data || []
+  } catch (err) {
+    console.error('Error cargando centros médicos:', err)
+    handleError(err, 'Error al cargar centros médicos')
+  } finally {
+    loadingMedicalCenters.value = false
+  }
+}
+
+const loadPavilions = async () => {
+  loadingPavilions.value = true
+  try {
+    pavilions.value = await pavilionService.getAllPavilions()
+  } catch (err) {
+    console.error('Error cargando pabellones:', err)
+    handleError(err, 'Error al cargar pabellones')
+  } finally {
+    loadingPavilions.value = false
+  }
+}
+
+const loadStores = async () => {
+  loadingStores.value = true
+  try {
+    stores.value = await storeService.getAllStores()
+  } catch (err) {
+    console.error('Error cargando almacenes:', err)
+    handleError(err, 'Error al cargar almacenes')
+  } finally {
+    loadingStores.value = false
+  }
+}
+
+// Métodos de manejo de cambios en el formulario
+const onDestinationTypeChange = () => {
+  // Limpiar campos relacionados cuando cambia el tipo de destino
+  consumptionForm.value.destinationID = ''
+  consumptionForm.value.medicalCenterId = ''
+  
+  // Cargar datos según el tipo de destino
+  if (consumptionForm.value.destinationType === 'pavilion') {
+    if (medicalCenters.value.length === 0) {
+      loadMedicalCenters()
+    }
+    if (pavilions.value.length === 0) {
+      loadPavilions()
+    }
+  } else if (consumptionForm.value.destinationType === 'store') {
+    if (stores.value.length === 0) {
+      loadStores()
+    }
+  }
+}
+
+const onMedicalCenterChange = () => {
+  // Limpiar pabellón seleccionado cuando cambia el centro médico
+  consumptionForm.value.destinationID = ''
 }
 
 // Métodos principales
@@ -878,9 +1049,21 @@ const viewBatchHistory = async (batchId) => {
 const onLocationChanged = (location) => {
   currentLocation.value = location
   
-  if (scannedProduct.value && location && !consumptionForm.value.destinationType && location.pavilion_id) {
-    consumptionForm.value.destinationType = 'pavilion'
-    consumptionForm.value.destinationID = location.pavilion_id.toString()
+  if (scannedProduct.value && location && !consumptionForm.value.destinationType) {
+    // Auto-asignar tipo de destino, centro médico y pabellón si hay ubicación seleccionada
+    if (location.pavilion_id) {
+      consumptionForm.value.destinationType = 'pavilion'
+      consumptionForm.value.medicalCenterId = location.medical_center_id?.toString() || ''
+      consumptionForm.value.destinationID = location.pavilion_id.toString()
+      
+      // Asegurar que los datos estén cargados
+      if (medicalCenters.value.length === 0) {
+        loadMedicalCenters()
+      }
+      if (pavilions.value.length === 0) {
+        loadPavilions()
+      }
+    }
   }
 }
 
@@ -917,6 +1100,7 @@ const clearScannedProduct = () => {
     userRUT: currentUser.value?.rut || '',
     destinationType: '',
     destinationID: '',
+    medicalCenterId: '',
     notes: ''
   }
 }
@@ -972,7 +1156,7 @@ const processUrlParams = async () => {
     isQuickMode.value = true
     
     const purposeParam = urlParams.get('consumption_purpose')
-    if (purposeParam && ['routine', 'emergency', 'maintenance'].includes(purposeParam)) {
+    if (purposeParam && ['routine', 'emergency', 'maintenance', 'transfer'].includes(purposeParam)) {
       selectedConsumptionPurpose.value = purposeParam
     }
     
@@ -1011,6 +1195,13 @@ onMounted(async () => {
       console.error('Error obteniendo perfil:', err)
     }
   }
+
+  // Cargar datos de destinos iniciales
+  await Promise.all([
+    loadMedicalCenters(),
+    loadPavilions(),
+    loadStores()
+  ])
   
   await processUrlParams()
 })
