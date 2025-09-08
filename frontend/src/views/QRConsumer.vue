@@ -298,8 +298,6 @@
       @view-batch-history="viewBatchHistory"
     />
 
-    <!-- Location Selector Component -->
-    <LocationSelector @location-changed="onLocationChanged" />
   </div>
 </template>
 

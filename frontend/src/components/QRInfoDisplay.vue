@@ -111,7 +111,7 @@
           </div>
         </div>
 
-        <!-- Estadísticas de escaneo básicas -->
+        <!-- Estadísticas de escaneo básicas 
         <div v-if="showTraceability && scanActivity" class="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
           <div class="flex items-center mb-3">
             <svg class="h-5 w-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,9 +138,9 @@
               <div class="text-xs text-gray-700">Hoy</div>
             </div>
           </div>
-        </div>
+        </div>-->
 
-        <!-- Información de contexto de escaneo -->
+        <!-- Información de contexto de escaneo 
         <div v-if="showTraceability && scanContext" class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div class="flex items-center mb-3">
             <svg class="h-5 w-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,7 +170,7 @@
               <p class="text-yellow-900">{{ scanContext.device_info.platform || 'Desconocido' }}</p>
             </div>
           </div>
-        </div>
+        </div>-->
 
         <!-- Resto del contenido existente -->
         <!-- Información resumida y no redundante del insumo y lote -->

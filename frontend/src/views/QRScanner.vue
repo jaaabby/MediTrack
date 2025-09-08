@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-4xl mx-auto p-6">
-    <!-- Header con estadísticas -->
+    <!-- Header con estadísticas 
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-gray-900 mb-2">Escáner QR con Trazabilidad</h1>
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -21,9 +21,9 @@
           <div class="text-sm font-medium text-gray-900">{{ currentUser?.name || 'No logueado' }}</div>
         </div>
       </div>
-    </div>
+    </div>-->
 
-    <!-- Selector de propósito de escaneo -->
+    <!-- Selector de propósito de escaneo 
     <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
       <h3 class="text-lg font-medium text-gray-900 mb-4">Propósito del Escaneo</h3>
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -46,7 +46,7 @@
           </div>
         </button>
       </div>
-    </div>
+    </div>-->
 
     <!-- Scanner Input -->
     <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
@@ -216,15 +216,6 @@
       <!-- Botones de acción adicionales con trazabilidad -->
       <div class="p-4 border-t border-gray-200 bg-gray-50">
         <div class="flex flex-wrap gap-3">
-          <button
-            @click="viewCompleteTraceability"
-            class="btn-secondary text-sm"
-          >
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Ver Trazabilidad Completa
-          </button>
           
           <button
             v-if="scannedInfo.supply_info && !scannedInfo.is_consumed"
@@ -246,16 +237,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
             Transferir Rápido
-          </button>
-          
-          <button
-            @click="viewScanStatistics"
-            class="btn-secondary text-sm"
-          >
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Ver Estadísticas de Escaneo
           </button>
         </div>
       </div>
@@ -319,10 +300,6 @@
         </button>
       </div>
     </div>
-
-
-    <!-- Location Selector Component -->
-    <LocationSelector @location-changed="onLocationChanged" />
   </div>
 </template>
 

@@ -54,7 +54,7 @@
             </div>
           </div>
           
-          <!-- Estadísticas Rápidas -->
+          <!-- Estadísticas Rápidas 
           <div v-if="scanStatistics" class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="text-center">
               <div class="text-2xl font-bold text-blue-900">{{ scanStatistics.total_scans }}</div>
@@ -68,7 +68,7 @@
               <div class="text-2xl font-bold text-purple-900">{{ scanStatistics.locations_visited }}</div>
               <div class="text-xs text-purple-700">Ubicaciones</div>
             </div>
-          </div>
+          </div> -->
         </div>
       </div>
     </div>
@@ -301,9 +301,9 @@
         </div>
       </div>
 
-      <!-- Estado actual y resumen -->
+      <!-- Estado actual y resumen 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <!-- Estado actual -->
+        <!-- Estado actual 
         <div class="bg-white rounded-lg shadow border p-6">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Estado Actual</h3>
           
@@ -334,7 +334,7 @@
           </div>
         </div>
 
-        <!-- Estadísticas -->
+        <!-- Estadísticas
         <div class="bg-white rounded-lg shadow border p-6">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Estadísticas de Historial</h3>
           
@@ -360,7 +360,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
 
       <!-- Timeline de Eventos -->
       <div class="bg-white rounded-lg shadow-sm border">
