@@ -5,6 +5,8 @@ const (
 	RoleAdmin        = "admin"
 	RolePavilion     = "pabellón"
 	RoleStoreManager = "encargado de bodega"
+	RoleNurse        = "enfermera"
+	RoleDoctor       = "doctor"
 )
 
 // User representa un usuario del sistema
@@ -13,7 +15,7 @@ type User struct {
 	Name            string         `json:"name" db:"name" gorm:"not null"`
 	Email           string         `json:"email" db:"email"`
 	Password        string         `json:"password" db:"password" gorm:"not null"`
-	Role            string         `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega')"`
+	Role            string         `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor')"`
 	MedicalCenterID int            `json:"medical_center_id" db:"medical_center_id" gorm:"not null"`
 	MedicalCenter   *MedicalCenter `json:"medical_center,omitempty" gorm:"foreignKey:MedicalCenterID"`
 	IsActive        bool           `json:"is_active" db:"is_active" gorm:"default:true"`

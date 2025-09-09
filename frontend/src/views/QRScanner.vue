@@ -312,7 +312,6 @@ import { useAuthStore } from '@/stores/auth'
 import qrService from '@/services/qrService'
 import jsQR from 'jsqr'
 import QRInfoDisplay from '@/components/QRInfoDisplay.vue'
-import LocationSelector from '@/components/LocationSelector.vue'
 
 const router = useRouter()
 const route = useRoute()

@@ -29,6 +29,24 @@ export const useAuthStore = defineStore('auth', {
     // Verificar si es encargado de bodega
     isWarehouseManager: (state) => state.user?.role === 'encargado de bodega',
     
+    // Verificar si es enfermera
+    isNurse: (state) => state.user?.role === 'enfermera',
+    
+    // Verificar si es doctor
+    isDoctor: (state) => state.user?.role === 'doctor',
+    
+    // Verificar si puede crear solicitudes (enfermera o doctor)
+    canCreateRequests: (state) => ['enfermera', 'doctor'].includes(state.user?.role),
+    
+    // Verificar si puede ver todas las solicitudes (admin o encargado de bodega)
+    canViewAllRequests: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
+    
+    // Verificar si puede ver solicitudes (todos excepto pabellón)
+    canViewRequests: (state) => state.user?.role !== 'pabellón',
+    
+    // Verificar si puede ver inventario (todos excepto pabellón)
+    canViewInventory: (state) => state.user?.role !== 'pabellón',
+    
     // Obtener el nombre del usuario
     getUserName: (state) => state.user?.name,
     
@@ -211,8 +229,10 @@ export const useAuthStore = defineStore('auth', {
       // Definir rutas protegidas por rol
       const routePermissions = {
         'admin': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
-        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'Profile'],
-        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
+        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'Profile'],
+        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile'],
+        'enfermera': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
+        'doctor': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile']
       }
 
       const allowedRoutes = routePermissions[this.user.role] || []

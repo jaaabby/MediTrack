@@ -174,8 +174,14 @@ func (s *SupplyRequestService) GetSupplyRequestByID(id int) (*models.SupplyReque
 	return &request, nil
 }
 
+// SupplyRequestWithItems representa una solicitud con información adicional calculada
+type SupplyRequestWithItems struct {
+	models.SupplyRequest
+	TotalItems int64 `json:"total_items"`
+}
+
 // GetAllSupplyRequests obtiene todas las solicitudes con paginación
-func (s *SupplyRequestService) GetAllSupplyRequests(limit, offset int, status string) ([]models.SupplyRequest, int64, error) {
+func (s *SupplyRequestService) GetAllSupplyRequests(limit, offset int, status string) ([]SupplyRequestWithItems, int64, error) {
 	var requests []models.SupplyRequest
 	var total int64
 
@@ -195,11 +201,25 @@ func (s *SupplyRequestService) GetAllSupplyRequests(limit, offset int, status st
 		return nil, 0, err
 	}
 
-	return requests, total, nil
+	// Convertir a SupplyRequestWithItems y calcular total_items
+	var requestsWithItems []SupplyRequestWithItems
+	for _, request := range requests {
+		var itemCount int64
+		s.DB.Model(&models.SupplyRequestItem{}).
+			Where("supply_request_id = ?", request.ID).
+			Count(&itemCount)
+
+		requestsWithItems = append(requestsWithItems, SupplyRequestWithItems{
+			SupplyRequest: request,
+			TotalItems:    itemCount,
+		})
+	}
+
+	return requestsWithItems, total, nil
 }
 
 // GetSupplyRequestsByPavilion obtiene solicitudes por pabellón
-func (s *SupplyRequestService) GetSupplyRequestsByPavilion(pavilionID int, limit, offset int) ([]models.SupplyRequest, int64, error) {
+func (s *SupplyRequestService) GetSupplyRequestsByPavilion(pavilionID int, limit, offset int) ([]SupplyRequestWithItems, int64, error) {
 	var requests []models.SupplyRequest
 	var total int64
 
@@ -215,7 +235,21 @@ func (s *SupplyRequestService) GetSupplyRequestsByPavilion(pavilionID int, limit
 		return nil, 0, err
 	}
 
-	return requests, total, nil
+	// Convertir a SupplyRequestWithItems y calcular total_items
+	var requestsWithItems []SupplyRequestWithItems
+	for _, request := range requests {
+		var itemCount int64
+		s.DB.Model(&models.SupplyRequestItem{}).
+			Where("supply_request_id = ?", request.ID).
+			Count(&itemCount)
+
+		requestsWithItems = append(requestsWithItems, SupplyRequestWithItems{
+			SupplyRequest: request,
+			TotalItems:    itemCount,
+		})
+	}
+
+	return requestsWithItems, total, nil
 }
 
 // ApproveSupplyRequest aprueba una solicitud y establece cantidades aprobadas

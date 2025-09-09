@@ -54,7 +54,7 @@
           <!-- Acciones -->
           <div class="flex space-x-2">
             <button
-              v-if="request.status === 'pending'"
+              v-if="request.status === 'pending' && authStore.canViewAllRequests"
               @click="approveRequest"
               :disabled="processing"
               class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
@@ -66,7 +66,7 @@
             </button>
 
             <button
-              v-if="request.status === 'pending'"
+              v-if="request.status === 'pending' && authStore.canViewAllRequests"
               @click="rejectRequest"
               :disabled="processing"
               class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
@@ -214,7 +214,7 @@
                 </div>
 
                 <!-- Botón para asignar QR -->
-                <div v-if="request.status === 'approved' && getItemAssignments(item.id).length < item.quantity_approved" class="mt-4">
+                <div v-if="request.status === 'approved' && getItemAssignments(item.id).length < item.quantity_approved && authStore.canViewAllRequests" class="mt-4">
                   <button
                     @click="openAssignQRModal(item)"
                     class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100"
@@ -240,14 +240,14 @@
                 <span class="text-sm text-gray-600">Total Items:</span>
                 <span class="text-sm font-medium text-gray-900">{{ items.length }}</span>
               </div>
-              <div class="flex justify-between">
+              <!--<div class="flex justify-between">
                 <span class="text-sm text-gray-600">QRs Asignados:</span>
                 <span class="text-sm font-medium text-gray-900">{{ assignments.length }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600">QRs Entregados:</span>
                 <span class="text-sm font-medium text-green-600">{{ getDeliveredAssignments().length }}</span>
-              </div>
+              </div>-->
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600">Progreso:</span>
                 <span class="text-sm font-medium text-blue-600">{{ getProgressPercentage() }}%</span>
@@ -388,6 +388,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
 import { format } from 'date-fns'
@@ -395,6 +396,7 @@ import { es } from 'date-fns/locale'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Estado reactivo
 const loading = ref(false)

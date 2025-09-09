@@ -151,6 +151,52 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
+-- Usuario enfermera de ejemplo
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id, 
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES (
+    '22222222-2',
+    'María González',
+    'enfermera@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    'enfermera',
+    1,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+) ON CONFLICT (rut) DO NOTHING;
+
+-- Usuario doctor de ejemplo
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id, 
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES (
+    '33333333-3',
+    'Dr. Carlos Pérez',
+    'doctor@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    'doctor',
+    1,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+) ON CONFLICT (rut) DO NOTHING;
+
 -- ============================================
 -- POBLADO DE HISTORIALES
 -- ============================================

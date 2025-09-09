@@ -8,6 +8,7 @@
           <p class="mt-1 text-gray-600">Gestión de solicitudes con trazabilidad QR</p>
         </div>
         <router-link
+          v-if="authStore.canCreateRequests"
           to="/supply-requests/new"
           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
@@ -114,22 +115,6 @@
       <div class="bg-white p-4 rounded-lg shadow border">
         <div class="flex items-center">
           <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-          </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-gray-500">En Proceso</p>
-            <p class="text-lg font-semibold text-gray-900">{{ stats.in_process || 0 }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-lg shadow border">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
             <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
               <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -137,8 +122,24 @@
             </div>
           </div>
           <div class="ml-3">
-            <p class="text-sm font-medium text-gray-500">Completadas</p>
-            <p class="text-lg font-semibold text-gray-900">{{ stats.completed || 0 }}</p>
+            <p class="text-sm font-medium text-gray-500">Aprobadas</p>
+            <p class="text-lg font-semibold text-gray-900">{{ stats.approved || 0 }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg shadow border">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+              <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-gray-500">Rechazadas</p>
+            <p class="text-lg font-semibold text-gray-900">{{ stats.rejected || 0 }}</p>
           </div>
         </div>
       </div>
@@ -193,7 +194,7 @@
           {{ requests.length === 0 ? 'No se han creado solicitudes aún' : 'No se encontraron solicitudes con los filtros aplicados' }}
         </p>
         <router-link
-          v-if="requests.length === 0"
+          v-if="requests.length === 0 && authStore.canCreateRequests"
           to="/supply-requests/new"
           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
         >
@@ -246,9 +247,6 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">
                   {{ request.request_number }}
-                </div>
-                <div class="text-sm text-gray-500">
-                  ID: {{ request.id }}
                 </div>
               </td>
 
@@ -308,7 +306,7 @@
                   </button>
 
                   <button
-                    v-if="request.status === 'pending'"
+                    v-if="request.status === 'pending' && authStore.canViewAllRequests"
                     @click.stop="approveRequest(request.id)"
                     class="text-green-600 hover:text-green-900 p-1"
                     title="Aprobar solicitud"
@@ -319,7 +317,7 @@
                   </button>
 
                   <button
-                    v-if="request.status === 'pending'"
+                    v-if="request.status === 'pending' && authStore.canViewAllRequests"
                     @click.stop="rejectRequest(request.id)"
                     class="text-red-600 hover:text-red-900 p-1"
                     title="Rechazar solicitud"
@@ -366,19 +364,20 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Estado reactivo
 const loading = ref(false)
 const error = ref(null)
 const requests = ref([])
 const pavilions = ref([])
-const stats = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 
@@ -416,6 +415,18 @@ const paginatedRequests = computed(() => {
 const totalRequests = computed(() => filteredRequests.value.length)
 const totalPages = computed(() => Math.ceil(totalRequests.value / pageSize.value))
 
+// Calcular estadísticas localmente basándose en las solicitudes filtradas
+const stats = computed(() => {
+  const requests = filteredRequests.value
+  
+  return {
+    pending: requests.filter(r => r.status === 'pending').length,
+    approved: requests.filter(r => r.status === 'approved').length,
+    rejected: requests.filter(r => r.status === 'rejected').length,
+    total: requests.length
+  }
+})
+
 // Métodos
 const loadSupplyRequests = async () => {
   loading.value = true
@@ -425,7 +436,21 @@ const loadSupplyRequests = async () => {
     const result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
     
     if (result.success && result.data) {
-      requests.value = result.data.requests || []
+      let allRequests = result.data.requests || []
+      
+      // Filtrar solicitudes según el rol del usuario
+      if (authStore.canViewAllRequests) {
+        // Admin y encargado de bodega ven todas las solicitudes
+        requests.value = allRequests
+      } else if (authStore.canCreateRequests) {
+        // Enfermera y doctor solo ven sus propias solicitudes
+        const userRut = authStore.getUserRut
+        requests.value = allRequests.filter(request => request.requested_by === userRut)
+      } else {
+        // Otros roles no deberían ver solicitudes (esto no debería pasar por la navegación)
+        requests.value = []
+      }
+      
       console.log('Solicitudes cargadas:', requests.value)
     } else {
       requests.value = []
@@ -449,14 +474,8 @@ const loadPavilions = async () => {
 }
 
 const loadStats = async () => {
-  try {
-    const result = await supplyRequestService.getSupplyRequestStats()
-    if (result.success && result.data) {
-      stats.value = result.data
-    }
-  } catch (err) {
-    console.error('Error cargando estadísticas:', err)
-  }
+  // Las estadísticas se calculan localmente basándose en las solicitudes filtradas
+  // No necesitamos cargar estadísticas del backend
 }
 
 const filterRequests = () => {
@@ -564,8 +583,7 @@ const getPriorityBadgeClass = (priority) => {
 onMounted(async () => {
   await Promise.all([
     loadSupplyRequests(),
-    loadPavilions(),
-    loadStats()
+    loadPavilions()
   ])
 })
 </script>

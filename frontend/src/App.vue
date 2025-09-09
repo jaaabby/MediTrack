@@ -23,7 +23,7 @@
               Inicio
             </router-link>
             
-            <router-link v-if="authStore.isAuthenticated"
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
               to="/inventory"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/inventory') }"
@@ -31,7 +31,7 @@
               Inventario
             </router-link>
             
-            <router-link v-if="authStore.isAuthenticated"
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewRequests"
               to="/supply-requests"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/supply-requests') }"
@@ -47,7 +47,7 @@
               Escáner QR
             </router-link>
             
-              <router-link v-if="authStore.isAuthenticated"
+              <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
                 to="/inventory/add"
                 class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 :class="{ 'bg-blue-700': $route.path === '/inventory/add' }"
@@ -108,6 +108,7 @@
           </router-link>
           
           <router-link
+            v-if="authStore.canViewInventory"
             to="/inventory"
             @click="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
@@ -117,6 +118,7 @@
           </router-link>
           
           <router-link
+            v-if="authStore.canViewRequests"
             to="/supply-requests"
             @click="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
@@ -143,6 +145,7 @@
             Reportes
           </router-link>
             <router-link
+              v-if="authStore.canViewInventory"
               to="/inventory/add"
               @click="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
@@ -174,6 +177,7 @@
         </router-link>
         
         <router-link
+          v-if="authStore.canViewInventory"
           to="/inventory"
           class="flex flex-col items-center py-3 px-4 text-sm font-medium transition-colors"
           :class="$route.path.startsWith('/inventory') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
@@ -185,6 +189,7 @@
         </router-link>
         
         <router-link
+          v-if="authStore.canViewRequests"
           to="/supply-requests"
           class="flex flex-col items-center py-3 px-4 text-sm font-medium transition-colors relative"
           :class="$route.path.startsWith('/supply-requests') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"

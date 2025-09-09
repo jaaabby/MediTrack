@@ -7,6 +7,8 @@
 -- =======================
 DROP VIEW IF EXISTS v_qr_traceability CASCADE;
 DROP VIEW IF EXISTS v_supply_requests_detail CASCADE;
+DROP VIEW IF EXISTS v_qr_complete_traceability CASCADE;
+DROP VIEW IF EXISTS v_qr_scan_statistics CASCADE;
 
 -- =======================
 -- ELIMINAR TRIGGERS
@@ -17,6 +19,7 @@ DROP TRIGGER IF EXISTS tr_supply_request_updated_at ON supply_request;
 DROP TRIGGER IF EXISTS trg_log_batch_delete ON batch;
 DROP TRIGGER IF EXISTS set_batch_number ON batch_history;
 DROP TRIGGER IF EXISTS update_user_updated_at ON "user";
+DROP TRIGGER IF EXISTS trg_update_qr_scan_event_updated_at ON qr_scan_event;
 
 -- =======================
 -- ELIMINAR FUNCIONES
@@ -29,6 +32,8 @@ DROP FUNCTION IF EXISTS update_supply_request_updated_at();
 DROP FUNCTION IF EXISTS log_batch_delete();
 DROP FUNCTION IF EXISTS trg_set_batch_number();
 DROP FUNCTION IF EXISTS update_updated_at_column();
+DROP FUNCTION IF EXISTS cleanup_old_scan_events(INTEGER);
+DROP FUNCTION IF EXISTS update_qr_scan_event_updated_at();
 
 -- =======================
 -- ELIMINAR ÍNDICES
@@ -65,6 +70,18 @@ DROP INDEX IF EXISTS idx_user_email;
 DROP INDEX IF EXISTS idx_batch_qr_code;
 DROP INDEX IF EXISTS idx_medical_supply_qr_code;
 
+-- Índices de qr_scan_event
+DROP INDEX IF EXISTS idx_qr_scan_event_qr_code;
+DROP INDEX IF EXISTS idx_qr_scan_event_scanned_at;
+DROP INDEX IF EXISTS idx_qr_scan_event_scanned_by;
+DROP INDEX IF EXISTS idx_qr_scan_event_pavilion;
+DROP INDEX IF EXISTS idx_qr_scan_event_medical_center;
+DROP INDEX IF EXISTS idx_qr_scan_event_scan_result;
+DROP INDEX IF EXISTS idx_qr_scan_event_supply_id;
+DROP INDEX IF EXISTS idx_qr_scan_event_batch_id;
+DROP INDEX IF EXISTS idx_qr_scan_event_qr_time;
+DROP INDEX IF EXISTS idx_qr_scan_event_session;
+
 -- =======================
 -- ELIMINAR TABLAS EN ORDEN CORRECTO (respetando dependencias)
 -- =======================
@@ -73,6 +90,9 @@ DROP INDEX IF EXISTS idx_medical_supply_qr_code;
 DROP TABLE IF EXISTS supply_request_qr_assignment CASCADE;
 DROP TABLE IF EXISTS supply_request_item CASCADE;
 DROP TABLE IF EXISTS supply_request CASCADE;
+
+-- Tabla de eventos de escaneo QR
+DROP TABLE IF EXISTS qr_scan_event CASCADE;
 
 -- Tablas de historial
 DROP TABLE IF EXISTS supply_history CASCADE;

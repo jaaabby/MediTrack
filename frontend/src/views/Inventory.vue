@@ -41,7 +41,11 @@
             <h2 class="card-title">Inventario de Insumos Médicos</h2>
             <p class="text-sm text-gray-600">Total: {{ filteredSupplies.length }} lotes</p>
           </div>
-          <button class="btn-primary flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto" @click="openGlobalHistoryModal">
+          <button 
+            v-if="authStore.canViewAllRequests"
+            class="btn-primary flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto" 
+            @click="openGlobalHistoryModal"
+          >
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -989,6 +993,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import inventoryService from '@/services/inventoryService'
@@ -996,6 +1001,7 @@ import qrService from '@/services/qrService'
 import QrcodeVue from 'qrcode.vue'
 
 const route = useRoute()
+const authStore = useAuthStore()
 
 // Estado reactivo
 const supplies = ref([])
@@ -1444,6 +1450,12 @@ const handleDownloadQR = async (qrCode) => {
 
 // Métodos para historial global
 const openGlobalHistoryModal = () => {
+  // Verificar permisos - solo admin y encargado de bodega pueden ver historial
+  if (!authStore.canViewAllRequests) {
+    alert('No tienes permisos para ver el historial de movimientos del inventario')
+    return
+  }
+
   globalHistoryChangeTypeFilter.value = ''
   globalHistoryBatchFilter.value = ''
   globalHistoryUserFilter.value = ''
@@ -1497,6 +1509,12 @@ const loadGlobalHistory = async () => {
 
 // Métodos para historial individual
 const viewSupply = (supply) => {
+  // Verificar permisos - solo admin y encargado de bodega pueden ver historial
+  if (!authStore.canViewAllRequests) {
+    alert('No tienes permisos para ver el historial de movimientos del inventario')
+    return
+  }
+
   selectedSupplyForHistory.value = supply
   historySearchTerm.value = ''
   historyCurrentPage.value = 1
