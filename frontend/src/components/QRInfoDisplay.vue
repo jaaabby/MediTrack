@@ -18,7 +18,21 @@
             </span>
           </div>
         </div>
-        <div class="flex flex-col md:flex-row md:items-center md:space-x-4 mt-4 md:mt-0">
+        <div class="flex flex-col md:flex-row md:items-center md:space-x-2 mt-4 md:mt-0">
+          <button
+            @click="downloadQRAsPDF"
+            :disabled="isGeneratingPDF"
+            class="inline-flex items-center px-3 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-2 md:mb-0"
+          >
+            <svg v-if="isGeneratingPDF" class="animate-spin h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {{ isGeneratingPDF ? 'Generando...' : 'Descargar PDF' }}
+          </button>
           <router-link
             :to="`/qr/${qrInfo.qr_code}/traceability`"
             class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
@@ -183,12 +197,10 @@
               Información del Insumo
             </h4>
             <div class="text-sm">
-              <div><span class="font-medium text-gray-600">ID:</span> {{ qrInfo.supply_info.id }}</div>
-              <div><span class="font-medium text-gray-600">Código:</span> {{ qrInfo.supply_info.code }}</div>
-              <div><span class="font-medium text-gray-600">Estado:</span> <span :class="qrInfo.supply_info.is_consumed ? 'text-red-600' : 'text-green-600'" class="font-medium">{{ qrInfo.supply_info.is_consumed ? 'Consumido' : 'Disponible' }}</span></div>
-              <div v-if="qrInfo.supply_info.batch"><span class="font-medium text-gray-600">Lote:</span> {{ qrInfo.supply_info.batch.id }}</div>
-              <div v-if="qrInfo.supply_code"><span class="font-medium text-gray-600">Nombre:</span> {{ qrInfo.supply_code.name }}</div>
-              <div v-if="qrInfo.supply_code"><span class="font-medium text-gray-600">Código Proveedor:</span> {{ qrInfo.supply_code.code_supplier }}</div>
+              <div><span class="font-medium text-gray-600">Código:</span> {{ qrInfo.supply_code?.code_supplier || qrInfo.supplier_code || 'N/A' }}</div>
+              <div><span class="font-medium text-gray-600">Estado:</span> <span :class="qrInfo.supply_info?.is_consumed || qrInfo.is_consumed ? 'text-red-600' : 'text-green-600'" class="font-medium">{{ qrInfo.supply_info?.is_consumed || qrInfo.is_consumed ? 'Consumido' : 'Disponible' }}</span></div>
+              <div v-if="qrInfo.supply_info?.batch || qrInfo.batch_info"><span class="font-medium text-gray-600">Lote:</span> {{ qrInfo.supply_info?.batch?.id || qrInfo.batch_info?.id || qrInfo.batch_id || 'N/A' }}</div>
+              <div v-if="qrInfo.supply_code || qrInfo.supply_info?.name"><span class="font-medium text-gray-600">Nombre:</span> {{ qrInfo.supply_code?.name || qrInfo.supply_info?.name || qrInfo.name || 'N/A' }}</div>
             </div>
           </div>
           <div v-if="qrInfo.batch_info" class="space-y-2">
@@ -199,10 +211,10 @@
               Información del Lote
             </h4>
             <div class="text-sm">
-              <div><span class="font-medium text-gray-600">ID:</span> {{ qrInfo.batch_info.id }}</div>
-              <div><span class="font-medium text-gray-600">Proveedor:</span> {{ qrInfo.batch_info.supplier }}</div>
-              <div><span class="font-medium text-gray-600">Cantidad Total:</span> {{ qrInfo.batch_info.amount }}</div>
-              <div><span class="font-medium text-gray-600">Vencimiento:</span> {{ formatDate(qrInfo.batch_info.expiration_date) }}</div>
+              <div><span class="font-medium text-gray-600">ID:</span> {{ qrInfo.batch_info?.id || qrInfo.batch_id || 'N/A' }}</div>
+              <div><span class="font-medium text-gray-600">Proveedor:</span> {{ qrInfo.batch_info?.supplier || qrInfo.supplier || 'N/A' }}</div>
+              <div><span class="font-medium text-gray-600">Cantidad Total:</span> {{ qrInfo.batch_info?.amount || qrInfo.amount || 'N/A' }}</div>
+              <div><span class="font-medium text-gray-600">Vencimiento:</span> {{ formatDate(qrInfo.batch_info?.expiration_date || qrInfo.expiration_date) }}</div>
             </div>
           </div>
         </div>
@@ -271,6 +283,7 @@ import QrcodeVue from 'qrcode.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qrService'
+import { useQRPdfDownload } from '@/composables/useQRPdfDownload'
 
 // Props
 const props = defineProps({
@@ -297,6 +310,26 @@ defineExpose({ QrcodeVue })
 // Estado reactivo para información de trazabilidad
 const scanActivity = ref(null)
 const lastScanInfo = ref(null)
+
+// Composable para descarga de PDF
+const { downloadQRAsPDF: downloadPDF, isGenerating: isGeneratingPDF, error: pdfError } = useQRPdfDownload()
+
+// Función para descargar QR como PDF
+const downloadQRAsPDF = async () => {
+  try {
+    const success = await downloadPDF(props.qrInfo, {
+      filename: `QR_${props.qrInfo.qr_code}_${new Date().getTime()}.pdf`,
+      includeInfo: true
+    })
+    
+    if (!success && pdfError.value) {
+      console.error('Error al generar PDF:', pdfError.value)
+      // Aquí podrías mostrar una notificación de error al usuario
+    }
+  } catch (error) {
+    console.error('Error al descargar PDF:', error)
+  }
+}
 
 // Cargar información de trazabilidad si está habilitada
 onMounted(async () => {
