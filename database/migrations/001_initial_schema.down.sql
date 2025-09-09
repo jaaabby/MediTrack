@@ -20,6 +20,8 @@ DROP TRIGGER IF EXISTS trg_log_batch_delete ON batch;
 DROP TRIGGER IF EXISTS set_batch_number ON batch_history;
 DROP TRIGGER IF EXISTS update_user_updated_at ON "user";
 DROP TRIGGER IF EXISTS trg_update_qr_scan_event_updated_at ON qr_scan_event;
+DROP TRIGGER IF EXISTS trg_log_medical_supply_status_change ON medical_supply;
+DROP TRIGGER IF EXISTS trg_update_medical_supply_updated_at ON medical_supply;
 
 -- =======================
 -- ELIMINAR FUNCIONES
@@ -34,6 +36,8 @@ DROP FUNCTION IF EXISTS trg_set_batch_number();
 DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP FUNCTION IF EXISTS cleanup_old_scan_events(INTEGER);
 DROP FUNCTION IF EXISTS update_qr_scan_event_updated_at();
+DROP FUNCTION IF EXISTS log_medical_supply_status_change();
+DROP FUNCTION IF EXISTS update_medical_supply_updated_at();
 
 -- =======================
 -- ELIMINAR ÍNDICES
@@ -81,6 +85,9 @@ DROP INDEX IF EXISTS idx_qr_scan_event_supply_id;
 DROP INDEX IF EXISTS idx_qr_scan_event_batch_id;
 DROP INDEX IF EXISTS idx_qr_scan_event_qr_time;
 DROP INDEX IF EXISTS idx_qr_scan_event_session;
+
+-- Índices de medical_supply
+DROP INDEX IF EXISTS idx_medical_supply_status;
 
 -- =======================
 -- ELIMINAR TABLAS EN ORDEN CORRECTO (respetando dependencias)

@@ -216,10 +216,8 @@ func (s *QRService) logScanEvent(qrCode string, context *ScanContext, qrInfo *QR
 		// Determinar status actual
 		currentStatus := "available"
 		if qrInfo.SupplyInfo != nil {
-			// Verificar si está consumido
-			var consumedHistory models.SupplyHistory
-			if err := s.DB.Where("medical_supply_id = ? AND status = ?",
-				qrInfo.SupplyInfo.ID, "consumido").First(&consumedHistory).Error; err == nil {
+			// Verificar si está consumido usando el campo status
+			if qrInfo.SupplyInfo.Status == models.StatusConsumed {
 				currentStatus = "consumed"
 			}
 		}
@@ -630,12 +628,8 @@ func (s *QRService) GetMedicalSupplyWithDetails(supplyID int) (*MedicalSupplyWit
 		result.SupplyCode = &supplyCode
 	}
 
-	// Verificar si está consumido
-	var consumedHistory models.SupplyHistory
-	if err := s.DB.Where("medical_supply_id = ? AND status = ?",
-		supply.ID, "consumido").First(&consumedHistory).Error; err == nil {
-		result.IsConsumed = true
-	}
+	// Verificar si está consumido usando el campo status
+	result.IsConsumed = supply.IsConsumed()
 
 	// Obtener último movimiento
 	var lastMovement models.SupplyHistory
@@ -673,9 +667,7 @@ func (s *QRService) IsQRAvailableForRequest(qrCode string) (bool, string, error)
 	}
 
 	// Verificar que no esté consumido
-	var consumedHistory models.SupplyHistory
-	if err := s.DB.Where("medical_supply_id = ? AND status = ?",
-		supply.ID, "consumido").First(&consumedHistory).Error; err == nil {
+	if supply.Status == models.StatusConsumed {
 		return false, "El insumo ya fue consumido", nil
 	}
 
@@ -729,18 +721,13 @@ func (s *QRService) UpdateQRAssignmentStatus(qrCode, newStatus, updatedBy, updat
 func (s *QRService) GetAvailableQRsForSupplyCode(supplyCode int, limit int) ([]models.MedicalSupply, error) {
 	var supplies []models.MedicalSupply
 
-	// Subconsulta para obtener IDs de insumos consumidos
-	consumedSubQuery := s.DB.Model(&models.SupplyHistory{}).
-		Select("medical_supply_id").
-		Where("status = ?", "consumido")
-
 	// Subconsulta para obtener QRs asignados activamente
 	assignedSubQuery := s.DB.Model(&models.SupplyRequestQRAssignment{}).
 		Select("qr_code").
 		Where("status NOT IN (?)", []string{models.AssignmentStatusConsumed, models.AssignmentStatusReturned})
 
 	query := s.DB.Where("code = ?", supplyCode).
-		Where("id NOT IN (?)", consumedSubQuery).
+		Where("status != ?", models.StatusConsumed).
 		Where("qr_code NOT IN (?)", assignedSubQuery).
 		Preload("Batch").
 		Order("created_at ASC")
@@ -877,10 +864,8 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 		}
 
 		// Verificar que el insumo no haya sido consumido previamente
-		var existingHistory models.SupplyHistory
-		err := tx.Where("medical_supply_id = ? AND status = ?", supply.ID, "consumido").First(&existingHistory).Error
-		if err == nil {
-			return fmt.Errorf("el insumo con QR %s ya ha sido consumido el %s", request.QRCode, existingHistory.DateTime.Format("2006-01-02 15:04:05"))
+		if supply.Status == models.StatusConsumed {
+			return fmt.Errorf("el insumo con QR %s ya ha sido consumido", request.QRCode)
 		}
 
 		// Obtener información del lote antes de la actualización
@@ -897,7 +882,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 		// Crear historial de consumo
 		history := models.SupplyHistory{
 			DateTime:        time.Now(),
-			Status:          "consumido",
+			Status:          models.StatusConsumed,
 			DestinationType: request.DestinationType,
 			DestinationID:   request.DestinationID,
 			MedicalSupplyID: supply.ID,
@@ -906,6 +891,11 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 
 		if err := tx.Create(&history).Error; err != nil {
 			return fmt.Errorf("error creando historial de consumo: %v", err)
+		}
+
+		// Actualizar el estado del insumo a consumido
+		if err := tx.Model(&supply).Update("status", models.StatusConsumed).Error; err != nil {
+			return fmt.Errorf("error actualizando estado del insumo: %v", err)
 		}
 
 		// Actualizar cantidad del lote (restar 1)
