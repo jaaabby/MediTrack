@@ -284,24 +284,14 @@ func (s *MedicalSupplyService) ConsumeSupplyByQR(qrCode string, userRUT string, 
 		}
 
 		// Verificar que el insumo no haya sido consumido previamente
-		var historyCount int64
-		tx.Model(&models.SupplyHistory{}).Where("medical_supply_id = ? AND status = ?", supply.ID, "consumido").Count(&historyCount)
-		if historyCount > 0 {
+		if supply.Status == models.StatusConsumed {
 			return fmt.Errorf("el insumo con QR %s ya ha sido consumido", qrCode)
 		}
 
-		// Crear historial de consumo
-		history := models.SupplyHistory{
-			DateTime:        models.CurrentTime(),
-			Status:          "consumido",
-			DestinationType: destinationType,
-			DestinationID:   destinationID,
-			MedicalSupplyID: supply.ID,
-			UserRUT:         userRUT,
-		}
-
-		if err := tx.Create(&history).Error; err != nil {
-			return fmt.Errorf("error creando historial de consumo: %v", err)
+		// Actualizar el estado del insumo a consumido
+		// El trigger automáticamente creará el registro en supply_history
+		if err := tx.Model(&supply).Update("status", models.StatusConsumed).Error; err != nil {
+			return fmt.Errorf("error actualizando estado del insumo: %v", err)
 		}
 
 		// Actualizar cantidad del lote (restar 1)
@@ -383,9 +373,11 @@ func (s *MedicalSupplyService) GetSupplyWithBatchInfo(qrCode string) (map[string
 		return nil, fmt.Errorf("insumo no encontrado: %v", err)
 	}
 
-	// Verificar si ya fue consumido
-	var consumedCount int64
-	s.DB.Model(&models.SupplyHistory{}).Where("medical_supply_id = ? AND status = ?", supplyID, "consumido").Count(&consumedCount)
+	// Obtener el insumo para verificar su estado
+	var supply models.MedicalSupply
+	if err := s.DB.First(&supply, supplyID).Error; err != nil {
+		return nil, fmt.Errorf("insumo no encontrado: %v", err)
+	}
 
 	result := map[string]interface{}{
 		"supply_id":              supplyID,
@@ -399,8 +391,9 @@ func (s *MedicalSupplyService) GetSupplyWithBatchInfo(qrCode string) (map[string
 		"supplier":               supplier,
 		"store_name":             storeName,
 		"store_type":             storeType,
-		"is_consumed":            consumedCount > 0,
-		"available_for_use":      consumedCount == 0 && batchRemainingAmount > 0,
+		"status":                 supply.Status,
+		"is_consumed":            supply.IsConsumed(),
+		"available_for_use":      supply.CanBeConsumed() && batchRemainingAmount > 0,
 	}
 
 	return result, nil
@@ -418,12 +411,8 @@ func (s *MedicalSupplyService) SyncBatchAmounts() error {
 		for _, batch := range batches {
 			// Contar productos individuales disponibles (no consumidos)
 			var availableCount int64
-			subquery := tx.Model(&models.SupplyHistory{}).
-				Select("medical_supply_id").
-				Where("status = ?", "consumido")
-
 			if err := tx.Model(&models.MedicalSupply{}).
-				Where("batch_id = ? AND id NOT IN (?)", batch.ID, subquery).
+				Where("batch_id = ? AND status != ?", batch.ID, models.StatusConsumed).
 				Count(&availableCount).Error; err != nil {
 				return fmt.Errorf("error contando productos disponibles para lote %d: %v", batch.ID, err)
 			}
@@ -453,11 +442,7 @@ func (s *MedicalSupplyService) GetIndividualSuppliesByCode(code int) ([]models.M
 func (s *MedicalSupplyService) GetAvailableSuppliesByBatch(batchID int) ([]models.MedicalSupply, error) {
 	var supplies []models.MedicalSupply
 
-	subquery := s.DB.Model(&models.SupplyHistory{}).
-		Select("medical_supply_id").
-		Where("status = ?", "consumido")
-
-	if err := s.DB.Where("batch_id = ? AND id NOT IN (?)", batchID, subquery).Find(&supplies).Error; err != nil {
+	if err := s.DB.Where("batch_id = ? AND status != ?", batchID, models.StatusConsumed).Find(&supplies).Error; err != nil {
 		return nil, err
 	}
 

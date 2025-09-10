@@ -21,16 +21,6 @@ const (
 	DestinationTypeStore    = "store"
 )
 
-// Constantes para los estados
-const (
-	StatusReceived  = "recibido"
-	StatusDelivered = "entregado"
-	StatusConsumed  = "consumido"
-	StatusReturned  = "devuelto"
-	StatusLost      = "perdido"
-	StatusDamaged   = "dañado"
-)
-
 func (s SupplyHistory) TableName() string {
 	return "supply_history"
 }
@@ -42,12 +32,12 @@ func CurrentTime() time.Time {
 
 // IsConsumed verifica si el estado indica que el insumo fue consumido
 func (s SupplyHistory) IsConsumed() bool {
-	return s.Status == StatusConsumed
+	return s.Status == "consumido"
 }
 
 // IsAvailable verifica si el estado indica que el insumo está disponible
 func (s SupplyHistory) IsAvailable() bool {
-	return s.Status == StatusReceived || s.Status == StatusDelivered
+	return s.Status == "disponible" || s.Status == "recepcionado"
 }
 
 // GetDestinationDescription retorna una descripción del destino basada en el tipo

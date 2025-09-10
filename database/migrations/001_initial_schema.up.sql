@@ -50,7 +50,7 @@ CREATE TABLE "user" (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL, -- Este campo almacenará el hash de la contraseña
-    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor')),
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
     is_active BOOLEAN DEFAULT TRUE,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
@@ -679,3 +679,103 @@ CREATE TRIGGER trg_update_qr_scan_event_updated_at
     BEFORE UPDATE ON qr_scan_event
     FOR EACH ROW
     EXECUTE FUNCTION update_qr_scan_event_updated_at();
+
+-- =======================
+-- MIGRACIÓN: ESTADO DE INSUMOS MÉDICOS
+-- Fecha: 2025-01-21
+-- Descripción: Agregar campo status a medical_supply para almacenar el estado actual del insumo
+-- =======================
+
+-- Agregar columna status a medical_supply
+ALTER TABLE medical_supply 
+ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'disponible';
+
+-- Agregar constraint para validar los valores de status
+ALTER TABLE medical_supply 
+ADD CONSTRAINT chk_medical_supply_status 
+CHECK (status IN ('disponible', 'en_camino_a_pabellon', 'recepcionado', 'consumido', 'en_camino_a_bodega'));
+
+-- Crear índice para optimizar consultas por status
+CREATE INDEX idx_medical_supply_status ON medical_supply(status);
+
+-- Agregar columna updated_at para tracking de cambios
+ALTER TABLE medical_supply 
+ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- Crear trigger para actualizar updated_at automáticamente
+CREATE OR REPLACE FUNCTION update_medical_supply_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_medical_supply_updated_at
+    BEFORE UPDATE ON medical_supply
+    FOR EACH ROW
+    EXECUTE FUNCTION update_medical_supply_updated_at();
+
+-- Función para generar automáticamente registros en supply_history cuando cambie el status
+CREATE OR REPLACE FUNCTION log_medical_supply_status_change()
+RETURNS TRIGGER AS $$
+DECLARE
+    current_user_rut VARCHAR(20) := current_setting('app.current_user', true);
+    default_user_rut VARCHAR(20) := '12345678-9';
+    destination_type_val VARCHAR(50);
+    destination_id_val INTEGER;
+BEGIN
+    -- Solo registrar si el status realmente cambió
+    IF OLD.status IS DISTINCT FROM NEW.status THEN
+        -- Usar usuario actual o por defecto
+        IF current_user_rut IS NULL OR current_user_rut = '' THEN
+            current_user_rut := default_user_rut;
+        END IF;
+        
+        -- Determinar destination_type y destination_id basado en el nuevo status
+        -- Para simplificar, usaremos valores por defecto que pueden ser ajustados según la lógica de negocio
+        destination_type_val := 'store'; -- Valor por defecto
+        destination_id_val := 1; -- Valor por defecto, debería ser ajustado según el contexto
+        
+        -- Insertar registro en supply_history
+        INSERT INTO supply_history (
+            date_time,
+            status,
+            destination_type,
+            destination_id,
+            medical_supply_id,
+            user_rut
+        ) VALUES (
+            NOW(),
+            NEW.status,
+            destination_type_val,
+            destination_id_val,
+            NEW.id,
+            current_user_rut
+        );
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Crear trigger para generar automáticamente el historial
+CREATE TRIGGER trg_log_medical_supply_status_change
+    AFTER UPDATE ON medical_supply
+    FOR EACH ROW
+    EXECUTE FUNCTION log_medical_supply_status_change();
+
+-- Migrar estados existentes de supply_history a medical_supply
+UPDATE medical_supply 
+SET status = (
+    SELECT sh.status 
+    FROM supply_history sh 
+    WHERE sh.medical_supply_id = medical_supply.id 
+    ORDER BY sh.date_time DESC 
+    LIMIT 1
+)
+WHERE EXISTS (
+    SELECT 1 
+    FROM supply_history sh 
+    WHERE sh.medical_supply_id = medical_supply.id
+);

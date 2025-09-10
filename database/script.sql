@@ -42,36 +42,36 @@ INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code) VAL
 ON CONFLICT (id) DO NOTHING;
 
 -- Poblar insumos médicos
-INSERT INTO medical_supply (code, batch_id, qr_code) VALUES
+INSERT INTO medical_supply (code, batch_id, qr_code, status) VALUES
 -- Guantes del lote 1
-(1001, 1, 'SUPPLY_1_1'),
-(1001, 1, 'SUPPLY_2_1'),
-(1001, 1, 'SUPPLY_3_1'),
-(1001, 1, 'SUPPLY_4_1'),
-(1001, 1, 'SUPPLY_5_1'),
-(1001, 1, 'SUPPLY_6_1'),
-(1001, 1, 'SUPPLY_7_1'),
-(1001, 1, 'SUPPLY_8_1'),
-(1001, 1, 'SUPPLY_9_1'),
-(1001, 1, 'SUPPLY_10_1'),
+(1001, 1, 'SUPPLY_1_1', 'disponible'),
+(1001, 1, 'SUPPLY_2_1', 'disponible'),
+(1001, 1, 'SUPPLY_3_1', 'disponible'),
+(1001, 1, 'SUPPLY_4_1', 'en_camino_a_pabellon'),
+(1001, 1, 'SUPPLY_5_1', 'recepcionado'),
+(1001, 1, 'SUPPLY_6_1', 'consumido'),
+(1001, 1, 'SUPPLY_7_1', 'disponible'),
+(1001, 1, 'SUPPLY_8_1', 'disponible'),
+(1001, 1, 'SUPPLY_9_1', 'disponible'),
+(1001, 1, 'SUPPLY_10_1', 'disponible'),
 -- Mascarillas del lote 2
-(1002, 2, 'SUPPLY_11_1'),
-(1002, 2, 'SUPPLY_12_1'),
-(1002, 2, 'SUPPLY_13_1'),
-(1002, 2, 'SUPPLY_14_1'),
-(1002, 2, 'SUPPLY_15_1'),
+(1002, 2, 'SUPPLY_11_1', 'disponible'),
+(1002, 2, 'SUPPLY_12_1', 'disponible'),
+(1002, 2, 'SUPPLY_13_1', 'en_camino_a_pabellon'),
+(1002, 2, 'SUPPLY_14_1', 'recepcionado'),
+(1002, 2, 'SUPPLY_15_1', 'consumido'),
 -- Jeringas del lote 3
-(1003, 3, 'SUPPLY_16_1'),
-(1003, 3, 'SUPPLY_17_1'),
-(1003, 3, 'SUPPLY_18_1'),
-(1003, 3, 'SUPPLY_19_1'),
-(1003, 3, 'SUPPLY_20_1'),
+(1003, 3, 'SUPPLY_16_1', 'disponible'),
+(1003, 3, 'SUPPLY_17_1', 'disponible'),
+(1003, 3, 'SUPPLY_18_1', 'disponible'),
+(1003, 3, 'SUPPLY_19_1', 'disponible'),
+(1003, 3, 'SUPPLY_20_1', 'disponible'),
 -- Agujas del lote 4
-(1004, 4, 'SUPPLY_21_1'),
-(1004, 4, 'SUPPLY_22_1'),
-(1004, 4, 'SUPPLY_23_1'),
-(1004, 4, 'SUPPLY_24_1'),
-(1004, 4, 'SUPPLY_25_1')
+(1004, 4, 'SUPPLY_21_1', 'disponible'),
+(1004, 4, 'SUPPLY_22_1', 'disponible'),
+(1004, 4, 'SUPPLY_23_1', 'disponible'),
+(1004, 4, 'SUPPLY_24_1', 'disponible'),
+(1004, 4, 'SUPPLY_25_1', 'disponible')
 ON CONFLICT (qr_code) DO NOTHING;
 
 -- ============================================
@@ -151,17 +151,70 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
+-- Usuario enfermera de ejemplo
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id, 
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES (
+    '22222222-2',
+    'María González',
+    'enfermera@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    'enfermera',
+    1,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+) ON CONFLICT (rut) DO NOTHING;
+
+-- Usuario doctor de ejemplo
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id, 
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES (
+    '33333333-3',
+    'Dr. Carlos Pérez',
+    'doctor@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    'doctor',
+    1,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+) ON CONFLICT (rut) DO NOTHING;
+
 -- ============================================
 -- POBLADO DE HISTORIALES
 -- ============================================
 
 -- Poblar historial de insumos
 INSERT INTO supply_history (date_time, status, destination_type, destination_id, medical_supply_id, user_rut) VALUES
-('2025-08-16 10:00:00', 'entregado', 'pavilion', 1, 1, '12345678-9'),
-('2025-08-16 11:00:00', 'recibido', 'store', 2, 2, '87654321-0'),
-('2025-08-16 12:00:00', 'entregado', 'pavilion', 2, 3, '11111111-1'),
+('2025-08-16 10:00:00', 'recepcionado', 'pavilion', 1, 1, '12345678-9'),
+('2025-08-16 11:00:00', 'disponible', 'store', 2, 2, '87654321-0'),
+('2025-08-16 12:00:00', 'recepcionado', 'pavilion', 2, 3, '11111111-1'),
 ('2025-08-16 13:00:00', 'consumido', 'pavilion', 1, 4, '87654321-0'),
-('2025-08-16 14:00:00', 'recibido', 'store', 1, 5, '12345678-9')
+('2025-08-16 14:00:00', 'disponible', 'store', 1, 5, '12345678-9'),
+-- Historial para insumos con estados específicos
+('2025-08-16 15:00:00', 'en_camino_a_pabellon', 'pavilion', 1, 4, '11111111-1'),
+('2025-08-16 16:00:00', 'recepcionado', 'pavilion', 1, 5, '12345678-9'),
+('2025-08-16 17:00:00', 'consumido', 'pavilion', 1, 6, '87654321-0'),
+('2025-08-16 18:00:00', 'en_camino_a_pabellon', 'pavilion', 2, 13, '11111111-1'),
+('2025-08-16 19:00:00', 'recepcionado', 'pavilion', 2, 14, '12345678-9'),
+('2025-08-16 20:00:00', 'consumido', 'pavilion', 2, 15, '87654321-0')
 ON CONFLICT DO NOTHING;
 
 -- Poblar historial de lotes
