@@ -242,3 +242,23 @@ INSERT INTO supply_request_item (
 ) VALUES 
 (1, 1001, 'Guantes', 50, 'Talla M, látex libre', FALSE, 'M', 'normal'),
 (1, 1002, 'Mascarillas', 100, 'N95, uso pediátrico', TRUE, 'Pediatric', 'high');
+
+-- Script para arreglar el problema de secuencia en la tabla batch
+-- Este script resetea la secuencia de auto-incremento al valor correcto
+
+-- Verificar el ID máximo actual en la tabla batch
+SELECT 'ID máximo actual en batch:' as info, COALESCE(MAX(id), 0) as max_id FROM batch;
+
+-- Resetear la secuencia al valor correcto
+-- La secuencia debe ser mayor que el ID máximo existente
+SELECT setval('batch_id_seq', COALESCE((SELECT MAX(id) FROM batch), 0) + 1, false);
+
+-- Verificar el estado de la secuencia después del reset
+SELECT 'Secuencia después del reset:' as info, last_value, is_called FROM batch_id_seq;
+
+-- También verificar que no hay problemas con QR codes duplicados
+SELECT 'QR codes duplicados:' as info, qr_code, COUNT(*) as count 
+FROM batch 
+WHERE qr_code IS NOT NULL 
+GROUP BY qr_code 
+HAVING COUNT(*) > 1;

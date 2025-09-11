@@ -1,50 +1,45 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const routes = [
-  // Rutas de autenticación
+  // Rutas públicas
   {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),
     meta: {
       title: 'Iniciar Sesión - MediTrack',
-      description: 'Acceso al sistema de trazabilidad',
-      requiresAuth: false,
-      hideForAuth: true
-    }
-  },
-  {
-    path: '/register',
-    name: 'Register',
-    component: () => import('@/views/Register.vue'),
-    meta: {
-      title: 'Registro - MediTrack',
-      description: 'Crear nueva cuenta en el sistema de trazabilidad',
-      requiresAuth: false,
-      hideForAuth: true
+      description: 'Acceso al sistema de gestión de insumos médicos',
+      requiresAuth: false
     }
   },
 
-  // Ruta principal
+  // Ruta raíz
   {
     path: '/',
+    redirect: '/home'
+  },
+
+  // Rutas principales autenticadas
+  {
+    path: '/home',
     name: 'Home',
     component: () => import('@/views/Home.vue'),
     meta: {
       title: 'Inicio - MediTrack',
-      description: 'Sistema de trazabilidad para dispositivos médicos',
+      description: 'Panel principal del sistema de gestión de insumos médicos',
       requiresAuth: true
     }
   },
-  
-  // Rutas de inventario
+
+  // Gestión de inventario
   {
     path: '/inventory',
     name: 'Inventory',
     component: () => import('@/views/Inventory.vue'),
     meta: {
       title: 'Inventario - MediTrack',
-      description: 'Gestión completa del inventario médico',
+      description: 'Gestión y consulta del inventario de insumos médicos',
       requiresAuth: true
     }
   },
@@ -54,29 +49,43 @@ const routes = [
     component: () => import('@/views/AddSupply.vue'),
     meta: {
       title: 'Agregar Insumo - MediTrack',
-      description: 'Crear nuevos lotes con códigos QR únicos',
+      description: 'Registrar nuevos insumos médicos en el sistema',
       requiresAuth: true
     }
   },
 
-  // Rutas de códigos QR
+  // Funcionalidades de QR - Scanner principal
   {
     path: '/qr',
     name: 'QRScanner',
     component: () => import('@/views/QRScanner.vue'),
     meta: {
-      title: 'Escáner QR - MediTrack',
-      description: 'Escanear códigos QR de productos y lotes',
+      title: 'Scanner QR - MediTrack',
+      description: 'Escáner de códigos QR para insumos médicos',
       requiresAuth: true
     }
   },
+
+  // Funcionalidades específicas de QR
   {
-    path: '/qr/consumer',
+    path: '/qr-consumer',
     name: 'QRConsumer',
     component: () => import('@/views/QRConsumer.vue'),
     meta: {
       title: 'Consumo QR - MediTrack',
-      description: 'Consumir insumos médicos mediante códigos QR',
+      description: 'Consumir insumos médicos con estado "recepcionado" mediante códigos QR',
+      requiresAuth: true
+    }
+  },
+
+  // NUEVA RUTA: Transferencia de insumos
+  {
+    path: '/qr-transfer',
+    name: 'QRTransfer',
+    component: () => import('@/views/QRTransfer.vue'),
+    meta: {
+      title: 'Transferir Insumo - MediTrack',
+      description: 'Transferir insumos médicos con estado "disponible" a otros centros',
       requiresAuth: true
     }
   },
@@ -93,6 +102,8 @@ const routes = [
       requiresAuth: true
     }
   },
+
+  // RUTA ACTUALIZADA: Trazabilidad estilo Starken
   {
     path: '/qr/:qrCode/traceability',
     name: 'QRTraceability',
@@ -100,7 +111,7 @@ const routes = [
     props: route => ({ qrCode: route.params.qrCode }),
     meta: {
       title: 'Trazabilidad QR - MediTrack',
-      description: 'Trazabilidad completa del código QR',
+      description: 'Trazabilidad completa del código QR estilo Starken',
       requiresAuth: true
     }
   },
@@ -135,181 +146,116 @@ const routes = [
     component: () => import('@/views/SupplyRequestForm.vue'),
     meta: {
       title: 'Nueva Solicitud - MediTrack',
-      description: 'Crear nueva solicitud de insumo',
+      description: 'Crear nueva solicitud de insumos médicos',
       requiresAuth: true
     }
   },
   {
     path: '/supply-requests/:id',
-    name: 'SupplyRequestDetail',
+    name: 'SupplyRequestDetails',
     component: () => import('@/views/SupplyRequestDetail.vue'),
-    props: route => ({ id: parseInt(route.params.id) }),
+    props: route => ({ requestId: parseInt(route.params.id) }),
     meta: {
-      title: 'Detalle de Solicitud - MediTrack',
-      description: 'Ver detalles y trazabilidad de solicitud de insumo',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/supply-requests/:id/edit',
-    name: 'SupplyRequestEdit',
-    component: () => import('@/views/SupplyRequestForm.vue'),
-    props: route => ({ id: parseInt(route.params.id), editMode: true }),
-    meta: {
-      title: 'Editar Solicitud - MediTrack',
-      description: 'Editar solicitud de insumo existente',
+      title: 'Detalles de Solicitud - MediTrack',
+      description: 'Detalles y gestión de solicitud de insumos',
       requiresAuth: true
     }
   },
 
-  // Ruta de perfil de usuario
+  // Gestión de perfil
   {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/Profile.vue'),
     meta: {
-      title: 'Mi Perfil - MediTrack',
-      description: 'Información personal y configuración de cuenta',
+      title: 'Perfil - MediTrack',
+      description: 'Gestión del perfil de usuario',
       requiresAuth: true
     }
   },
 
-  // Redirecciones inteligentes para QR codes
+  // Catch-all para rutas no encontradas
   {
-    path: '/qr/:qrCode',
-    name: 'QRRedirect',
-    redirect: to => {
-      const qrCode = to.params.qrCode
-      
-      // Todos los QR codes van a detalles por ahora
-      return `/qr/${qrCode}/details`
-    },
-    meta: {
-      title: 'Redirigiendo QR - MediTrack',
-      description: 'Procesando código QR',
-      requiresAuth: true
-    }
-  },
-
-  // Rutas de error
-  {
-    path: '/404',
+    path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue'),
     meta: {
-      title: 'Página no encontrada - MediTrack',
-      description: 'La página solicitada no existe',
-      requiresAuth: false
-    }
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'CatchAll',
-    component: () => import('@/views/NotFound.vue'),
-    meta: {
-      title: 'Página no encontrada - MediTrack',
-      description: 'La página solicitada no existe',
+      title: 'Página No Encontrada - MediTrack',
+      description: 'La página que buscas no existe',
       requiresAuth: false
     }
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(),
   routes,
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
       return savedPosition
-    }
-    
-    if (to.hash) {
-      return {
-        el: to.hash,
-        behavior: 'smooth'
-      }
-    }
-    
-    return { 
-      top: 0,
-      behavior: 'smooth'
+    } else {
+      return { top: 0 }
     }
   }
 })
 
-// Guard de navegación global - Antes de cada ruta
+// Guards de navegación
 router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore()
+  
+  // Establecer título de la página
   if (to.meta.title) {
     document.title = to.meta.title
   }
   
+  // Establecer meta descripción
   if (to.meta.description) {
-    const metaDescription = document.querySelector('meta[name="description"]')
+    let metaDescription = document.querySelector('meta[name="description"]')
     if (metaDescription) {
       metaDescription.setAttribute('content', to.meta.description)
     } else {
-      const meta = document.createElement('meta')
-      meta.name = 'description'
-      meta.content = to.meta.description
-      document.head.appendChild(meta)
+      metaDescription = document.createElement('meta')
+      metaDescription.setAttribute('name', 'description')
+      metaDescription.setAttribute('content', to.meta.description)
+      document.head.appendChild(metaDescription)
     }
   }
-  
-  const { useAuthStore } = await import('@/stores/auth')
-  const authStore = useAuthStore()
-  
-  if (!authStore.isAuthenticated && authStore.token === null) {
-    authStore.initializeAuth()
+
+  // Verificación de autenticación
+  if (to.meta.requiresAuth !== false) {
+    // Verificar si el usuario está autenticado
+    if (!authStore.isAuthenticated) {
+      // Intentar restaurar sesión desde localStorage
+      await authStore.initializeAuth()
+      
+      if (!authStore.isAuthenticated) {
+        next({
+          name: 'Login',
+          query: { redirect: to.fullPath }
+        })
+        return
+      }
+    }
   }
-  
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'Login', query: { redirect: to.fullPath } })
-    return
-  }
-  
-  if (to.meta.hideForAuth && authStore.isAuthenticated) {
+
+  // Si está autenticado y trata de acceder al login, redirigir al home
+  if (to.name === 'Login' && authStore.isAuthenticated) {
     next({ name: 'Home' })
     return
   }
-  
-  if (to.meta.requiresAuth && authStore.isAuthenticated && authStore.canAccessRoute && !authStore.canAccessRoute(to.name)) {
-    next({ name: 'Home' })
-    return
-  }
-  
-  if (to.name === 'BatchHistory' && to.params.batchId) {
-    const batchId = parseInt(to.params.batchId)
-    if (isNaN(batchId) || batchId <= 0) {
-      next({ name: 'NotFound' })
-      return
-    }
-  }
-  
-  if (import.meta.env.DEV) {
-    console.log(`Navegando de ${from.fullPath} a ${to.fullPath}`)
-  }
-  
+
   next()
 })
 
-router.afterEach((to, from) => {
-  const notifications = document.querySelectorAll('[data-notification]')
-  notifications.forEach(notification => {
-    if (notification.dataset.temporary === 'true') {
-      notification.remove()
-    }
-  })
-})
-
+// Manejar errores de navegación
 router.onError((error) => {
   console.error('Error de navegación:', error)
   
-  if (error.type === 'NavigationDuplicated') {
-    return
-  }
-  
-  router.push({ name: 'NotFound' }).catch(() => {
+  // Si es un error de chunk loading (típico en deployments)
+  if (error.message.includes('Loading chunk')) {
+    // Recargar la página para obtener la nueva versión
     window.location.reload()
-  })
+  }
 })
 
 export default router

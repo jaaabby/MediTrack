@@ -82,7 +82,7 @@ class QRService {
         const originalSuccess = result.success
         const originalMessage = result.message
         const dataContent = result.data
-        
+
         // Crear nuevo objeto que mantenga la estructura esperada
         result = {
           ...dataContent,
@@ -110,6 +110,16 @@ class QRService {
         // Para insumos individuales, verificar estado de consumo
         if (result.type === 'medical_supply') {
           result.can_be_consumed = !result.is_consumed && result.available_for_use !== false
+
+          // Normalizar el estado del insumo desde la respuesta del backend
+          if (result.supply_info && result.supply_info.Status) {
+            result.status = result.supply_info.Status
+            result.current_status = result.supply_info.Status
+          } else if (result.status) {
+            result.current_status = result.status
+          } else if (result.current_status) {
+            result.status = result.current_status
+          }
 
           // Añadir información del lote si está disponible
           if (result.batch_status) {
@@ -224,12 +234,12 @@ class QRService {
       return response.data
     } catch (error) {
       console.error('Error obteniendo historial de escaneos:', error)
-      
+
       // Si es un 404, devolver array vacío en lugar de lanzar el error
       if (error.response?.status === 404) {
         return []
       }
-      
+
       throw error
     }
   }
@@ -246,7 +256,7 @@ class QRService {
       return response.data
     } catch (error) {
       console.error('Error obteniendo estadísticas de escaneo:', error)
-      
+
       // Si es un 404, devolver datos por defecto en lugar de lanzar el error
       if (error.response?.status === 404) {
         return {
@@ -256,7 +266,7 @@ class QRService {
           scan_purposes: []
         }
       }
-      
+
       throw error
     }
   }
@@ -321,9 +331,9 @@ class QRService {
   getCurrentUserRUT() {
     try {
       const authStore = useAuthStore()
-      return authStore.user?.rut || 
-             localStorage.getItem('user_rut') ||
-             null
+      return authStore.user?.rut ||
+        localStorage.getItem('user_rut') ||
+        null
     } catch (error) {
       return localStorage.getItem('user_rut') || null
     }
@@ -333,9 +343,9 @@ class QRService {
   getCurrentUserName() {
     try {
       const authStore = useAuthStore()
-      return authStore.user?.name || 
-             localStorage.getItem('user_name') ||
-             null
+      return authStore.user?.name ||
+        localStorage.getItem('user_name') ||
+        null
     } catch (error) {
       return localStorage.getItem('user_name') || null
     }
@@ -568,7 +578,7 @@ class QRService {
 
       // Obtener información del insumo antes del consumo para saber su lote
       const supplyInfo = await this.getQRInfo(consumptionData.qr_code)
-      
+
       if (!supplyInfo.supply_info || !supplyInfo.supply_info.batch) {
         throw new Error('No se pudo obtener información del lote del insumo')
       }
@@ -679,7 +689,7 @@ class QRService {
   async getBatchHistoryFormatted(batchId) {
     try {
       const history = await inventoryService.getBatchHistory(batchId)
-      
+
       // Formatear el historial para mostrar en el formato específico
       return history.map(entry => {
         const date = new Date(entry.date_time)
@@ -691,7 +701,7 @@ class QRService {
 
         let previousValues = {}
         let newValues = {}
-        
+
         try {
           previousValues = JSON.parse(entry.previous_values || '{}')
           newValues = JSON.parse(entry.new_values || '{}')
@@ -723,6 +733,40 @@ class QRService {
   // Obtener información QR como alias para scanQRCode
   async getQRInfo(qrCode) {
     return this.scanQRCode(qrCode)
+  }
+
+  // Obtener ID y detalles del insumo desde su código QR
+  async getSupplyIdFromQR(qrCode) {
+    try {
+      // Primero intentamos con la información QR completa
+      const qrInfo = await this.scanQRCode(qrCode)
+      
+      if (qrInfo && qrInfo.supply_info && qrInfo.supply_info.id) {
+        return {
+          id: qrInfo.supply_info.id,
+          status: qrInfo.supply_info.status || qrInfo.status,
+          batch_id: qrInfo.supply_info.batch?.id,
+          supply_code_id: qrInfo.supply_info.supply_code_id || qrInfo.supply_info.SupplyCode?.id
+        }
+      }
+
+      // Si no funciona, intentamos con el endpoint directo de medical supplies
+      const response = await this.api.get(`/medical-supplies/qr/${qrCode}`)
+      if (response.data && response.data.data) {
+        const supply = response.data.data
+        return {
+          id: supply.id,
+          status: supply.status,
+          batch_id: supply.batch_id,
+          supply_code_id: supply.supply_code_id
+        }
+      }
+
+      throw new Error('No se pudo obtener información del insumo')
+    } catch (error) {
+      console.error('Error al obtener ID del insumo:', error)
+      throw new Error('No se pudo obtener la información del insumo para la transferencia')
+    }
   }
 
   // Consumir insumo individual con endpoint específico y trazabilidad
@@ -1220,6 +1264,244 @@ class QRService {
       type: this.getQRType(trimmed),
       is_individual_supply: this.isIndividualSupply(trimmed)
     }
+  }
+
+  // Transferir un insumo individual por su código QR con trazabilidad
+  async transferSupply(transferData) {
+    try {
+      // Validar que sea un insumo individual
+      if (!this.isIndividualSupply(transferData.qr_code)) {
+        throw new Error('Solo se pueden transferir insumos individuales. Use códigos QR que comiencen con SUPPLY_')
+      }
+
+      // Obtener información del insumo antes de la transferencia
+      const supplyInfo = await this.getQRInfo(transferData.qr_code)
+
+      if (!supplyInfo.supply_info) {
+        throw new Error('No se pudo obtener información del insumo')
+      }
+
+      // Verificar que el insumo esté disponible para transferencia
+      if (supplyInfo.is_consumed) {
+        throw new Error('Este insumo ya ha sido consumido y no puede ser transferido')
+      }
+
+      // Verificar el estado - solo se pueden transferir insumos con estado "disponible"
+      const currentStatus = supplyInfo.supply_info?.status || supplyInfo.status
+      if (currentStatus !== 'disponible') {
+        if (currentStatus === 'recepcionado') {
+          throw new Error('Este insumo tiene estado "recepcionado" y solo puede ser consumido, no transferido')
+        }
+        throw new Error(`El insumo tiene estado "${currentStatus}" y no está disponible para transferencia`)
+      }
+
+      // Transferir el insumo individual
+      // 1. Primero obtenemos la información completa del insumo para obtener su ID
+      const supplyDetails = await this.getSupplyIdFromQR(transferData.qr_code)
+      
+      if (!supplyDetails || !supplyDetails.id) {
+        throw new Error('No se pudo obtener la información del insumo para la transferencia')
+      }
+
+      // 2. Determinar el estado de tránsito según el tipo de destino
+      let transitStatus
+      if (transferData.destination_type === 'pavilion') {
+        transitStatus = 'en_camino_a_pabellon'
+      } else if (transferData.destination_type === 'warehouse' || transferData.destination_type === 'store') {
+        transitStatus = 'en_camino_a_bodega'
+      } else {
+        transitStatus = 'en_camino_a_pabellon' // Default
+      }
+
+      // 3. Actualizar el estado del insumo a "en tránsito"
+      const updateResponse = await this.api.put(`/medical-supplies/${supplyDetails.id}`, {
+        status: transitStatus,
+        // Mantener otros campos importantes
+        qr_code: transferData.qr_code,
+        batch_id: supplyDetails.batch_id,
+        supply_code_id: supplyDetails.supply_code_id
+      })
+
+      // 4. Crear entrada en el historial de suministros para la transferencia
+      const historyResponse = await this.api.post('/supply-history/', {
+        medical_supply_id: supplyDetails.id,
+        status: transitStatus,
+        destination_type: transferData.destination_type,
+        destination_id: transferData.destination_id,
+        user_rut: transferData.user_rut,
+        medical_center_id: transferData.medical_center_id,
+        notes: transferData.notes,
+        date_time: new Date().toISOString()
+      })
+
+      const response = {
+        data: {
+          success: true,
+          supply_id: supplyDetails.id,
+          old_status: supplyDetails.status,
+          new_status: transitStatus,
+          destination_type: transferData.destination_type,
+          destination_id: transferData.destination_id,
+          medical_center_id: transferData.medical_center_id,
+          transfer_timestamp: new Date().toISOString()
+        },
+        success: true
+      }
+
+      // Si la transferencia fue exitosa, crear entrada en el historial de trazabilidad
+      if (response.data && response.data.success) {
+        try {
+          await this.updateSupplyTraceabilityAfterTransfer({
+            qrCode: transferData.qr_code,
+            userRUT: transferData.user_rut,
+            userName: transferData.user_name || 'Usuario',
+            destinationType: transferData.destination_type,
+            destinationId: transferData.destination_id,
+            medicalCenterId: transferData.medical_center_id,
+            notes: transferData.notes,
+            transferTimestamp: transferData.transfer_timestamp
+          })
+        } catch (traceabilityError) {
+          console.warn('Error al actualizar trazabilidad después de transferencia:', traceabilityError)
+        }
+      }
+
+      return {
+        ...response.data,
+        ui_message: `Insumo transferido exitosamente. Estado cambiado a "${response.data.new_status}". La trazabilidad ha sido actualizada.`,
+        next_actions: [
+          { label: 'Ver trazabilidad', action: 'view_traceability' },
+          { label: 'Transferir otro', action: 'transfer_next' },
+          { label: 'Ver inventario', action: 'view_inventory' }
+        ],
+        transfer_mode: true,
+        status_change: {
+          from: response.data.old_status,
+          to: response.data.new_status
+        }
+      }
+    } catch (error) {
+      console.error('Error al transferir insumo:', error)
+
+      // Mejorar mensajes de error para transferencias
+      if (error.response?.data?.message?.includes('ya ha sido transferido')) {
+        throw new Error('Este insumo ya ha sido transferido anteriormente.')
+      } else if (error.response?.data?.message?.includes('no encontrado')) {
+        throw new Error('Insumo no encontrado. Verifique que el código QR sea correcto.')
+      } else if (error.response?.data?.message?.includes('estado no válido')) {
+        throw new Error('El estado del insumo no permite la transferencia.')
+      } else if (error.message.includes('información del insumo')) {
+        throw new Error('No se pudo obtener la información del insumo. Verifique el código QR.')
+      } else if (error.response?.status === 404 && error.response?.config?.url?.includes('medical-supplies')) {
+        throw new Error('No se pudo actualizar el insumo. El ID del insumo no fue encontrado.')
+      } else if (error.response?.status === 404 && error.response?.config?.url?.includes('supply-history')) {
+        throw new Error('No se pudo crear el registro de historial de transferencia.')
+      }
+
+      throw error
+    }
+  }
+
+  // Actualizar trazabilidad después de transferencia
+  async updateSupplyTraceabilityAfterTransfer(transferDetails) {
+    try {
+      const traceabilityData = {
+        qr_code: transferDetails.qrCode,
+        event_type: 'transfer',
+        user_rut: transferDetails.userRUT,
+        user_name: transferDetails.userName,
+        destination_type: transferDetails.destinationType,
+        destination_id: transferDetails.destinationId,
+        medical_center_id: transferDetails.medicalCenterId,
+        notes: transferDetails.notes,
+        timestamp: transferDetails.transferTimestamp,
+        event_data: {
+          action: 'transferred',
+          previous_status: 'disponible',
+          new_status: 'transferido',
+          transfer_context: {
+            destination_type: transferDetails.destinationType,
+            destination_id: transferDetails.destinationId,
+            medical_center_id: transferDetails.medicalCenterId
+          }
+        }
+      }
+
+      const response = await this.api.post('/qr/traceability/add-event', traceabilityData)
+
+      if (response.data && response.data.success) {
+        console.log('Trazabilidad actualizada después de transferencia:', response.data)
+        return response.data
+      }
+
+      return response.data
+    } catch (error) {
+      console.error('Error al actualizar trazabilidad después de transferencia:', error)
+      throw error
+    }
+  }
+
+  // Verificar disponibilidad para transferencia
+  async verifyTransferAvailability(qrCode) {
+    try {
+      if (!this.isIndividualSupply(qrCode)) {
+        return {
+          available: false,
+          reason: 'not_individual_supply',
+          message: 'Solo se pueden transferir insumos individuales'
+        }
+      }
+
+      const response = await this.api.get(`/qr/verify-transfer/${encodeURIComponent(qrCode)}`)
+
+      return {
+        ...response.data,
+        is_individual_supply: true,
+        transfer_recommendations: this.getTransferRecommendations(response.data)
+      }
+    } catch (error) {
+      console.error('Error al verificar disponibilidad para transferencia:', error)
+      throw error
+    }
+  }
+
+  // Obtener recomendaciones para transferencia
+  getTransferRecommendations(availabilityData) {
+    const recommendations = []
+
+    if (availabilityData.available && availabilityData.status === 'disponible') {
+      recommendations.push({
+        type: 'success',
+        message: 'Insumo disponible para transferencia',
+        action: 'transfer'
+      })
+    }
+
+    if (!availabilityData.available && availabilityData.status === 'recepcionado') {
+      recommendations.push({
+        type: 'info',
+        message: 'Este insumo tiene estado "recepcionado" y solo puede ser consumido.',
+        action: 'consume_instead'
+      })
+    }
+
+    if (!availabilityData.available && availabilityData.reason === 'already_consumed') {
+      recommendations.push({
+        type: 'warning',
+        message: 'Este insumo ya fue consumido y no puede ser transferido.',
+        action: 'scan_another'
+      })
+    }
+
+    if (availabilityData.batch_info && availabilityData.batch_info.low_stock) {
+      recommendations.push({
+        type: 'warning',
+        message: 'Stock bajo en este lote. Considere la transferencia cuidadosamente.',
+        action: 'alert_low_stock'
+      })
+    }
+
+    return recommendations
   }
 
   // Generar respuesta de prueba para desarrollo
