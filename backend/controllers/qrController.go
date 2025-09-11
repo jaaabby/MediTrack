@@ -725,11 +725,23 @@ func (c *QRController) GetQRImage(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusNotImplemented, response.Response{
-		Success: false,
-		Error:   "Funcionalidad de imagen QR no implementada en QRService",
-	})
-	return
+	// Generar la imagen QR usando el servicio
+	imageBytes, err := services.GenerateQRCodeImage(qrCode, 256)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   fmt.Sprintf("Error generando imagen QR: %v", err),
+		})
+		return
+	}
+
+	// Establecer headers para imagen PNG
+	ctx.Header("Content-Type", "image/png")
+	ctx.Header("Content-Length", fmt.Sprintf("%d", len(imageBytes)))
+	ctx.Header("Cache-Control", "public, max-age=3600") // Cache por 1 hora
+
+	// Escribir la imagen directamente
+	ctx.Data(http.StatusOK, "image/png", imageBytes)
 }
 
 // DownloadQRImage permite descargar la imagen QR con un nombre específico

@@ -1018,13 +1018,35 @@ func generateSecureToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// generateUniqueQRCode genera un código QR único
+// generateUniqueQRCode genera un código QR único garantizando unicidad en la base de datos
 func (s *QRService) generateUniqueQRCode(prefix string, id int) (string, error) {
-	token, err := generateSecureToken()
-	if err != nil {
-		return "", err
+	maxAttempts := 10
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		token, err := generateSecureToken()
+		if err != nil {
+			return "", err
+		}
+
+		qrCode := fmt.Sprintf("%s_%d_%s", prefix, id, token[:8])
+
+		// Verificar unicidad en batch
+		var batchCount int64
+		s.DB.Model(&models.Batch{}).Where("qr_code = ?", qrCode).Count(&batchCount)
+
+		// Verificar unicidad en medical_supply
+		var supplyCount int64
+		s.DB.Model(&models.MedicalSupply{}).Where("qr_code = ?", qrCode).Count(&supplyCount)
+
+		// Si no existe en ninguna tabla, el QR es único
+		if batchCount == 0 && supplyCount == 0 {
+			return qrCode, nil
+		}
+
+		// Si llegamos aquí, el QR ya existe, intentar de nuevo
 	}
-	return fmt.Sprintf("%s_%d_%s", prefix, id, token[:8]), nil
+
+	return "", fmt.Errorf("no se pudo generar un código QR único después de %d intentos", maxAttempts)
 }
 
 // GenerateBatchQR genera un código QR para un lote

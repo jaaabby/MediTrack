@@ -19,6 +19,7 @@
               to="/"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path === '/' }"
+              @click.stop
             >
               Inicio
             </router-link>
@@ -26,7 +27,8 @@
             <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
               to="/inventory"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              :class="{ 'bg-blue-700': $route.path.startsWith('/inventory') }"
+              :class="{ 'bg-blue-700': $route.path === '/inventory' }"
+              @click.stop
             >
               Inventario
             </router-link>
@@ -35,6 +37,7 @@
               to="/supply-requests"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/supply-requests') }"
+              @click.stop
             >
               Solicitudes
             </router-link>
@@ -43,17 +46,19 @@
               to="/qr"
               class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/qr') }"
+              @click.stop
             >
               Escáner QR
             </router-link>
             
-              <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
-                to="/inventory/add"
-                class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                :class="{ 'bg-blue-700': $route.path === '/inventory/add' }"
-              >
-                Agregar Insumo
-              </router-link>
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
+              to="/inventory/add"
+              class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              :class="{ 'bg-blue-700': $route.path === '/inventory/add' }"
+              @click.stop
+            >
+              Agregar Insumo
+            </router-link>
           </nav>
           
           <!-- Menú de usuario -->
@@ -100,7 +105,7 @@
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-blue-700">
           <router-link
             to="/"
-            @click="mobileMenuOpen = false"
+            @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
             :class="{ 'bg-blue-800': $route.path === '/' }"
           >
@@ -110,9 +115,9 @@
           <router-link
             v-if="authStore.canViewInventory"
             to="/inventory"
-            @click="mobileMenuOpen = false"
+            @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
-            :class="{ 'bg-blue-800': $route.path.startsWith('/inventory') }"
+            :class="{ 'bg-blue-800': $route.path === '/inventory' }"
           >
             Inventario
           </router-link>
@@ -120,7 +125,7 @@
           <router-link
             v-if="authStore.canViewRequests"
             to="/supply-requests"
-            @click="mobileMenuOpen = false"
+            @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
             :class="{ 'bg-blue-800': $route.path.startsWith('/supply-requests') }"
           >
@@ -129,7 +134,7 @@
           
           <router-link
             to="/qr"
-            @click="mobileMenuOpen = false"
+            @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
             :class="{ 'bg-blue-800': $route.path.startsWith('/qr') }"
           >
@@ -138,21 +143,22 @@
           
           <router-link
             to="/reports"
-            @click="mobileMenuOpen = false"
+            @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
             :class="{ 'bg-blue-800': $route.path.startsWith('/reports') }"
           >
             Reportes
           </router-link>
-            <router-link
-              v-if="authStore.canViewInventory"
-              to="/inventory/add"
-              @click="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
-              :class="{ 'bg-blue-800': $route.path === '/inventory/add' }"
-            >
-              Agregar Insumo
-            </router-link>
+          
+          <router-link
+            v-if="authStore.canViewInventory"
+            to="/inventory/add"
+            @click.stop="mobileMenuOpen = false"
+            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
+            :class="{ 'bg-blue-800': $route.path === '/inventory/add' }"
+          >
+            Agregar Insumo
+          </router-link>
         </div>
       </div>
     </header>
@@ -180,7 +186,7 @@
           v-if="authStore.canViewInventory"
           to="/inventory"
           class="flex flex-col items-center py-3 px-4 text-sm font-medium transition-colors"
-          :class="$route.path.startsWith('/inventory') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path === '/inventory' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />

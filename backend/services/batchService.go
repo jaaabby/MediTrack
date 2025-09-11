@@ -64,21 +64,28 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 	var individualSupplies []models.MedicalSupply
 
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
-		// 1. Generar QR único para el lote
-		if batch.QRCode == "" {
-			qrCode, err := s.QRService.generateUniqueQRCode("BATCH", 0)
-			if err != nil {
-				return fmt.Errorf("error generando QR del lote: %v", err)
-			}
-			batch.QRCode = qrCode
-		}
+		// Asegurar que el ID sea 0 para permitir auto-incremento
+		batch.ID = 0
+		batch.QRCode = ""
 
-		// 2. Crear el lote
+		// 1. Crear el lote primero sin QR
 		if err := tx.Create(batch).Error; err != nil {
 			return fmt.Errorf("error creando lote: %v", err)
 		}
 
-		// 3. Crear o actualizar supply_code
+		// 2. Generar QR único para el lote después de tener el ID
+		qrCode, err := s.QRService.generateUniqueQRCode("BATCH", batch.ID)
+		if err != nil {
+			return fmt.Errorf("error generando QR del lote: %v", err)
+		}
+
+		// 3. Actualizar el lote con el QR generado
+		if err := tx.Model(batch).Update("qr_code", qrCode).Error; err != nil {
+			return fmt.Errorf("error actualizando QR del lote: %v", err)
+		}
+		batch.QRCode = qrCode
+
+		// 4. Crear o actualizar supply_code
 		var existingSupplyCode models.SupplyCode
 		if err := tx.Where("code = ?", supplyCode.Code).First(&existingSupplyCode).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -98,7 +105,7 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 			}
 		}
 
-		// 4. Crear insumos individuales
+		// 5. Crear insumos individuales
 		if s.MedicalSupplyService != nil {
 			supplies, err := s.MedicalSupplyService.CreateMultipleIndividualSuppliesTx(
 				tx,

@@ -19,18 +19,28 @@ func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, b
 		supply := models.MedicalSupply{
 			Code:    code,
 			BatchID: batchID,
+			// QRCode se generará después de crear el insumo para tener el ID
 		}
-		// Generar QR único para cada insumo individual si hay QRService
-		if s.QRService != nil {
-			qrCode, err := s.QRService.generateUniqueQRCode("SUPPLY", 0)
-			if err != nil {
-				return nil, fmt.Errorf("error generando QR para insumo %d: %v", i+1, err)
-			}
-			supply.QRCode = qrCode
-		}
+
+		// Crear el insumo primero para obtener el ID
 		if err := tx.Create(&supply).Error; err != nil {
 			return nil, fmt.Errorf("error creando insumo %d: %v", i+1, err)
 		}
+
+		// Generar QR único usando el ID real del insumo
+		if s.QRService != nil {
+			qrCode, err := s.QRService.generateUniqueQRCode("SUPPLY", supply.ID)
+			if err != nil {
+				return nil, fmt.Errorf("error generando QR para insumo %d: %v", i+1, err)
+			}
+
+			// Actualizar el insumo con el QR generado
+			if err := tx.Model(&supply).Update("qr_code", qrCode).Error; err != nil {
+				return nil, fmt.Errorf("error actualizando QR del insumo %d: %v", i+1, err)
+			}
+			supply.QRCode = qrCode
+		}
+
 		supplies = append(supplies, supply)
 	}
 	return supplies, nil
@@ -46,16 +56,26 @@ func NewMedicalSupplyService(db *gorm.DB, qrService *QRService) *MedicalSupplySe
 // ===== FUNCIONALIDADES BÁSICAS (de la versión anterior) =====
 
 func (s *MedicalSupplyService) CreateMedicalSupply(supply *models.MedicalSupply) error {
-	// Si hay QRService disponible, generar QR automáticamente
+	// Crear el insumo primero para obtener el ID
+	if err := s.DB.Create(supply).Error; err != nil {
+		return err
+	}
+
+	// Si hay QRService disponible y no hay QR, generar uno usando el ID real
 	if s.QRService != nil && supply.QRCode == "" {
-		qrCode, err := s.QRService.generateUniqueQRCode("SUPPLY", 0)
+		qrCode, err := s.QRService.generateUniqueQRCode("SUPPLY", supply.ID)
 		if err != nil {
 			return fmt.Errorf("error generando código QR: %v", err)
+		}
+
+		// Actualizar el insumo con el QR generado
+		if err := s.DB.Model(supply).Update("qr_code", qrCode).Error; err != nil {
+			return fmt.Errorf("error actualizando QR del insumo: %v", err)
 		}
 		supply.QRCode = qrCode
 	}
 
-	return s.DB.Create(supply).Error
+	return nil
 }
 
 func (s *MedicalSupplyService) GetMedicalSupplyByID(id int) (*models.MedicalSupply, error) {
