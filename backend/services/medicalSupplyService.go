@@ -653,3 +653,275 @@ func (s *MedicalSupplyService) GetUnconsumedSupplies() ([]map[string]interface{}
 
 	return result, nil
 }
+
+// ===== FUNCIONALIDADES DE RETORNO A BODEGA =====
+
+// GetSuppliesForReturn obtiene insumos que deben regresar a bodega (15 días sin consumir)
+func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{}, error) {
+	var results []map[string]interface{}
+
+	// Buscar insumos recepcionados hace más de 15 días que no han sido consumidos
+	query := `
+		SELECT 
+			ms.id,
+			ms.qr_code,
+			ms.status,
+			sc.name as supply_name,
+			sc.code as supply_code,
+			b.id as batch_id,
+			b.supplier,
+			b.expiration_date,
+			s.name as store_name,
+			s.id as store_id,
+			sh.date_time as received_at,
+			EXTRACT(EPOCH FROM (NOW() - sh.date_time))/86400 as days_elapsed
+		FROM medical_supply ms
+		JOIN supply_code sc ON ms.code = sc.code
+		JOIN batch b ON ms.batch_id = b.id
+		JOIN store s ON b.store_id = s.id
+		JOIN supply_history sh ON ms.id = sh.medical_supply_id
+		WHERE ms.status = ? 
+		AND sh.status = ?
+		AND sh.destination_type = ?
+		AND sh.date_time <= NOW() - INTERVAL '15 days'
+		AND NOT EXISTS (
+			SELECT 1 FROM supply_history sh2 
+			WHERE sh2.medical_supply_id = ms.id 
+			AND sh2.date_time > sh.date_time
+		)
+		ORDER BY sh.date_time ASC
+	`
+
+	rows, err := s.DB.Raw(query, models.StatusReceived, models.StatusReceived, models.DestinationTypePavilion).Rows()
+	if err != nil {
+		return nil, fmt.Errorf("error consultando insumos para retorno: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			id             int
+			qrCode         string
+			status         string
+			supplyName     string
+			supplyCode     int
+			batchID        int
+			supplier       string
+			expirationDate time.Time
+			storeName      string
+			storeID        int
+			receivedAt     time.Time
+			daysElapsed    float64
+		)
+
+		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt, &daysElapsed); err != nil {
+			continue
+		}
+
+		item := map[string]interface{}{
+			"supply_id":       id,
+			"qr_code":         qrCode,
+			"status":          status,
+			"supply_name":     supplyName,
+			"supply_code":     supplyCode,
+			"batch_id":        batchID,
+			"supplier":        supplier,
+			"expiration_date": expirationDate.Format("2006-01-02"),
+			"store_name":      storeName,
+			"store_id":        storeID,
+			"received_at":     receivedAt.Format("2006-01-02 15:04:05"),
+			"days_elapsed":    int(daysElapsed),
+			"should_return":   daysElapsed >= 15,
+		}
+
+		results = append(results, item)
+	}
+
+	return results, nil
+}
+
+// ReturnSupplyToStore regresa un insumo a bodega
+func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string, notes string, isAutomatic bool) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		// Obtener el insumo
+		var supply models.MedicalSupply
+		if err := tx.First(&supply, supplyID).Error; err != nil {
+			return fmt.Errorf("insumo no encontrado: %v", err)
+		}
+
+		// Verificar que pueda ser regresado
+		if supply.Status == models.StatusConsumed {
+			return fmt.Errorf("no se puede regresar un insumo consumido")
+		}
+
+		// Obtener información del lote y bodega
+		var batch models.Batch
+		if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+			return fmt.Errorf("error obteniendo información del lote: %v", err)
+		}
+
+		var store models.Store
+		if err := tx.First(&store, batch.StoreID).Error; err != nil {
+			return fmt.Errorf("error obteniendo información de la bodega: %v", err)
+		}
+
+		// Cambiar estado del insumo
+		oldStatus := supply.Status
+		supply.Status = models.StatusEnRouteToStore
+		if err := tx.Save(&supply).Error; err != nil {
+			return fmt.Errorf("error actualizando estado del insumo: %v", err)
+		}
+
+		// Crear registro en supply_history
+		returnType := "manual"
+		if isAutomatic {
+			returnType = "automatico"
+		}
+
+		finalNotes := fmt.Sprintf("Retorno a bodega (%s): %s", returnType, notes)
+		if isAutomatic {
+			finalNotes = fmt.Sprintf("Retorno automático a bodega después de 15 días sin consumo. %s", notes)
+		}
+
+		historyEntry := models.SupplyHistory{
+			DateTime:        time.Now(),
+			Status:          models.StatusEnRouteToStore,
+			DestinationType: models.DestinationTypeStore,
+			DestinationID:   store.ID,
+			MedicalSupplyID: supply.ID,
+			UserRUT:         userRUT,
+			Notes:           finalNotes,
+		}
+
+		if err := tx.Create(&historyEntry).Error; err != nil {
+			return fmt.Errorf("error creando historial: %v", err)
+		}
+
+		// Log para depuración
+		fmt.Printf("✅ Insumo %s regresado a bodega %s (estado: %s -> %s)\n",
+			supply.QRCode, store.Name, oldStatus, supply.Status)
+
+		return nil
+	})
+}
+
+// ReturnSupplyToStoreByQR regresa un insumo a bodega usando su código QR
+func (s *MedicalSupplyService) ReturnSupplyToStoreByQR(qrCode string, userRUT string, notes string, isAutomatic bool) error {
+	var supply models.MedicalSupply
+	if err := s.DB.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+		return fmt.Errorf("insumo con QR %s no encontrado", qrCode)
+	}
+
+	return s.ReturnSupplyToStore(supply.ID, userRUT, notes, isAutomatic)
+}
+
+// ProcessAutomaticReturns procesa automáticamente los retornos de insumos que llevan 15 días sin consumir
+func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
+	supplies, err := s.GetSuppliesForReturn()
+	if err != nil {
+		return fmt.Errorf("error obteniendo insumos para retorno: %v", err)
+	}
+
+	returnedCount := 0
+	for _, supply := range supplies {
+		supplyID := supply["supply_id"].(int)
+		qrCode := supply["qr_code"].(string)
+		daysElapsed := supply["days_elapsed"].(int)
+
+		if daysElapsed >= 15 {
+			// Usuario del sistema para operaciones automáticas
+			systemUserRUT := "SYSTEM-AUTO"
+			notes := fmt.Sprintf("Retorno automático después de %d días sin consumo", daysElapsed)
+
+			err := s.ReturnSupplyToStore(supplyID, systemUserRUT, notes, true)
+			if err != nil {
+				fmt.Printf("❌ Error retornando insumo %s: %v\n", qrCode, err)
+				continue
+			}
+
+			returnedCount++
+			fmt.Printf("✅ Insumo %s retornado automáticamente a bodega\n", qrCode)
+		}
+	}
+
+	if returnedCount > 0 {
+		fmt.Printf("📦 Procesamiento automático completado: %d insumos retornados a bodega\n", returnedCount)
+	}
+
+	return nil
+}
+
+// StartAutomaticReturnChecker inicia el proceso automático de verificación de retornos (ejecutar como goroutine)
+func (s *MedicalSupplyService) StartAutomaticReturnChecker() {
+	ticker := time.NewTicker(24 * time.Hour) // Verificar cada 24 horas
+	defer ticker.Stop()
+
+	fmt.Println("🔄 Iniciado verificador automático de retornos a bodega")
+
+	for range ticker.C {
+		fmt.Println("🔍 Ejecutando verificación automática de retornos...")
+		if err := s.ProcessAutomaticReturns(); err != nil {
+			fmt.Printf("❌ Error en verificación automática: %v\n", err)
+		}
+	}
+}
+
+// ConfirmArrivalToStore confirma la llegada de un insumo a bodega y lo cambia a estado disponible
+func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT string, notes string) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		// Obtener el insumo por QR
+		var supply models.MedicalSupply
+		if err := tx.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+			return fmt.Errorf("insumo con QR %s no encontrado", qrCode)
+		}
+
+		// Verificar que esté en estado "en_camino_a_bodega"
+		if supply.Status != models.StatusEnRouteToStore {
+			return fmt.Errorf("el insumo no está en camino a bodega (estado actual: %s)", supply.Status)
+		}
+
+		// Obtener información del lote y bodega
+		var batch models.Batch
+		if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+			return fmt.Errorf("error obteniendo información del lote: %v", err)
+		}
+
+		var store models.Store
+		if err := tx.First(&store, batch.StoreID).Error; err != nil {
+			return fmt.Errorf("error obteniendo información de la bodega: %v", err)
+		}
+
+		// Cambiar estado del insumo a disponible
+		oldStatus := supply.Status
+		supply.Status = models.StatusAvailable
+		if err := tx.Save(&supply).Error; err != nil {
+			return fmt.Errorf("error actualizando estado del insumo: %v", err)
+		}
+
+		// Crear registro en supply_history
+		finalNotes := fmt.Sprintf("Llegada confirmada a bodega %s. %s", store.Name, notes)
+		if notes == "" {
+			finalNotes = fmt.Sprintf("Llegada confirmada a bodega %s", store.Name)
+		}
+
+		historyEntry := models.SupplyHistory{
+			DateTime:        time.Now(),
+			Status:          models.StatusAvailable,
+			DestinationType: models.DestinationTypeStore,
+			DestinationID:   store.ID,
+			MedicalSupplyID: supply.ID,
+			UserRUT:         userRUT,
+			Notes:           finalNotes,
+		}
+
+		if err := tx.Create(&historyEntry).Error; err != nil {
+			return fmt.Errorf("error creando historial: %v", err)
+		}
+
+		// Log para depuración
+		fmt.Printf("✅ Llegada confirmada para insumo %s a bodega %s (estado: %s -> %s)\n",
+			supply.QRCode, store.Name, oldStatus, supply.Status)
+
+		return nil
+	})
+}

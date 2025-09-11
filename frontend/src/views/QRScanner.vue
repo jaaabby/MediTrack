@@ -217,6 +217,40 @@
             </svg>
             Recepcionar
           </router-link>
+          
+          <!-- NUEVA LÓGICA: Botón rojo para regresar a bodega -->
+          <button 
+            v-if="canBeReturnedToStore(scannedInfo)"
+            @click="returnToStore(scannedInfo.qr_code)"
+            :disabled="returningToStore"
+            class="btn-danger text-sm"
+          >
+            <svg v-if="returningToStore" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            {{ returningToStore ? 'Regresando...' : 'Regresar a Bodega' }}
+          </button>
+
+          <!-- NUEVO: Botón para confirmar llegada a bodega -->
+          <button 
+            v-if="isOnRouteToStore(scannedInfo)"
+            @click="confirmArrivalToStore(scannedInfo.qr_code)"
+            :disabled="confirmingArrival"
+            class="btn-success text-sm"
+          >
+            <svg v-if="confirmingArrival" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ confirmingArrival ? 'Confirmando...' : 'Confirmar Llegada a Bodega' }}
+          </button>
         </div>
       </div>
     </div>
@@ -287,6 +321,43 @@
       </div>
     </div>
   </div>
+
+  <!-- Sistema de Notificaciones -->
+  <div v-if="notification" class="fixed top-4 right-4 z-50 max-w-sm w-full">
+    <div :class="[
+      'rounded-lg p-4 shadow-lg border transition-all duration-300',
+      notification.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+    ]">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <svg v-if="notification.type === 'success'" class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <svg v-else class="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3 flex-1">
+          <p :class="[
+            'text-sm font-medium',
+            notification.type === 'success' ? 'text-green-800' : 'text-red-800'
+          ]">
+            {{ notification.message }}
+          </p>
+        </div>
+        <div class="ml-4 flex-shrink-0">
+          <button @click="closeNotification" :class="[
+            'rounded-md inline-flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2',
+            notification.type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-500' : 'text-red-500 hover:text-red-600 focus:ring-red-500'
+          ]">
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -296,6 +367,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuthStore } from '@/stores/auth'
 import qrService from '@/services/qrService'
+import returnToBodegaService from '@/services/returnToBodegaService'
 import jsQR from 'jsqr'
 import QRInfoDisplay from '@/components/QRInfoDisplay.vue'
 
@@ -319,6 +391,10 @@ const cameraActive = ref(false)
 const cameraStarting = ref(false)
 const cameraError = ref(null)
 const detecting = ref(false)
+
+// Estado del retorno a bodega
+const returningToStore = ref(false)
+const confirmingArrival = ref(false)
 
 // Variables para manejo de cámara
 let mediaStream = null
@@ -351,6 +427,23 @@ const canBeReceived = (info) => {
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   return status === 'en_camino_a_pabellon'
+}
+
+const canBeReturnedToStore = (info) => {
+  if (!info || info.type !== 'medical_supply') return false
+  if (info.is_consumed) return false
+  
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+  // Puede ser regresado si está recepcionado (hace tiempo sin consumir)
+  return status === 'recepcionado'
+}
+
+const isOnRouteToStore = (info) => {
+  if (!info || info.type !== 'medical_supply') return false
+  
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+  // Puede confirmar llegada si está en camino a bodega
+  return status === 'en_camino_a_bodega'
 }
 
 const getStateRecommendation = (info) => {
@@ -402,7 +495,7 @@ const getStateRecommendation = (info) => {
       }
     default:
       return {
-        title: 'Estado Indefinido',
+        title: 'De regreso a Bodega',
         message: `El insumo tiene estado "${status}". Consulte con el administrador del sistema.`,
         type: 'warning'
       }
@@ -760,6 +853,108 @@ const viewBatch = (batchId) => {
   })
 }
 
+// ===== NUEVA FUNCIÓN: REGRESAR A BODEGA =====
+const returnToStore = async (qrCode) => {
+  if (!qrCode || returningToStore.value) return
+  
+  // Confirmar la acción
+  const confirmed = confirm(
+    '¿Está seguro de que desea regresar este insumo a bodega?\n\n' +
+    'Esta acción cambiará el estado del insumo a "en_camino_a_bodega" y ' +
+    'será registrada en el historial de trazabilidad.'
+  )
+  
+  if (!confirmed) return
+  
+  returningToStore.value = true
+  error.value = null
+  
+  try {
+    const result = await returnToBodegaService.returnSupplyToStore(
+      qrCode, 
+      'Retorno manual desde escáner QR'
+    )
+    
+    // Mostrar notificación de éxito
+    showSuccessNotification('Insumo regresado a bodega exitosamente')
+    
+    // Volver a escanear para actualizar la información
+    await scanQRCode()
+    
+  } catch (err) {
+    console.error('Error regresando a bodega:', err)
+    error.value = err.message || 'Error al regresar el insumo a bodega'
+  } finally {
+    returningToStore.value = false
+  }
+}
+
+// ===== NUEVA FUNCIÓN: CONFIRMAR LLEGADA A BODEGA =====
+const confirmArrivalToStore = async (qrCode) => {
+  if (!qrCode || confirmingArrival.value) return
+  
+  // Confirmar la acción
+  const confirmed = confirm(
+    '¿Confirma que este insumo ha llegado a bodega?\n\n' +
+    'Esta acción cambiará el estado del insumo a "disponible" y ' +
+    'será registrada en el historial de trazabilidad.'
+  )
+  
+  if (!confirmed) return
+  
+  confirmingArrival.value = true
+  error.value = null
+  
+  try {
+    // Usar el servicio real para confirmar llegada a bodega
+    const result = await returnToBodegaService.confirmArrivalToStore(
+      qrCode, 
+      'Llegada confirmada desde escáner QR'
+    )
+    
+    // Mostrar notificación de éxito
+    showSuccessNotification('Llegada a bodega confirmada exitosamente')
+    
+    // Volver a escanear para actualizar la información
+    await scanQRCode()
+    
+  } catch (err) {
+    console.error('Error confirmando llegada a bodega:', err)
+    error.value = err.message || 'Error al confirmar llegada a bodega'
+  } finally {
+    confirmingArrival.value = false
+  }
+}
+
+// ===== SISTEMA DE NOTIFICACIONES =====
+const notification = ref(null)
+
+const showSuccessNotification = (message) => {
+  notification.value = {
+    type: 'success',
+    message: message,
+    visible: true
+  }
+  setTimeout(() => {
+    notification.value = null
+  }, 4000)
+}
+
+const showErrorNotification = (message) => {
+  notification.value = {
+    type: 'error',
+    message: message,
+    visible: true
+  }
+  setTimeout(() => {
+    notification.value = null
+  }, 5000)
+}
+
+const closeNotification = () => {
+  notification.value = null
+}
+
 // ===== FUNCIONES AUXILIARES =====
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
@@ -814,5 +1009,13 @@ onUnmounted(() => {
 
 .btn-secondary {
   @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-danger {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-success {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 </style>

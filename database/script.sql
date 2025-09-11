@@ -197,6 +197,29 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
+-- Usuario especial del sistema para operaciones automáticas
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id, 
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES (
+    'SYSTEM-INIT',
+    'Sistema de Inicialización',
+    'system@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    'admin',
+    1,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+) ON CONFLICT (rut) DO NOTHING;
+
 -- ============================================
 -- POBLADO DE HISTORIALES
 -- ============================================
@@ -211,6 +234,7 @@ INSERT INTO batch_history (date_time, change_details, previous_values, new_value
 ('2025-08-16 13:00:00', 'Lote creado', NULL, '{"expiration_date": "2025-10-15", "amount": 8, "supplier": "Proveedor Cuatro", "store_id": 2}', 'Administrador del Sistema', 4, '12345678-9', 4),
 ('2025-08-16 14:00:00', 'Cantidad actualizada', '{"amount": 10}', '{"amount": 8}', 'Encargado Bodega', 1, '11111111-1', 1)
 ON CONFLICT DO NOTHING;
+
 -- Insertar solicitud de ejemplo
 INSERT INTO supply_request (
     request_number, pavilion_id, requested_by, requested_by_name,
@@ -220,8 +244,8 @@ INSERT INTO supply_request (
     NOW() - INTERVAL '1 hour', 'pending', 'normal',
     'Solicitud de prueba para implementación de trazabilidad QR', 1
 );
--- Insertar items de ejemplo
 
+-- Insertar items de ejemplo
 INSERT INTO supply_request_item (
     supply_request_id, supply_code, supply_name, quantity_requested,
     specifications, is_pediatric, size, urgency_level
@@ -248,3 +272,58 @@ FROM batch
 WHERE qr_code IS NOT NULL 
 GROUP BY qr_code 
 HAVING COUNT(*) > 1;
+
+-- Migración para poblar correctamente la tabla supply_history
+-- Fecha: 2025-01-20
+-- Descripción: Agregar registros de historial para mostrar que los insumos estuvieron en bodega
+
+-- Insertar historial inicial para todos los insumos disponibles
+-- Esto simula que todos los insumos estuvieron inicialmente en bodega antes de estar disponibles
+
+INSERT INTO supply_history (
+    date_time,
+    status,
+    destination_type,
+    destination_id,
+    medical_supply_id,
+    user_rut,
+    notes
+)
+SELECT 
+    NOW() - INTERVAL '30 days' AS date_time,  -- Hace 30 días
+    'disponible' AS status,
+    'store' AS destination_type,
+    b.store_id AS destination_id,
+    ms.id AS medical_supply_id,
+    'SYSTEM-INIT' AS user_rut,
+    'Registro inicial - insumo ingresado a bodega desde proveedor' AS notes
+FROM medical_supply ms
+JOIN batch b ON ms.batch_id = b.id
+WHERE ms.status = 'disponible'
+AND NOT EXISTS (
+    SELECT 1 FROM supply_history sh 
+    WHERE sh.medical_supply_id = ms.id
+);
+
+-- Verificar los registros insertados
+SELECT 
+    'Registros de historial agregados:' as info,
+    COUNT(*) as total_records
+FROM supply_history 
+WHERE user_rut = 'SYSTEM-INIT';
+
+-- Mostrar ejemplo de registros insertados
+SELECT 
+    'Ejemplo de registros insertados:' as info,
+    ms.qr_code,
+    sc.name as supply_name,
+    s.name as store_name,
+    sh.date_time,
+    sh.status,
+    sh.notes
+FROM supply_history sh
+JOIN medical_supply ms ON sh.medical_supply_id = ms.id
+JOIN supply_code sc ON ms.code = sc.code
+JOIN store s ON sh.destination_id = s.id
+WHERE sh.user_rut = 'SYSTEM-INIT'
+LIMIT 5;

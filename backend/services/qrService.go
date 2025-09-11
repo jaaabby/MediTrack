@@ -898,17 +898,19 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 		}
 	}
 
-	// DEBUG: Verificar si ya hay una transferencia reciente para este QR
-	var existingTransfer models.SupplyHistory
-	transferInProgress := s.DB.Where(`medical_supply_id = (SELECT id FROM medical_supply WHERE qr_code = ?) 
-		AND status IN ('en_camino_a_pabellon', 'en_camino_a_bodega') 
-		AND date_time > ?`, qrCode, time.Now().Add(-5*time.Minute)).First(&existingTransfer).Error == nil
+	// DEBUG: Verificar si ya hay una transferencia reciente para este QR (COMENTADO - permitir duplicados)
+	/*
+		var existingTransfer models.SupplyHistory
+		transferInProgress := s.DB.Where(`medical_supply_id = (SELECT id FROM medical_supply WHERE qr_code = ?)
+			AND status IN ('en_camino_a_pabellon', 'en_camino_a_bodega')
+			AND date_time > ?`, qrCode, time.Now().Add(-5*time.Minute)).First(&existingTransfer).Error == nil
 
-	if transferInProgress {
-		fmt.Printf("DEBUG - PREVENCIÓN DUPLICADO: Ya existe transferencia reciente para QR=%s, TransferID=%d, Status=%s, Time=%s\n",
-			qrCode, existingTransfer.ID, existingTransfer.Status, existingTransfer.DateTime.Format("2006-01-02 15:04:05"))
-		return nil, fmt.Errorf("ya existe una transferencia en progreso para este insumo - ID: %d", existingTransfer.ID)
-	}
+		if transferInProgress {
+			fmt.Printf("DEBUG - PREVENCIÓN DUPLICADO: Ya existe transferencia reciente para QR=%s, TransferID=%d, Status=%s, Time=%s\n",
+				qrCode, existingTransfer.ID, existingTransfer.Status, existingTransfer.DateTime.Format("2006-01-02 15:04:05"))
+			return nil, fmt.Errorf("ya existe una transferencia en progreso para este insumo - ID: %d", existingTransfer.ID)
+		}
+	*/
 
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		// Buscar el insumo por QR
@@ -921,11 +923,17 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			return fmt.Errorf("el insumo con QR %s ya ha sido consumido y no puede ser transferido", qrCode)
 		}
 
-		// Verificar que el insumo esté disponible para transferencia
-		if supply.Status != models.StatusAvailable {
-			if supply.Status == models.StatusReceived {
-				return fmt.Errorf("el insumo tiene estado 'recepcionado' y solo puede ser consumido, no transferido")
+		// Verificar que el insumo esté disponible para transferencia (permitir desde estados válidos)
+		validStates := []string{models.StatusAvailable, models.StatusReceived}
+		isValidState := false
+		for _, state := range validStates {
+			if supply.Status == state {
+				isValidState = true
+				break
 			}
+		}
+
+		if !isValidState {
 			return fmt.Errorf("el insumo tiene estado '%s' y no está disponible para transferencia", supply.Status)
 		}
 

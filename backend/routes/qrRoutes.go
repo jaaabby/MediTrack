@@ -65,6 +65,20 @@ func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medica
 		// Recepcionar un insumo que está en camino al pabellón
 		qr.POST("/receive", qrController.ReceiveSupply)
 
+		// === FUNCIONALIDADES DE RETORNO A BODEGA ===
+
+		// Regresar un insumo a bodega manualmente
+		qr.POST("/return-to-store", qrController.ReturnSupplyToStore)
+
+		// Confirmar llegada de insumo a bodega
+		qr.POST("/confirm-arrival-to-store", qrController.ConfirmArrivalToStore)
+
+		// Obtener lista de insumos que deben regresar a bodega (15 días sin consumir)
+		qr.GET("/supplies-for-return", qrController.GetSuppliesForReturn)
+
+		// Ejecutar manualmente el proceso automático de retornos
+		qr.POST("/process-automatic-returns", qrController.ProcessAutomaticReturns)
+
 		// Consumir un insumo individual específico (REGISTRA AUTOMÁTICAMENTE EL ESCANEO DE CONSUMO)
 		qr.POST("/consume/individual", qrController.ConsumeIndividualSupply)
 

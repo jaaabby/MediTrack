@@ -1187,6 +1187,130 @@ func (c *QRController) HandleConsumeWebhook(ctx *gin.Context) {
 }
 
 // =============================================
+// FUNCIONALIDADES DE RETORNO A BODEGA
+// =============================================
+
+// ReturnSupplyToStore regresa un insumo a bodega manualmente
+func (c *QRController) ReturnSupplyToStore(ctx *gin.Context) {
+	var request struct {
+		QRCode  string `json:"qr_code" binding:"required"`
+		UserRUT string `json:"user_rut" binding:"required"`
+		Notes   string `json:"notes,omitempty"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos de retorno inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Validar que sea un insumo individual
+	if !strings.HasPrefix(strings.ToUpper(request.QRCode), "SUPPLY_") {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Solo se pueden regresar insumos individuales. Use códigos QR que comiencen con SUPPLY_",
+		})
+		return
+	}
+
+	// Usar el servicio de insumos médicos para regresar a bodega
+	err := c.medicalSupplyService.ReturnSupplyToStoreByQR(request.QRCode, request.UserRUT, request.Notes, false)
+	if err != nil {
+		// Determinar el código de estado basado en el tipo de error
+		statusCode := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "no encontrado") {
+			statusCode = http.StatusNotFound
+		} else if strings.Contains(err.Error(), "no se puede regresar") {
+			statusCode = http.StatusConflict
+		}
+
+		ctx.JSON(statusCode, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Insumo regresado a bodega exitosamente",
+		Data: map[string]interface{}{
+			"qr_code": request.QRCode,
+			"status":  "en_camino_a_bodega",
+		},
+	})
+}
+
+// GetSuppliesForReturn obtiene la lista de insumos que deben regresar a bodega
+func (c *QRController) GetSuppliesForReturn(ctx *gin.Context) {
+	supplies, err := c.medicalSupplyService.GetSuppliesForReturn()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error obteniendo insumos para retorno: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: fmt.Sprintf("Se encontraron %d insumos para revisar", len(supplies)),
+		Data:    supplies,
+	})
+}
+
+// ProcessAutomaticReturns ejecuta manualmente el proceso automático de retornos
+func (c *QRController) ProcessAutomaticReturns(ctx *gin.Context) {
+	err := c.medicalSupplyService.ProcessAutomaticReturns()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error procesando retornos automáticos: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Proceso de retornos automáticos ejecutado exitosamente",
+	})
+}
+
+// ConfirmArrivalToStore confirma la llegada de un insumo a bodega
+func (c *QRController) ConfirmArrivalToStore(ctx *gin.Context) {
+	var req struct {
+		QRCode  string `json:"qr_code" binding:"required"`
+		UserRUT string `json:"user_rut" binding:"required"`
+		Notes   string `json:"notes"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Confirmar llegada usando el service
+	err := c.medicalSupplyService.ConfirmArrivalToStore(req.QRCode, req.UserRUT, req.Notes)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Llegada a bodega confirmada exitosamente",
+	})
+}
+
+// =============================================
 // MÉTODOS AUXILIARES
 // =============================================
 

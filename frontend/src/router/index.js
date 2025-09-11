@@ -102,6 +102,19 @@ const routes = [
     }
   },
 
+  // NUEVA RUTA: Gestión de Retornos a Bodega
+  {
+    path: '/return-management',
+    name: 'ReturnToBodegaManagement',
+    component: () => import('@/views/ReturnToBodegaManagement.vue'),
+    meta: {
+      title: 'Gestión de Retornos - MediTrack',
+      description: 'Monitoreo y gestión de insumos que deben regresar a bodega',
+      requiresAuth: true,
+      requiredRoles: ['admin', 'encargado de bodega']
+    }
+  },
+
   // Rutas específicas de QR con historial y trazabilidad
   {
     path: '/qr/:qrCode/details',

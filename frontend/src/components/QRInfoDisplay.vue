@@ -198,7 +198,9 @@
             </h4>
             <div class="text-sm">
               <div><span class="font-medium text-gray-600">Código:</span> {{ qrInfo.supply_code?.code_supplier || qrInfo.supplier_code || 'N/A' }}</div>
-              <div><span class="font-medium text-gray-600">Estado:</span> <span :class="qrInfo.supply_info?.is_consumed || qrInfo.is_consumed ? 'text-red-600' : 'text-green-600'" class="font-medium">{{ qrInfo.supply_info?.is_consumed || qrInfo.is_consumed ? 'Consumido' : 'Disponible' }}</span></div>
+              <div><span class="font-medium text-gray-600">Estado:</span> 
+                <span :class="getStatusColor(qrInfo)" class="font-medium">{{ getStatusText(qrInfo) }}</span>
+              </div>
               <div v-if="qrInfo.supply_info?.batch || qrInfo.batch_info"><span class="font-medium text-gray-600">Lote:</span> {{ qrInfo.supply_info?.batch?.id || qrInfo.batch_info?.id || qrInfo.batch_id || 'N/A' }}</div>
               <div v-if="qrInfo.supply_code || qrInfo.supply_info?.name"><span class="font-medium text-gray-600">Nombre:</span> {{ qrInfo.supply_code?.name || qrInfo.supply_info?.name || qrInfo.name || 'N/A' }}</div>
             </div>
@@ -447,6 +449,64 @@ const getScanPurposeLabel = (purpose) => {
     'assign': 'Asignación'
   }
   return labels[purpose] || purpose
+}
+
+// Funciones para determinar el estado correcto del insumo
+const getStatusText = (qrInfo) => {
+  // Prioridad: consumido > estado del supply_info > estado directo > disponible por defecto
+  if (qrInfo.supply_info?.is_consumed || qrInfo.is_consumed) {
+    return 'Consumido'
+  }
+  
+  // Revisar el estado desde supply_info (que viene del backend)
+  const status = qrInfo.supply_info?.Status || qrInfo.supply_info?.status || qrInfo.status
+  
+  if (status) {
+    switch (status.toLowerCase()) {
+      case 'disponible':
+        return 'Disponible'
+      case 'recepcionado':
+        return 'Recepcionado'
+      case 'en_camino_a_pabellon':
+        return 'En camino a pabellón'
+      case 'en_camino_a_bodega':
+        return 'En camino a bodega'
+      case 'consumido':
+        return 'Consumido'
+      default:
+        return status
+    }
+  }
+  
+  return 'Disponible' // fallback
+}
+
+const getStatusColor = (qrInfo) => {
+  // Determinar color basado en el estado
+  if (qrInfo.supply_info?.is_consumed || qrInfo.is_consumed) {
+    return 'text-red-600'
+  }
+  
+  const status = qrInfo.supply_info?.Status || qrInfo.supply_info?.status || qrInfo.status
+  
+  if (status) {
+    switch (status.toLowerCase()) {
+      case 'disponible':
+        return 'text-green-600'
+      case 'recepcionado':
+        return 'text-blue-600'
+      case 'en_camino_a_pabellon':
+        return 'text-yellow-600'
+      case 'en_camino_a_bodega':
+        return 'text-orange-600'
+      case 'consumido':
+        return 'text-red-600'
+      default:
+        return 'text-gray-600'
+    }
+  }
+  
+  return 'text-green-600' // fallback para disponible
 }
 </script>
 
