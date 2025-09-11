@@ -294,27 +294,44 @@
       </div>
 
       <!-- Botones de acción -->
-      <div class="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+      <div class="flex justify-between pt-4 border-t border-gray-200">
         <button
           type="button"
           @click="resetForm"
           class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
           :disabled="submitting"
         >
+          <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
           Limpiar Formulario
         </button>
         
-        <button
-          type="submit"
-          class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="submitting"
-        >
-          <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {{ submitting ? 'Creando Solicitud...' : 'Crear Solicitud' }}
-        </button>
+        <div class="flex space-x-3">
+          <button
+            type="button"
+            @click="cancelForm"
+            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            :disabled="submitting"
+          >
+            Cancelar
+          </button>
+          
+          <button
+            type="submit"
+            class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="submitting"
+          >
+            <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-if="!submitting" class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            {{ submitting ? 'Creando Solicitud...' : 'Crear Solicitud' }}
+          </button>
+        </div>
       </div>
     </form>
   </div>
@@ -322,11 +339,23 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
 
-const router = useRouter()
+// Props
+const props = defineProps({
+  id: {
+    type: Number,
+    default: null
+  },
+  editMode: {
+    type: Boolean,
+    default: false
+  }
+})
+
+// Emits
+const emit = defineEmits(['success', 'cancel', 'error'])
 
 // Estado reactivo
 const submitting = ref(false)
@@ -367,6 +396,7 @@ const loadPavilions = async () => {
   } catch (error) {
     console.error('Error cargando pabellones:', error)
     errors.value.push('Error al cargar la lista de pabellones')
+    emit('error', error)
   } finally {
     loadingPavilions.value = false
   }
@@ -398,6 +428,10 @@ const resetForm = () => {
   errors.value = []
 }
 
+const cancelForm = () => {
+  emit('cancel')
+}
+
 const submitRequest = async () => {
   if (!validateForm()) {
     return
@@ -415,25 +449,25 @@ const submitRequest = async () => {
     if (result.success) {
       console.log('Solicitud creada exitosamente:', result)
       
-      // Redirigir a la página de detalle o lista de solicitudes
-      if (result.data && result.data.request && result.data.request.id) {
-        router.push(`/supply-requests/${result.data.request.id}`)
-      } else {
-        router.push('/supply-requests')
-      }
+      // Emitir evento de éxito con los datos de la solicitud
+      emit('success', result.data?.request || result.data)
     } else {
-      errors.value.push('Error al crear la solicitud: ' + (result.error || 'Error desconocido'))
+      const errorMessage = 'Error al crear la solicitud: ' + (result.error || 'Error desconocido')
+      errors.value.push(errorMessage)
+      emit('error', new Error(errorMessage))
     }
   } catch (error) {
     console.error('Error al enviar solicitud:', error)
     
+    let errorMessage = 'Error desconocido al crear la solicitud'
     if (error.response?.data?.error) {
-      errors.value.push('Error del servidor: ' + error.response.data.error)
+      errorMessage = 'Error del servidor: ' + error.response.data.error
     } else if (error.message) {
-      errors.value.push('Error: ' + error.message)
-    } else {
-      errors.value.push('Error desconocido al crear la solicitud')
+      errorMessage = 'Error: ' + error.message
     }
+    
+    errors.value.push(errorMessage)
+    emit('error', error)
   } finally {
     submitting.value = false
   }

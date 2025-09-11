@@ -188,6 +188,17 @@ const routes = [
     }
   },
   {
+    path: '/supply-requests/success',
+    name: 'SupplyRequestSuccess',
+    component: () => import('@/views/SupplyRequestSuccess.vue'),
+    props: route => ({ requestData: route.params.requestData }),
+    meta: {
+      title: 'Solicitud Creada - MediTrack',
+      description: 'Confirmación de solicitud creada exitosamente',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/supply-requests/:id',
     name: 'SupplyRequestDetails',
     component: () => import('@/views/SupplyRequestDetail.vue'),
