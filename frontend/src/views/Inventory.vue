@@ -269,18 +269,35 @@
             No se encontraron insumos para este lote.
           </div>
           <div v-else>
+            <!-- Información de paginación -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div class="text-sm text-gray-700">
+                Mostrando {{ batchDetailsStartIndex + 1 }} a {{ batchDetailsEndIndex }} de {{ batchDetails.length }} insumos
+              </div>
+              <div class="text-sm text-gray-600">
+                Página {{ batchDetailsCurrentPage }} de {{ batchDetailsTotalPages }}
+              </div>
+            </div>
+
             <table class="min-w-full divide-y divide-gray-200 mb-6 rounded-lg overflow-hidden shadow">
               <thead class="bg-gray-100">
                 <tr>
                   <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
                   <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Código</th>
+                  <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Estado</th>
                   <th class="px-6 py-3 text-center text-sm font-semibold text-gray-700">QR</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in batchDetails" :key="item.id" class="hover:bg-gray-50">
+                <tr v-for="item in paginatedBatchDetails" :key="item.id" class="hover:bg-gray-50">
                   <td class="px-6 py-4 text-gray-900 font-mono">{{ item.id }}</td>
                   <td class="px-6 py-4 text-gray-900">{{ item.code }}</td>
+                  <td class="px-6 py-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
+                          :class="getStatusClass(item.status)">
+                      {{ getStatusDescription(item.status) }}
+                    </span>
+                  </td>
                   <td class="px-6 py-4 flex flex-col items-center justify-center text-center">
                     <qrcode-vue :value="item.qr_code" :size="40" class="mb-2 mx-auto" />
                     <button @click="handleDownloadQR(item.qr_code)" class="btn-secondary text-xs px-3 py-1 rounded mx-auto">Descargar QR</button>
@@ -288,6 +305,31 @@
                 </tr>
               </tbody>
             </table>
+
+            <!-- Paginación -->
+            <div v-if="batchDetails.length > batchDetailsItemsPerPage" 
+                 class="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
+              <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                Mostrando {{ batchDetailsStartIndex + 1 }} a {{ batchDetailsEndIndex }} de {{ batchDetails.length }} insumos
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]" 
+                        :disabled="batchDetailsCurrentPage === 1"
+                        @click="batchDetailsCurrentPage--">
+                  <span class="hidden sm:inline">Anterior</span>
+                  <span class="sm:hidden">Ant.</span>
+                </button>
+                <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[100px] text-center">
+                  Página {{ batchDetailsCurrentPage }} de {{ batchDetailsTotalPages }}
+                </span>
+                <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]"
+                        :disabled="batchDetailsCurrentPage === batchDetailsTotalPages" 
+                        @click="batchDetailsCurrentPage++">
+                  <span class="hidden sm:inline">Siguiente</span>
+                  <span class="sm:hidden">Sig.</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1043,6 +1085,10 @@ const historyError = ref(null)
 const historyData = ref([])
 const selectedSupplyForHistory = ref(null)
 
+// Estado del modal de detalles de lote con paginación
+const batchDetailsCurrentPage = ref(1)
+const batchDetailsItemsPerPage = 5 // Constante, no ref
+
 // Estado de notificación
 const notification = ref({
   show: false,
@@ -1253,6 +1299,16 @@ const hasActiveFilters = computed(() => {
     globalHistoryUserFilter.value
 })
 
+// Computed properties para paginación del modal de detalles de lote
+const batchDetailsTotalPages = computed(() => Math.ceil(batchDetails.value.length / batchDetailsItemsPerPage))
+
+const batchDetailsStartIndex = computed(() => (batchDetailsCurrentPage.value - 1) * batchDetailsItemsPerPage)
+const batchDetailsEndIndex = computed(() => Math.min(batchDetailsStartIndex.value + batchDetailsItemsPerPage, batchDetails.value.length))
+
+const paginatedBatchDetails = computed(() => {
+  return batchDetails.value.slice(batchDetailsStartIndex.value, batchDetailsEndIndex.value)
+})
+
 const clearSearch = () => {
   searchTerm.value = ''
   sortField.value = 'none'
@@ -1290,6 +1346,36 @@ const getAmountClass = (amount) => {
   if (amount < 5) return 'text-red-600 font-semibold'
   if (amount < 10) return 'text-orange-600 font-semibold'
   return 'text-gray-900'
+}
+
+// Función para obtener la descripción del estado en español
+const getStatusDescription = (status) => {
+  const statusMap = {
+    'disponible': 'Disponible',
+    'en_camino_a_pabellon': 'En camino a pabellón',
+    'recepcionado': 'Recepcionado',
+    'consumido': 'Consumido',
+    'en_camino_a_bodega': 'En camino a bodega'
+  }
+  return statusMap[status] || 'Estado desconocido'
+}
+
+// Función para obtener la clase CSS del estado
+const getStatusClass = (status) => {
+  switch (status) {
+    case 'disponible':
+      return 'text-green-700 bg-green-100'
+    case 'en_camino_a_pabellon':
+      return 'text-blue-700 bg-blue-100'
+    case 'recepcionado':
+      return 'text-purple-700 bg-purple-100'
+    case 'consumido':
+      return 'text-gray-700 bg-gray-100'
+    case 'en_camino_a_bodega':
+      return 'text-orange-700 bg-orange-100'
+    default:
+      return 'text-gray-700 bg-gray-100'
+  }
 }
 
 const editSupply = (supply) => {
@@ -1408,18 +1494,29 @@ const openBatchDetailsModal = async (batch) => {
   showBatchDetailsModal.value = true
   batchDetailsLoading.value = true
   batchDetailsError.value = null
+  batchDetailsCurrentPage.value = 1 // Resetear paginación
   selectedBatch.value = batch
-  supplyName.value = ''
+  supplyName.value = batch.name || 'Insumo' // Usar el nombre del batch directamente
   try {
     // Obtener insumos individuales por lote
     const supplies = await inventoryService.getAvailableSuppliesByBatch(batch.batch_id)
     batchDetails.value = supplies
-    // Obtener el nombre del insumo usando el código del primer elemento
-    if (supplies.length > 0) {
-      const code = supplies[0].code
-      const supplyCodes = await inventoryService.getAllSupplyCodes()
-      const found = supplyCodes.find(sc => sc.code === code)
-      supplyName.value = found ? found.name : ''
+    
+    // Solo intentar obtener el nombre si no lo tenemos y hay insumos
+    if (!supplyName.value || supplyName.value === 'Insumo') {
+      if (supplies.length > 0) {
+        try {
+          const code = supplies[0].code
+          const supplyCodes = await inventoryService.getAllSupplyCodes()
+          const found = supplyCodes.find(sc => sc.code === code)
+          if (found) {
+            supplyName.value = found.name
+          }
+        } catch (codeError) {
+          console.warn('No se pudo obtener el nombre del insumo:', codeError)
+          // Mantener el nombre del batch si falla
+        }
+      }
     }
   } catch (err) {
     batchDetailsError.value = 'Error al cargar insumos del lote: ' + err.message
@@ -1433,6 +1530,7 @@ const closeBatchDetailsModal = () => {
   batchDetails.value = []
   selectedBatch.value = null
   batchDetailsError.value = null
+  batchDetailsCurrentPage.value = 1 // Resetear paginación
 }
 
 const getQrDataUrl = (code) => {

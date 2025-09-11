@@ -10,6 +10,20 @@ class InventoryService {
         'Content-Type': 'application/json'
       }
     })
+
+    // Interceptor para agregar el token de autenticación
+    this.api.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('authToken')
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+        return config
+      },
+      (error) => {
+        return Promise.reject(error)
+      }
+    )
   }
 
   // Obtener todo el inventario - Compatible con ambas versiones
