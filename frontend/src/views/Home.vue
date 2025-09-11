@@ -115,21 +115,6 @@
         </div>
       </div>
 
-      <!-- Gestión de Retornos -->
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/return-management')">
-        <div class="flex items-center gap-4">
-          <div class="bg-orange-100 p-3 rounded-lg">
-            <svg class="h-8 w-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">Gestión de Retornos</h3>
-            <p class="text-gray-600 text-sm">Retorno de insumos a bodega</p>
-          </div>
-        </div>
-      </div>
-
       <!-- Nueva Solicitud de Insumo -->
       <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/supply-requests/new')">
         <div class="flex items-center gap-4">
