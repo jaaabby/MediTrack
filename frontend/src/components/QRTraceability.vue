@@ -1,430 +1,275 @@
 <template>
-  <div class="max-w-7xl mx-auto p-6">
+  <div class="min-h-screen bg-gray-50">
     <!-- Header -->
-    <div class="mb-6">
-      <div class="flex items-center mb-4">
-        <button @click="$router.go(-1)"
-          class="mr-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full">
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <div class="flex-1">
-          <h1 class="text-2xl font-bold text-gray-900">Trazabilidad del Insumo</h1>
-          <p class="text-gray-600 mt-1">Seguimiento completo del código {{ qrCode }}</p>
-        </div>
-        <div class="flex space-x-2">
-          <button @click="loadTraceability" :disabled="loading" class="btn-secondary">
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Actualizar
-          </button>
-          <button @click="exportData" :disabled="!traceabilityData" class="btn-primary">
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Exportar
-          </button>
-        </div>
-      </div>
-
-      <!-- Información del QR -->
-      <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
-        <div class="flex items-center">
-          <div class="bg-white p-3 rounded-lg border border-blue-300 shadow-sm">
-            <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
-            </svg>
+    <div class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center space-x-4">
+            <router-link to="/qr" class="text-gray-400 hover:text-gray-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </router-link>
+            <h1 class="text-xl font-semibold text-gray-900">Trazabilidad del Insumo</h1>
           </div>
-          <div class="ml-4">
-            <p class="text-sm font-medium text-gray-700">Código QR</p>
-            <code class="text-lg font-mono text-blue-900 bg-white px-3 py-1 rounded border">{{ qrCode }}</code>
+          <div class="flex items-center space-x-3">
+            <button @click="exportTraceability" class="btn-secondary text-sm">
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Exportar
+            </button>
+            <button @click="printTraceability" class="btn-secondary text-sm">
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Imprimir
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Estado de Carga -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <!-- Loading State -->
+    <div v-if="loading" class="flex justify-center items-center py-12">
       <div class="text-center">
-        <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-          </path>
-        </svg>
-        <p class="text-gray-600 mt-2">Cargando trazabilidad...</p>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p class="mt-4 text-gray-600">Cargando trazabilidad...</p>
       </div>
     </div>
 
-    <!-- Estado de Error -->
-    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
-      <div class="flex items-center">
-        <svg class="h-6 w-6 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <div>
-          <h3 class="text-red-800 font-medium">Error al cargar trazabilidad</h3>
-          <p class="text-red-700 text-sm mt-1">{{ error }}</p>
+    <!-- Error State -->
+    <div v-else-if="error" class="max-w-4xl mx-auto px-4 py-8">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Error al cargar trazabilidad</h3>
+            <div class="mt-2 text-sm text-red-700">{{ error }}</div>
+            <div class="mt-4">
+              <button @click="loadTraceability" class="btn-primary text-sm">
+                Reintentar
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Contenido Principal -->
-    <div v-else-if="traceabilityData">
-      <!-- Información del Insumo -->
-      <div v-if="qrInfo" class="bg-white rounded-lg shadow border p-6 mb-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Información del Insumo</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <!-- Información básica -->
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Tipo</label>
-              <span :class="getTypeIconClass(qrInfo.type)"
-                class="inline-flex items-center px-2 py-1 text-sm font-medium rounded-full mt-1">
-                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path v-if="qrInfo.type === 'medical_supply'" stroke-linecap="round" stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                {{ getTypeLabel(qrInfo.type) }}
-              </span>
-            </div>
-
-            <div v-if="qrInfo.supply_info">
-              <label class="block text-sm font-medium text-gray-700">Estado</label>
-              <span :class="getStatusBadgeClass()"
-                class="inline-flex px-2 py-1 text-sm font-semibold rounded-full mt-1">
-                {{ getStatusLabel() }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Información del insumo -->
-          <div v-if="qrInfo.supply_code" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Código</label>
-              <p class="text-sm text-gray-900 mt-1">{{ qrInfo.supply_code.code }}</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Nombre</label>
-              <p class="text-sm text-gray-900 mt-1">{{ qrInfo.supply_code.name }}</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Proveedor</label>
-              <p class="text-sm text-gray-900 mt-1">{{ qrInfo.supply_code.code_supplier }}</p>
-            </div>
-          </div>
-
-          <!-- Información del lote -->
-          <div v-if="qrInfo.supply_info?.batch" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Lote</label>
-              <p class="text-sm text-gray-900 mt-1">ID: {{ qrInfo.supply_info.batch.id }}</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Proveedor</label>
-              <p class="text-sm text-gray-900 mt-1">{{ qrInfo.supply_info.batch.supplier }}</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Vencimiento</label>
-              <p class="text-sm text-gray-900 mt-1">{{ formatDate(qrInfo.supply_info.batch.expiration_date) }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Filtros -->
-      <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Filtros</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Evento</label>
-            <select v-model="selectedEventType" class="form-select w-full">
-              <option value="">Todos</option>
-              <option value="scan">Escaneos</option>
-              <option value="movement">Movimientos</option>
-              <option value="status_change">Cambios de Estado</option>
-              <option value="request">Solicitudes</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Usuario</label>
-            <select v-model="selectedUser" class="form-select w-full">
-              <option value="">Todos</option>
-              <option v-for="user in uniqueUsers" :key="user" :value="user">
-                {{ user }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Ubicación</label>
-            <select v-model="selectedLocation" class="form-select w-full">
-              <option value="">Todas</option>
-              <option v-for="location in uniqueLocations" :key="location" :value="location">
-                {{ location }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Período</label>
-            <select v-model="selectedPeriod" class="form-select w-full">
-              <option value="">Todo</option>
-              <option value="today">Hoy</option>
-              <option value="week">Última semana</option>
-              <option value="month">Último mes</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Estadísticas -->
-      <div v-if="scanStatistics" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-          <div class="flex items-center">
-            <div class="bg-blue-100 rounded-full p-3">
-              <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-600">Total Escaneos</p>
-              <p class="text-2xl font-bold text-gray-900">{{ scanStatistics.total_scans }}</p>
-            </div>
-          </div>
-          <div class="mt-4 flex items-center text-sm">
-            <span class="text-green-600 font-medium">{{ scanStatistics.successful_scans }}</span>
-            <span class="text-gray-500 ml-1">exitosos</span>
-            <span class="text-red-600 font-medium ml-4">{{ scanStatistics.error_scans }}</span>
-            <span class="text-gray-500 ml-1">errores</span>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-          <div class="flex items-center">
-            <div class="bg-green-100 rounded-full p-3">
-              <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-600">Usuarios</p>
-              <p class="text-2xl font-bold text-gray-900">{{ scanStatistics.unique_scanners }}</p>
-            </div>
-          </div>
-          <div class="mt-4 text-sm text-gray-500">
-            {{ Math.round(scanStatistics.total_scans / scanStatistics.unique_scanners * 10) / 10 }} escaneos promedio
-          </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-          <div class="flex items-center">
-            <div class="bg-purple-100 rounded-full p-3">
-              <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-600">Ubicaciones</p>
-              <p class="text-2xl font-bold text-gray-900">{{ scanStatistics.locations_visited }}</p>
-            </div>
-          </div>
-          <div class="mt-4 text-sm text-gray-500">
-            Visitadas desde el primer escaneo
-          </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-          <div class="flex items-center">
-            <div class="bg-yellow-100 rounded-full p-3">
-              <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-600">Tiempo en Sistema</p>
-              <p class="text-2xl font-bold text-gray-900">{{ Math.round(scanStatistics.hours_in_system) }}h</p>
-            </div>
-          </div>
-          <div class="mt-4 text-sm text-gray-500">
-            Desde: {{ formatDate(scanStatistics.first_scan) }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Timeline de Eventos -->
-      <div class="bg-white rounded-lg shadow-sm border">
-        <div class="p-6 border-b border-gray-200">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="bg-indigo-100 rounded-full p-2 mr-3">
-                <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 class="text-lg font-medium text-gray-900">Historial de Eventos</h3>
-            </div>
-            <div class="text-sm text-gray-600">
-              {{ filteredEvents.length }} eventos
-              <span v-if="selectedEventType || selectedUser || selectedLocation || selectedPeriod">
-                (filtrados de {{ allEvents.length }})
-              </span>
-            </div>
-          </div>
-        </div>
-
+    <!-- Main Content -->
+    <div v-else-if="traceabilityData" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Product Summary Card -->
+      <div class="bg-white rounded-lg shadow-sm border mb-8">
         <div class="p-6">
-          <!-- Sección de Escaneos de Consulta (Minimizada por defecto) -->
-          <div class="mb-8">
-            <div @click="toggleConsultationScans"
-              class="flex items-center justify-between cursor-pointer p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors">
-              <div class="flex items-center">
-                <div class="bg-blue-100 rounded-full p-2 mr-3">
-                  <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-lg font-medium text-gray-900">Escaneos de Consulta</h3>
-                  <p class="text-sm text-gray-600">{{ consultationScanEvents.length }} escaneos de información</p>
+          <div class="flex items-start justify-between">
+            <div class="flex items-center space-x-4">
+              <!-- QR Code Icon -->
+              <div class="bg-blue-100 p-3 rounded-lg">
+                <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
+                </svg>
+              </div>
+              
+              <!-- Product Info -->
+              <div>
+                <h2 class="text-2xl font-bold text-gray-900">
+                  {{ qrInfo?.supply_info?.name || 'Insumo Médico' }}
+                </h2>
+                <p class="text-gray-600 font-mono text-sm mt-1">{{ qrCode }}</p>
+                <div class="flex items-center mt-2 space-x-4">
+                  <span :class="getCurrentStatusBadgeClass()" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                    {{ getCurrentStatusLabel() }}
+                  </span>
+                  <span class="text-sm text-gray-500">
+                    En sistema desde {{ getTimeInSystem() }}
+                  </span>
                 </div>
               </div>
-              <svg
-                :class="['h-5 w-5 text-gray-400 transform transition-transform', showConsultationScans ? 'rotate-180' : '']"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
             </div>
 
-            <!-- Contenido de escaneos de consulta -->
-            <div v-show="showConsultationScans" class="mt-4">
-              <ScanEventHistory :events="consultationScanEvents" :show-filters="false"
-                @view-details="handleScanEventDetails" @scan-again="handleScanAgain" />
+            <!-- Current Location -->
+            <div v-if="getCurrentLocation()" class="text-right">
+              <div class="text-sm text-gray-500">Ubicación actual</div>
+              <div class="text-lg font-semibold text-gray-900">{{ getCurrentLocation() }}</div>
             </div>
           </div>
 
-          <!-- Sección de Otros Eventos (Siempre desplegada) -->
+          <!-- Stats Bar -->
+          <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="text-2xl font-bold text-blue-600">{{ getEventCount('scan') }}</div>
+              <div class="text-sm text-gray-600">Escaneos</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="text-2xl font-bold text-green-600">{{ getEventCount('movement') }}</div>
+              <div class="text-sm text-gray-600">Movimientos</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="text-2xl font-bold text-purple-600">{{ getLocationCount() }}</div>
+              <div class="text-sm text-gray-600">Ubicaciones</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="text-2xl font-bold text-orange-600">{{ getUserCount() }}</div>
+              <div class="text-sm text-gray-600">Usuarios</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Journey Map -->
+      <div class="bg-white rounded-lg shadow-sm border mb-8">
+        <div class="p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-6">Recorrido del Insumo</h3>
+          
+          <!-- Progress Bar -->
           <div class="mb-8">
-            <div class="flex items-center p-3 bg-indigo-50 rounded-lg border border-indigo-200 mb-4">
-              <div class="bg-indigo-100 rounded-full p-2 mr-3">
-                <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="text-lg font-medium text-gray-900">Historial de Eventos Principales</h3>
-                <p class="text-sm text-gray-600">{{ nonConsultationEvents.length }} eventos de movimientos y operaciones
-                </p>
+            <div class="flex items-center justify-between text-sm text-gray-500 mb-2">
+              <span>Creado</span>
+              <span>En Tránsito</span>
+              <span>{{ qrInfo?.is_consumed ? 'Consumido' : 'Activo' }}</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                :class="[
+                  'h-2 rounded-full transition-all duration-1000',
+                  qrInfo?.is_consumed ? 'bg-red-500' : 'bg-blue-500'
+                ]"
+                :style="`width: ${getProgressPercentage()}%`"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Location Journey -->
+          <div v-if="getLocationJourney().length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div
+              v-for="(location, index) in getLocationJourney()"
+              :key="index"
+              class="relative"
+            >
+              <div :class="[
+                'p-4 rounded-lg border-2 transition-all duration-300',
+                location.is_current ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
+              ]">
+                <div class="flex items-center justify-between mb-2">
+                  <div :class="[
+                    'flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium',
+                    location.is_current ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+                  ]">
+                    {{ index + 1 }}
+                  </div>
+                  <div v-if="location.is_current" class="flex items-center text-blue-600 text-xs font-medium">
+                    <div class="w-2 h-2 bg-blue-600 rounded-full mr-1 animate-pulse"></div>
+                    Actual
+                  </div>
+                </div>
+                <div class="text-sm font-medium text-gray-900">{{ location.name }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ formatDateTime(location.date) }}</div>
+                <div v-if="location.duration" class="text-xs text-gray-400 mt-1">
+                  Duración: {{ location.duration }}
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
 
-            <!-- Timeline de eventos principales -->
-            <div class="flow-root">
-              <ul class="-mb-8">
-                <li v-for="(event, index) in nonConsultationEvents" :key="index" class="relative pb-8">
-                  <span v-if="index !== nonConsultationEvents.length - 1"
-                    class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+      <!-- Timeline -->
+      <div class="bg-white rounded-lg shadow-sm border">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-medium text-gray-900">Historial Completo</h3>
+            <div class="flex items-center space-x-3">
+              <!-- Filters -->
+              <select v-model="selectedEventFilter" class="form-select text-sm" @change="applyFilters">
+                <option value="">Todos los eventos</option>
+                <option value="scan">Solo escaneos</option>
+                <option value="movement">Solo movimientos</option>
+                <option value="consumption">Solo consumos</option>
+                <option value="transfer">Solo transferencias</option>
+              </select>
+            </div>
+          </div>
 
+          <!-- Timeline Events -->
+          <div class="flow-root">
+            <ul class="-mb-8">
+              <li v-for="(event, index) in filteredEvents" :key="index">
+                <div class="relative pb-8">
+                  <!-- Connector Line -->
+                  <span
+                    v-if="index !== filteredEvents.length - 1"
+                    class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                    aria-hidden="true"
+                  ></span>
+                  
                   <div class="relative flex space-x-3">
-                    <!-- Icono mejorado -->
+                    <!-- Event Icon -->
                     <div>
                       <span :class="[
-                        'h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white shadow-lg',
+                        'h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white',
                         getEventIconClass(event)
                       ]">
-                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            :d="getEventIcon(event)" />
+                        <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getEventIcon(event)" />
                         </svg>
                       </span>
                     </div>
-
-                    <!-- Contenido del evento -->
-                    <div class="flex-1 min-w-0 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <div class="flex items-center justify-between mb-2">
-                        <div>
-                          <p class="text-sm font-semibold text-gray-900">
+                    
+                    <!-- Event Content -->
+                    <div class="min-w-0 flex-1 pt-1.5">
+                      <div>
+                        <div class="flex items-center justify-between">
+                          <div class="text-sm text-gray-900 font-medium">
                             {{ getEventTitle(event) }}
-                          </p>
-                          <p class="text-sm text-gray-600">
-                            {{ getEventDescription(event) }}
-                          </p>
+                          </div>
+                          <div class="text-sm text-gray-500">
+                            {{ formatRelativeTime(event.date_time || event.timestamp) }}
+                          </div>
                         </div>
-                        <div class="text-right">
-                          <time class="text-sm font-medium text-gray-700">
-                            {{ formatDate(event.date_time || event.scanned_at || event.assigned_date) }}
-                          </time>
-                          <div v-if="event.user_name || event.scanned_by_name" class="text-xs text-gray-500">
-                            por {{ event.user_name || event.scanned_by_name }}
+                        <div class="mt-1 text-sm text-gray-600">
+                          {{ getEventDescription(event) }}
+                        </div>
+                        
+                        <!-- Event Details -->
+                        <div v-if="hasEventDetails(event)" class="mt-2">
+                          <div class="bg-gray-50 rounded-md p-3 text-xs space-y-1">
+                            <div v-if="event.user_name" class="flex justify-between">
+                              <span class="text-gray-500">Usuario:</span>
+                              <span class="text-gray-900">{{ event.user_name }}</span>
+                            </div>
+                            <div v-if="event.location" class="flex justify-between">
+                              <span class="text-gray-500">Ubicación:</span>
+                              <span class="text-gray-900">{{ event.location }}</span>
+                            </div>
+                            <div v-if="event.notes" class="flex justify-between">
+                              <span class="text-gray-500">Notas:</span>
+                              <span class="text-gray-900">{{ event.notes }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                              <span class="text-gray-500">Fecha exacta:</span>
+                              <span class="text-gray-900">{{ formatDateTime(event.date_time || event.timestamp) }}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-
-                      <!-- Detalles adicionales -->
-                      <div class="flex items-center space-x-3 mt-2">
-                        <span v-if="event.current_location || event.pavilion_name"
-                          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          </svg>
-                          {{ event.current_location || event.pavilion_name }}
-                        </span>
-
-                        <span v-if="event.scan_purpose" :class="[
-                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                          getScanPurposeBadgeClass(event.scan_purpose)
-                        ]">
-                          {{ getScanPurposeLabel(event.scan_purpose) }}
-                        </span>
-                      </div>
-
-                      <!-- Mensaje de error -->
-                      <div v-if="event.error_message" class="mt-3 p-2 bg-red-50 border border-red-200 rounded text-sm">
-                        <div class="text-red-800 font-medium">Error:</div>
-                        <div class="text-red-700">{{ event.error_message }}</div>
-                      </div>
                     </div>
                   </div>
-                </li>
-              </ul>
-            </div>
+                </div>
+              </li>
+            </ul>
           </div>
-        </div>
 
-        <!-- Sin historial disponible -->
-        <div v-if="allEvents.length === 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mt-6">
-          <div class="flex">
-            <svg class="h-5 w-5 text-yellow-400 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <!-- Empty State -->
+          <div v-if="filteredEvents.length === 0" class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
-            <div>
-              <h3 class="text-sm font-medium text-yellow-800">Sin historial disponible</h3>
-              <p class="text-sm text-yellow-700 mt-2">
-                Este código QR no tiene eventos registrados. Puede ser un insumo recién creado.
-              </p>
-            </div>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No hay eventos</h3>
+            <p class="mt-1 text-sm text-gray-500">No se encontraron eventos para los filtros seleccionados.</p>
           </div>
         </div>
       </div>
@@ -433,12 +278,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { format, isToday, isThisWeek, isThisMonth, differenceInDays, differenceInHours } from 'date-fns'
+import { format, formatDistanceToNow, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qrService'
-import ScanEventHistory from '@/components/ScanEventHistory.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -447,7 +291,7 @@ const router = useRouter()
 const props = defineProps({
   qrCode: {
     type: String,
-    required: true
+    required: false
   }
 })
 
@@ -455,22 +299,60 @@ const props = defineProps({
 const loading = ref(false)
 const error = ref(null)
 const traceabilityData = ref(null)
-const scanStatistics = ref(null)
 const qrInfo = ref(null)
-
-// Control de visibilidad de secciones
-const showConsultationScans = ref(false)
-
-// Filtros
-const selectedEventType = ref('')
-const selectedUser = ref('')
-const selectedLocation = ref('')
-const selectedPeriod = ref('')
+const selectedEventFilter = ref('')
 
 // Computed properties
-const qrCode = computed(() => props.qrCode || route.params.qrcode)
+const qrCode = computed(() => props.qrCode || route.params.qrCode)
 
-const allEvents = computed(() => {
+const filteredEvents = computed(() => {
+  if (!traceabilityData.value || !selectedEventFilter.value) {
+    return getAllEvents()
+  }
+
+  return getAllEvents().filter(event => {
+    switch (selectedEventFilter.value) {
+      case 'scan':
+        return event.event_type === 'scan'
+      case 'movement':
+        return event.event_type === 'movement'
+      case 'consumption':
+        return event.event_type === 'movement' && event.status === 'consumido'
+      case 'transfer':
+        return event.event_type === 'movement' && event.status === 'transferido'
+      default:
+        return true
+    }
+  })
+})
+
+// Métodos principales
+const loadTraceability = async () => {
+  loading.value = true
+  error.value = null
+  
+  try {
+    // Cargar trazabilidad completa
+    const traceData = await qrService.getCompleteTraceability(qrCode.value)
+    traceabilityData.value = traceData
+    
+    // Cargar información del QR
+    const qrData = await qrService.scanQRCode(qrCode.value, {
+      scan_purpose: 'traceability_view',
+      scan_source: 'traceability_starken'
+    })
+    qrInfo.value = qrData
+    
+  } catch (err) {
+    error.value = err.message || 'Error al cargar la trazabilidad'
+    console.error('Error cargando trazabilidad:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Funciones de datos
+const getAllEvents = () => {
   if (!traceabilityData.value) return []
 
   const events = []
@@ -480,275 +362,195 @@ const allEvents = computed(() => {
     events.push(...traceabilityData.value.scan_history.map(scan => ({
       ...scan,
       event_type: 'scan',
-      date_time: scan.scanned_at
+      date_time: scan.scanned_at || scan.timestamp,
+      title: 'Código QR Escaneado',
+      user_name: scan.scanned_by_name || scan.user_name
     })))
   }
 
-  // Agregar historial de movimientos
+  // Agregar movimientos
   if (traceabilityData.value.supply_history) {
     events.push(...traceabilityData.value.supply_history.map(movement => ({
       ...movement,
-      event_type: 'movement'
-    })))
-  }
-
-  // Agregar historial de solicitudes
-  if (traceabilityData.value.request_history) {
-    events.push(...traceabilityData.value.request_history.map(request => ({
-      ...request,
-      event_type: 'request',
-      date_time: request.assigned_date
+      event_type: 'movement',
+      date_time: movement.timestamp || movement.date_time,
+      title: getMovementTitle(movement),
+      location: getMovementLocation(movement)
     })))
   }
 
   // Ordenar por fecha (más reciente primero)
-  return events.sort((a, b) => {
-    const dateA = new Date(a.date_time || a.scanned_at || a.assigned_date)
-    const dateB = new Date(b.date_time || b.scanned_at || b.assigned_date)
-    return dateB - dateA
-  })
-})
-
-const filteredEvents = computed(() => {
-  let events = allEvents.value
-
-  // Filtrar por tipo de evento
-  if (selectedEventType.value) {
-    events = events.filter(event => event.event_type === selectedEventType.value)
-  }
-
-  // Filtrar por usuario
-  if (selectedUser.value) {
-    events = events.filter(event =>
-      event.scanned_by_name === selectedUser.value ||
-      event.user_name === selectedUser.value ||
-      event.assigned_by_name === selectedUser.value
-    )
-  }
-
-  // Filtrar por ubicación
-  if (selectedLocation.value) {
-    events = events.filter(event =>
-      event.current_location === selectedLocation.value ||
-      event.pavilion_name === selectedLocation.value
-    )
-  }
-
-  // Filtrar por período
-  if (selectedPeriod.value) {
-    events = events.filter(event => {
-      const eventDate = new Date(event.date_time || event.scanned_at || event.assigned_date)
-      switch (selectedPeriod.value) {
-        case 'today':
-          return isToday(eventDate)
-        case 'week':
-          return isThisWeek(eventDate)
-        case 'month':
-          return isThisMonth(eventDate)
-        default:
-          return true
-      }
-    })
-  }
-
-  return events
-})
-
-const filteredScanEvents = computed(() => {
-  return filteredEvents.value.filter(event => event.event_type === 'scan')
-})
-
-// Separar escaneos de consulta de otros eventos
-const consultationScanEvents = computed(() => {
-  return filteredEvents.value.filter(event =>
-    event.event_type === 'scan' && event.scan_purpose === 'lookup'
-  )
-})
-
-const nonConsultationEvents = computed(() => {
-  return filteredEvents.value.filter(event =>
-    event.event_type !== 'scan' ||
-    (event.event_type === 'scan' && event.scan_purpose !== 'lookup')
-  )
-})
-
-const uniqueUsers = computed(() => {
-  const users = new Set()
-  allEvents.value.forEach(event => {
-    if (event.scanned_by_name) users.add(event.scanned_by_name)
-    if (event.user_name) users.add(event.user_name)
-    if (event.assigned_by_name) users.add(event.assigned_by_name)
-  })
-  return Array.from(users).sort()
-})
-
-const uniqueLocations = computed(() => {
-  const locations = new Set()
-  allEvents.value.forEach(event => {
-    if (event.current_location) locations.add(event.current_location)
-    if (event.pavilion_name) locations.add(event.pavilion_name)
-  })
-  return Array.from(locations).sort()
-})
-
-// Funciones principales
-const loadTraceability = async () => {
-  if (!qrCode.value) {
-    error.value = 'Código QR requerido'
-    return
-  }
-
-  loading.value = true
-  error.value = null
-
-  try {
-    // Cargar información básica del QR
-    const qrResult = await qrService.scanQRCode(qrCode.value)
-    qrInfo.value = qrResult
-
-    // Cargar trazabilidad completa
-    const traceabilityResponse = await qrService.getCompleteTraceability(qrCode.value)
-    traceabilityData.value = traceabilityResponse
-
-    // Cargar estadísticas de escaneo
-    const statsResponse = await qrService.getScanStatistics(qrCode.value)
-    scanStatistics.value = statsResponse
-
-  } catch (err) {
-    console.error('Error loading traceability:', err)
-    error.value = err.message || 'Error al cargar la trazabilidad'
-  } finally {
-    loading.value = false
-  }
+  return events.sort((a, b) => new Date(b.date_time) - new Date(a.date_time))
 }
 
-const exportData = () => {
-  if (!traceabilityData.value) return
+const getMovementTitle = (movement) => {
+  if (movement.status === 'consumido') return 'Insumo Consumido'
+  if (movement.status === 'transferido') return 'Insumo Transferido'
+  if (movement.status === 'creado') return 'Insumo Creado'
+  return `Movimiento: ${movement.status || movement.movement_type || 'Cambio'}`
+}
 
-  const data = {
-    qr_code: qrCode.value,
-    export_date: new Date().toISOString(),
-    scan_statistics: scanStatistics.value,
-    traceability: traceabilityData.value,
-    qr_info: qrInfo.value,
-    filtered_events: filteredEvents.value,
-    filters_applied: {
-      event_type: selectedEventType.value,
-      user: selectedUser.value,
-      location: selectedLocation.value,
-      period: selectedPeriod.value
+const getMovementLocation = (movement) => {
+  if (movement.destination_name) {
+    const type = movement.destination_type === 'pavilion' ? 'Pabellón' : 'Almacén'
+    let location = `${type}: ${movement.destination_name}`
+    if (movement.medical_center_name) {
+      location += ` (${movement.medical_center_name})`
     }
+    return location
   }
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `traceability-${qrCode.value}-${format(new Date(), 'yyyy-MM-dd')}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  return movement.location || 'Ubicación no especificada'
 }
 
-const handleScanEventDetails = (event) => {
-  // Mostrar detalles del evento de escaneo en un modal o navegación
-  console.log('Ver detalles del evento:', event)
+// Funciones de estado y estadísticas
+const getCurrentStatusLabel = () => {
+  if (!qrInfo.value) return 'Desconocido'
+  
+  if (qrInfo.value.is_consumed) return 'Consumido'
+  
+  const status = qrInfo.value.supply_info?.status || qrInfo.value.status
+  switch (status) {
+    case 'disponible': return 'Disponible'
+    case 'recepcionado': return 'Recepcionado'
+    case 'transferido': return 'Transferido'
+    default: return status || 'Activo'
+  }
 }
 
-const handleScanAgain = (qrCode) => {
-  // Redirigir al escáner con el QR code
-  router.push({
-    name: 'QRScanner',
-    query: { qr: qrCode }
-  })
+const getCurrentStatusBadgeClass = () => {
+  if (!qrInfo.value) return 'bg-gray-100 text-gray-800'
+  
+  if (qrInfo.value.is_consumed) return 'bg-red-100 text-red-800'
+  
+  const status = qrInfo.value.supply_info?.status || qrInfo.value.status
+  switch (status) {
+    case 'disponible': return 'bg-green-100 text-green-800'
+    case 'recepcionado': return 'bg-blue-100 text-blue-800'
+    case 'transferido': return 'bg-purple-100 text-purple-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
 }
 
-const toggleConsultationScans = () => {
-  showConsultationScans.value = !showConsultationScans.value
+const getCurrentLocation = () => {
+  const events = getAllEvents()
+  const lastMovement = events.find(e => e.event_type === 'movement' && e.location)
+  return lastMovement?.location || 'Sin ubicación registrada'
 }
 
-// Funciones de utilidad
-const calculateTimeInSystem = () => {
-  if (!traceabilityData.value?.created_date) return 'N/A'
-
+const getTimeInSystem = () => {
+  if (!traceabilityData.value?.created_date && !qrInfo.value?.created_at) return 'N/A'
+  
   try {
-    const created = new Date(traceabilityData.value.created_date)
+    const createdDate = new Date(traceabilityData.value?.created_date || qrInfo.value?.created_at)
     const now = new Date()
-    const days = differenceInDays(now, created)
-
-    if (days === 0) {
-      const hours = differenceInHours(now, created)
-      return hours === 0 ? 'Menos de 1 hora' : `${hours} hora${hours > 1 ? 's' : ''}`
-    } else {
+    
+    const days = differenceInDays(now, createdDate)
+    if (days > 0) {
       return `${days} día${days > 1 ? 's' : ''}`
     }
+    
+    const hours = differenceInHours(now, createdDate)
+    if (hours > 0) {
+      return `${hours} hora${hours > 1 ? 's' : ''}`
+    }
+    
+    const minutes = differenceInMinutes(now, createdDate)
+    return `${minutes} minuto${minutes > 1 ? 's' : ''}`
   } catch {
     return 'N/A'
   }
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
-  try {
-    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
-  } catch {
-    return dateString
-  }
+const getProgressPercentage = () => {
+  if (!qrInfo.value) return 0
+  
+  if (qrInfo.value.is_consumed) return 100
+  
+  // Calcular progreso basado en eventos
+  const events = getAllEvents()
+  const hasMovements = events.some(e => e.event_type === 'movement')
+  
+  if (hasMovements) return 75
+  if (events.length > 0) return 50
+  return 25
 }
 
-// Funciones de estilo y etiquetas (manteniendo las originales)
-const getTypeLabel = (type) => {
-  const labels = {
-    'batch': 'Lote de Productos',
-    'medical_supply': 'Insumo Individual'
-  }
-  return labels[type] || type
+// Funciones de conteo
+const getEventCount = (type) => {
+  return getAllEvents().filter(e => e.event_type === type).length
 }
 
-const getTypeIconClass = (type) => {
-  const classes = {
-    'batch': 'bg-blue-100 text-blue-600',
-    'medical_supply': 'bg-green-100 text-green-600'
-  }
-  return classes[type] || 'bg-gray-100 text-gray-600'
+const getLocationCount = () => {
+  const locations = new Set()
+  getAllEvents().forEach(event => {
+    if (event.location) locations.add(event.location)
+  })
+  return locations.size
 }
 
-const getStatusLabel = () => {
-  if (!qrInfo.value) return 'Desconocido'
-  return qrInfo.value.is_consumed ? 'Consumido' : 'Disponible'
+const getUserCount = () => {
+  const users = new Set()
+  getAllEvents().forEach(event => {
+    if (event.user_name) users.add(event.user_name)
+  })
+  return users.size
 }
 
-const getStatusBadgeClass = () => {
-  if (!qrInfo.value) return 'bg-gray-100 text-gray-800'
-  return qrInfo.value.is_consumed ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+// Funciones de recorrido
+const getLocationJourney = () => {
+  const movements = getAllEvents()
+    .filter(e => e.event_type === 'movement' && e.location)
+    .reverse() // Orden cronológico
+
+  const journey = []
+  const seenLocations = new Set()
+
+  movements.forEach((movement, index) => {
+    if (!seenLocations.has(movement.location)) {
+      seenLocations.add(movement.location)
+      
+      const nextMovement = movements[index + 1]
+      let duration = null
+      
+      if (nextMovement) {
+        try {
+          const start = new Date(movement.date_time)
+          const end = new Date(nextMovement.date_time)
+          const hours = differenceInHours(end, start)
+          const days = differenceInDays(end, start)
+          
+          if (days > 0) {
+            duration = `${days} día${days > 1 ? 's' : ''}`
+          } else if (hours > 0) {
+            duration = `${hours} hora${hours > 1 ? 's' : ''}`
+          } else {
+            const minutes = differenceInMinutes(end, start)
+            duration = `${minutes} min`
+          }
+        } catch {
+          duration = null
+        }
+      }
+
+      journey.push({
+        name: movement.location,
+        date: movement.date_time,
+        duration: duration,
+        is_current: index === movements.length - 1
+      })
+    }
+  })
+
+  return journey
 }
 
-const getCurrentStatusBadgeClass = () => {
-  const status = traceabilityData.value?.current_status || 'unknown'
-  const classes = {
-    'available': 'bg-green-100 text-green-800',
-    'assigned': 'bg-blue-100 text-blue-800',
-    'delivered': 'bg-purple-100 text-purple-800',
-    'consumed': 'bg-gray-100 text-gray-800',
-    'expired': 'bg-red-100 text-red-800',
-    'unknown': 'bg-gray-100 text-gray-800'
-  }
-  return classes[status] || classes.unknown
-}
-
-// Funciones para eventos del timeline
+// Funciones de eventos del timeline
 const getEventTitle = (event) => {
   switch (event.event_type) {
     case 'scan':
       return 'Código QR Escaneado'
     case 'movement':
-      if (event.status === 'consumido' && event.destination_name) {
-        return 'Producto Consumido'
-      }
-      return `Movimiento: ${event.movement_type || event.status || 'Cambio'}`
-    case 'request':
-      return 'Asignado a Solicitud'
+      return getMovementTitle(event)
     default:
       return 'Evento'
   }
@@ -757,20 +559,13 @@ const getEventTitle = (event) => {
 const getEventDescription = (event) => {
   switch (event.event_type) {
     case 'scan':
-      return `Escaneado por ${event.scanned_by_name || 'Usuario desconocido'} desde ${event.scan_source || 'web'}`
+      return `Escaneado por ${event.user_name || 'Usuario desconocido'} desde ${event.scan_source || 'aplicación'}`
     case 'movement':
-      // Si hay información de destino, mostrarla
-      if (event.destination_name) {
-        const destinationType = event.destination_type === 'pavilion' ? 'Pabellón' : 'Almacén'
-        let description = `${event.status || 'Procesado'} - Enviado a ${destinationType}: ${event.destination_name}`
-        if (event.medical_center_name) {
-          description += ` (${event.medical_center_name})`
-        }
-        return description
+      let description = event.observations || `Estado: ${event.status || 'Procesado'}`
+      if (event.location) {
+        description += ` - ${event.location}`
       }
-      return event.observations || `Estado: ${event.status}`
-    case 'request':
-      return `Solicitud #${event.supply_request?.request_number || event.id || 'N/A'}`
+      return description
     default:
       return 'Información no disponible'
   }
@@ -781,11 +576,14 @@ const getEventIcon = (event) => {
     case 'scan':
       return 'M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z'
     case 'movement':
+      if (event.status === 'consumido') {
+        return 'M5 13l4 4L19 7'
+      } else if (event.status === 'transferido') {
+        return 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4'
+      }
       return 'M13 10V3L4 14h7v7l9-11h-7z'
-    case 'request':
-      return 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
     default:
-      return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+      return 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
   }
 }
 
@@ -794,60 +592,122 @@ const getEventIconClass = (event) => {
     case 'scan':
       return 'bg-blue-500'
     case 'movement':
-      return 'bg-green-500'
-    case 'request':
-      return 'bg-purple-500'
+      if (event.status === 'consumido') return 'bg-red-500'
+      if (event.status === 'transferido') return 'bg-purple-500'
+      if (event.status === 'creado') return 'bg-green-500'
+      return 'bg-orange-500'
     default:
       return 'bg-gray-500'
   }
 }
 
-const getScanPurposeBadgeClass = (purpose) => {
-  const classes = {
-    'lookup': 'bg-green-100 text-green-800',
-    'consume': 'bg-red-100 text-red-800',
-    'verify': 'bg-blue-100 text-blue-800',
-    'inventory_check': 'bg-purple-100 text-purple-800',
-    'assign': 'bg-yellow-100 text-yellow-800'
-  }
-  return classes[purpose] || 'bg-gray-100 text-gray-800'
+const hasEventDetails = (event) => {
+  return event.user_name || event.location || event.notes || true // Siempre mostrar fecha exacta
 }
 
-const getScanPurposeLabel = (purpose) => {
-  const labels = {
-    'lookup': 'Consulta',
-    'consume': 'Consumo',
-    'verify': 'Verificación',
-    'inventory_check': 'Inventario',
-    'assign': 'Asignación'
+// Funciones de formato
+const formatDateTime = (dateString) => {
+  if (!dateString) return 'N/A'
+  try {
+    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+  } catch {
+    return dateString
   }
-  return labels[purpose] || purpose
 }
 
-// Lifecycle
+const formatRelativeTime = (dateString) => {
+  if (!dateString) return 'N/A'
+  try {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: es })
+  } catch {
+    return dateString
+  }
+}
+
+// Funciones de exportación
+const exportTraceability = () => {
+  const data = {
+    qr_code: qrCode.value,
+    export_date: new Date().toISOString(),
+    product_info: qrInfo.value,
+    traceability_data: traceabilityData.value,
+    events: getAllEvents(),
+    summary: {
+      total_events: getAllEvents().length,
+      total_scans: getEventCount('scan'),
+      total_movements: getEventCount('movement'),
+      locations_visited: getLocationCount(),
+      users_involved: getUserCount(),
+      current_status: getCurrentStatusLabel(),
+      time_in_system: getTimeInSystem()
+    }
+  }
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `trazabilidad-${qrCode.value}-${format(new Date(), 'yyyy-MM-dd')}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+const printTraceability = () => {
+  window.print()
+}
+
+const applyFilters = () => {
+  // Los filtros se aplican automáticamente a través del computed
+}
+
+// Lifecycle hooks
 onMounted(() => {
   if (qrCode.value) {
     loadTraceability()
-  } else {
-    error.value = 'No se proporcionó código QR'
   }
 })
 </script>
 
 <style scoped>
 .form-select {
-  @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm;
+  @apply block px-3 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500;
 }
 
 .btn-primary {
-  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
 }
 
 .flow-root {
   overflow: hidden;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Animaciones */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

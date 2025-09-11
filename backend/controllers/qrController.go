@@ -131,6 +131,7 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 			"Code":         qrInfo.SupplyInfo.Code,
 			"BatchID":      qrInfo.SupplyInfo.BatchID,
 			"QRCode":       qrInfo.SupplyInfo.QRCode,
+			"Status":       qrInfo.SupplyInfo.Status,
 			"IsConsumed":   qrInfo.SupplyInfo.IsConsumed,
 			"LastMovement": qrInfo.SupplyInfo.LastMovement,
 			"DaysToExpire": qrInfo.SupplyInfo.DaysToExpire,
@@ -149,6 +150,8 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 		resultMap["supply_info"] = supplyInfoMap
 		resultMap["is_consumed"] = qrInfo.SupplyInfo.IsConsumed
 		resultMap["can_consume"] = !qrInfo.SupplyInfo.IsConsumed
+		resultMap["status"] = qrInfo.SupplyInfo.Status
+		resultMap["current_status"] = qrInfo.SupplyInfo.Status
 	}
 
 	if qrType == "SUPPLY" {

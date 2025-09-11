@@ -157,22 +157,53 @@
         @consume-supply="consumeSupply"
       />
       
-      <!-- Acciones Rápidas -->
+      <!-- NUEVA LÓGICA: State-specific recommendations -->
+      <div v-if="getStateRecommendation(scannedInfo)" class="p-4 border-t border-gray-200">
+        <div :class="getRecommendationClass(scannedInfo)" class="rounded-md p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg :class="getRecommendationIconClass(scannedInfo)" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getRecommendationIcon(scannedInfo)" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 :class="getRecommendationTitleClass(scannedInfo)" class="text-sm font-medium">
+                {{ getStateRecommendation(scannedInfo).title }}
+              </h3>
+              <div :class="getRecommendationTextClass(scannedInfo)" class="mt-2 text-sm">
+                {{ getStateRecommendation(scannedInfo).message }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- NUEVA LÓGICA: Acciones basadas en estado -->
       <div v-if="scannedInfo.supply_info && !scannedInfo.is_consumed" class="p-4 border-t border-gray-200 bg-gray-50">
         <div class="flex flex-wrap gap-3">
-          <button @click="quickConsume" class="btn-primary text-sm">
+          <!-- NUEVA LÓGICA: Solo mostrar consumir si estado es "recepcionado" -->
+          <router-link 
+            v-if="canBeConsumed(scannedInfo)"
+            :to="{ name: 'QRConsumer', query: { qr: scannedInfo.qr_code } }" 
+            class="btn-primary text-sm"
+          >
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
             Consumir
-          </button>
+          </router-link>
           
-          <button @click="quickTransfer" class="btn-secondary text-sm">
+          <!-- NUEVA LÓGICA: Solo mostrar transferir si estado es "disponible" -->
+          <router-link 
+            v-if="canBeTransferred(scannedInfo)"
+            :to="{ name: 'QRTransfer', query: { qr: scannedInfo.qr_code } }" 
+            class="btn-primary text-sm"
+          >
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
             Transferir
-          </button>
+          </router-link>
         </div>
       </div>
     </div>
@@ -283,6 +314,133 @@ let animationFrameId = null
 // Computed properties
 const currentUser = computed(() => authStore.user)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+
+// ===== NUEVA LÓGICA: Funciones de estado y recomendaciones =====
+const canBeConsumed = (info) => {
+  if (!info || info.type !== 'medical_supply') return false
+  if (info.is_consumed) return false
+  
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+  return status === 'recepcionado'
+}
+
+const canBeTransferred = (info) => {
+  if (!info || info.type !== 'medical_supply') return false
+  if (info.is_consumed) return false
+  
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+  return status === 'disponible'
+}
+
+const getStateRecommendation = (info) => {
+  if (!info || info.type !== 'medical_supply') {
+    if (info?.type === 'batch') {
+      return {
+        title: 'Código de Lote',
+        message: 'Este código corresponde a un lote completo. Use los códigos QR individuales de los insumos para realizar acciones.',
+        type: 'info'
+      }
+    }
+    return null
+  }
+
+  if (info.is_consumed) {
+    return {
+      title: 'Insumo Consumido',
+      message: 'Este insumo ya ha sido consumido. Solo puede consultar su información y trazabilidad.',
+      type: 'info'
+    }
+  }
+
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+
+  switch (status) {
+    case 'disponible':
+      return {
+        title: 'Listo para Transferir',
+        message: 'Este insumo tiene estado "disponible" y puede ser transferido a otro pabellón o centro médico.',
+        type: 'success'
+      }
+    case 'recepcionado':
+      return {
+        title: 'Listo para Consumir',
+        message: 'Este insumo tiene estado "recepcionado" y puede ser consumido en un procedimiento médico.',
+        type: 'success'
+      }
+    case 'transferido':
+      return {
+        title: 'Insumo Transferido',
+        message: 'Este insumo ha sido transferido. Consulte su trazabilidad para ver el destino.',
+        type: 'info'
+      }
+    default:
+      return {
+        title: 'Estado Indefinido',
+        message: `El insumo tiene estado "${status}". Consulte con el administrador del sistema.`,
+        type: 'warning'
+      }
+  }
+}
+
+const getRecommendationClass = (info) => {
+  const rec = getStateRecommendation(info)
+  if (!rec) return ''
+  
+  switch (rec.type) {
+    case 'success': return 'bg-green-50 border border-green-200'
+    case 'warning': return 'bg-yellow-50 border border-yellow-200'
+    case 'info': return 'bg-blue-50 border border-blue-200'
+    default: return 'bg-gray-50 border border-gray-200'
+  }
+}
+
+const getRecommendationIconClass = (info) => {
+  const rec = getStateRecommendation(info)
+  if (!rec) return 'text-gray-400'
+  
+  switch (rec.type) {
+    case 'success': return 'text-green-400'
+    case 'warning': return 'text-yellow-400'
+    case 'info': return 'text-blue-400'
+    default: return 'text-gray-400'
+  }
+}
+
+const getRecommendationTitleClass = (info) => {
+  const rec = getStateRecommendation(info)
+  if (!rec) return 'text-gray-800'
+  
+  switch (rec.type) {
+    case 'success': return 'text-green-800'
+    case 'warning': return 'text-yellow-800'
+    case 'info': return 'text-blue-800'
+    default: return 'text-gray-800'
+  }
+}
+
+const getRecommendationTextClass = (info) => {
+  const rec = getStateRecommendation(info)
+  if (!rec) return 'text-gray-700'
+  
+  switch (rec.type) {
+    case 'success': return 'text-green-700'
+    case 'warning': return 'text-yellow-700'
+    case 'info': return 'text-blue-700'
+    default: return 'text-gray-700'
+  }
+}
+
+const getRecommendationIcon = (info) => {
+  const rec = getStateRecommendation(info)
+  if (!rec) return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+  
+  switch (rec.type) {
+    case 'success': return 'M5 13l4 4L19 7'
+    case 'warning': return 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+    case 'info': return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+    default: return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+  }
+}
 
 // ===== FUNCIONES DE CÁMARA =====
 const startCameraScanner = async () => {
