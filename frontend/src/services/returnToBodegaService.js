@@ -108,15 +108,50 @@ class ReturnToBodegaService {
    */
   async getSuppliesForReturn() {
     try {
+      console.log('🔍 Llamando a:', `${API_BASE_URL}/qr/supplies-for-return`)
       const response = await this.api.get('/qr/supplies-for-return')
-      return response.data.data || response.data || []
+      console.log('🔍 Respuesta completa:', response)
+      console.log('🔍 Status:', response.status)
+      console.log('🔍 Data:', response.data)
+      console.log('🔍 Tipo de data:', typeof response.data)
+      
+      // Intentar diferentes estructuras de respuesta
+      let data = []
+      
+      if (Array.isArray(response.data)) {
+        // Si response.data es directamente un array
+        data = response.data
+      } else if (response.data && Array.isArray(response.data.data)) {
+        // Si está en response.data.data
+        data = response.data.data
+      } else if (response.data && Array.isArray(response.data.supplies)) {
+        // Si está en response.data.supplies
+        data = response.data.supplies
+      } else if (response.data && response.data.message) {
+        // Si es una respuesta con mensaje (posiblemente vacía)
+        console.log('📄 Mensaje del servidor:', response.data.message)
+        data = []
+      } else {
+        // Fallback: intentar convertir cualquier cosa a array
+        console.warn('⚠️ Estructura de respuesta no reconocida, usando array vacío')
+        data = []
+      }
+      
+      console.log('✅ Datos finales extraídos:', data)
+      console.log('✅ Cantidad de elementos:', data.length)
+      
+      return data
     } catch (error) {
-      console.error('Error obteniendo insumos para retorno:', error)
+      console.error('❌ Error obteniendo insumos para retorno:', error)
       if (error.response) {
+        console.error('❌ Status:', error.response.status)
+        console.error('❌ Data:', error.response.data)
         throw new Error(error.response.data?.error || `Error HTTP: ${error.response.status}`)
       } else if (error.request) {
+        console.error('❌ No response received:', error.request)
         throw new Error('No se pudo conectar con el servidor')
       } else {
+        console.error('❌ Request setup error:', error.message)
         throw error
       }
     }
@@ -189,20 +224,40 @@ class ReturnToBodegaService {
    * @returns {Object} Objeto formateado para la UI
    */
   formatSupplyForUI(supply) {
+    // Manejar casos donde supply puede ser null o undefined
+    if (!supply || typeof supply !== 'object') {
+      console.warn('⚠️ Supply inválido para formatear:', supply)
+      return {
+        id: null,
+        qrCode: 'N/A',
+        name: 'Insumo desconocido',
+        status: 'unknown',
+        batchId: null,
+        supplier: 'N/A',
+        expirationDate: null,
+        storeName: 'N/A',
+        storeId: null,
+        receivedAt: null,
+        daysElapsed: 0,
+        shouldReturn: false,
+        canReturn: false
+      }
+    }
+    
     return {
-      id: supply.supply_id,
-      qrCode: supply.qr_code,
-      name: supply.supply_name,
-      status: supply.status,
-      batchId: supply.batch_id,
-      supplier: supply.supplier,
-      expirationDate: supply.expiration_date,
-      storeName: supply.store_name,
-      storeId: supply.store_id,
-      receivedAt: supply.received_at,
-      daysElapsed: supply.days_elapsed,
-      shouldReturn: supply.should_return,
-      canReturn: supply.days_elapsed >= 15
+      id: supply.supply_id || supply.id || null,
+      qrCode: supply.qr_code || supply.qrCode || 'N/A',
+      name: supply.supply_name || supply.name || 'Insumo sin nombre',
+      status: supply.status || 'unknown',
+      batchId: supply.batch_id || supply.batchId || null,
+      supplier: supply.supplier || 'N/A',
+      expirationDate: supply.expiration_date || supply.expirationDate || null,
+      storeName: supply.store_name || supply.storeName || 'N/A',
+      storeId: supply.store_id || supply.storeId || null,
+      receivedAt: supply.received_at || supply.receivedAt || null,
+      daysElapsed: supply.days_elapsed || supply.daysElapsed || 0,
+      shouldReturn: supply.should_return || supply.shouldReturn || false,
+      canReturn: (supply.days_elapsed || supply.daysElapsed || 0) >= 15
     }
   }
 }

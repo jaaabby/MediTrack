@@ -100,8 +100,8 @@
         </div>
       </div>
 
-      <!-- Reportes de inventario 
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer opacity-75" @click="navigateTo('/inventory/reports')">
+      <!-- Estadísticas -->
+      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/statistics')">
         <div class="flex items-center gap-4">
           <div class="bg-purple-100 p-3 rounded-lg">
             <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,11 +109,26 @@
             </svg>
           </div>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900">Reportes</h3>
-            <p class="text-gray-600 text-sm">Análisis y estadísticas <span class="text-yellow-600">(Próximamente)</span></p>
+            <h3 class="text-lg font-semibold text-gray-900">Estadísticas</h3>
+            <p class="text-gray-600 text-sm">Análisis y métricas del sistema</p>
           </div>
         </div>
-      </div>-->
+      </div>
+
+      <!-- Gestión de Retornos -->
+      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/return-management')">
+        <div class="flex items-center gap-4">
+          <div class="bg-orange-100 p-3 rounded-lg">
+            <svg class="h-8 w-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Gestión de Retornos</h3>
+            <p class="text-gray-600 text-sm">Retorno de insumos a bodega</p>
+          </div>
+        </div>
+      </div>
 
       <!-- Movimientos de stock
       <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer opacity-75" @click="navigateTo('/inventory/movements')">

@@ -127,8 +127,8 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="supply in suppliesForReturn" :key="supply.supply_id" 
-                :class="{ 'bg-red-50': supply.days_elapsed >= 15 }">
+            <tr v-for="supply in suppliesForReturn" :key="supply.id" 
+                :class="{ 'bg-red-50': supply.daysElapsed >= 15 }">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10">
@@ -139,8 +139,8 @@
                     </div>
                   </div>
                   <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ supply.supply_name }}</div>
-                    <div class="text-sm text-gray-500">{{ supply.qr_code }}</div>
+                    <div class="text-sm font-medium text-gray-900">{{ supply.name }}</div>
+                    <div class="text-sm text-gray-500">{{ supply.qrCode }}</div>
                   </div>
                 </div>
               </td>
@@ -151,30 +151,30 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
-                  <span :class="{ 'text-red-600 font-bold': supply.days_elapsed >= 15, 'text-gray-900': supply.days_elapsed < 15 }">
-                    {{ supply.days_elapsed }} días
+                  <span :class="{ 'text-red-600 font-bold': supply.daysElapsed >= 15, 'text-gray-900': supply.daysElapsed < 15 }">
+                    {{ supply.daysElapsed }} días
                   </span>
-                  <svg v-if="supply.days_elapsed >= 15" class="h-4 w-4 text-red-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg v-if="supply.daysElapsed >= 15" class="h-4 w-4 text-red-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-2.694-.833-3.464 0L3.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ formatDate(supply.received_at) }}
+                {{ formatDate(supply.receivedAt) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ supply.store_name }}
+                {{ supply.storeName }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <button 
                   @click="returnIndividualSupply(supply)"
-                  :disabled="returningSupplies[supply.qr_code]"
+                  :disabled="returningSupplies[supply.qrCode]"
                   class="btn-danger-sm mr-2"
                 >
-                  {{ returningSupplies[supply.qr_code] ? 'Regresando...' : 'Regresar' }}
+                  {{ returningSupplies[supply.qrCode] ? 'Regresando...' : 'Regresar' }}
                 </button>
                 <button 
-                  @click="viewSupplyDetails(supply.qr_code)"
+                  @click="viewSupplyDetails(supply.qrCode)"
                   class="btn-secondary-sm"
                 >
                   Ver Detalles
@@ -223,7 +223,7 @@ const lastProcessDate = ref(null)
 
 // Computed properties
 const criticalSupplies = computed(() => {
-  return suppliesForReturn.value.filter(supply => supply.days_elapsed >= 15)
+  return suppliesForReturn.value.filter(supply => supply.daysElapsed >= 15)
 })
 
 // Funciones principales
@@ -232,12 +232,41 @@ const refreshData = async () => {
   error.value = null
   
   try {
+    console.log('🔍 Iniciando carga de datos...')
     const supplies = await returnToBodegaService.getSuppliesForReturn()
-    suppliesForReturn.value = supplies.map(supply => returnToBodegaService.formatSupplyForUI(supply))
+    console.log('🔍 Datos recibidos del servicio:', supplies)
+    console.log('🔍 Tipo de datos:', typeof supplies)
+    console.log('🔍 Es array:', Array.isArray(supplies))
+    
+    // Verificar si supplies es un array, si no convertirlo
+    let suppliesArray = []
+    if (Array.isArray(supplies)) {
+      suppliesArray = supplies
+    } else if (supplies && typeof supplies === 'object') {
+      // Si supplies es un objeto, intentar extraer el array
+      if (supplies.data && Array.isArray(supplies.data)) {
+        suppliesArray = supplies.data
+      } else if (supplies.supplies && Array.isArray(supplies.supplies)) {
+        suppliesArray = supplies.supplies
+      } else {
+        console.warn('⚠️ Estructura de respuesta no esperada:', supplies)
+        suppliesArray = []
+      }
+    } else {
+      console.warn('⚠️ Respuesta no válida del servidor:', supplies)
+      suppliesArray = []
+    }
+    
+    console.log('🔍 Array final a procesar:', suppliesArray)
+    suppliesForReturn.value = suppliesArray.map(supply => returnToBodegaService.formatSupplyForUI(supply))
     lastProcessDate.value = new Date().toLocaleString()
+    
+    console.log('✅ Datos cargados exitosamente:', suppliesForReturn.value.length, 'insumos')
   } catch (err) {
-    console.error('Error refreshing data:', err)
+    console.error('❌ Error refreshing data:', err)
     error.value = err.message || 'Error al cargar los datos'
+    // Asegurar que suppliesForReturn sea un array vacío en caso de error
+    suppliesForReturn.value = []
   } finally {
     loading.value = false
   }
