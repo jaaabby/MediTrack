@@ -37,5 +37,10 @@ func SetupMedicalSupplyRoutes(router *gin.RouterGroup, medicalSupplyService serv
 		medicalSupplies.POST("/create-multiple", medicalSupplyController.CreateMultipleSupplies)
 		medicalSupplies.POST("/consume", medicalSupplyController.ConsumeSupply)
 		medicalSupplies.POST("/sync-amounts", medicalSupplyController.SyncBatchAmounts)
+
+		// ===== RUTAS DE ALERTA PARA INSUMOS NO CONSUMIDOS =====
+		medicalSupplies.PUT("/:id/status", medicalSupplyController.UpdateMedicalSupplyStatus)
+		medicalSupplies.GET("/unconsumed", medicalSupplyController.GetUnconsumedSupplies)
+		medicalSupplies.POST("/check-unconsumed", medicalSupplyController.CheckUnconsumedSupplies)
 	}
 }
