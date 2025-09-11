@@ -208,92 +208,95 @@
             <!-- Nombre del usuario obtenido de la sesión actual -->
             <p class="text-sm text-gray-600">Nombre: {{ currentUser?.name || 'No disponible' }}</p>
           </div>
-        </div>
 
-        <!-- Notas -->
-        <!-- 
-          Campo opcional para agregar observaciones adicionales sobre el consumo del insumo.
-          Permite al usuario de pabellón documentar detalles específicos del uso del insumo médico.
-          Las notas se guardan en el historial del insumo para trazabilidad.
-        -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Notas Adicionales
-          </label>
+          <!-- Notas -->
           <!-- 
-            Textarea para ingresar notas opcionales sobre el consumo.
-            Se vincula con consumptionForm.notes para capturar el texto ingresado.
+            Campo opcional para agregar observaciones adicionales sobre el consumo del insumo.
+            Permite al usuario de pabellón documentar detalles específicos del uso del insumo médico.
+            Las notas se guardan en el historial del insumo para trazabilidad.
           -->
-          <textarea v-model="consumptionForm.notes" rows="3" placeholder="Detalles del consumo, observaciones, etc."
-            class="form-textarea w-full"></textarea>
-        </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Notas Adicionales
+            </label>
+            <!-- 
+              Textarea para ingresar notas opcionales sobre el consumo.
+              Se vincula con consumptionForm.notes para capturar el texto ingresado.
+            -->
+            <textarea v-model="consumptionForm.notes" rows="3" placeholder="Detalles del consumo, observaciones, etc."
+              class="form-textarea w-full"></textarea>
+          </div>
 
-        <!-- Consumption Button -->
-        <!-- 
-          Sección de botones de acción para el formulario de consumo.
-          Incluye botón de cancelar y botón principal para consumir el insumo.
-        -->
-        <div class="flex justify-end space-x-3">
+          <!-- Consumption Button -->
           <!-- 
-            Botón de cancelar que limpia el producto escaneado y resetea el formulario.
-            Permite al usuario cancelar la operación de consumo.
+            Sección de botones de acción para el formulario de consumo.
+            Incluye botón de cancelar y botón principal para consumir el insumo.
           -->
-          <button @click="clearScannedProduct" class="btn-secondary">
-            Cancelar
-          </button>
-          <!-- 
-            Botón principal para consumir el insumo médico.
-            Se deshabilita si el formulario no es válido o si ya se está procesando el consumo.
-            Muestra estado de carga durante el procesamiento.
-          -->
-          <button @click="consumeProduct" :disabled="!validateConsumptionForm() || consuming" class="btn-primary">
-            <!-- Estado de carga: muestra spinner y texto "Consumiendo..." -->
-            <div v-if="consuming" class="flex items-center">
-              <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                </path>
-              </svg>
-              Consumiendo...
-            </div>
-            <!-- Estado normal: muestra icono de check y texto "Consumir Insumo" -->
-            <div v-else class="flex items-center">
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              Consumir Insumo
-            </div>
-          </button>
+          <div class="flex justify-end space-x-3">
+            <!-- 
+              Botón de cancelar que limpia el producto escaneado y resetea el formulario.
+              Permite al usuario cancelar la operación de consumo.
+            -->
+            <button @click="clearScannedProduct" class="btn-secondary">
+              Cancelar
+            </button>
+            <!-- 
+              Botón principal para consumir el insumo médico.
+              Se deshabilita si el formulario no es válido o si ya se está procesando el consumo.
+              Muestra estado de carga durante el procesamiento.
+            -->
+            <button @click="consumeProduct" :disabled="!validateConsumptionForm() || consuming" class="btn-primary">
+              <!-- Estado de carga: muestra spinner y texto "Consumiendo..." -->
+              <div v-if="consuming" class="flex items-center">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
+                Consumiendo...
+              </div>
+              <!-- Estado normal: muestra icono de check y texto "Consumir Insumo" -->
+              <div v-else class="flex items-center">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Consumir Insumo
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Success Message -->
-  <div v-if="consumptionSuccess" class="bg-green-50 border border-green-200 rounded-md p-4">
-    <div class="flex">
-      <div class="flex-shrink-0">
-        <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
-      <div class="ml-3">
-        <h3 class="text-sm font-medium text-green-800">Consumo Exitoso</h3>
-        <div class="mt-2 text-sm text-green-700">
-          El insumo ha sido consumido correctamente. El historial del lote y la trazabilidad han sido actualizados.
+    <!-- Success Message -->
+    <div v-if="consumptionSuccess" class="bg-green-50 border border-green-200 rounded-md p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
         </div>
-        <div class="mt-4 flex space-x-3">
-          <button @click="resetForm" class="btn-primary text-sm">
-            Consumir Otro Insumo
-          </button>
-          <router-link :to="`/qr/${consumptionSuccess.qr_code}/traceability`" class="btn-secondary text-sm">
-            Ver Trazabilidad
-          </router-link>
-          <router-link v-if="consumptionSuccess.batch_id" :to="`/batch/${consumptionSuccess.batch_id}/history`"
-            class="btn-secondary text-sm">
-            Ver Historial del Lote
-          </router-link>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-green-800">Consumo Exitoso</h3>
+          <div class="mt-2 text-sm text-green-700">
+            El insumo ha sido consumido correctamente y marcado como usado.
+            <div v-if="consumptionSuccess.status_change" class="mt-1 text-xs text-green-600">
+              Estado cambiado de "{{ consumptionSuccess.status_change.from }}" a "{{ consumptionSuccess.status_change.to }}"
+            </div>
+          </div>
+          <div class="mt-4 flex space-x-3">
+            <button @click="resetForm" class="btn-primary text-sm">
+              Consumir Otro Insumo
+            </button>
+            <router-link v-if="consumptionSuccess.qr_code" :to="`/qr/${consumptionSuccess.qr_code}/traceability`" class="btn-secondary text-sm">
+              Ver Trazabilidad
+            </router-link>
+            <router-link v-if="consumptionSuccess.batch_id" :to="`/batch/${consumptionSuccess.batch_id}/history`"
+              class="btn-secondary text-sm">
+              Ver Historial del Lote
+            </router-link>
+          </div>
         </div>
       </div>
     </div>
@@ -366,9 +369,6 @@ onMounted(() => {
     scanQR()
   }
 })
-
-
-
 
 // Escanear QR
 const scanQR = async () => {
@@ -496,6 +496,13 @@ const consumeProduct = async () => {
     // Obtener el pabellón del usuario (asumiendo que está en el contexto del pabellón)
     const pavilionId = currentUser.value?.pavilion_id || 1 // Fallback a pabellón 1
 
+    // Guardar el estado anterior para mostrar el cambio
+    const previousStatus = scannedProduct.value.supply_info?.Status || 
+                          scannedProduct.value.supply_info?.status || 
+                          scannedProduct.value.status || 
+                          scannedProduct.value.current_status || 
+                          'recepcionado'
+
     const consumptionData = {
       qr_code: scannedProduct.value.qr_code,
       user_rut: userRUT,
@@ -519,11 +526,15 @@ const consumeProduct = async () => {
         ...result.data,
         qr_code: scannedProduct.value.qr_code,
         batch_id: scannedProduct.value.supply_info?.batch?.id,
+        status_change: {
+          from: getStatusLabel({ supply_info: { status: previousStatus } }),
+          to: 'Consumido'
+        },
         traceability_info: result.traceability_info,
         batch_history_updated: true
       }
 
-      // Limpiar formulario
+      // Limpiar producto escaneado pero mantener el mensaje de éxito visible
       scannedProduct.value = null
       qrInput.value = ''
       selectedConsumptionPurpose.value = ''
