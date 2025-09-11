@@ -717,54 +717,9 @@ CREATE TRIGGER trg_update_medical_supply_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_medical_supply_updated_at();
 
--- Función para generar automáticamente registros en supply_history cuando cambie el status
-CREATE OR REPLACE FUNCTION log_medical_supply_status_change()
-RETURNS TRIGGER AS $$
-DECLARE
-    current_user_rut VARCHAR(20) := current_setting('app.current_user', true);
-    default_user_rut VARCHAR(20) := '12345678-9';
-    destination_type_val VARCHAR(50);
-    destination_id_val INTEGER;
-BEGIN
-    -- Solo registrar si el status realmente cambió
-    IF OLD.status IS DISTINCT FROM NEW.status THEN
-        -- Usar usuario actual o por defecto
-        IF current_user_rut IS NULL OR current_user_rut = '' THEN
-            current_user_rut := default_user_rut;
-        END IF;
-        
-        -- Determinar destination_type y destination_id basado en el nuevo status
-        -- Para simplificar, usaremos valores por defecto que pueden ser ajustados según la lógica de negocio
-        destination_type_val := 'store'; -- Valor por defecto
-        destination_id_val := 1; -- Valor por defecto, debería ser ajustado según el contexto
-        
-        -- Insertar registro en supply_history
-        INSERT INTO supply_history (
-            date_time,
-            status,
-            destination_type,
-            destination_id,
-            medical_supply_id,
-            user_rut
-        ) VALUES (
-            NOW(),
-            NEW.status,
-            destination_type_val,
-            destination_id_val,
-            NEW.id,
-            current_user_rut
-        );
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Crear trigger para generar automáticamente el historial
-CREATE TRIGGER trg_log_medical_supply_status_change
-    AFTER UPDATE ON medical_supply
-    FOR EACH ROW
-    EXECUTE FUNCTION log_medical_supply_status_change();
+-- NOTA: La función log_medical_supply_status_change y su trigger han sido eliminados
+-- para evitar duplicación de registros en supply_history.
+-- El historial se maneja exclusivamente a través de la lógica de la aplicación.
 
 -- Migrar estados existentes de supply_history a medical_supply
 UPDATE medical_supply 

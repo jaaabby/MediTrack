@@ -339,10 +339,15 @@ onMounted(async () => {
       const stats = await qrService.getScanStatistics(props.qrInfo.qr_code)
       scanActivity.value = stats
       
-      // Cargar información del último escaneo
-      const scanHistory = await qrService.getScanHistory(props.qrInfo.qr_code, 1)
+      // Cargar información del último escaneo significativo
+      const scanHistory = await qrService.getScanHistory(props.qrInfo.qr_code, 10)
       if (scanHistory && scanHistory.length > 0) {
-        lastScanInfo.value = scanHistory[0]
+        // Filtrar solo eventos que representen cambios reales, no verificaciones
+        const significantEvents = scanHistory.filter(event => 
+          !event.scan_purpose || 
+          !['transfer_verification', 'transfer_check', 'lookup'].includes(event.scan_purpose)
+        )
+        lastScanInfo.value = significantEvents[0] || scanHistory[0]
       }
     } catch (error) {
       console.warn('No se pudo cargar información de trazabilidad:', error)

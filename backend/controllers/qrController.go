@@ -680,6 +680,9 @@ func (c *QRController) GenerateSupplyQR(ctx *gin.Context) {
 
 // TransferSupply transfiere un insumo individual por su código QR
 func (c *QRController) TransferSupply(ctx *gin.Context) {
+	fmt.Printf("🎯 DEBUG - CONTROLLER TransferSupply llamado desde %s, Time=%s\n",
+		ctx.ClientIP(), time.Now().Format("2006-01-02 15:04:05.000"))
+
 	var request struct {
 		QRCode          string `json:"qr_code" binding:"required"`
 		UserRUT         string `json:"user_rut" binding:"required"`

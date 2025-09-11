@@ -159,6 +159,26 @@ func (s *QRService) ScanQRWithAutoLogging(qrCode string, context *ScanContext) (
 
 // logScanEvent registra automáticamente un evento de escaneo
 func (s *QRService) logScanEvent(qrCode string, context *ScanContext, qrInfo *QRInfo, result string, errorMsg string) (*models.QRScanEvent, error) {
+	// Verificar si debemos prevenir logging duplicado
+	if context != nil && context.ScanPurpose != nil {
+		// No registrar escaneos de verificación para transferencias si ya hay uno reciente
+		if *context.ScanPurpose == models.ScanPurposeTransferVerification || *context.ScanPurpose == "transfer_check" {
+			// Buscar si ya hay un escaneo similar en los últimos 5 minutos
+			var recentScan models.QRScanEvent
+			fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
+
+			err := s.DB.Where("qr_code = ? AND scan_purpose = ? AND scanned_at > ?",
+				qrCode, *context.ScanPurpose, fiveMinutesAgo).
+				First(&recentScan).Error
+
+			if err == nil {
+				// Ya existe un escaneo reciente, no crear otro
+				fmt.Printf("DEBUG - Evitando duplicar escaneo de verificación para %s\n", qrCode)
+				return &recentScan, nil
+			}
+		}
+	}
+
 	event := &models.QRScanEvent{
 		QRCode:     qrCode,
 		ScannedAt:  time.Now(),
@@ -863,6 +883,33 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 	var supply models.MedicalSupply
 	var result map[string]interface{}
 
+	// DEBUG: Log de entrada al método
+	fmt.Printf("🚀 DEBUG - INICIO TransferSupplyByQR: QR=%s, User=%s, Destination=%s:%d, Time=%s\n",
+		qrCode, userRUT, destinationType, destinationID, time.Now().Format("2006-01-02 15:04:05.000"))
+
+	// Validar formato del RUT
+	if len(userRUT) < 9 || !strings.Contains(userRUT, "-") {
+		// Si el RUT no tiene el formato correcto, asumir que falta el guión
+		if len(userRUT) == 9 {
+			// Agregar el guión antes del último dígito
+			userRUT = userRUT[:8] + "-" + userRUT[8:]
+		} else {
+			return nil, fmt.Errorf("formato de RUT inválido: %s", userRUT)
+		}
+	}
+
+	// DEBUG: Verificar si ya hay una transferencia reciente para este QR
+	var existingTransfer models.SupplyHistory
+	transferInProgress := s.DB.Where(`medical_supply_id = (SELECT id FROM medical_supply WHERE qr_code = ?) 
+		AND status IN ('en_camino_a_pabellon', 'en_camino_a_bodega') 
+		AND date_time > ?`, qrCode, time.Now().Add(-5*time.Minute)).First(&existingTransfer).Error == nil
+
+	if transferInProgress {
+		fmt.Printf("DEBUG - PREVENCIÓN DUPLICADO: Ya existe transferencia reciente para QR=%s, TransferID=%d, Status=%s, Time=%s\n",
+			qrCode, existingTransfer.ID, existingTransfer.Status, existingTransfer.DateTime.Format("2006-01-02 15:04:05"))
+		return nil, fmt.Errorf("ya existe una transferencia en progreso para este insumo - ID: %d", existingTransfer.ID)
+	}
+
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		// Buscar el insumo por QR
 		if err := tx.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
@@ -898,6 +945,17 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			return fmt.Errorf("error actualizando estado del insumo: %v", err)
 		}
 
+		// 🕵️ DEBUG: Verificar SI el update del estado creó historial automáticamente
+		var historyCountAfterUpdate int64
+		tx.Model(&models.SupplyHistory{}).Where("medical_supply_id = ?", supply.ID).Count(&historyCountAfterUpdate)
+		fmt.Printf("🔍 DEBUG - DESPUÉS de Update status: QR=%s, HistoryCount=%d\n", qrCode, historyCountAfterUpdate)
+
+		// DEBUG: Verificar cuántas entradas de historial existen para este insumo ANTES de crear nueva
+		var historyCountBefore int64
+		tx.Model(&models.SupplyHistory{}).Where("medical_supply_id = ?", supply.ID).Count(&historyCountBefore)
+		fmt.Printf("DEBUG - ANTES crear historial: QR=%s, SupplyID=%d, HistoryCount=%d, CurrentStatus=%s\n",
+			qrCode, supply.ID, historyCountBefore, supply.Status)
+
 		// Crear entrada en el historial de suministros para la transferencia
 		history := models.SupplyHistory{
 			DateTime:        time.Now(),
@@ -906,12 +964,25 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			DestinationID:   destinationID,
 			MedicalSupplyID: supply.ID,
 			UserRUT:         userRUT,
-			Notes:           notes,
+			Notes:           fmt.Sprintf("Transferencia a %s - %s", destinationType, notes),
 		}
+
+		// DEBUG: Log para detectar posibles duplicados
+		fmt.Printf("DEBUG - Creando historial de transferencia: QR=%s, Status=%s, Destination=%s:%d, User=%s, Time=%s\n",
+			qrCode, transitStatus, destinationType, destinationID, userRUT, history.DateTime.Format("2006-01-02 15:04:05"))
 
 		if err := tx.Create(&history).Error; err != nil {
 			return fmt.Errorf("error creando historial de transferencia: %v", err)
 		}
+
+		// DEBUG: Verificar cuántas entradas existen DESPUÉS de crear
+		var historyCountAfter int64
+		tx.Model(&models.SupplyHistory{}).Where("medical_supply_id = ?", supply.ID).Count(&historyCountAfter)
+		fmt.Printf("DEBUG - DESPUÉS crear historial: QR=%s, HistoryID=%d, HistoryCount=%d (incremento: %d)\n",
+			qrCode, history.ID, historyCountAfter, historyCountAfter-historyCountBefore)
+
+		// NO crear QRScanEvent aquí - SupplyHistory es suficiente para las transferencias
+		// Los QRScanEvent son solo para escaneos, no para cambios de estado
 
 		// Crear resultado de la transferencia
 		result = map[string]interface{}{

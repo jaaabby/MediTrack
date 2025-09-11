@@ -11,7 +11,7 @@
             </p>
           </div>
           <div class="flex space-x-2">
-            <router-link to="/qr-scanner" class="btn-secondary">
+            <router-link to="/qr" class="btn-secondary">
               <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
@@ -345,23 +345,25 @@ const loadPavilions = async () => {
 // Escanear QR
 const scanQR = async () => {
   if (!qrInput.value.trim()) return
-  
+
   scanning.value = true
   error.value = null
   scannedProduct.value = null
   transferSuccess.value = null
   
   try {
+    // Escanear con contexto específico para evitar duplicados innecesarios
     const result = await qrService.scanQRCode(qrInput.value.trim(), {
-      scan_purpose: 'transfer_check',
-      scan_source: 'transfer_view'
+      scan_purpose: 'transfer_verification', // Más específico
+      scan_source: 'web', // Usar valor válido permitido por la BD
+      prevent_duplicate_logging: true // Flag para evitar logging duplicado
     })
     
     if (result) {
       scannedProduct.value = result
       
       // Debug: mostrar información del producto escaneado
-      console.log('Producto escaneado:', result)
+      console.log('Producto escaneado para transferencia:', result)
       console.log('Tipo:', result.type)
       console.log('Estado:', result.supply_info?.status || result.status)
       console.log('Es consumido:', result.is_consumed)
@@ -380,9 +382,7 @@ const scanQR = async () => {
   } finally {
     scanning.value = false
   }
-}
-
-// Verificar si se puede transferir
+}// Verificar si se puede transferir
 const canTransfer = (product) => {
   if (!product) return false
   
@@ -452,10 +452,18 @@ const validateTransferForm = () => {
 const transferProduct = async () => {
   if (!scannedProduct.value || !validateTransferForm()) return
   
+  // Prevenir dobles clics
+  if (transferring.value) {
+    console.log('DEBUG - Transferencia ya en progreso, ignorando doble clic')
+    return
+  }
+  
   transferring.value = true
   error.value = null
   
   try {
+    console.log('DEBUG - Iniciando transferencia para QR:', scannedProduct.value.qr_code)
+    
     const transferData = {
       qr_code: scannedProduct.value.qr_code,
       user_rut: transferForm.value.userRUT,
@@ -471,7 +479,11 @@ const transferProduct = async () => {
       }
     }
     
+    console.log('DEBUG - Datos de transferencia:', transferData)
+    
     const result = await qrService.transferSupply(transferData)
+    
+    console.log('DEBUG - Resultado de transferencia:', result)
     
     if (result.success) {
       transferSuccess.value = {
@@ -486,8 +498,8 @@ const transferProduct = async () => {
       error.value = result.error || 'Error al transferir el insumo'
     }
   } catch (err) {
+    console.error('DEBUG - Error en transferencia:', err)
     error.value = err.message || 'Error al transferir el insumo'
-    console.error('Error al transferir:', err)
   } finally {
     transferring.value = false
   }

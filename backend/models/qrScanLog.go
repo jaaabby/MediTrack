@@ -194,11 +194,14 @@ const (
 	ScanResultUnauthorized = "unauthorized"
 
 	// Propósitos de escaneo
-	ScanPurposeLookup         = "lookup"
-	ScanPurposeConsume        = "consume"
-	ScanPurposeAssign         = "assign"
-	ScanPurposeVerify         = "verify"
-	ScanPurposeInventoryCheck = "inventory_check"
+	ScanPurposeLookup               = "lookup"
+	ScanPurposeConsume              = "consume"
+	ScanPurposeAssign               = "assign"
+	ScanPurposeVerify               = "verify"
+	ScanPurposeInventoryCheck       = "inventory_check"
+	ScanPurposeTransferVerification = "transfer_verification"
+	ScanPurposeTransferExecution    = "transfer_execution"
+	ScanPurposeTraceabilityView     = "traceability_view"
 
 	// Tipos de movimiento
 	MovementTypeScanOnly       = "scan_only"

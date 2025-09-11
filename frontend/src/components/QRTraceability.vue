@@ -342,7 +342,7 @@ const loadTraceability = async () => {
     // Cargar información del QR
     const qrData = await qrService.scanQRCode(qrCode.value, {
       scan_purpose: 'traceability_view',
-      scan_source: 'traceability_starken'
+      scan_source: 'web' // Usar valor válido permitido por la BD
     })
     qrInfo.value = qrData
     
@@ -360,27 +360,32 @@ const getAllEvents = () => {
 
   const events = []
 
-  // COMENTADO: No mostrar escaneos de QR, solo cambios de estado
-  // // Agregar escaneos
-  // if (traceabilityData.value.scan_history) {
-  //   events.push(...traceabilityData.value.scan_history.map(scan => ({
-  //     ...scan,
-  //     event_type: 'scan',
-  //     date_time: scan.scanned_at || scan.timestamp,
-  //     title: 'Código QR Escaneado',
-  //     user_name: scan.scanned_by_name || scan.user_name
-  //   })))
-  // }
-
-  // Agregar solo movimientos (cambios de estado)
+  // NO mostrar escaneos de QR, solo cambios de estado importantes
+  // Los escaneos se registran automáticamente pero no son relevantes para el usuario final
+  
+  // Agregar solo movimientos (cambios de estado) que representen acciones reales
   if (traceabilityData.value.supply_history) {
-    events.push(...traceabilityData.value.supply_history.map(movement => ({
-      ...movement,
-      event_type: 'movement',
-      date_time: movement.timestamp || movement.date_time,
-      title: getMovementTitle(movement),
-      location: getMovementLocation(movement)
-    })))
+    // Filtrar duplicados más estrictamente
+    const uniqueMovements = new Map()
+    
+    traceabilityData.value.supply_history.forEach(movement => {
+      // Usar una clave más específica para evitar duplicados
+      const timestamp = movement.timestamp || movement.date_time
+      const key = `${movement.status}_${timestamp}_${movement.destination_id}_${movement.user_rut}`
+      
+      // Solo agregar movimientos únicos (evitar duplicados exactos)
+      if (!uniqueMovements.has(key)) {
+        uniqueMovements.set(key, {
+          ...movement,
+          event_type: 'movement',
+          date_time: timestamp,
+          title: getMovementTitle(movement),
+          location: getMovementLocation(movement)
+        })
+      }
+    })
+    
+    events.push(...Array.from(uniqueMovements.values()))
   }
 
   // Ordenar por fecha (más reciente primero)
