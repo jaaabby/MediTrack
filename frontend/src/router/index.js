@@ -54,6 +54,18 @@ const routes = [
     }
   },
 
+  // Estadísticas y reportes
+  {
+    path: '/statistics',
+    name: 'Statistics',
+    component: () => import('@/views/Statistics.vue'),
+    meta: {
+      title: 'Estadísticas - MediTrack',
+      description: 'Panel de análisis y métricas del sistema de inventario',
+      requiresAuth: true
+    }
+  },
+
   // Funcionalidades de QR - Scanner principal
   {
     path: '/qr',

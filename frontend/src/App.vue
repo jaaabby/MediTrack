@@ -50,6 +50,15 @@
             >
               Escáner QR
             </router-link>
+
+            <router-link v-if="authStore.isAuthenticated"
+              to="/statistics"
+              class="text-white hover:text-blue-200 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              :class="{ 'bg-blue-700': $route.path === '/statistics' }"
+              @click.stop
+            >
+              Estadísticas
+            </router-link>
             
             <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
               to="/inventory/add"
@@ -140,6 +149,15 @@
           >
             Escáner QR
           </router-link>
+
+          <router-link
+            to="/statistics"
+            @click.stop="mobileMenuOpen = false"
+            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium"
+            :class="{ 'bg-blue-800': $route.path === '/statistics' }"
+          >
+            Estadísticas
+          </router-link>
           
           <router-link
             to="/reports"
@@ -173,7 +191,7 @@
       <div class="flex justify-around">
         <router-link
           to="/"
-          class="flex flex-col items-center py-3 px-4 text-sm font-medium transition-colors"
+          class="flex flex-col items-center py-3 px-2 text-sm font-medium transition-colors"
           :class="$route.path === '/' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +203,7 @@
         <router-link
           v-if="authStore.canViewInventory"
           to="/inventory"
-          class="flex flex-col items-center py-3 px-4 text-sm font-medium transition-colors"
+          class="flex flex-col items-center py-3 px-2 text-sm font-medium transition-colors"
           :class="$route.path === '/inventory' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,7 +215,7 @@
         <router-link
           v-if="authStore.canViewRequests"
           to="/supply-requests"
-          class="flex flex-col items-center py-3 px-4 text-sm font-medium transition-colors relative"
+          class="flex flex-col items-center py-3 px-2 text-sm font-medium transition-colors relative"
           :class="$route.path.startsWith('/supply-requests') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,13 +228,24 @@
         
         <router-link
           to="/qr"
-          class="flex flex-col items-center py-3 px-4 text-sm font-medium transition-colors"
+          class="flex flex-col items-center py-3 px-2 text-sm font-medium transition-colors"
           :class="$route.path.startsWith('/qr') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
           </svg>
           <span class="text-xs">Escáner</span>
+        </router-link>
+
+        <router-link
+          to="/statistics"
+          class="flex flex-col items-center py-3 px-2 text-sm font-medium transition-colors"
+          :class="$route.path === '/statistics' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+        >
+          <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span class="text-xs">Estadísticas</span>
         </router-link>
       </div>
     </nav>
