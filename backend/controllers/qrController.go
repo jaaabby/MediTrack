@@ -137,6 +137,12 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 			"DaysToExpire": qrInfo.SupplyInfo.DaysToExpire,
 		}
 
+		// Agregar nombre del insumo directamente
+		if qrInfo.SupplyInfo.SupplyCode != nil {
+			supplyInfoMap["name"] = qrInfo.SupplyInfo.SupplyCode.Name
+			supplyInfoMap["supply_code_name"] = qrInfo.SupplyInfo.SupplyCode.Name
+		}
+
 		// Agregar información del batch dentro de supply_info
 		if qrInfo.SupplyInfo.BatchInfo != nil {
 			supplyInfoMap["batch"] = qrInfo.SupplyInfo.BatchInfo
@@ -668,6 +674,121 @@ func (c *QRController) GenerateSupplyQR(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Código QR de insumo generado exitosamente",
+		Data:    result,
+	})
+}
+
+// TransferSupply transfiere un insumo individual por su código QR
+func (c *QRController) TransferSupply(ctx *gin.Context) {
+	var request struct {
+		QRCode          string `json:"qr_code" binding:"required"`
+		UserRUT         string `json:"user_rut" binding:"required"`
+		ReceiverRUT     string `json:"receiver_rut" binding:"required"`
+		DestinationType string `json:"destination_type" binding:"required"`
+		DestinationID   int    `json:"destination_id" binding:"required"`
+		Notes           string `json:"notes,omitempty"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos de transferencia inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Validar que sea un insumo individual
+	if !strings.HasPrefix(strings.ToUpper(request.QRCode), "SUPPLY_") {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Solo se pueden transferir insumos individuales. Use códigos QR que comiencen con SUPPLY_",
+		})
+		return
+	}
+
+	// Validar destination_type
+	if request.DestinationType != "pavilion" && request.DestinationType != "store" && request.DestinationType != "warehouse" {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "destination_type debe ser 'pavilion', 'store' o 'warehouse'",
+		})
+		return
+	}
+
+	// Usar el servicio QR para transferir
+	result, err := c.qrService.TransferSupplyByQR(request.QRCode, request.UserRUT, request.ReceiverRUT, request.DestinationType, request.DestinationID, request.Notes)
+	if err != nil {
+		// Determinar el código de estado basado en el tipo de error
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "insumo no encontrado" || err.Error() == "código QR no válido" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "el insumo ya ha sido consumido" || err.Error() == "no está disponible para transferencia" {
+			statusCode = http.StatusConflict
+		}
+
+		ctx.JSON(statusCode, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Insumo transferido exitosamente",
+		Data:    result,
+	})
+}
+
+// ReceiveSupply recepciona un insumo que está en estado "en_camino_a_pabellon"
+func (c *QRController) ReceiveSupply(ctx *gin.Context) {
+	var request struct {
+		QRCode          string `json:"qr_code" binding:"required"`
+		UserRUT         string `json:"user_rut" binding:"required"`
+		DestinationType string `json:"destination_type" binding:"required"`
+		DestinationID   int    `json:"destination_id" binding:"required"`
+		Notes           string `json:"notes,omitempty"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos de recepción inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Validar que el QR code tenga el formato correcto
+	if !strings.HasPrefix(request.QRCode, "SUPPLY_") {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "El código QR debe ser de un insumo individual (SUPPLY_)",
+		})
+		return
+	}
+
+	// Validar destination_type
+	if request.DestinationType != "pavilion" {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "El tipo de destino debe ser 'pavilion' para recepciones",
+		})
+		return
+	}
+
+	// Llamar al servicio para recepcionar el insumo
+	result, err := c.qrService.ReceiveSupplyByQR(request.QRCode, request.UserRUT, request.DestinationType, request.DestinationID, request.Notes)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al recepcionar el insumo: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Insumo recepcionado exitosamente",
 		Data:    result,
 	})
 }

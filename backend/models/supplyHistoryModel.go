@@ -13,6 +13,7 @@ type SupplyHistory struct {
 	DestinationID   int       `json:"destination_id" db:"destination_id" gorm:"not null"`
 	MedicalSupplyID int       `json:"medical_supply_id" db:"medical_supply_id" gorm:"not null"`
 	UserRUT         string    `json:"user_rut" db:"user_rut" gorm:"not null"`
+	Notes           string    `json:"notes" db:"notes" gorm:"type:text"`
 }
 
 // Constantes para los tipos de destino

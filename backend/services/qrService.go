@@ -794,6 +794,12 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 			"DaysToExpire": qrInfo.SupplyInfo.DaysToExpire,
 		}
 
+		// Agregar nombre del insumo directamente
+		if qrInfo.SupplyInfo.SupplyCode != nil {
+			supplyInfoMap["name"] = qrInfo.SupplyInfo.SupplyCode.Name
+			supplyInfoMap["supply_code_name"] = qrInfo.SupplyInfo.SupplyCode.Name
+		}
+
 		// Agregar información del batch dentro de supply_info
 		if qrInfo.SupplyInfo.BatchInfo != nil {
 			supplyInfoMap["batch"] = qrInfo.SupplyInfo.BatchInfo
@@ -852,6 +858,151 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 	return result, nil
 }
 
+// TransferSupplyByQR transfiere un insumo individual por su código QR
+func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destinationType string, destinationID int, notes string) (map[string]interface{}, error) {
+	var supply models.MedicalSupply
+	var result map[string]interface{}
+
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// Buscar el insumo por QR
+		if err := tx.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+			return fmt.Errorf("insumo no encontrado con QR %s: %v", qrCode, err)
+		}
+
+		// Verificar que el insumo no haya sido consumido previamente
+		if supply.Status == models.StatusConsumed {
+			return fmt.Errorf("el insumo con QR %s ya ha sido consumido y no puede ser transferido", qrCode)
+		}
+
+		// Verificar que el insumo esté disponible para transferencia
+		if supply.Status != models.StatusAvailable {
+			if supply.Status == models.StatusReceived {
+				return fmt.Errorf("el insumo tiene estado 'recepcionado' y solo puede ser consumido, no transferido")
+			}
+			return fmt.Errorf("el insumo tiene estado '%s' y no está disponible para transferencia", supply.Status)
+		}
+
+		// Determinar el estado de tránsito según el tipo de destino
+		var transitStatus string
+		switch destinationType {
+		case "pavilion":
+			transitStatus = models.StatusEnRouteToPavilion
+		case "store", "warehouse":
+			transitStatus = models.StatusEnRouteToStore
+		default:
+			transitStatus = models.StatusEnRouteToPavilion // Default
+		}
+
+		// Actualizar el estado del insumo a "en tránsito"
+		if err := tx.Model(&supply).Update("status", transitStatus).Error; err != nil {
+			return fmt.Errorf("error actualizando estado del insumo: %v", err)
+		}
+
+		// Crear entrada en el historial de suministros para la transferencia
+		history := models.SupplyHistory{
+			DateTime:        time.Now(),
+			Status:          transitStatus,
+			DestinationType: destinationType,
+			DestinationID:   destinationID,
+			MedicalSupplyID: supply.ID,
+			UserRUT:         userRUT,
+			Notes:           notes,
+		}
+
+		if err := tx.Create(&history).Error; err != nil {
+			return fmt.Errorf("error creando historial de transferencia: %v", err)
+		}
+
+		// Crear resultado de la transferencia
+		result = map[string]interface{}{
+			"success":            true,
+			"supply_id":          supply.ID,
+			"qr_code":            qrCode,
+			"old_status":         models.StatusAvailable,
+			"new_status":         transitStatus,
+			"destination_type":   destinationType,
+			"destination_id":     destinationID,
+			"user_rut":           userRUT,
+			"receiver_rut":       receiverRUT,
+			"transfer_timestamp": time.Now(),
+			"status_change": map[string]string{
+				"from": models.StatusAvailable,
+				"to":   transitStatus,
+			},
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// ReceiveSupplyByQR recepciona un insumo que está en estado "en_camino_a_pabellon"
+func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, destinationID int, notes string) (map[string]interface{}, error) {
+	var supply models.MedicalSupply
+	var result map[string]interface{}
+
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// Buscar el insumo por QR
+		if err := tx.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+			return fmt.Errorf("insumo no encontrado con QR %s: %v", qrCode, err)
+		}
+
+		// Verificar que el insumo esté en estado "en_camino_a_pabellon"
+		if supply.Status != "en_camino_a_pabellon" {
+			return fmt.Errorf("el insumo debe estar en estado 'en_camino_a_pabellon' para ser recepcionado, estado actual: %s", supply.Status)
+		}
+
+		// Crear entrada en el historial
+		history := models.SupplyHistory{
+			DateTime:        time.Now(),
+			Status:          "recepcionado",
+			DestinationType: destinationType,
+			DestinationID:   destinationID,
+			MedicalSupplyID: supply.ID,
+			UserRUT:         userRUT,
+			Notes:           notes,
+		}
+
+		if err := tx.Create(&history).Error; err != nil {
+			return fmt.Errorf("error al crear historial de recepción: %v", err)
+		}
+
+		// Actualizar el estado del insumo
+		supply.Status = "recepcionado"
+		supply.UpdatedAt = time.Now()
+
+		if err := tx.Save(&supply).Error; err != nil {
+			return fmt.Errorf("error al actualizar estado del insumo: %v", err)
+		}
+
+		// Preparar respuesta
+		result = map[string]interface{}{
+			"supply_id":        supply.ID,
+			"qr_code":          supply.QRCode,
+			"previous_status":  "en_camino_a_pabellon",
+			"new_status":       "recepcionado",
+			"received_at":      time.Now(),
+			"user_rut":         userRUT,
+			"destination_type": destinationType,
+			"destination_id":   destinationID,
+			"notes":            notes,
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // ConsumeSupplyByQR procesa el consumo de un insumo (método original mantenido)
 func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumptionResponse, error) {
 	var supply models.MedicalSupply
@@ -887,6 +1038,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 			DestinationID:   request.DestinationID,
 			MedicalSupplyID: supply.ID,
 			UserRUT:         request.UserRUT,
+			Notes:           request.Notes,
 		}
 
 		if err := tx.Create(&history).Error; err != nil {

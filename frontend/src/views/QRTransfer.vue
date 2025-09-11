@@ -7,7 +7,7 @@
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Transferir Insumo</h1>
             <p class="mt-1 text-sm text-gray-600">
-              Transferir un insumo disponible a otro pabellón o centro médico
+              Transferir un insumo disponible a un pabellón
             </p>
           </div>
           <div class="flex space-x-2">
@@ -23,11 +23,11 @@
     </div>
 
     <!-- Scanner Section -->
-    <div class="bg-white shadow-sm rounded-lg border">
+    <!--<div class="bg-white shadow-sm rounded-lg border">
       <div class="px-4 py-5 sm:p-6">
         <h2 class="text-lg font-medium text-gray-900 mb-4">Escanear Código QR</h2>
         
-        <!-- QR Input -->
+        QR Input
         <div class="flex space-x-3 mb-4">
           <div class="flex-1">
             <input
@@ -60,7 +60,7 @@
           </button>
         </div>
 
-        <!-- Error Display -->
+        Error Display
         <div v-if="error" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
           <div class="flex">
             <div class="flex-shrink-0">
@@ -75,7 +75,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </div>-->
 
     <!-- Scanned Product Info -->
     <div v-if="scannedProduct" class="bg-white shadow-sm rounded-lg border">
@@ -154,65 +154,37 @@
               />
             </div>
 
-            <!-- Tipo de Destino -->
+            <!-- RUT Persona que Recibe -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Destino <span class="text-red-500">*</span>
+                RUT Persona que Recibe <span class="text-red-500">*</span>
               </label>
-              <select v-model="transferForm.destinationType" class="form-select w-full" required>
-                <option value="">Seleccionar tipo</option>
-                <option value="pavilion">Pabellón</option>
-                <option value="warehouse">Almacén</option>
-              </select>
+              <input
+                type="text"
+                v-model="transferForm.receiverRUT"
+                placeholder="12.345.678-9"
+                class="form-input w-full"
+                required
+              />
             </div>
 
-            <!-- Centro Médico -->
+
+
+            <!-- Pabellón -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Centro Médico <span class="text-red-500">*</span>
-              </label>
-              <select v-model="transferForm.medicalCenterId" class="form-select w-full" required
-                :disabled="loadingCenters">
-                <option value="">
-                  {{ loadingCenters ? 'Cargando centros médicos...' : 'Seleccionar centro médico' }}
-                </option>
-                <option v-for="center in medicalCenters" :key="center.id" :value="center.id">
-                  {{ center.name }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Pabellón (cuando tipo es pabellón) -->
-            <div v-if="transferForm.destinationType === 'pavilion'">
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Pabellón <span class="text-red-500">*</span>
               </label>
               <select v-model="transferForm.destinationID" class="form-select w-full" required
-                :disabled="!transferForm.medicalCenterId || loadingPavilions">
+                :disabled="loadingPavilions">
                 <option value="">
-                  {{ !transferForm.medicalCenterId ? 'Primero seleccione un centro médico' : 
-                     loadingPavilions ? 'Cargando pabellones...' : 
-                     filteredPavilions.length === 0 ? 'No hay pabellones disponibles' : 'Seleccionar pabellón' }}
+                  {{ loadingPavilions ? 'Cargando pabellones...' : 
+                     pavilions.length === 0 ? 'No hay pabellones disponibles' : 'Seleccionar pabellón' }}
                 </option>
-                <option v-for="pavilion in filteredPavilions" :key="pavilion.id" :value="pavilion.id">
+                <option v-for="pavilion in pavilions" :key="pavilion.id" :value="pavilion.id">
                   {{ pavilion.name }}
                 </option>
               </select>
-            </div>
-
-            <!-- ID de Destino manual (cuando tipo es almacén u otro) -->
-            <div v-if="transferForm.destinationType && transferForm.destinationType !== 'pavilion'">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                {{ transferForm.destinationType === 'warehouse' ? 'ID Almacén' : 'ID Destino' }}
-                <span class="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                v-model="transferForm.destinationID"
-                :placeholder="transferForm.destinationType === 'warehouse' ? 'Ej: 1' : 'Ej: 1'"
-                class="form-input w-full"
-                required
-              />
             </div>
           </div>
 
@@ -269,7 +241,7 @@
         <div class="ml-3">
           <h3 class="text-sm font-medium text-green-800">Transferencia Exitosa</h3>
           <div class="mt-2 text-sm text-green-700">
-            El insumo ha sido puesto en estado de tránsito para su transferencia. La trazabilidad ha sido actualizada.
+            El insumo se encuentra en tránsito a pabellón.
             <div v-if="transferSuccess.status_change" class="mt-1 text-xs text-green-600">
               Estado cambiado de "{{ transferSuccess.status_change.from }}" a "{{ transferSuccess.status_change.to }}"
             </div>
@@ -289,12 +261,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qrService'
-import medicalCenterService from '@/services/medicalCenterService'
 import pavilionService from '@/services/pavilionService'
 import { useAuthStore } from '@/stores/auth'
 
@@ -311,18 +282,14 @@ const transferring = ref(false)
 const transferSuccess = ref(null)
 
 // Datos de configuración
-const medicalCenters = ref([])
 const pavilions = ref([])
-const filteredPavilions = ref([])
-const loadingCenters = ref(false)
 const loadingPavilions = ref(false)
 
 // Formulario de transferencia
 const transferForm = ref({
   userRUT: '',
-  destinationType: 'pavilion', // Por defecto pavilion
+  receiverRUT: '',
   destinationID: '',
-  medicalCenterId: '',
   notes: ''
 })
 
@@ -334,7 +301,6 @@ onMounted(() => {
   if (currentUser.value?.rut) {
     transferForm.value.userRUT = currentUser.value.rut
   }
-  loadMedicalCenters()
   loadPavilions()
   
   // Si hay un QR en la URL, escanearlo automáticamente
@@ -345,35 +311,6 @@ onMounted(() => {
   }
 })
 
-// Cargar centros médicos
-const loadMedicalCenters = async () => {
-  try {
-    loadingCenters.value = true
-    console.log('🏥 Cargando centros médicos desde BD...')
-    
-    const response = await medicalCenterService.getAll()
-    console.log('🏥 Respuesta completa del servicio:', response)
-    console.log('🏥 Datos de centros médicos:', response.data)
-    
-    if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-      medicalCenters.value = response.data
-      console.log('✅ Centros médicos cargados desde BD:', medicalCenters.value)
-    } else {
-      console.warn('⚠️ No se encontraron centros médicos en la BD, usando fallback')
-      throw new Error('No data found')
-    }
-  } catch (error) {
-    console.error('❌ Error al cargar centros médicos desde BD:', error)
-    console.log('🔄 Usando datos fallback para centros médicos')
-    // Fallback con datos por defecto
-    medicalCenters.value = [
-      { id: 1, name: 'Centro Médico Principal' },
-      { id: 2, name: 'Clínica Norte' }
-    ]
-  } finally {
-    loadingCenters.value = false
-  }
-}
 
 // Cargar todos los pabellones desde la base de datos
 const loadPavilions = async () => {
@@ -404,27 +341,6 @@ const loadPavilions = async () => {
   }
 }
 
-// Watcher para filtrar pabellones cuando se selecciona un centro médico
-watch(() => transferForm.value.medicalCenterId, (newMedicalCenterId) => {
-  console.log('🔄 Centro médico seleccionado:', newMedicalCenterId)
-  console.log('🔄 Todos los pabellones disponibles:', pavilions.value)
-  
-  if (newMedicalCenterId) {
-    const centerId = parseInt(newMedicalCenterId)
-    filteredPavilions.value = pavilions.value.filter(p => p.medical_center_id === centerId)
-    console.log('✅ Pabellones filtrados para centro', centerId, ':', filteredPavilions.value)
-    
-    if (filteredPavilions.value.length === 0) {
-      console.warn('⚠️ No se encontraron pabellones para el centro médico', centerId)
-    }
-    
-    // Limpiar selección de pabellón al cambiar de centro médico
-    transferForm.value.destinationID = ''
-  } else {
-    filteredPavilions.value = []
-    console.log('🔄 Centro médico deseleccionado, limpiando lista de pabellones')
-  }
-})
 
 // Escanear QR
 const scanQR = async () => {
@@ -523,9 +439,8 @@ const getTransferErrorMessage = (product) => {
 // Validar formulario de transferencia
 const validateTransferForm = () => {
   if (!transferForm.value.userRUT.trim()) return false
-  if (!transferForm.value.destinationType) return false
+  if (!transferForm.value.receiverRUT.trim()) return false
   if (!transferForm.value.destinationID) return false
-  if (!transferForm.value.medicalCenterId) return false
   
   const destinationIdNum = parseInt(transferForm.value.destinationID)
   if (isNaN(destinationIdNum) || destinationIdNum < 1) return false
@@ -544,10 +459,10 @@ const transferProduct = async () => {
     const transferData = {
       qr_code: scannedProduct.value.qr_code,
       user_rut: transferForm.value.userRUT,
+      receiver_rut: transferForm.value.receiverRUT,
       user_name: currentUser.value?.name || 'Usuario',
-      destination_type: transferForm.value.destinationType,
+      destination_type: 'pavilion', // Siempre pabellón
       destination_id: parseInt(transferForm.value.destinationID),
-      medical_center_id: parseInt(transferForm.value.medicalCenterId),
       notes: transferForm.value.notes,
       transfer_timestamp: new Date().toISOString(),
       transfer_context: {
@@ -663,9 +578,8 @@ const resetForm = () => {
   error.value = null
   transferForm.value = {
     userRUT: currentUser.value?.rut || '',
-    destinationType: 'pavilion', // Por defecto pavilion
+    receiverRUT: '',
     destinationID: '',
-    medicalCenterId: '',
     notes: ''
   }
 }

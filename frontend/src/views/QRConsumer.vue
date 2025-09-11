@@ -156,7 +156,8 @@
 
         <!-- Consumption Form -->
         <div v-if="canConsume(scannedProduct)" class="space-y-6">
-          <!-- Propósito del Consumo -->
+          <!-- Propósito del Consumo - COMENTADO PARA OCULTAR -->
+          <!-- 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-3">
               Propósito del Consumo <span class="text-red-500">*</span>
@@ -192,92 +193,61 @@
               </div>
             </div>
           </div>
+          -->
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Usuario Responsable -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                RUT Usuario Responsable <span class="text-red-500">*</span>
-              </label>
-              <input type="text" v-model="consumptionForm.userRUT" placeholder="12.345.678-9" class="form-input w-full"
-                required />
-            </div>
-
-            <!-- Tipo de Destino -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Destino <span class="text-red-500">*</span>
-              </label>
-              <select v-model="consumptionForm.destinationType" class="form-select w-full" required>
-                <option value="">Seleccionar tipo</option>
-                <option value="pavilion">Pabellón</option>
-                <option value="warehouse">Almacén</option>
-              </select>
-            </div>
-
-            <!-- Centro Médico -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Centro Médico <span class="text-red-500">*</span>
-              </label>
-              <select v-model="consumptionForm.medicalCenterId" class="form-select w-full" required
-                :disabled="loadingCenters">
-                <option value="">
-                  {{ loadingCenters ? 'Cargando centros médicos...' : 'Seleccionar centro médico' }}
-                </option>
-                <option v-for="center in medicalCenters" :key="center.id" :value="center.id">
-                  {{ center.name }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Pabellón (cuando tipo es pabellón) -->
-            <div v-if="consumptionForm.destinationType === 'pavilion'">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Pabellón <span class="text-red-500">*</span>
-              </label>
-              <select v-model="consumptionForm.destinationID" class="form-select w-full" required
-                :disabled="!consumptionForm.medicalCenterId || loadingPavilions">
-                <option value="">
-                  {{ !consumptionForm.medicalCenterId
-                    ? 'Primero seleccione un centro médico'
-                    : (loadingPavilions ? 'Cargando pabellones...' : 'Seleccionar pabellón')
-                  }}
-                </option>
-                <option v-for="pavilion in filteredPavilions" :key="pavilion.id" :value="pavilion.id">
-                  {{ pavilion.name }}
-                </option>
-              </select>
-            </div>
-
-            <!-- ID de Destino manual (cuando tipo es almacén u otro) -->
-            <div v-if="consumptionForm.destinationType && consumptionForm.destinationType !== 'pavilion'">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                {{ consumptionForm.destinationType === 'warehouse' ? 'ID Almacén' : 'ID Destino' }}
-                <span class="text-red-500">*</span>
-              </label>
-              <input type="number" v-model="consumptionForm.destinationID"
-                :placeholder="consumptionForm.destinationType === 'warehouse' ? 'Ej: 1' : 'Ej: 1'"
-                class="form-input w-full" required />
-            </div>
+          <!-- Información del Usuario de Pabellón -->
+          <!-- 
+            Sección informativa que muestra los datos del usuario de pabellón que está realizando el consumo.
+            Los datos se obtienen automáticamente de la sesión del usuario (useAuthStore).
+            No es editable ya que se usa para identificar quién está consumiendo el insumo.
+          -->
+          <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="text-sm font-medium text-gray-900 mb-2">Usuario de Pabellón</h4>
+            <!-- RUT del usuario obtenido de la sesión actual -->
+            <p class="text-sm text-gray-600">RUT: {{ currentUser?.rut || 'No disponible' }}</p>
+            <!-- Nombre del usuario obtenido de la sesión actual -->
+            <p class="text-sm text-gray-600">Nombre: {{ currentUser?.name || 'No disponible' }}</p>
           </div>
         </div>
 
         <!-- Notas -->
+        <!-- 
+          Campo opcional para agregar observaciones adicionales sobre el consumo del insumo.
+          Permite al usuario de pabellón documentar detalles específicos del uso del insumo médico.
+          Las notas se guardan en el historial del insumo para trazabilidad.
+        -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Notas Adicionales
           </label>
+          <!-- 
+            Textarea para ingresar notas opcionales sobre el consumo.
+            Se vincula con consumptionForm.notes para capturar el texto ingresado.
+          -->
           <textarea v-model="consumptionForm.notes" rows="3" placeholder="Detalles del consumo, observaciones, etc."
             class="form-textarea w-full"></textarea>
         </div>
 
         <!-- Consumption Button -->
+        <!-- 
+          Sección de botones de acción para el formulario de consumo.
+          Incluye botón de cancelar y botón principal para consumir el insumo.
+        -->
         <div class="flex justify-end space-x-3">
+          <!-- 
+            Botón de cancelar que limpia el producto escaneado y resetea el formulario.
+            Permite al usuario cancelar la operación de consumo.
+          -->
           <button @click="clearScannedProduct" class="btn-secondary">
             Cancelar
           </button>
+          <!-- 
+            Botón principal para consumir el insumo médico.
+            Se deshabilita si el formulario no es válido o si ya se está procesando el consumo.
+            Muestra estado de carga durante el procesamiento.
+          -->
           <button @click="consumeProduct" :disabled="!validateConsumptionForm() || consuming" class="btn-primary">
+            <!-- Estado de carga: muestra spinner y texto "Consumiendo..." -->
             <div v-if="consuming" class="flex items-center">
               <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -287,6 +257,7 @@
               </svg>
               Consumiendo...
             </div>
+            <!-- Estado normal: muestra icono de check y texto "Consumir Insumo" -->
             <div v-else class="flex items-center">
               <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -330,13 +301,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qrService'
-import medicalCenterService from '@/services/medicalCenterService'
-import pavilionService from '@/services/pavilionService'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -351,19 +320,10 @@ const consuming = ref(false)
 const consumptionSuccess = ref(null)
 const selectedConsumptionPurpose = ref('')
 
-// Datos de configuración
-const medicalCenters = ref([])
-const pavilions = ref([])
-const filteredPavilions = ref([])
-const loadingCenters = ref(false)
-const loadingPavilions = ref(false)
+// Datos de configuración (simplificado)
 
 // Formulario de consumo
 const consumptionForm = ref({
-  userRUT: '',
-  destinationType: 'pavilion', // Por defecto pavilion
-  destinationID: '',
-  medicalCenterId: '',
   notes: ''
 })
 
@@ -397,12 +357,6 @@ const consumptionPurposes = [
 
 // Auto-completar RUT del usuario actual y procesar QR de la URL
 onMounted(() => {
-  if (currentUser.value?.rut) {
-    consumptionForm.value.userRUT = currentUser.value.rut
-  }
-  loadMedicalCenters()
-  loadPavilions()
-
   // Verificar si hay un QR en los parámetros de la URL
   const urlParams = new URLSearchParams(window.location.search)
   const qrFromUrl = urlParams.get('qr')
@@ -413,86 +367,8 @@ onMounted(() => {
   }
 })
 
-// Cargar centros médicos desde la base de datos
-const loadMedicalCenters = async () => {
-  try {
-    loadingCenters.value = true
-    console.log('🏥 Cargando centros médicos desde BD...')
-    
-    const response = await medicalCenterService.getAll()
-    console.log('🏥 Respuesta completa del servicio:', response)
-    console.log('🏥 Datos de centros médicos:', response.data)
-    
-    if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-      medicalCenters.value = response.data
-      console.log('✅ Centros médicos cargados desde BD:', medicalCenters.value)
-    } else {
-      console.warn('⚠️ No se encontraron centros médicos en la BD, usando fallback')
-      throw new Error('No data found')
-    }
-  } catch (error) {
-    console.error('❌ Error al cargar centros médicos desde BD:', error)
-    console.log('🔄 Usando datos fallback para centros médicos')
-    // Fallback con datos por defecto
-    medicalCenters.value = [
-      { id: 1, name: 'Centro Médico Principal' },
-      { id: 2, name: 'Clínica Norte' }
-    ]
-  } finally {
-    loadingCenters.value = false
-  }
-}
 
-// Cargar todos los pabellones desde la base de datos
-const loadPavilions = async () => {
-  try {
-    loadingPavilions.value = true
-    console.log('🏢 Cargando pabellones desde BD...')
-    
-    const allPavilions = await pavilionService.getAllPavilions()
-    console.log('🏢 Respuesta completa del servicio de pabellones:', allPavilions)
-    
-    if (allPavilions && Array.isArray(allPavilions) && allPavilions.length > 0) {
-      pavilions.value = allPavilions
-      console.log('✅ Pabellones cargados desde BD:', pavilions.value)
-    } else {
-      console.warn('⚠️ No se encontraron pabellones en la BD, usando fallback')
-      throw new Error('No data found')
-    }
-  } catch (error) {
-    console.error('❌ Error al cargar pabellones desde BD:', error)
-    console.log('🔄 Usando datos fallback para pabellones')
-    // Fallback con datos por defecto
-    pavilions.value = [
-      { id: 1, name: 'Pabellón A', medical_center_id: 1 },
-      { id: 2, name: 'Pabellón B', medical_center_id: 2 }
-    ]
-  } finally {
-    loadingPavilions.value = false
-  }
-}
 
-// Watcher para filtrar pabellones cuando se selecciona un centro médico
-watch(() => consumptionForm.value.medicalCenterId, (newMedicalCenterId) => {
-  console.log('🔄 Centro médico seleccionado:', newMedicalCenterId)
-  console.log('🔄 Todos los pabellones disponibles:', pavilions.value)
-  
-  if (newMedicalCenterId) {
-    const centerId = parseInt(newMedicalCenterId)
-    filteredPavilions.value = pavilions.value.filter(p => p.medical_center_id === centerId)
-    console.log('✅ Pabellones filtrados para centro', centerId, ':', filteredPavilions.value)
-    
-    if (filteredPavilions.value.length === 0) {
-      console.warn('⚠️ No se encontraron pabellones para el centro médico', centerId)
-    }
-    
-    // Limpiar selección de pabellón al cambiar de centro médico
-    consumptionForm.value.destinationID = ''
-  } else {
-    filteredPavilions.value = []
-    console.log('🔄 Centro médico deseleccionado, limpiando lista de pabellones')
-  }
-})
 
 // Escanear QR
 const scanQR = async () => {
@@ -586,7 +462,7 @@ const getConsumptionErrorMessage = (product) => {
 
   const status = product.supply_info?.status || product.status
   if (status === 'disponible') {
-    return 'Este insumo tiene estado "disponible" y solo puede ser transferido, no consumido. Use la vista de transferencia.'
+    return 'Este insumo está disponible para ser transferido.'
   }
 
   if (status !== 'recepcionado') {
@@ -598,18 +474,8 @@ const getConsumptionErrorMessage = (product) => {
 
 // Validar formulario de consumo
 const validateConsumptionForm = () => {
-  if (!selectedConsumptionPurpose.value) return false
-  if (!consumptionForm.value.userRUT.trim()) return false
-  if (!consumptionForm.value.destinationType) return false
-  if (!consumptionForm.value.destinationID) return false
-  if (!consumptionForm.value.medicalCenterId) return false
-
-  const destinationIdNum = parseInt(consumptionForm.value.destinationID)
-  if (isNaN(destinationIdNum) || destinationIdNum < 1) return false
-
-  const medicalCenterIdNum = parseInt(consumptionForm.value.medicalCenterId)
-  if (isNaN(medicalCenterIdNum) || medicalCenterIdNum < 1) return false
-
+  // Solo requiere que el usuario tenga RUT - las notas son opcionales
+  if (!currentUser.value?.rut) return false
   return true
 }
 
@@ -621,14 +487,23 @@ const consumeProduct = async () => {
   error.value = null
 
   try {
+    // Obtener datos del usuario actual
+    const userRUT = currentUser.value?.rut
+    if (!userRUT) {
+      throw new Error('No se pudo obtener el RUT del usuario de pabellón')
+    }
+
+    // Obtener el pabellón del usuario (asumiendo que está en el contexto del pabellón)
+    const pavilionId = currentUser.value?.pavilion_id || 1 // Fallback a pabellón 1
+
     const consumptionData = {
       qr_code: scannedProduct.value.qr_code,
-      user_rut: consumptionForm.value.userRUT,
+      user_rut: userRUT,
       user_name: currentUser.value?.name || 'Usuario',
-      destination_type: consumptionForm.value.destinationType,
-      destination_id: parseInt(consumptionForm.value.destinationID),
-      medical_center_id: parseInt(consumptionForm.value.medicalCenterId),
-      consumption_purpose: selectedConsumptionPurpose.value,
+      destination_type: 'pavilion',
+      destination_id: pavilionId,
+      medical_center_id: currentUser.value?.medical_center_id || 1,
+      consumption_purpose: selectedConsumptionPurpose.value || 'rutina', // Por defecto 'rutina' si no se selecciona
       notes: consumptionForm.value.notes,
       consumption_timestamp: new Date().toISOString(),
       consumption_context: {
@@ -713,10 +588,6 @@ const resetForm = () => {
   error.value = null
   selectedConsumptionPurpose.value = ''
   consumptionForm.value = {
-    userRUT: currentUser.value?.rut || '',
-    destinationType: 'pavilion', // Por defecto pavilion
-    destinationID: '',
-    medicalCenterId: '',
     notes: ''
   }
 }

@@ -1055,7 +1055,7 @@ class QRService {
       } else if (qrInfo.available_for_use === false) {
         return 'Insumo No Disponible'
       } else {
-        return 'Insumo Listo para Usar'
+        return 'Insumo Disponible'
       }
     }
 
@@ -1274,128 +1274,48 @@ class QRService {
         throw new Error('Solo se pueden transferir insumos individuales. Use códigos QR que comiencen con SUPPLY_')
       }
 
-      // Obtener información del insumo antes de la transferencia
-      const supplyInfo = await this.getQRInfo(transferData.qr_code)
-
-      if (!supplyInfo.supply_info) {
-        throw new Error('No se pudo obtener información del insumo')
-      }
-
-      // Verificar que el insumo esté disponible para transferencia
-      if (supplyInfo.is_consumed) {
-        throw new Error('Este insumo ya ha sido consumido y no puede ser transferido')
-      }
-
-      // Verificar el estado - solo se pueden transferir insumos con estado "disponible"
-      const currentStatus = supplyInfo.supply_info?.status || supplyInfo.status
-      if (currentStatus !== 'disponible') {
-        if (currentStatus === 'recepcionado') {
-          throw new Error('Este insumo tiene estado "recepcionado" y solo puede ser consumido, no transferido')
-        }
-        throw new Error(`El insumo tiene estado "${currentStatus}" y no está disponible para transferencia`)
-      }
-
-      // Transferir el insumo individual
-      // 1. Primero obtenemos la información completa del insumo para obtener su ID
-      const supplyDetails = await this.getSupplyIdFromQR(transferData.qr_code)
-      
-      if (!supplyDetails || !supplyDetails.id) {
-        throw new Error('No se pudo obtener la información del insumo para la transferencia')
-      }
-
-      // 2. Determinar el estado de tránsito según el tipo de destino
-      let transitStatus
-      if (transferData.destination_type === 'pavilion') {
-        transitStatus = 'en_camino_a_pabellon'
-      } else if (transferData.destination_type === 'warehouse' || transferData.destination_type === 'store') {
-        transitStatus = 'en_camino_a_bodega'
-      } else {
-        transitStatus = 'en_camino_a_pabellon' // Default
-      }
-
-      // 3. Actualizar el estado del insumo a "en tránsito"
-      const updateResponse = await this.api.put(`/medical-supplies/${supplyDetails.id}`, {
-        status: transitStatus,
-        // Mantener otros campos importantes
+      // Usar el nuevo endpoint específico para transferencias
+      const response = await this.api.post('/qr/transfer', {
         qr_code: transferData.qr_code,
-        batch_id: supplyDetails.batch_id,
-        supply_code_id: supplyDetails.supply_code_id
-      })
-
-      // 4. Crear entrada en el historial de suministros para la transferencia
-      const historyResponse = await this.api.post('/supply-history/', {
-        medical_supply_id: supplyDetails.id,
-        status: transitStatus,
+        user_rut: transferData.user_rut,
+        receiver_rut: transferData.receiver_rut,
         destination_type: transferData.destination_type,
         destination_id: transferData.destination_id,
-        user_rut: transferData.user_rut,
-        medical_center_id: transferData.medical_center_id,
-        notes: transferData.notes,
-        date_time: new Date().toISOString()
+        notes: transferData.notes
       })
 
-      const response = {
-        data: {
-          success: true,
-          supply_id: supplyDetails.id,
-          old_status: supplyDetails.status,
-          new_status: transitStatus,
-          destination_type: transferData.destination_type,
-          destination_id: transferData.destination_id,
-          medical_center_id: transferData.medical_center_id,
-          transfer_timestamp: new Date().toISOString()
-        },
-        success: true
-      }
-
-      // Si la transferencia fue exitosa, crear entrada en el historial de trazabilidad
-      if (response.data && response.data.success) {
-        try {
-          await this.updateSupplyTraceabilityAfterTransfer({
-            qrCode: transferData.qr_code,
-            userRUT: transferData.user_rut,
-            userName: transferData.user_name || 'Usuario',
-            destinationType: transferData.destination_type,
-            destinationId: transferData.destination_id,
-            medicalCenterId: transferData.medical_center_id,
-            notes: transferData.notes,
-            transferTimestamp: transferData.transfer_timestamp
-          })
-        } catch (traceabilityError) {
-          console.warn('Error al actualizar trazabilidad después de transferencia:', traceabilityError)
-        }
+      // Si la respuesta viene en formato {success: true, data: {...}}
+      let result = response.data
+      if (result && result.success && result.data) {
+        result = result.data
       }
 
       return {
-        ...response.data,
-        ui_message: `Insumo transferido exitosamente. Estado cambiado a "${response.data.new_status}". La trazabilidad ha sido actualizada.`,
+        ...result,
+        ui_message: `Insumo transferido exitosamente. Estado cambiado a "${result.new_status}". La trazabilidad ha sido actualizada.`,
         next_actions: [
           { label: 'Ver trazabilidad', action: 'view_traceability' },
           { label: 'Transferir otro', action: 'transfer_next' },
           { label: 'Ver inventario', action: 'view_inventory' }
         ],
         transfer_mode: true,
-        status_change: {
-          from: response.data.old_status,
-          to: response.data.new_status
+        status_change: result.status_change || {
+          from: result.old_status,
+          to: result.new_status
         }
       }
     } catch (error) {
       console.error('Error al transferir insumo:', error)
 
       // Mejorar mensajes de error para transferencias
-      if (error.response?.data?.message?.includes('ya ha sido transferido')) {
-        throw new Error('Este insumo ya ha sido transferido anteriormente.')
+      if (error.response?.data?.message?.includes('ya ha sido consumido')) {
+        throw new Error('Este insumo ya ha sido consumido y no puede ser transferido.')
       } else if (error.response?.data?.message?.includes('no encontrado')) {
         throw new Error('Insumo no encontrado. Verifique que el código QR sea correcto.')
-      } else if (error.response?.data?.message?.includes('estado no válido')) {
-        throw new Error('El estado del insumo no permite la transferencia.')
-      } else if (error.message.includes('información del insumo')) {
-        throw new Error('No se pudo obtener la información del insumo. Verifique el código QR.')
-      } else if (error.response?.status === 404 && error.response?.config?.url?.includes('medical-supplies')) {
-        throw new Error('No se pudo actualizar el insumo. El ID del insumo no fue encontrado.')
-      } else if (error.response?.status === 404 && error.response?.config?.url?.includes('supply-history')) {
-        throw new Error('No se pudo crear el registro de historial de transferencia.')
+      } else if (error.response?.data?.message?.includes('no está disponible para transferencia')) {
+        throw new Error('El insumo no está disponible para transferencia.')
+      } else if (error.response?.data?.message?.includes('recepcionado')) {
+        throw new Error('Este insumo tiene estado "recepcionado" y solo puede ser consumido, no transferido.')
       }
 
       throw error
@@ -1612,6 +1532,37 @@ class QRService {
       sessionId: this.sessionId,
       deviceInfo: this.deviceInfo,
       browserInfo: this.browserInfo
+    }
+  }
+
+  // Recepcionar un insumo que está en estado "en_camino_a_pabellon"
+  async receiveSupply(qrCode, userRUT, destinationType, destinationID, notes = '') {
+    try {
+      // Validar que el QR code tenga el formato correcto
+      if (!qrCode || !qrCode.startsWith('SUPPLY_')) {
+        throw new Error('El código QR debe ser de un insumo individual (SUPPLY_)')
+      }
+
+      const response = await this.api.post('/qr/receive', {
+        qr_code: qrCode,
+        user_rut: userRUT,
+        destination_type: destinationType,
+        destination_id: destinationID,
+        notes: notes
+      })
+
+      if (response.data.success) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message
+        }
+      } else {
+        throw new Error(response.data.error || 'Error al recepcionar el insumo')
+      }
+    } catch (error) {
+      console.error('Error receiving supply:', error)
+      throw error
     }
   }
 }

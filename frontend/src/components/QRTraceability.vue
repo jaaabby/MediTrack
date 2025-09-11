@@ -99,14 +99,15 @@
           </div>
 
           <!-- Stats Bar -->
-          <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div class="bg-gray-50 rounded-lg p-4">
+          <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- COMENTADO: No mostrar estadística de escaneos -->
+            <!-- <div class="bg-gray-50 rounded-lg p-4">
               <div class="text-2xl font-bold text-blue-600">{{ getEventCount('scan') }}</div>
               <div class="text-sm text-gray-600">Escaneos</div>
-            </div>
+            </div> -->
             <div class="bg-gray-50 rounded-lg p-4">
               <div class="text-2xl font-bold text-green-600">{{ getEventCount('movement') }}</div>
-              <div class="text-sm text-gray-600">Movimientos</div>
+              <div class="text-sm text-gray-600">Cambios de Estado</div>
             </div>
             <div class="bg-gray-50 rounded-lg p-4">
               <div class="text-2xl font-bold text-purple-600">{{ getLocationCount() }}</div>
@@ -128,15 +129,16 @@
           <!-- Progress Bar -->
           <div class="mb-8">
             <div class="flex items-center justify-between text-sm text-gray-500 mb-2">
-              <span>Creado</span>
-              <span>En Tránsito</span>
-              <span>{{ qrInfo?.is_consumed ? 'Consumido' : 'Activo' }}</span>
+              <span>En bodega</span>
+              <span>En tránsito</span>
+              <span>Recepcionado</span>
+              <span>Consumido</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div 
                 :class="[
                   'h-2 rounded-full transition-all duration-1000',
-                  qrInfo?.is_consumed ? 'bg-red-500' : 'bg-blue-500'
+                  getProgressBarColor()
                 ]"
                 :style="`width: ${getProgressPercentage()}%`"
               ></div>
@@ -186,7 +188,8 @@
               <!-- Filters -->
               <select v-model="selectedEventFilter" class="form-select text-sm" @change="applyFilters">
                 <option value="">Todos los eventos</option>
-                <option value="scan">Solo escaneos</option>
+                <!-- COMENTADO: No mostrar opción de escaneos -->
+                <!-- <option value="scan">Solo escaneos</option> -->
                 <option value="movement">Solo movimientos</option>
                 <option value="consumption">Solo consumos</option>
                 <option value="transfer">Solo transferencias</option>
@@ -357,18 +360,19 @@ const getAllEvents = () => {
 
   const events = []
 
-  // Agregar escaneos
-  if (traceabilityData.value.scan_history) {
-    events.push(...traceabilityData.value.scan_history.map(scan => ({
-      ...scan,
-      event_type: 'scan',
-      date_time: scan.scanned_at || scan.timestamp,
-      title: 'Código QR Escaneado',
-      user_name: scan.scanned_by_name || scan.user_name
-    })))
-  }
+  // COMENTADO: No mostrar escaneos de QR, solo cambios de estado
+  // // Agregar escaneos
+  // if (traceabilityData.value.scan_history) {
+  //   events.push(...traceabilityData.value.scan_history.map(scan => ({
+  //     ...scan,
+  //     event_type: 'scan',
+  //     date_time: scan.scanned_at || scan.timestamp,
+  //     title: 'Código QR Escaneado',
+  //     user_name: scan.scanned_by_name || scan.user_name
+  //   })))
+  // }
 
-  // Agregar movimientos
+  // Agregar solo movimientos (cambios de estado)
   if (traceabilityData.value.supply_history) {
     events.push(...traceabilityData.value.supply_history.map(movement => ({
       ...movement,
@@ -387,6 +391,9 @@ const getMovementTitle = (movement) => {
   if (movement.status === 'consumido') return 'Insumo Consumido'
   if (movement.status === 'transferido') return 'Insumo Transferido'
   if (movement.status === 'creado') return 'Insumo Creado'
+  if (movement.status === 'en_camino_a_pabellon') return 'En camino a pabellón'
+  if (movement.status === 'recepcionado') return 'Insumo Recepcionado'
+  if (movement.status === 'disponible') return 'Insumo Disponible'
   return `Movimiento: ${movement.status || movement.movement_type || 'Cambio'}`
 }
 
@@ -464,19 +471,47 @@ const getTimeInSystem = () => {
 const getProgressPercentage = () => {
   if (!qrInfo.value) return 0
   
-  if (qrInfo.value.is_consumed) return 100
+  const status = qrInfo.value.supply_info?.status || qrInfo.value.status
   
-  // Calcular progreso basado en eventos
-  const events = getAllEvents()
-  const hasMovements = events.some(e => e.event_type === 'movement')
+  // Progreso basado en los 4 estados del recorrido
+  switch (status) {
+    case 'disponible':
+      return 25 // En bodega
+    case 'en_camino_a_pabellon':
+      return 50 // En tránsito
+    case 'recepcionado':
+      return 75 // Recepcionado
+    case 'consumido':
+      return 100 // Consumido
+    default:
+      return 0
+  }
+}
+
+const getProgressBarColor = () => {
+  if (!qrInfo.value) return 'bg-gray-500'
   
-  if (hasMovements) return 75
-  if (events.length > 0) return 50
-  return 25
+  const status = qrInfo.value.supply_info?.status || qrInfo.value.status
+  
+  // Color de la barra de progreso basado en el estado
+  switch (status) {
+    case 'disponible':
+      return 'bg-green-500' // Verde para en bodega
+    case 'en_camino_a_pabellon':
+      return 'bg-yellow-500' // Amarillo para en tránsito
+    case 'recepcionado':
+      return 'bg-blue-500' // Azul para recepcionado
+    case 'consumido':
+      return 'bg-red-500' // Rojo para consumido
+    default:
+      return 'bg-gray-500'
+  }
 }
 
 // Funciones de conteo
 const getEventCount = (type) => {
+  // COMENTADO: No contar escaneos, solo movimientos
+  if (type === 'scan') return 0
   return getAllEvents().filter(e => e.event_type === type).length
 }
 
@@ -561,13 +596,26 @@ const getEventDescription = (event) => {
     case 'scan':
       return `Escaneado por ${event.user_name || 'Usuario desconocido'} desde ${event.scan_source || 'aplicación'}`
     case 'movement':
-      let description = event.observations || `Estado: ${event.status || 'Procesado'}`
+      const statusText = getStatusText(event.status)
+      let description = event.observations || `Estado: ${statusText}`
       if (event.location) {
         description += ` - ${event.location}`
       }
       return description
     default:
       return 'Información no disponible'
+  }
+}
+
+const getStatusText = (status) => {
+  switch (status) {
+    case 'disponible': return 'Disponible'
+    case 'en_camino_a_pabellon': return 'En camino a pabellón'
+    case 'recepcionado': return 'Recepcionado'
+    case 'consumido': return 'Consumido'
+    case 'transferido': return 'Transferido'
+    case 'creado': return 'Creado'
+    default: return status || 'Procesado'
   }
 }
 

@@ -41,15 +41,15 @@ INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code) VAL
 (4, '2025-10-15', 8, 'Proveedor Cuatro', 2, 'BATCH_4_1')
 ON CONFLICT (id) DO NOTHING;
 
--- Poblar insumos médicos
+-- Poblar insumos médicos - TODOS EN ESTADO DISPONIBLE
 INSERT INTO medical_supply (code, batch_id, qr_code, status) VALUES
 -- Guantes del lote 1
 (1001, 1, 'SUPPLY_1_1', 'disponible'),
 (1001, 1, 'SUPPLY_2_1', 'disponible'),
 (1001, 1, 'SUPPLY_3_1', 'disponible'),
-(1001, 1, 'SUPPLY_4_1', 'en_camino_a_pabellon'),
-(1001, 1, 'SUPPLY_5_1', 'recepcionado'),
-(1001, 1, 'SUPPLY_6_1', 'consumido'),
+(1001, 1, 'SUPPLY_4_1', 'disponible'),
+(1001, 1, 'SUPPLY_5_1', 'disponible'),
+(1001, 1, 'SUPPLY_6_1', 'disponible'),
 (1001, 1, 'SUPPLY_7_1', 'disponible'),
 (1001, 1, 'SUPPLY_8_1', 'disponible'),
 (1001, 1, 'SUPPLY_9_1', 'disponible'),
@@ -57,9 +57,9 @@ INSERT INTO medical_supply (code, batch_id, qr_code, status) VALUES
 -- Mascarillas del lote 2
 (1002, 2, 'SUPPLY_11_1', 'disponible'),
 (1002, 2, 'SUPPLY_12_1', 'disponible'),
-(1002, 2, 'SUPPLY_13_1', 'en_camino_a_pabellon'),
-(1002, 2, 'SUPPLY_14_1', 'recepcionado'),
-(1002, 2, 'SUPPLY_15_1', 'consumido'),
+(1002, 2, 'SUPPLY_13_1', 'disponible'),
+(1002, 2, 'SUPPLY_14_1', 'disponible'),
+(1002, 2, 'SUPPLY_15_1', 'disponible'),
 -- Jeringas del lote 3
 (1003, 3, 'SUPPLY_16_1', 'disponible'),
 (1003, 3, 'SUPPLY_17_1', 'disponible'),
@@ -201,21 +201,7 @@ INSERT INTO "user" (
 -- POBLADO DE HISTORIALES
 -- ============================================
 
--- Poblar historial de insumos
-INSERT INTO supply_history (date_time, status, destination_type, destination_id, medical_supply_id, user_rut) VALUES
-('2025-08-16 10:00:00', 'recepcionado', 'pavilion', 1, 1, '12345678-9'),
-('2025-08-16 11:00:00', 'disponible', 'store', 2, 2, '87654321-0'),
-('2025-08-16 12:00:00', 'recepcionado', 'pavilion', 2, 3, '11111111-1'),
-('2025-08-16 13:00:00', 'consumido', 'pavilion', 1, 4, '87654321-0'),
-('2025-08-16 14:00:00', 'disponible', 'store', 1, 5, '12345678-9'),
--- Historial para insumos con estados específicos
-('2025-08-16 15:00:00', 'en_camino_a_pabellon', 'pavilion', 1, 4, '11111111-1'),
-('2025-08-16 16:00:00', 'recepcionado', 'pavilion', 1, 5, '12345678-9'),
-('2025-08-16 17:00:00', 'consumido', 'pavilion', 1, 6, '87654321-0'),
-('2025-08-16 18:00:00', 'en_camino_a_pabellon', 'pavilion', 2, 13, '11111111-1'),
-('2025-08-16 19:00:00', 'recepcionado', 'pavilion', 2, 14, '12345678-9'),
-('2025-08-16 20:00:00', 'consumido', 'pavilion', 2, 15, '87654321-0')
-ON CONFLICT DO NOTHING;
+-- NOTA: No se incluye historial de insumos para mantener todos los insumos en estado inicial "disponible"
 
 -- Poblar historial de lotes
 INSERT INTO batch_history (date_time, change_details, previous_values, new_values, user_name, batch_id, user_rut, batch_number) VALUES

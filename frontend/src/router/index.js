@@ -90,6 +90,18 @@ const routes = [
     }
   },
 
+  // NUEVA RUTA: Recepción de insumos
+  {
+    path: '/qr-reception',
+    name: 'QRReception',
+    component: () => import('@/views/QRReception.vue'),
+    meta: {
+      title: 'Recepcionar Insumo - MediTrack',
+      description: 'Recepcionar insumos médicos con estado "en_camino_a_pabellon"',
+      requiresAuth: true
+    }
+  },
+
   // Rutas específicas de QR con historial y trazabilidad
   {
     path: '/qr/:qrCode/details',

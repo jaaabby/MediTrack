@@ -54,10 +54,16 @@ func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medica
 		// Query param: resolution=normal|high (default: normal)
 		qr.GET("/download/:qrcode", qrController.DownloadQRImage)
 
-		// === FUNCIONALIDADES DE CONSUMO ===
+		// === FUNCIONALIDADES DE CONSUMO Y TRANSFERENCIA ===
 
 		// Consumir un insumo por QR (actualiza automáticamente las cantidades del lote)
 		qr.POST("/consume", qrController.ConsumeSupply)
+
+		// Transferir un insumo individual por QR
+		qr.POST("/transfer", qrController.TransferSupply)
+
+		// Recepcionar un insumo que está en camino al pabellón
+		qr.POST("/receive", qrController.ReceiveSupply)
 
 		// Consumir un insumo individual específico (REGISTRA AUTOMÁTICAMENTE EL ESCANEO DE CONSUMO)
 		qr.POST("/consume/individual", qrController.ConsumeIndividualSupply)

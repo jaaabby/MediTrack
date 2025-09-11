@@ -66,7 +66,8 @@ CREATE TABLE supply_history (
     destination_type VARCHAR(50) NOT NULL,
     destination_id INTEGER NOT NULL,
     medical_supply_id INTEGER NOT NULL REFERENCES medical_supply(id) ON DELETE CASCADE,
-    user_rut VARCHAR(20) NOT NULL REFERENCES "user"(rut)
+    user_rut VARCHAR(20) NOT NULL REFERENCES "user"(rut),
+    notes TEXT
 );
 
 CREATE TABLE batch_history (

@@ -105,6 +105,41 @@
             </div>
         </div>
 
+        <!-- Acciones rápidas -->
+        <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Recepción de Insumos (Solo para Pabellones) -->
+                <router-link to="/qr-reception" 
+                    class="inline-flex items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Recepcionar Insumos
+                    <span class="ml-2 text-xs bg-green-500 px-2 py-1 rounded-full">Pabellón</span>
+                </router-link>
+
+                <!-- Consumir Insumos -->
+                <router-link to="/qr-consumer" 
+                    class="inline-flex items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Consumir Insumos
+                    <span class="ml-2 text-xs bg-blue-500 px-2 py-1 rounded-full">Pabellón</span>
+                </router-link>
+
+                <!-- Escáner QR -->
+                <router-link to="/qr" 
+                    class="inline-flex items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5l2 3h3l2-3h5v5M4 4v5m16-5v5" />
+                    </svg>
+                    Escáner QR
+                </router-link>
+            </div>
+        </div>
+
         <!-- Botones de acción cuando está en modo edición -->
         <div v-if="editMode" class="mt-6 flex justify-end space-x-3">
             <button @click="cancelEdit"

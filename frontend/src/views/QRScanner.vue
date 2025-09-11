@@ -82,6 +82,7 @@
                 muted 
                 playsinline
                 class="w-full h-full object-cover"
+                style="transform: scaleX(-1);"
               ></video>
               
               <div class="absolute inset-0 flex items-center justify-center">
@@ -203,6 +204,18 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
             Transferir
+          </router-link>
+          
+          <!-- NUEVA LÓGICA: Solo mostrar recepcionar si estado es "en_camino_a_pabellon" -->
+          <router-link 
+            v-if="canBeReceived(scannedInfo)"
+            :to="{ name: 'QRReception', query: { qr: scannedInfo.qr_code } }" 
+            class="btn-primary text-sm"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Recepcionar
           </router-link>
         </div>
       </div>
@@ -332,6 +345,14 @@ const canBeTransferred = (info) => {
   return status === 'disponible'
 }
 
+const canBeReceived = (info) => {
+  if (!info || info.type !== 'medical_supply') return false
+  if (info.is_consumed) return false
+  
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+  return status === 'en_camino_a_pabellon'
+}
+
 const getStateRecommendation = (info) => {
   if (!info || info.type !== 'medical_supply') {
     if (info?.type === 'batch') {
@@ -358,7 +379,7 @@ const getStateRecommendation = (info) => {
     case 'disponible':
       return {
         title: 'Listo para Transferir',
-        message: 'Este insumo tiene estado "disponible" y puede ser transferido a otro pabellón o centro médico.',
+        message: 'Este insumo está disponible para ser transferido.',
         type: 'success'
       }
     case 'recepcionado':
@@ -366,6 +387,12 @@ const getStateRecommendation = (info) => {
         title: 'Listo para Consumir',
         message: 'Este insumo tiene estado "recepcionado" y puede ser consumido en un procedimiento médico.',
         type: 'success'
+      }
+    case 'en_camino_a_pabellon':
+      return {
+        title: 'Listo para Recepcionar',
+        message: 'Este insumo está en camino al pabellón. Puede ser recepcionado para cambiar su estado a "recepcionado".',
+        type: 'info'
       }
     case 'transferido':
       return {
@@ -502,7 +529,12 @@ const startQRDetection = () => {
       
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
-      context.drawImage(video, 0, 0, canvas.width, canvas.height)
+      
+      // Aplicar transformación espejo al canvas para que coincida con la vista del video
+      context.save()
+      context.scale(-1, 1)
+      context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height)
+      context.restore()
       
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
       const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
@@ -719,6 +751,7 @@ const consumeSupply = (qrInfo) => {
     query: { qr: qrInfo.qr_code }
   })
 }
+
 
 const viewBatch = (batchId) => {
   router.push({
