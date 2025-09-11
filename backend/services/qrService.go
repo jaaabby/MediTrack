@@ -5,8 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"meditrack/mailer"
 	"meditrack/models"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -1059,6 +1062,26 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("error al actualizar estado del insumo: %v", err)
 		}
 
+		// Programar alerta para insumo recepcionado (después de la transacción)
+		go func() {
+			// Esperar 1 minuto para pruebas (cambiar a 12 * time.Hour en producción)
+			time.Sleep(1 * time.Minute)
+
+			// Verificar si el insumo sigue en estado "Recepcionado"
+			var updatedSupply models.MedicalSupply
+			if err := s.DB.First(&updatedSupply, supply.ID).Error; err != nil {
+				fmt.Printf("Error obteniendo insumo %d para verificación de alerta: %v\n", supply.ID, err)
+				return
+			}
+
+			// Si sigue en estado "Recepcionado", enviar alerta
+			if updatedSupply.Status == "recepcionado" {
+				s.sendUnconsumedSupplyAlert(&updatedSupply)
+			}
+		}()
+
+		fmt.Printf("Insumo %d recepcionado exitosamente. Alerta programada para 1 minuto.\n", supply.ID)
+
 		// Preparar respuesta
 		result = map[string]interface{}{
 			"supply_id":        supply.ID,
@@ -1327,4 +1350,127 @@ func (s *QRService) GenerateSupplyQR() (*QRGenerationResponse, error) {
 // stringPtr helper para crear punteros a string
 func stringPtr(s string) *string {
 	return &s
+}
+
+// getSupplyWithBatchInfo obtiene información completa de un insumo con datos del lote
+func (s *QRService) getSupplyWithBatchInfo(qrCode string) (map[string]interface{}, error) {
+	query := `
+		SELECT 
+			ms.id as supply_id,
+			ms.code as supply_code,
+			ms.qr_code,
+			ms.batch_id,
+			sc.name as supply_name,
+			sc.code_supplier,
+			b.expiration_date,
+			b.amount as batch_remaining_amount,
+			b.supplier,
+			st.name as store_name,
+			st.type as store_type
+		FROM medical_supply ms
+		JOIN supply_code sc ON ms.code = sc.code
+		JOIN batch b ON ms.batch_id = b.id
+		JOIN store st ON b.store_id = st.id
+		WHERE ms.qr_code = ?
+	`
+
+	row := s.DB.Raw(query, qrCode).Row()
+
+	var supplyID int
+	var supplyCode int
+	var qr string
+	var batchID int
+	var supplyName string
+	var codeSupplier int
+	var expirationDate string
+	var batchRemainingAmount int
+	var supplier string
+	var storeName string
+	var storeType string
+
+	err := row.Scan(
+		&supplyID, &supplyCode, &qr, &batchID, &supplyName, &codeSupplier,
+		&expirationDate, &batchRemainingAmount, &supplier, &storeName, &storeType,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("insumo no encontrado: %v", err)
+	}
+
+	// Obtener el insumo para verificar su estado
+	var supply models.MedicalSupply
+	if err := s.DB.First(&supply, supplyID).Error; err != nil {
+		return nil, fmt.Errorf("insumo no encontrado: %v", err)
+	}
+
+	result := map[string]interface{}{
+		"supply_id":              supplyID,
+		"supply_code":            supplyCode,
+		"qr_code":                qr,
+		"batch_id":               batchID,
+		"supply_name":            supplyName,
+		"code_supplier":          codeSupplier,
+		"expiration_date":        expirationDate,
+		"batch_remaining_amount": batchRemainingAmount,
+		"supplier":               supplier,
+		"store_name":             storeName,
+		"store_type":             storeType,
+		"status":                 supply.Status,
+		"is_consumed":            supply.IsConsumed(),
+		"available_for_use":      supply.CanBeConsumed() && batchRemainingAmount > 0,
+	}
+
+	return result, nil
+}
+
+// sendUnconsumedSupplyAlert envía una alerta por correo para un insumo no consumido
+func (s *QRService) sendUnconsumedSupplyAlert(supply *models.MedicalSupply) {
+	// Obtener información adicional del insumo
+	supplyInfo, err := s.getSupplyWithBatchInfo(supply.QRCode)
+	if err != nil {
+		fmt.Printf("Error obteniendo información del insumo %d: %v\n", supply.ID, err)
+		return
+	}
+
+	// Calcular horas transcurridas desde la recepción
+	hoursElapsed := int(time.Since(supply.UpdatedAt).Hours())
+
+	// Preparar datos para el correo
+	emailData := map[string]interface{}{
+		"SupplyID":     supply.ID,
+		"SupplyName":   supplyInfo["supply_name"],
+		"SupplyCode":   supplyInfo["supply_code"],
+		"QRCode":       supply.QRCode,
+		"BatchID":      supplyInfo["batch_id"],
+		"ReceivedAt":   supply.UpdatedAt.Format("2006-01-02 15:04:05"),
+		"HoursElapsed": hoursElapsed,
+		"Date":         time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	// Configurar el correo
+	// Leer email de destino desde variable de entorno o usar por defecto
+	alertEmail := os.Getenv("ALERT_EMAIL")
+	if alertEmail == "" {
+		alertEmail = "vergara.javiera12@gmail.com" // Email por defecto
+	}
+	recipients := []string{alertEmail}
+
+	request := mailer.NewRequest(recipients, "Alerta: Insumo Médico No Consumido - MediTrack")
+
+	// Enviar el correo
+	// Obtener el directorio actual y construir la ruta absoluta
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error obteniendo directorio de trabajo: %v\n", err)
+		return
+	}
+
+	templatePath := filepath.Join(wd, "mailer", "templates", "unconsumed_supply_alert.html")
+	fmt.Printf("Buscando plantilla en: %s\n", templatePath)
+
+	if err := request.SendMailSkipTLS(templatePath, emailData); err != nil {
+		fmt.Printf("Error enviando alerta de insumo no consumido: %v\n", err)
+	} else {
+		fmt.Printf("Alerta enviada para insumo %d que no ha sido consumido\n", supply.ID)
+	}
 }

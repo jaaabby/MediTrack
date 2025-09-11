@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"meditrack/models"
 	"meditrack/services"
 	"net/http"
@@ -138,6 +137,33 @@ func (c *MedicalSupplyController) UpdateMedicalSupply(ctx *gin.Context) {
 			Error:   "Datos de insumo médico inválidos: " + err.Error(),
 		})
 		return
+	}
+
+	// Validar que el estado sea válido si se proporciona
+	if supply.Status != "" {
+		validStatuses := []string{
+			models.StatusAvailable,
+			models.StatusEnRouteToPavilion,
+			models.StatusReceived,
+			models.StatusConsumed,
+			models.StatusEnRouteToStore,
+		}
+
+		isValidStatus := false
+		for _, validStatus := range validStatuses {
+			if supply.Status == validStatus {
+				isValidStatus = true
+				break
+			}
+		}
+
+		if !isValidStatus {
+			ctx.JSON(http.StatusBadRequest, Response{
+				Success: false,
+				Error:   "Estado inválido. Estados válidos: disponible, en_camino_a_pabellon, recepcionado, consumido, en_camino_a_bodega",
+			})
+			return
+		}
 	}
 
 	supply.ID = intID
@@ -459,92 +485,6 @@ func (c *MedicalSupplyController) SyncBatchAmounts(ctx *gin.Context) {
 }
 
 // ===== FUNCIONALIDADES DE ALERTA PARA INSUMOS NO CONSUMIDOS =====
-
-// UpdateMedicalSupplyStatus actualiza el estado de un insumo médico
-func (c *MedicalSupplyController) UpdateMedicalSupplyStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de insumo médico requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
-		})
-		return
-	}
-
-	// Leer el JSON manualmente para debugging
-	var jsonData map[string]interface{}
-	if err := ctx.ShouldBindJSON(&jsonData); err != nil {
-		fmt.Printf("Error binding JSON: %v\n", err)
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "Datos inválidos: " + err.Error(),
-		})
-		return
-	}
-
-	fmt.Printf("JSON recibido: %+v\n", jsonData)
-
-	// Extraer el status del JSON
-	status, ok := jsonData["status"].(string)
-	if !ok || status == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "El campo 'status' es requerido y debe ser una cadena",
-		})
-		return
-	}
-
-	fmt.Printf("Status extraído: %s\n", status)
-
-	// Validar que el estado sea válido
-	validStatuses := []string{
-		models.StatusAvailable,
-		models.StatusEnRouteToPavilion,
-		models.StatusReceived,
-		models.StatusConsumed,
-		models.StatusEnRouteToStore,
-	}
-
-	isValidStatus := false
-	for _, validStatus := range validStatuses {
-		if status == validStatus {
-			isValidStatus = true
-			break
-		}
-	}
-
-	if !isValidStatus {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "Estado inválido. Estados válidos: disponible, en_camino_a_pabellon, recepcionado, consumido, en_camino_a_bodega",
-		})
-		return
-	}
-
-	supply, err := c.medicalSupplyService.UpdateMedicalSupplyStatus(intID, status)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
-			Success: false,
-			Error:   "Error al actualizar estado del insumo: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, Response{
-		Success: true,
-		Message: "Estado del insumo actualizado exitosamente",
-		Data:    supply,
-	})
-}
 
 // GetUnconsumedSupplies obtiene todos los insumos que están en estado "Recepcionado" por más de 12 horas
 func (c *MedicalSupplyController) GetUnconsumedSupplies(ctx *gin.Context) {

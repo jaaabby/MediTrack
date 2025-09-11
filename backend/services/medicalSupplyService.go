@@ -104,14 +104,26 @@ func (s *MedicalSupplyService) UpdateMedicalSupply(id int, newSupply *models.Med
 		return nil, err
 	}
 
+	// Guardar el estado anterior para verificar si cambió a "Recepcionado"
+	previousStatus := supply.Status
+
 	// Actualizar campos pero mantener el QR code original si existe
 	supply.Code = newSupply.Code
 	supply.BatchID = newSupply.BatchID
+	supply.Status = newSupply.Status
 	// No actualizamos supply.QRCode para mantener la trazabilidad
 
 	if err := s.DB.Save(&supply).Error; err != nil {
 		return nil, err
 	}
+
+	// Verificar si el cambio es a estado "Recepcionado" y programar alerta
+	if newSupply.Status == models.StatusReceived && previousStatus != models.StatusReceived {
+		// Programar verificación de alerta después de 1 minuto (para pruebas)
+		go s.scheduleUnconsumedSupplyAlert(supply.ID)
+		fmt.Printf("Insumo %d cambió a estado 'Recepcionado'. Alerta programada para 1 minuto.\n", supply.ID)
+	}
+
 	return &supply, nil
 }
 
@@ -474,28 +486,6 @@ func (s *MedicalSupplyService) GetAvailableSuppliesByBatch(batchID int) ([]model
 }
 
 // ===== FUNCIONALIDADES DE ALERTA PARA INSUMOS NO CONSUMIDOS =====
-
-// UpdateMedicalSupplyStatus actualiza el estado de un insumo médico
-func (s *MedicalSupplyService) UpdateMedicalSupplyStatus(id int, newStatus string) (*models.MedicalSupply, error) {
-	var supply models.MedicalSupply
-	if err := s.DB.First(&supply, id).Error; err != nil {
-		return nil, err
-	}
-
-	// Verificar si el cambio es a estado "Recepcionado"
-	if newStatus == models.StatusReceived && supply.Status != models.StatusReceived {
-		// Programar verificación de alerta después de 12 horas
-		go s.scheduleUnconsumedSupplyAlert(supply.ID)
-	}
-
-	// Actualizar el estado
-	supply.Status = newStatus
-	if err := s.DB.Save(&supply).Error; err != nil {
-		return nil, err
-	}
-
-	return &supply, nil
-}
 
 // scheduleUnconsumedSupplyAlert programa una verificación de alerta para un insumo recepcionado
 func (s *MedicalSupplyService) scheduleUnconsumedSupplyAlert(supplyID int) {
