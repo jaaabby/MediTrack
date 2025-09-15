@@ -67,43 +67,45 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    // Inicializar el store desde localStorage
+    // Inicializar el store desde localStorage y restaurar sesión si no ha expirado
     initializeAuth() {
       const token = authService.getToken()
-      if (token && !authService.isTokenExpired(token)) {
+      const expiry = localStorage.getItem('auth_expiry')
+      const now = Date.now()
+      if (token && !authService.isTokenExpired(token) && expiry && now < Number(expiry)) {
         this.token = token
         this.isAuthenticated = true
-        
-        // Obtener información del usuario del token
-        const userInfo = authService.getUserFromToken(token)
-        if (userInfo) {
-          this.user = {
-            rut: userInfo.rut,
-            name: userInfo.name || localStorage.getItem('user_name'),
-            email: userInfo.email,
-            role: userInfo.role
+        // Restaurar usuario completo desde localStorage
+        const userStr = localStorage.getItem('user_full')
+        if (userStr) {
+          try {
+            this.user = JSON.parse(userStr)
+          } catch (e) {
+            this.user = null
           }
         } else {
-          // Respaldo: usar información de localStorage si el token no tiene datos de usuario
-          const rut = localStorage.getItem('user_rut')
-          const name = localStorage.getItem('user_name')
-          const email = localStorage.getItem('user_email')
-          const role = localStorage.getItem('user_role')
-          
-          if (rut && name && email && role) {
-            this.user = { rut, name, email, role }
+          // Fallback: restaurar datos mínimos
+          const userInfo = authService.getUserFromToken(token)
+          if (userInfo) {
+            this.user = {
+              rut: userInfo.rut,
+              name: userInfo.name || localStorage.getItem('user_name'),
+              email: userInfo.email,
+              role: userInfo.role
+            }
           }
+        }
+        // Programar logout automático
+        const msToExpiry = Number(expiry) - now
+        if (msToExpiry > 0) {
+          this._setAutoLogout(msToExpiry)
         }
       } else {
         this.logout()
       }
-      
-      // Método temporal para sincronizar localStorage con usuario actual
+      // Guardar usuario completo en localStorage si está autenticado
       if (this.user && this.isAuthenticated) {
-        localStorage.setItem('user_rut', this.user.rut || '')
-        localStorage.setItem('user_name', this.user.name || '')
-        localStorage.setItem('user_email', this.user.email || '')
-        localStorage.setItem('user_role', this.user.role || '')
+        localStorage.setItem('user_full', JSON.stringify(this.user))
       }
     },
 
@@ -111,26 +113,21 @@ export const useAuthStore = defineStore('auth', {
     async login(email, password) {
       this.isLoading = true
       this.error = null
-
       try {
         const response = await authService.login(email, password)
-        
-        // Guardar token
+        // Guardar token y usuario
         this.token = response.token
         this.user = response.user
         this.isAuthenticated = true
-        
-        // Guardar en localStorage
         authService.setToken(response.token)
-        
-        // Guardar información del usuario para servicios
+        // Guardar usuario completo en localStorage
         if (response.user) {
-          localStorage.setItem('user_rut', response.user.rut || '')
-          localStorage.setItem('user_name', response.user.name || '')
-          localStorage.setItem('user_email', response.user.email || '')
-          localStorage.setItem('user_role', response.user.role || '')
+          localStorage.setItem('user_full', JSON.stringify(response.user))
         }
-        
+        // Guardar expiración (1 hora desde ahora)
+        const expiry = Date.now() + 60 * 60 * 1000
+        localStorage.setItem('auth_expiry', expiry.toString())
+        this._setAutoLogout(60 * 60 * 1000)
         return response
       } catch (error) {
         this.error = error.message
@@ -185,22 +182,34 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Logout
+    // Logout manual o automático
     logout() {
       this.user = null
       this.token = null
       this.isAuthenticated = false
       this.error = null
       this.isLoading = false
-      
-      // Remover token del localStorage
+      // Remover token, expiración y usuario completo del localStorage
       authService.removeToken()
-      
-      // Limpiar información del usuario
-      localStorage.removeItem('user_rut')
-      localStorage.removeItem('user_name') 
-      localStorage.removeItem('user_email')
-      localStorage.removeItem('user_role')
+      localStorage.removeItem('auth_expiry')
+      localStorage.removeItem('user_full')
+      // Limpiar timeout de logout automático si existe
+      if (this._logoutTimeout) {
+        clearTimeout(this._logoutTimeout)
+        this._logoutTimeout = null
+      }
+    },
+
+    // Programar logout automático
+    _setAutoLogout(ms) {
+      if (this._logoutTimeout) {
+        clearTimeout(this._logoutTimeout)
+      }
+      this._logoutTimeout = setTimeout(() => {
+        this.logout()
+        // Opcional: redirigir al login si quieres
+        window.location.href = '/login'
+      }, ms)
     },
 
     // Verificar permisos
