@@ -210,6 +210,7 @@ import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import returnToBodegaService from '@/services/returnToBodegaService'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 
@@ -275,12 +276,15 @@ const refreshData = async () => {
 const processAutomaticReturns = async () => {
   if (criticalSupplies.value.length === 0) return
   
-  const confirmed = confirm(
-    `¿Está seguro de que desea procesar automáticamente ${criticalSupplies.value.length} retornos?\n\n` +
-    'Esta acción regresará todos los insumos críticos (15+ días) a bodega.'
-  )
-  
-  if (!confirmed) return
+  const result = await Swal.fire({
+    title: `¿Está seguro de que desea procesar automáticamente ${criticalSupplies.value.length} retornos?`,
+    text: 'Esta acción regresará todos los insumos críticos (15+ días) a bodega.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, procesar',
+    cancelButtonText: 'Cancelar',
+  })
+  if (!result.isConfirmed) return
   
   processingReturns.value = true
   error.value = null
@@ -288,7 +292,11 @@ const processAutomaticReturns = async () => {
   try {
     const result = await returnToBodegaService.processAutomaticReturns()
     
-    alert(`✅ Proceso completado: ${result.message}`)
+    Swal.fire({
+      icon: 'success',
+      title: 'Proceso completado',
+      text: result.message
+    })
     
     // Recargar datos
     await refreshData()
@@ -304,13 +312,15 @@ const processAutomaticReturns = async () => {
 const returnIndividualSupply = async (supply) => {
   if (returningSupplies.value[supply.qrCode]) return
   
-  const confirmed = confirm(
-    `¿Regresar ${supply.name} a bodega?\n\n` +
-    `QR: ${supply.qrCode}\n` +
-    `Días sin consumir: ${supply.daysElapsed}`
-  )
-  
-  if (!confirmed) return
+  const result = await Swal.fire({
+    title: `¿Regresar ${supply.name} a bodega?`,
+    html: `QR: ${supply.qrCode}<br>Días sin consumir: ${supply.daysElapsed}`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, regresar',
+    cancelButtonText: 'Cancelar',
+  })
+  if (!result.isConfirmed) return
   
   returningSupplies.value[supply.qrCode] = true
   
@@ -320,7 +330,11 @@ const returnIndividualSupply = async (supply) => {
       `Retorno manual - ${supply.daysElapsed} días sin consumir`
     )
     
-    alert('✅ Insumo regresado a bodega exitosamente')
+    Swal.fire({
+      icon: 'success',
+      title: 'Éxito',
+      text: 'Insumo regresado a bodega exitosamente'
+    })
     
     // Recargar datos
     await refreshData()

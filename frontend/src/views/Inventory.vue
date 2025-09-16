@@ -1041,6 +1041,7 @@ import { es } from 'date-fns/locale'
 import inventoryService from '@/services/inventoryService'
 import qrService from '@/services/qrService'
 import QrcodeVue from 'qrcode.vue'
+import Swal from 'sweetalert2'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -1401,7 +1402,11 @@ const closeEditModal = () => {
 
 const saveEdit = async () => {
   if (!editingSupply.value.batch_id) {
-    alert('Error: ID de lote no encontrado')
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'ID de lote no encontrado'
+    })
     return
   }
 
@@ -1456,7 +1461,14 @@ const saveEdit = async () => {
 }
 
 const deleteSupply = async (supply) => {
-  if (confirm(`¿Está seguro de que desea eliminar el lote de ${supply.name}?`)) {
+  const result = await Swal.fire({
+    title: `¿Está seguro de que desea eliminar el lote de ${supply.name}?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+  })
+  if (result.isConfirmed) {
     try {
       await inventoryService.deleteBatch(supply.batch_id)
       showNotification('Lote eliminado exitosamente', 'success')
@@ -1550,7 +1562,11 @@ const handleDownloadQR = async (qrCode) => {
 const openGlobalHistoryModal = () => {
   // Verificar permisos - solo admin y encargado de bodega pueden ver historial
   if (!authStore.canViewAllRequests) {
-    alert('No tienes permisos para ver el historial de movimientos del inventario')
+    Swal.fire({
+      icon: 'warning',
+      title: 'Permiso denegado',
+      text: 'No tienes permisos para ver el historial de movimientos del inventario'
+    })
     return
   }
 
@@ -1609,7 +1625,11 @@ const loadGlobalHistory = async () => {
 const viewSupply = (supply) => {
   // Verificar permisos - solo admin y encargado de bodega pueden ver historial
   if (!authStore.canViewAllRequests) {
-    alert('No tienes permisos para ver el historial de movimientos del inventario')
+    Swal.fire({
+      icon: 'warning',
+      title: 'Permiso denegado',
+      text: 'No tienes permisos para ver el historial de movimientos del inventario'
+    })
     return
   }
 

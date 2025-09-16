@@ -393,6 +393,7 @@ import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import Swal from 'sweetalert2'
 
 const route = useRoute()
 const router = useRouter()
@@ -455,7 +456,14 @@ const loadPavilions = async () => {
 }
 
 const approveRequest = async () => {
-  if (!confirm('¿Está seguro de aprobar esta solicitud?')) return
+  const result = await Swal.fire({
+    title: '¿Está seguro de aprobar esta solicitud?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, aprobar',
+    cancelButtonText: 'Cancelar',
+  })
+  if (!result.isConfirmed) return
 
   processing.value = true
   try {
@@ -469,14 +477,29 @@ const approveRequest = async () => {
     await loadSupplyRequest()
   } catch (err) {
     console.error('Error aprobando solicitud:', err)
-    alert('Error al aprobar la solicitud: ' + (err.response?.data?.error || err.message))
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al aprobar la solicitud',
+      text: err.response?.data?.error || err.message
+    })
   } finally {
     processing.value = false
   }
 }
 
 const rejectRequest = async () => {
-  const reason = prompt('Ingrese el motivo del rechazo:')
+  const { value: reason } = await Swal.fire({
+    title: 'Motivo del rechazo',
+    input: 'text',
+    inputLabel: 'Ingrese el motivo del rechazo:',
+    inputPlaceholder: 'Motivo...',
+    showCancelButton: true,
+    confirmButtonText: 'Rechazar',
+    cancelButtonText: 'Cancelar',
+    inputValidator: (value) => {
+      if (!value) return 'Debe ingresar un motivo';
+    }
+  })
   if (!reason) return
 
   processing.value = true
@@ -491,7 +514,11 @@ const rejectRequest = async () => {
     await loadSupplyRequest()
   } catch (err) {
     console.error('Error rechazando solicitud:', err)
-    alert('Error al rechazar la solicitud: ' + (err.response?.data?.error || err.message))
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al rechazar la solicitud',
+      text: err.response?.data?.error || err.message
+    })
   } finally {
     processing.value = false
   }
@@ -544,7 +571,11 @@ const assignQR = async () => {
     closeAssignQRModal()
   } catch (err) {
     console.error('Error asignando QR:', err)
-    alert('Error al asignar QR: ' + (err.response?.data?.error || err.message))
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al asignar QR',
+      text: err.response?.data?.error || err.message
+    })
   } finally {
     assigningQR.value = false
   }

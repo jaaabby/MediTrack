@@ -24,6 +24,7 @@
     "pinia": "^2.1.7",
     "qrcode": "^1.5.4",
     "qrcode.vue": "^3.4.1",
+    "sweetalert2": "^11.23.0",
     "vue": "^3.3.8",
     "vue-chartjs": "^5.2.0",
     "vue-router": "^4.2.5"

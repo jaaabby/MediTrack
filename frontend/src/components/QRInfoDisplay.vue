@@ -18,7 +18,7 @@
             </span>
           </div>
         </div>
-        <div class="flex flex-col md:flex-row md:items-center md:space-x-2 mt-4 md:mt-0">
+        <div v-if="qrInfo.type !== 'batch'" class="flex flex-col md:flex-row md:items-center md:space-x-2 mt-4 md:mt-0">
           <button
             @click="downloadQRAsPDF"
             :disabled="isGeneratingPDF"
@@ -51,7 +51,7 @@
         </div>
       </div>
       <!-- Último escaneo -->
-      <div v-if="lastScanInfo" class="px-6 py-2 border-b border-gray-200 bg-white">
+      <div v-if="lastScanInfo && qrInfo.type !== 'batch'" class="px-6 py-2 border-b border-gray-200 bg-white">
         <div class="flex flex-wrap items-center text-sm gap-4">
           <div class="flex items-center text-gray-600">
             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,7 +225,7 @@
     </div>
 
     <!-- Historial de movimientos (versión resumida) -->
-    <div v-if="qrInfo.history && qrInfo.history.length > 0" class="bg-white rounded-lg shadow border">
+    <div v-if="qrInfo.history && qrInfo.history.length > 0 && qrInfo.type !== 'batch'" class="bg-white rounded-lg shadow border">
       <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <h4 class="font-semibold text-gray-900">Historial Reciente</h4>
         <router-link

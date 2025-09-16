@@ -184,6 +184,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import medicalCenterService from '@/services/medicalCenterService'
 import pavilionService from '@/services/pavilionService'
+import Swal from 'sweetalert2'
 
 // Emits
 const emit = defineEmits(['location-changed'])
@@ -437,11 +438,19 @@ const useCurrentGPS = async () => {
     
     // Aquí podrías hacer una llamada al backend para encontrar la ubicación más cercana
     // Por ahora, mostraremos un mensaje informativo
-    alert(`Ubicación GPS obtenida: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}\n\nFuncionalidad de auto-detección en desarrollo.`)
+    Swal.fire({
+      icon: 'info',
+      title: 'Ubicación GPS obtenida',
+      html: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br><br>Funcionalidad de auto-detección en desarrollo.`
+    })
     
   } catch (error) {
     console.error('Error getting GPS location:', error)
-    alert('No se pudo obtener la ubicación GPS. Seleccione manualmente.')
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'No se pudo obtener la ubicación GPS. Seleccione manualmente.'
+    })
   } finally {
     gettingGPS.value = false
   }

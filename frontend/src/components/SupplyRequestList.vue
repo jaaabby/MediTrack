@@ -369,6 +369,7 @@ import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -498,12 +499,27 @@ const approveRequest = async (id) => {
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error aprobando solicitud:', err)
-    alert('Error al aprobar la solicitud: ' + (err.response?.data?.error || err.message))
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al aprobar la solicitud',
+      text: err.response?.data?.error || err.message
+    })
   }
 }
 
 const rejectRequest = async (id) => {
-  const reason = prompt('Ingrese el motivo del rechazo:')
+  const { value: reason } = await Swal.fire({
+    title: 'Motivo del rechazo',
+    input: 'text',
+    inputLabel: 'Ingrese el motivo del rechazo:',
+    inputPlaceholder: 'Motivo...',
+    showCancelButton: true,
+    confirmButtonText: 'Rechazar',
+    cancelButtonText: 'Cancelar',
+    inputValidator: (value) => {
+      if (!value) return 'Debe ingresar un motivo';
+    }
+  })
   if (!reason) return
 
   try {
@@ -517,7 +533,11 @@ const rejectRequest = async (id) => {
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error rechazando solicitud:', err)
-    alert('Error al rechazar la solicitud: ' + (err.response?.data?.error || err.message))
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al rechazar la solicitud',
+      text: err.response?.data?.error || err.message
+    })
   }
 }
 

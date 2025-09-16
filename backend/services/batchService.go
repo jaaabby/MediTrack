@@ -512,7 +512,7 @@ func (s *BatchService) sendLowStockAlert(batch models.Batch) error {
 	}
 
 	// Crear solicitud de correo
-	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Stock Bajo en Lote")
+	req := mailer.NewRequest([]string{"matias.yanez@usach.cl"}, "Alerta: Stock Bajo en Lote")
 
 	// Enviar correo usando la plantilla de stock bajo
 	templatePath := "mailer/templates/low_stock.html"
@@ -540,7 +540,7 @@ func (s *BatchService) sendExpirationAlert(batch models.Batch) error {
 	}
 
 	// Crear solicitud de correo
-	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Lote Próximo a Vencer")
+	req := mailer.NewRequest([]string{"matias.yanez@usach.cl"}, "Alerta: Lote Próximo a Vencer")
 
 	// Enviar correo usando la plantilla de vencimiento
 	templatePath := "mailer/templates/expiration_warning.html"

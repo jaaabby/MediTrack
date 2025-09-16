@@ -370,6 +370,7 @@ import qrService from '@/services/qrService'
 import returnToBodegaService from '@/services/returnToBodegaService'
 import jsQR from 'jsqr'
 import QRInfoDisplay from '@/components/QRInfoDisplay.vue'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
@@ -858,13 +859,15 @@ const returnToStore = async (qrCode) => {
   if (!qrCode || returningToStore.value) return
   
   // Confirmar la acción
-  const confirmed = confirm(
-    '¿Está seguro de que desea regresar este insumo a bodega?\n\n' +
-    'Esta acción cambiará el estado del insumo a "en_camino_a_bodega" y ' +
-    'será registrada en el historial de trazabilidad.'
-  )
-  
-  if (!confirmed) return
+  const result = await Swal.fire({
+    title: '¿Está seguro de que desea regresar este insumo a bodega?',
+    html: 'Esta acción cambiará el estado del insumo a <b>en_camino_a_bodega</b> y será registrada en el historial de trazabilidad.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, regresar',
+    cancelButtonText: 'Cancelar',
+  })
+  if (!result.isConfirmed) return
   
   returningToStore.value = true
   error.value = null
@@ -894,13 +897,15 @@ const confirmArrivalToStore = async (qrCode) => {
   if (!qrCode || confirmingArrival.value) return
   
   // Confirmar la acción
-  const confirmed = confirm(
-    '¿Confirma que este insumo ha llegado a bodega?\n\n' +
-    'Esta acción cambiará el estado del insumo a "disponible" y ' +
-    'será registrada en el historial de trazabilidad.'
-  )
-  
-  if (!confirmed) return
+  const result = await Swal.fire({
+    title: '¿Confirma que este insumo ha llegado a bodega?',
+    html: 'Esta acción cambiará el estado del insumo a <b>disponible</b> y será registrada en el historial de trazabilidad.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, confirmar',
+    cancelButtonText: 'Cancelar',
+  })
+  if (!result.isConfirmed) return
   
   confirmingArrival.value = true
   error.value = null

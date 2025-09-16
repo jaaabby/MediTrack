@@ -533,7 +533,7 @@ func (s *MedicalSupplyService) sendUnconsumedSupplyAlert(supply *models.MedicalS
 	// Leer email de destino desde variable de entorno o usar por defecto
 	alertEmail := os.Getenv("ALERT_EMAIL")
 	if alertEmail == "" {
-		alertEmail = "vergara.javiera12@gmail.com" // Email por defecto
+		alertEmail = "matias.yanez@usach.cl" // Email por defecto
 	}
 	recipients := []string{alertEmail}
 
