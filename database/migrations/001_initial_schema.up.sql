@@ -35,7 +35,8 @@ CREATE TABLE batch (
 CREATE TABLE supply_code (
     code INTEGER PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    code_supplier INTEGER NOT NULL
+    code_supplier INTEGER NOT NULL,
+    critical_stock INTEGER NOT NULL
 );
 
 CREATE TABLE medical_supply (

@@ -100,6 +100,7 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 			// Existe, actualizar datos si es necesario
 			existingSupplyCode.Name = supplyCode.Name
 			existingSupplyCode.CodeSupplier = supplyCode.CodeSupplier
+			existingSupplyCode.CriticalStock = supplyCode.CriticalStock
 			if err := tx.Save(&existingSupplyCode).Error; err != nil {
 				return fmt.Errorf("error actualizando código de insumo: %v", err)
 			}
@@ -265,16 +266,25 @@ func (s *BatchService) UpdateBatch(id int, newBatch *models.Batch) (*models.Batc
 		fmt.Printf("BatchHistoryService no inicializado, no se registra historial\n")
 	}
 
-	// Verificar si se debe enviar correo por stock bajo
-	if batch.Amount < 10 {
-		if err := s.sendLowStockAlert(batch); err != nil {
-			// Solo log del error, no fallar la actualización
-			fmt.Printf("Error al enviar alerta de stock bajo: %v\n", err)
+	// Verificar si se debe enviar correo por stock bajo usando el stock crítico del tipo de insumo
+	var supplyCode models.SupplyCode
+	if err := s.DB.Joins("JOIN medical_supply ON medical_supply.code = supply_code.code").
+		Where("medical_supply.batch_id = ?", batch.ID).
+		First(&supplyCode).Error; err == nil {
+
+		// Usar el critical_stock del tipo de insumo
+		if batch.Amount > 0 && batch.Amount <= supplyCode.CriticalStock {
+			if err := s.sendLowStockAlert(batch); err != nil {
+				// Solo log del error, no fallar la actualización
+				fmt.Printf("Error al enviar alerta de stock bajo: %v\n", err)
+			}
 		}
+	} else {
+		fmt.Printf("Error obteniendo información del código de insumo para verificar stock crítico: %v\n", err)
 	}
 
-	// Verificar si se debe enviar correo por vencimiento próximo (30 días)
-	expirationThreshold := time.Now().AddDate(0, 0, 30)
+	// Verificar si se debe enviar correo por vencimiento próximo (90 días)
+	expirationThreshold := time.Now().AddDate(0, 0, 90)
 	if batch.ExpirationDate.Before(expirationThreshold) && batch.ExpirationDate.After(time.Now()) {
 		if err := s.sendExpirationAlert(batch); err != nil {
 			// Solo log del error, no fallar la actualización
@@ -290,18 +300,23 @@ func (s *BatchService) UpdateBatchAmount(id int, newAmount int) error {
 	return s.DB.Model(&models.Batch{}).Where("id = ?", id).Update("amount", newAmount).Error
 }
 
-// CheckLowStockAlert verifica y envía alertas de stock bajo
+// CheckLowStockAlert verifica y envía alertas de stock bajo usando el stock crítico del tipo de insumo
 func (s *BatchService) CheckLowStockAlert(batchID int, threshold int) error {
-	if threshold <= 0 {
-		threshold = 5 // Threshold por defecto
-	}
-
 	var batch models.Batch
 	if err := s.DB.First(&batch, batchID).Error; err != nil {
 		return fmt.Errorf("lote no encontrado: %v", err)
 	}
 
-	if batch.Amount > 0 && batch.Amount <= threshold {
+	// Obtener el stock crítico del tipo de insumo
+	var supplyCode models.SupplyCode
+	if err := s.DB.Joins("JOIN medical_supply ON medical_supply.code = supply_code.code").
+		Where("medical_supply.batch_id = ?", batchID).
+		First(&supplyCode).Error; err != nil {
+		return fmt.Errorf("error al obtener información del código de insumo: %v", err)
+	}
+
+	// Usar el critical_stock del tipo de insumo en lugar del threshold
+	if batch.Amount > 0 && batch.Amount <= supplyCode.CriticalStock {
 		return s.sendLowStockAlert(batch)
 	}
 
@@ -450,20 +465,145 @@ func (s *BatchService) GetBatchesNeedingSync() ([]map[string]interface{}, error)
 	return results, nil
 }
 
-// startDailyScheduler inicia el scheduler diario para verificar vencimientos
-func (s *BatchService) startDailyScheduler() {
-	ticker := time.NewTicker(24 * time.Hour) // Verificar cada 24 horas
-	defer ticker.Stop()
-
-	// Ejecutar inmediatamente al iniciar
-	s.CheckAllBatchesExpiration()
-
-	for {
-		select {
-		case <-ticker.C:
-			s.CheckAllBatchesExpiration()
-		}
+// CheckLowStockForSupplyType verifica stock bajo para todos los lotes de un tipo específico de insumo
+func (s *BatchService) CheckLowStockForSupplyType(supplyCode string) error {
+	// Obtener información del código de insumo
+	var sc models.SupplyCode
+	if err := s.DB.Where("code = ?", supplyCode).First(&sc).Error; err != nil {
+		return fmt.Errorf("código de insumo no encontrado: %v", err)
 	}
+
+	// Obtener todos los lotes activos de este tipo de insumo
+	var batches []models.Batch
+	query := `
+		SELECT DISTINCT b.* 
+		FROM batch b
+		JOIN medical_supply ms ON b.id = ms.batch_id
+		WHERE ms.code = ? AND b.amount > 0 AND b.amount <= ?
+	`
+
+	if err := s.DB.Raw(query, supplyCode, sc.CriticalStock).Scan(&batches).Error; err != nil {
+		return fmt.Errorf("error obteniendo lotes con stock bajo: %v", err)
+	}
+
+	// Enviar alerta para cada lote que esté en stock crítico
+	alertsSent := 0
+	for _, batch := range batches {
+		if err := s.sendLowStockAlert(batch); err != nil {
+			log.Printf("Error enviando alerta de stock bajo para lote %d: %v", batch.ID, err)
+			continue
+		}
+		alertsSent++
+	}
+
+	if alertsSent > 0 {
+		log.Printf("Se enviaron %d alertas de stock bajo para el insumo %s", alertsSent, supplyCode)
+	}
+
+	return nil
+}
+
+// CheckAllBatchesLowStock verifica todos los lotes para alertas de stock bajo basándose en su stock crítico
+func (s *BatchService) CheckAllBatchesLowStock() error {
+	// Query para obtener lotes que están en stock crítico o por debajo
+	query := `
+		SELECT DISTINCT b.*, sc.critical_stock, sc.name as supply_name
+		FROM batch b
+		JOIN medical_supply ms ON b.id = ms.batch_id
+		JOIN supply_code sc ON ms.code = sc.code
+		WHERE b.amount > 0 AND b.amount <= sc.critical_stock
+		ORDER BY b.id
+	`
+
+	type BatchWithCriticalStock struct {
+		models.Batch
+		CriticalStock int    `json:"critical_stock"`
+		SupplyName    string `json:"supply_name"`
+	}
+
+	var batchesWithCriticalStock []BatchWithCriticalStock
+	if err := s.DB.Raw(query).Scan(&batchesWithCriticalStock).Error; err != nil {
+		return fmt.Errorf("error obteniendo lotes con stock crítico: %v", err)
+	}
+
+	alertsSent := 0
+	errors := 0
+
+	for _, batchInfo := range batchesWithCriticalStock {
+		if err := s.sendLowStockAlert(batchInfo.Batch); err != nil {
+			log.Printf("Error enviando alerta de stock bajo para lote %d (%s): %v",
+				batchInfo.ID, batchInfo.SupplyName, err)
+			errors++
+			continue
+		}
+		alertsSent++
+		log.Printf("Alerta enviada para lote %d (%s): Stock actual %d, Stock crítico %d",
+			batchInfo.ID, batchInfo.SupplyName, batchInfo.Amount, batchInfo.CriticalStock)
+	}
+
+	log.Printf("Verificación de stock bajo completada: %d alertas enviadas, %d errores", alertsSent, errors)
+	return nil
+}
+
+// GetLowStockSummary obtiene un resumen de todos los insumos con stock bajo
+func (s *BatchService) GetLowStockSummary() ([]map[string]interface{}, error) {
+	query := `
+		SELECT 
+			sc.code,
+			sc.name,
+			sc.critical_stock,
+			SUM(b.amount) as total_current_stock,
+			COUNT(DISTINCT b.id) as batch_count,
+			MIN(b.expiration_date) as nearest_expiration,
+			ARRAY_AGG(DISTINCT b.supplier) as suppliers
+		FROM supply_code sc
+		JOIN medical_supply ms ON sc.code = ms.code
+		JOIN batch b ON ms.batch_id = b.id
+		WHERE b.amount > 0
+		GROUP BY sc.code, sc.name, sc.critical_stock
+		HAVING SUM(b.amount) <= sc.critical_stock
+		ORDER BY (SUM(b.amount)::float / sc.critical_stock::float) ASC, sc.name
+	`
+
+	rows, err := s.DB.Raw(query).Rows()
+	if err != nil {
+		return nil, fmt.Errorf("error ejecutando consulta de resumen de stock bajo: %v", err)
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var code int
+		var name string
+		var criticalStock int
+		var totalCurrentStock int
+		var batchCount int
+		var nearestExpiration time.Time
+		var suppliers string // PostgreSQL array como string
+
+		err := rows.Scan(&code, &name, &criticalStock, &totalCurrentStock, &batchCount, &nearestExpiration, &suppliers)
+		if err != nil {
+			return nil, fmt.Errorf("error escaneando resultado: %v", err)
+		}
+
+		stockPercentage := float64(totalCurrentStock) / float64(criticalStock) * 100
+		isUrgent := totalCurrentStock <= criticalStock/2 // Urgente si está al 50% o menos del stock crítico
+
+		results = append(results, map[string]interface{}{
+			"code":                code,
+			"name":                name,
+			"critical_stock":      criticalStock,
+			"total_current_stock": totalCurrentStock,
+			"batch_count":         batchCount,
+			"nearest_expiration":  nearestExpiration,
+			"suppliers":           suppliers,
+			"stock_percentage":    stockPercentage,
+			"is_urgent":           isUrgent,
+			"deficit":             criticalStock - totalCurrentStock,
+		})
+	}
+
+	return results, nil
 }
 
 // CheckAllBatchesExpiration verifica todos los lotes para alertas de vencimiento
@@ -504,15 +644,16 @@ func (s *BatchService) sendLowStockAlert(batch models.Batch) error {
 
 	// Crear datos para la plantilla
 	data := map[string]interface{}{
-		"BatchID":      batch.ID,
-		"Code":         supplyCode.Code,
-		"Name":         supplyCode.Name,
-		"CurrentStock": batch.Amount,
-		"Date":         time.Now().Format("02/01/2006"),
+		"BatchID":       batch.ID,
+		"Code":          supplyCode.Code,
+		"Name":          supplyCode.Name,
+		"CurrentStock":  batch.Amount,
+		"CriticalStock": supplyCode.CriticalStock,
+		"Date":          time.Now().Format("02/01/2006"),
 	}
 
 	// Crear solicitud de correo
-	req := mailer.NewRequest([]string{"matias.yanez@usach.cl"}, "Alerta: Stock Bajo en Lote")
+	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Stock Bajo en Lote")
 
 	// Enviar correo usando la plantilla de stock bajo
 	templatePath := "mailer/templates/low_stock.html"
@@ -540,7 +681,7 @@ func (s *BatchService) sendExpirationAlert(batch models.Batch) error {
 	}
 
 	// Crear solicitud de correo
-	req := mailer.NewRequest([]string{"matias.yanez@usach.cl"}, "Alerta: Lote Próximo a Vencer")
+	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Lote Próximo a Vencer")
 
 	// Enviar correo usando la plantilla de vencimiento
 	templatePath := "mailer/templates/expiration_warning.html"

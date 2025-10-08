@@ -48,12 +48,12 @@ INSERT INTO store (id, name, type, medical_center_id) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Poblar códigos de insumos
-INSERT INTO supply_code (code, name, code_supplier) VALUES
-(1001, 'Guantes', 5001),
-(1002, 'Mascarillas', 5002),
-(1003, 'Jeringas', 5003),
-(1004, 'Agujas', 5004),
-(1005, 'Gasas', 5005)
+INSERT INTO supply_code (code, name, code_supplier, critical_stock) VALUES
+(1001, 'Guantes', 5001, 5),
+(1002, 'Mascarillas', 5002, 10),
+(1003, 'Jeringas', 5003, 10),
+(1004, 'Agujas', 5004, 10),
+(1005, 'Gasas', 5005, 10)
 ON CONFLICT (code) DO NOTHING;
 
 -- Poblar lotes

@@ -1217,18 +1217,6 @@ func mapQRTypeToDatabase(internalType string) string {
 	}
 }
 
-// mapQRTypeFromDatabase mapea tipos de base de datos a tipos internos
-func mapQRTypeFromDatabase(dbType string) string {
-	switch dbType {
-	case "SUPPLY":
-		return "medical_supply"
-	case "BATCH":
-		return "batch"
-	default:
-		return strings.ToLower(dbType)
-	}
-}
-
 // ValidateQRCode valida si un código QR existe y retorna su tipo
 func (s *QRService) ValidateQRCode(qrCode string) (bool, string, error) {
 	// Buscar en batch
