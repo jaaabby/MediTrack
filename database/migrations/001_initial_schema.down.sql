@@ -90,10 +90,10 @@ DROP INDEX IF EXISTS idx_qr_scan_event_session;
 DROP INDEX IF EXISTS idx_medical_supply_status;
 
 -- =======================
--- ELIMINAR TABLAS EN ORDEN CORRECTO (respetando dependencias)
+-- ELIMINAR TABLAS
 -- =======================
 
--- Tablas de solicitudes (más dependientes primero)
+-- Tablas de solicitudes
 DROP TABLE IF EXISTS supply_request_qr_assignment CASCADE;
 DROP TABLE IF EXISTS supply_request_item CASCADE;
 DROP TABLE IF EXISTS supply_request CASCADE;
@@ -115,3 +115,4 @@ DROP TABLE IF EXISTS store CASCADE;
 DROP TABLE IF EXISTS pavilion CASCADE;
 DROP TABLE IF EXISTS "user" CASCADE;
 DROP TABLE IF EXISTS medical_center CASCADE;
+DROP TABLE IF EXISTS surgery CASCADE;

@@ -45,6 +45,12 @@ CREATE TABLE medical_supply (
     qr_code VARCHAR(255) NOT NULL UNIQUE
 );
 
+CREATE TABLE surgery (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    duration FLOAT NOT NULL
+);
+
 CREATE TABLE "user" (
     rut VARCHAR(20) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
