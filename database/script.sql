@@ -56,47 +56,6 @@ INSERT INTO supply_code (code, name, code_supplier, critical_stock) VALUES
 (1005, 'Gasas', 5005, 10)
 ON CONFLICT (code) DO NOTHING;
 
--- Poblar lotes
-INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code) VALUES
-(1, '2026-12-31', 10, 'Proveedor Uno', 1, 'BATCH_1_1'),
-(2, '2025-12-31', 5, 'Proveedor Dos', 2, 'BATCH_2_1'),
-(3, '2026-06-30', 15, 'Proveedor Tres', 1, 'BATCH_3_1'),
-(4, '2025-10-15', 8, 'Proveedor Cuatro', 2, 'BATCH_4_1')
-ON CONFLICT (id) DO NOTHING;
-
--- Poblar insumos médicos - TODOS EN ESTADO DISPONIBLE
-INSERT INTO medical_supply (code, batch_id, qr_code, status) VALUES
--- Guantes del lote 1
-(1001, 1, 'SUPPLY_1_1', 'disponible'),
-(1001, 1, 'SUPPLY_2_1', 'disponible'),
-(1001, 1, 'SUPPLY_3_1', 'disponible'),
-(1001, 1, 'SUPPLY_4_1', 'disponible'),
-(1001, 1, 'SUPPLY_5_1', 'disponible'),
-(1001, 1, 'SUPPLY_6_1', 'disponible'),
-(1001, 1, 'SUPPLY_7_1', 'disponible'),
-(1001, 1, 'SUPPLY_8_1', 'disponible'),
-(1001, 1, 'SUPPLY_9_1', 'disponible'),
-(1001, 1, 'SUPPLY_10_1', 'disponible'),
--- Mascarillas del lote 2
-(1002, 2, 'SUPPLY_11_1', 'disponible'),
-(1002, 2, 'SUPPLY_12_1', 'disponible'),
-(1002, 2, 'SUPPLY_13_1', 'disponible'),
-(1002, 2, 'SUPPLY_14_1', 'disponible'),
-(1002, 2, 'SUPPLY_15_1', 'disponible'),
--- Jeringas del lote 3
-(1003, 3, 'SUPPLY_16_1', 'disponible'),
-(1003, 3, 'SUPPLY_17_1', 'disponible'),
-(1003, 3, 'SUPPLY_18_1', 'disponible'),
-(1003, 3, 'SUPPLY_19_1', 'disponible'),
-(1003, 3, 'SUPPLY_20_1', 'disponible'),
--- Agujas del lote 4
-(1004, 4, 'SUPPLY_21_1', 'disponible'),
-(1004, 4, 'SUPPLY_22_1', 'disponible'),
-(1004, 4, 'SUPPLY_23_1', 'disponible'),
-(1004, 4, 'SUPPLY_24_1', 'disponible'),
-(1004, 4, 'SUPPLY_25_1', 'disponible')
-ON CONFLICT (qr_code) DO NOTHING;
-
 -- Poblar cirugías
 INSERT INTO surgery (id, name, duration) VALUES
 (1, 'COLGAJOS COMPLEJOS (ABBE,MUSTARDA,CONV', 2.5),
@@ -316,8 +275,49 @@ INSERT INTO surgery (id, name, duration) VALUES
 (215, 'VITRECTOMIA C/RETINOTOMIA (C/S INYECCION', 3),
 (216, 'VULVECTOMIA SIMPLE', 1),
 (217, 'YUGULAR SIMPLE', 3),
-(218, 'ANEURISMA AORTICO ABDOMINAL TRAT. QUIR.', 4);
+(218, 'ANEURISMA AORTICO ABDOMINAL TRAT. QUIR.', 4)
+ON CONFLICT (id) DO NOTHING;
 
+-- Poblar lotes
+INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code, surgery_id, location_type, location_id) VALUES
+(1, '2026-12-31', 10, 'Proveedor Uno', 1, 'BATCH_1_1', 1, 'store', 1),
+(2, '2025-12-31', 5, 'Proveedor Dos', 2, 'BATCH_2_1', 2, 'store', 2),
+(3, '2026-06-30', 15, 'Proveedor Tres', 1, 'BATCH_3_1', 5, 'store', 1),
+(4, '2025-10-15', 8, 'Proveedor Cuatro', 2, 'BATCH_4_1', 10, 'store', 2)
+ON CONFLICT (id) DO NOTHING;
+
+-- Poblar insumos médicos - TODOS EN ESTADO DISPONIBLE
+INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, location_id) VALUES
+-- Guantes del lote 1
+(1001, 1, 'SUPPLY_1_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_2_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_3_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_4_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_5_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_6_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_7_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_8_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_9_1', 'disponible', 'store', 1),
+(1001, 1, 'SUPPLY_10_1', 'disponible', 'store', 1),
+-- Mascarillas del lote 2
+(1002, 2, 'SUPPLY_11_1', 'disponible', 'store', 2),
+(1002, 2, 'SUPPLY_12_1', 'disponible', 'store', 2),
+(1002, 2, 'SUPPLY_13_1', 'disponible', 'store', 2),
+(1002, 2, 'SUPPLY_14_1', 'disponible', 'store', 2),
+(1002, 2, 'SUPPLY_15_1', 'disponible', 'store', 2),
+-- Jeringas del lote 3
+(1003, 3, 'SUPPLY_16_1', 'disponible', 'store', 1),
+(1003, 3, 'SUPPLY_17_1', 'disponible', 'store', 1),
+(1003, 3, 'SUPPLY_18_1', 'disponible', 'store', 1),
+(1003, 3, 'SUPPLY_19_1', 'disponible', 'store', 1),
+(1003, 3, 'SUPPLY_20_1', 'disponible', 'store', 1),
+-- Agujas del lote 4
+(1004, 4, 'SUPPLY_21_1', 'disponible', 'store', 2),
+(1004, 4, 'SUPPLY_22_1', 'disponible', 'store', 2),
+(1004, 4, 'SUPPLY_23_1', 'disponible', 'store', 2),
+(1004, 4, 'SUPPLY_24_1', 'disponible', 'store', 2),
+(1004, 4, 'SUPPLY_25_1', 'disponible', 'store', 2)
+ON CONFLICT (qr_code) DO NOTHING;
 
 -- ============================================
 -- POBLADO DE USUARIOS
@@ -572,3 +572,170 @@ JOIN supply_code sc ON ms.code = sc.code
 JOIN store s ON sh.destination_id = s.id
 WHERE sh.user_rut = 'SYSTEM-INIT'
 LIMIT 5;
+
+-- ============================================
+-- POBLADO DE TABLAS DE RESUMEN DE INVENTARIO
+-- ============================================
+
+-- Poblar resumen de inventario de bodega (store_inventory_summary)
+INSERT INTO store_inventory_summary (
+    store_id,
+    batch_id,
+    supply_code,
+    surgery_id,
+    original_amount,
+    current_in_store,
+    total_transferred_out,
+    total_returned_in,
+    total_consumed_in_store,
+    created_at,
+    updated_at
+)
+SELECT 
+    b.store_id,
+    b.id as batch_id,
+    ms.code as supply_code,
+    b.surgery_id,
+    b.amount as original_amount,
+    b.amount as current_in_store,
+    0 as total_transferred_out,
+    0 as total_returned_in,
+    0 as total_consumed_in_store,
+    NOW() as created_at,
+    NOW() as updated_at
+FROM batch b
+JOIN medical_supply ms ON ms.batch_id = b.id
+WHERE b.location_type = 'store'
+GROUP BY b.store_id, b.id, ms.code, b.surgery_id, b.amount
+ON CONFLICT (batch_id) DO NOTHING;
+
+-- Verificar los registros de resumen de bodega
+SELECT 
+    'Registros de resumen de bodega:' as info,
+    COUNT(*) as total_records
+FROM store_inventory_summary;
+
+
+-- Script para arreglar las secuencias de auto-incremento
+-- Ejecutar después de poblar la base de datos con datos iniciales
+
+-- Arreglar secuencia de surgery
+SELECT setval('surgery_id_seq', (SELECT COALESCE(MAX(id), 0) FROM surgery));
+
+-- Arreglar secuencia de medical_center
+SELECT setval('medical_center_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_center));
+
+-- Arreglar secuencia de pavilion
+SELECT setval('pavilion_id_seq', (SELECT COALESCE(MAX(id), 0) FROM pavilion));
+
+-- Arreglar secuencia de store
+SELECT setval('store_id_seq', (SELECT COALESCE(MAX(id), 0) FROM store));
+
+-- Arreglar secuencia de batch
+SELECT setval('batch_id_seq', (SELECT COALESCE(MAX(id), 0) FROM batch));
+
+-- NOTA: supply_code no tiene secuencia automática porque usa INTEGER PRIMARY KEY sin SERIAL
+-- Si necesitas agregar una secuencia, ejecuta:
+-- CREATE SEQUENCE IF NOT EXISTS supply_code_code_seq OWNED BY supply_code.code;
+-- ALTER TABLE supply_code ALTER COLUMN code SET DEFAULT nextval('supply_code_code_seq');
+-- SELECT setval('supply_code_code_seq', (SELECT COALESCE(MAX(code), 0) FROM supply_code));
+
+-- Arreglar secuencia de medical_supply
+SELECT setval('medical_supply_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_supply));
+
+-- Arreglar secuencia de supply_history
+SELECT setval('supply_history_id_seq', (SELECT COALESCE(MAX(id), 0) FROM supply_history));
+
+-- Arreglar secuencia de supply_transfer (solo si existe la tabla)
+DO $$
+DECLARE
+    max_id INTEGER;
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'supply_transfer') THEN
+        SELECT COALESCE(MAX(id), 0) INTO max_id FROM supply_transfer;
+        IF max_id > 0 THEN
+            PERFORM setval('supply_transfer_id_seq', max_id);
+        END IF;
+    END IF;
+END $$;
+
+-- Arreglar secuencia de store_inventory_summary (solo si existe la tabla)
+DO $$
+DECLARE
+    max_id INTEGER;
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'store_inventory_summary') THEN
+        SELECT COALESCE(MAX(id), 0) INTO max_id FROM store_inventory_summary;
+        IF max_id > 0 THEN
+            PERFORM setval('store_inventory_summary_id_seq', max_id);
+        END IF;
+    END IF;
+END $$;
+
+-- Arreglar secuencia de pavilion_inventory_summary (solo si existe la tabla)
+DO $$
+DECLARE
+    max_id INTEGER;
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'pavilion_inventory_summary') THEN
+        SELECT COALESCE(MAX(id), 0) INTO max_id FROM pavilion_inventory_summary;
+        IF max_id > 0 THEN
+            PERFORM setval('pavilion_inventory_summary_id_seq', max_id);
+        END IF;
+    END IF;
+END $$;
+
+-- Arreglar secuencia de batch_history (solo si existe la tabla)
+DO $$
+DECLARE
+    max_id INTEGER;
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'batch_history') THEN
+        SELECT COALESCE(MAX(id), 0) INTO max_id FROM batch_history;
+        IF max_id > 0 THEN
+            PERFORM setval('batch_history_id_seq', max_id);
+        END IF;
+    END IF;
+END $$;
+
+-- Arreglar secuencia de supply_request (solo si existe la tabla)
+DO $$
+DECLARE
+    max_id INTEGER;
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'supply_request') THEN
+        SELECT COALESCE(MAX(id), 0) INTO max_id FROM supply_request;
+        IF max_id > 0 THEN
+            PERFORM setval('supply_request_id_seq', max_id);
+        END IF;
+    END IF;
+END $$;
+
+-- Arreglar secuencia de supply_request_item (solo si existe la tabla)
+DO $$
+DECLARE
+    max_id INTEGER;
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'supply_request_item') THEN
+        SELECT COALESCE(MAX(id), 0) INTO max_id FROM supply_request_item;
+        IF max_id > 0 THEN
+            PERFORM setval('supply_request_item_id_seq', max_id);
+        END IF;
+    END IF;
+END $$;
+
+-- Verificar que las secuencias están correctas
+SELECT 'surgery_id_seq' as sequence_name, last_value FROM surgery_id_seq
+UNION ALL
+SELECT 'medical_center_id_seq', last_value FROM medical_center_id_seq
+UNION ALL
+SELECT 'pavilion_id_seq', last_value FROM pavilion_id_seq
+UNION ALL
+SELECT 'store_id_seq', last_value FROM store_id_seq
+UNION ALL
+SELECT 'batch_id_seq', last_value FROM batch_id_seq
+UNION ALL
+SELECT 'medical_supply_id_seq', last_value FROM medical_supply_id_seq
+UNION ALL
+SELECT 'supply_history_id_seq', last_value FROM supply_history_id_seq
+ORDER BY sequence_name;

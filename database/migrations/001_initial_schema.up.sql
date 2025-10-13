@@ -23,13 +23,22 @@ CREATE TABLE store (
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id)
 );
 
+CREATE TABLE surgery (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    duration FLOAT NOT NULL
+);
+
 CREATE TABLE batch (
     id SERIAL PRIMARY KEY,
     expiration_date DATE NOT NULL,
     amount INTEGER NOT NULL,
     supplier VARCHAR(255) NOT NULL,
     store_id INTEGER NOT NULL REFERENCES store(id),
-    qr_code VARCHAR(255) NOT NULL UNIQUE
+    qr_code VARCHAR(255) NOT NULL UNIQUE,
+    surgery_id INTEGER REFERENCES surgery(id),
+    location_type VARCHAR(50) NOT NULL DEFAULT 'store' CHECK (location_type IN ('store', 'pavilion')),
+    location_id INTEGER NOT NULL
 );
 
 CREATE TABLE supply_code (
@@ -37,19 +46,6 @@ CREATE TABLE supply_code (
     name VARCHAR(255) NOT NULL,
     code_supplier INTEGER NOT NULL,
     critical_stock INTEGER NOT NULL
-);
-
-CREATE TABLE medical_supply (
-    id SERIAL PRIMARY KEY,
-    code INTEGER NOT NULL REFERENCES supply_code(code),
-    batch_id INTEGER NOT NULL REFERENCES batch(id),
-    qr_code VARCHAR(255) NOT NULL UNIQUE
-);
-
-CREATE TABLE surgery (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    duration FLOAT NOT NULL
 );
 
 CREATE TABLE "user" (
@@ -66,6 +62,18 @@ CREATE TABLE "user" (
 
 CREATE INDEX idx_user_email ON "user"(email);
 
+CREATE TABLE medical_supply (
+    id SERIAL PRIMARY KEY,
+    code INTEGER NOT NULL REFERENCES supply_code(code),
+    batch_id INTEGER NOT NULL REFERENCES batch(id),
+    qr_code VARCHAR(255) NOT NULL UNIQUE,
+    location_type VARCHAR(50) NOT NULL DEFAULT 'store' CHECK (location_type IN ('store', 'pavilion')),
+    location_id INTEGER NOT NULL,
+    in_transit BOOLEAN DEFAULT FALSE,
+    transfer_date TIMESTAMP,
+    transferred_by VARCHAR(20) REFERENCES "user"(rut)
+);
+
 CREATE TABLE supply_history (
     id SERIAL PRIMARY KEY,
     date_time TIMESTAMP NOT NULL,
@@ -74,7 +82,12 @@ CREATE TABLE supply_history (
     destination_id INTEGER NOT NULL,
     medical_supply_id INTEGER NOT NULL REFERENCES medical_supply(id) ON DELETE CASCADE,
     user_rut VARCHAR(20) NOT NULL REFERENCES "user"(rut),
-    notes TEXT
+    notes TEXT,
+    origin_type VARCHAR(50),
+    origin_id INTEGER,
+    confirmed_by VARCHAR(20) REFERENCES "user"(rut),
+    confirmation_date TIMESTAMP,
+    transfer_notes TEXT
 );
 
 CREATE TABLE batch_history (
@@ -729,6 +742,137 @@ CREATE TRIGGER trg_update_medical_supply_updated_at
 -- El historial se maneja exclusivamente a través de la lógica de la aplicación.
 
 -- Migrar estados existentes de supply_history a medical_supply
+
+-- =======================
+-- MIGRACIÓN: SISTEMA DE GESTIÓN DE INVENTARIO POR UBICACIONES
+-- Fecha: 2025-01-20
+-- Descripción: Crear tablas para gestión de transferencias e inventario por ubicación
+-- =======================
+
+-- Tabla de transferencias de insumos
+CREATE TABLE IF NOT EXISTS supply_transfer (
+    id SERIAL PRIMARY KEY,
+    transfer_code VARCHAR(100) NOT NULL UNIQUE,
+    qr_code VARCHAR(255) NOT NULL,
+    medical_supply_id INTEGER NOT NULL REFERENCES medical_supply(id),
+    origin_type VARCHAR(50) NOT NULL CHECK (origin_type IN ('store', 'pavilion')),
+    origin_id INTEGER NOT NULL,
+    destination_type VARCHAR(50) NOT NULL CHECK (destination_type IN ('store', 'pavilion')),
+    destination_id INTEGER NOT NULL,
+    sent_by VARCHAR(20) NOT NULL REFERENCES "user"(rut),
+    sent_by_name VARCHAR(255) NOT NULL,
+    received_by VARCHAR(20) REFERENCES "user"(rut),
+    received_by_name VARCHAR(255),
+    status VARCHAR(50) NOT NULL DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'en_transito', 'recibido', 'rechazado', 'cancelado')),
+    transfer_reason TEXT,
+    send_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    receive_date TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
+    rejection_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices para supply_transfer
+CREATE INDEX idx_supply_transfer_qr_code ON supply_transfer(qr_code);
+CREATE INDEX idx_supply_transfer_medical_supply ON supply_transfer(medical_supply_id);
+CREATE INDEX idx_supply_transfer_status ON supply_transfer(status);
+CREATE INDEX idx_supply_transfer_origin ON supply_transfer(origin_type, origin_id);
+CREATE INDEX idx_supply_transfer_destination ON supply_transfer(destination_type, destination_id);
+CREATE INDEX idx_supply_transfer_sent_by ON supply_transfer(sent_by);
+CREATE INDEX idx_supply_transfer_send_date ON supply_transfer(send_date);
+
+-- Tabla de resumen de inventario por pabellón
+CREATE TABLE IF NOT EXISTS pavilion_inventory_summary (
+    id SERIAL PRIMARY KEY,
+    pavilion_id INTEGER NOT NULL REFERENCES pavilion(id),
+    batch_id INTEGER NOT NULL REFERENCES batch(id),
+    supply_code INTEGER NOT NULL REFERENCES supply_code(code),
+    total_received INTEGER NOT NULL DEFAULT 0,
+    current_available INTEGER NOT NULL DEFAULT 0,
+    total_consumed INTEGER NOT NULL DEFAULT 0,
+    total_returned INTEGER NOT NULL DEFAULT 0,
+    last_received_date TIMESTAMP WITH TIME ZONE,
+    last_consumed_date TIMESTAMP WITH TIME ZONE,
+    last_returned_date TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Constraint para evitar duplicados
+    CONSTRAINT uq_pavilion_batch UNIQUE (pavilion_id, batch_id)
+);
+
+-- Índices para pavilion_inventory_summary
+CREATE INDEX idx_pavilion_inventory_pavilion ON pavilion_inventory_summary(pavilion_id);
+CREATE INDEX idx_pavilion_inventory_batch ON pavilion_inventory_summary(batch_id);
+CREATE INDEX idx_pavilion_inventory_supply_code ON pavilion_inventory_summary(supply_code);
+CREATE INDEX idx_pavilion_inventory_available ON pavilion_inventory_summary(current_available);
+
+-- Tabla de resumen de inventario por bodega
+CREATE TABLE IF NOT EXISTS store_inventory_summary (
+    id SERIAL PRIMARY KEY,
+    store_id INTEGER NOT NULL REFERENCES store(id),
+    batch_id INTEGER NOT NULL REFERENCES batch(id) UNIQUE,
+    supply_code INTEGER NOT NULL REFERENCES supply_code(code),
+    surgery_id INTEGER REFERENCES surgery(id),
+    original_amount INTEGER NOT NULL,
+    current_in_store INTEGER NOT NULL,
+    total_transferred_out INTEGER NOT NULL DEFAULT 0,
+    total_returned_in INTEGER NOT NULL DEFAULT 0,
+    total_consumed_in_store INTEGER NOT NULL DEFAULT 0,
+    last_transfer_out_date TIMESTAMP WITH TIME ZONE,
+    last_return_in_date TIMESTAMP WITH TIME ZONE,
+    last_consumed_date TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices para store_inventory_summary
+CREATE INDEX idx_store_inventory_store ON store_inventory_summary(store_id);
+CREATE INDEX idx_store_inventory_batch ON store_inventory_summary(batch_id);
+CREATE INDEX idx_store_inventory_supply_code ON store_inventory_summary(supply_code);
+CREATE INDEX idx_store_inventory_surgery ON store_inventory_summary(surgery_id);
+CREATE INDEX idx_store_inventory_current ON store_inventory_summary(current_in_store);
+
+-- Triggers para actualizar updated_at
+CREATE OR REPLACE FUNCTION update_supply_transfer_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_supply_transfer_updated_at
+    BEFORE UPDATE ON supply_transfer
+    FOR EACH ROW
+    EXECUTE FUNCTION update_supply_transfer_updated_at();
+
+CREATE OR REPLACE FUNCTION update_pavilion_inventory_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_pavilion_inventory_updated_at
+    BEFORE UPDATE ON pavilion_inventory_summary
+    FOR EACH ROW
+    EXECUTE FUNCTION update_pavilion_inventory_updated_at();
+
+CREATE OR REPLACE FUNCTION update_store_inventory_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_store_inventory_updated_at
+    BEFORE UPDATE ON store_inventory_summary
+    FOR EACH ROW
+    EXECUTE FUNCTION update_store_inventory_updated_at();
 UPDATE medical_supply 
 SET status = (
     SELECT sh.status 

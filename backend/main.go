@@ -56,6 +56,12 @@ func main() {
 	// Inicializar BatchHistoryService en BatchService
 	// Configurar el servicio de lotes con el servicio de suministros médicos
 	batchService.SetMedicalSupplyService(medicalSupplyService)
+
+	// Crear servicios para el nuevo sistema de inventario
+	transferService := services.NewSupplyTransferService(db)
+	inventoryService := services.NewInventoryService(db)
+	surgeryService := services.NewSurgeryService(db)
+
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -78,6 +84,9 @@ func main() {
 		*supplyCodeService,
 		*qrService,
 		*batchHistoryService,
+		transferService,
+		inventoryService,
+		surgeryService,
 		secretKey,
 	)
 

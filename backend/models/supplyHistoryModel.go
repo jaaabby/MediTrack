@@ -14,6 +14,13 @@ type SupplyHistory struct {
 	MedicalSupplyID int       `json:"medical_supply_id" db:"medical_supply_id" gorm:"not null"`
 	UserRUT         string    `json:"user_rut" db:"user_rut" gorm:"not null"`
 	Notes           string    `json:"notes" db:"notes" gorm:"type:text"`
+
+	// Nuevos campos para trazabilidad completa de transferencias
+	OriginType       *string    `json:"origin_type,omitempty"`                     // 'store' o 'pavilion'
+	OriginID         *int       `json:"origin_id,omitempty"`                       // ID de la ubicación de origen
+	ConfirmedBy      *string    `json:"confirmed_by,omitempty"`                    // RUT de quien confirmó la recepción
+	ConfirmationDate *time.Time `json:"confirmation_date,omitempty"`               // Fecha de confirmación
+	TransferNotes    string     `json:"transfer_notes,omitempty" gorm:"type:text"` // Notas adicionales de transferencia
 }
 
 // Constantes para los tipos de destino

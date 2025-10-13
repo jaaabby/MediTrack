@@ -199,6 +199,31 @@ func (s *BatchService) GetAllBatches() ([]models.Batch, error) {
 	return batches, nil
 }
 
+// GetBatchesWithFilters obtiene lotes con filtros opcionales
+func (s *BatchService) GetBatchesWithFilters(surgeryID *int, storeID *int, supplier string) ([]models.Batch, error) {
+	var batches []models.Batch
+	query := s.DB.Model(&models.Batch{})
+
+	// Aplicar filtros si se proporcionan
+	if surgeryID != nil {
+		query = query.Where("surgery_id = ?", *surgeryID)
+	}
+
+	if storeID != nil {
+		query = query.Where("store_id = ?", *storeID)
+	}
+
+	if supplier != "" {
+		query = query.Where("supplier ILIKE ?", "%"+supplier+"%")
+	}
+
+	if err := query.Find(&batches).Error; err != nil {
+		return nil, err
+	}
+
+	return batches, nil
+}
+
 // GetBatchWithSupplyInfo obtiene un lote con información de sus insumos
 func (s *BatchService) GetBatchWithSupplyInfo(id int) (map[string]interface{}, error) {
 	var batch models.Batch
