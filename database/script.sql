@@ -2,10 +2,6 @@
 -- Fecha: 2025-08-19
 -- Descripción: Poblado completo de todas las tablas del sistema
 
--- ============================================
--- POBLADO DE TABLAS BASE
--- ============================================
-
 -- Poblar centros médicos
 INSERT INTO medical_center (id, name, address, phone, email) VALUES
 (1, 'Centro Médico Principal', 'Av. Principal 123', '+56 2 2345 6789', 'info@centromedico.cl'),
@@ -288,7 +284,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Poblar insumos médicos - TODOS EN ESTADO DISPONIBLE
 INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, location_id) VALUES
--- Guantes del lote 1
 (1001, 1, 'SUPPLY_1_1', 'disponible', 'store', 1),
 (1001, 1, 'SUPPLY_2_1', 'disponible', 'store', 1),
 (1001, 1, 'SUPPLY_3_1', 'disponible', 'store', 1),
@@ -299,19 +294,16 @@ INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, loca
 (1001, 1, 'SUPPLY_8_1', 'disponible', 'store', 1),
 (1001, 1, 'SUPPLY_9_1', 'disponible', 'store', 1),
 (1001, 1, 'SUPPLY_10_1', 'disponible', 'store', 1),
--- Mascarillas del lote 2
 (1002, 2, 'SUPPLY_11_1', 'disponible', 'store', 2),
 (1002, 2, 'SUPPLY_12_1', 'disponible', 'store', 2),
 (1002, 2, 'SUPPLY_13_1', 'disponible', 'store', 2),
 (1002, 2, 'SUPPLY_14_1', 'disponible', 'store', 2),
 (1002, 2, 'SUPPLY_15_1', 'disponible', 'store', 2),
--- Jeringas del lote 3
 (1003, 3, 'SUPPLY_16_1', 'disponible', 'store', 1),
 (1003, 3, 'SUPPLY_17_1', 'disponible', 'store', 1),
 (1003, 3, 'SUPPLY_18_1', 'disponible', 'store', 1),
 (1003, 3, 'SUPPLY_19_1', 'disponible', 'store', 1),
 (1003, 3, 'SUPPLY_20_1', 'disponible', 'store', 1),
--- Agujas del lote 4
 (1004, 4, 'SUPPLY_21_1', 'disponible', 'store', 2),
 (1004, 4, 'SUPPLY_22_1', 'disponible', 'store', 2),
 (1004, 4, 'SUPPLY_23_1', 'disponible', 'store', 2),
@@ -319,15 +311,6 @@ INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, loca
 (1004, 4, 'SUPPLY_25_1', 'disponible', 'store', 2)
 ON CONFLICT (qr_code) DO NOTHING;
 
--- ============================================
--- POBLADO DE USUARIOS
--- ============================================
-
--- Script para insertar usuarios del sistema
--- Contraseña: admin123 (hasheada con bcrypt)
--- Nota: Las contraseñas se almacenan como hash, no como texto plano
-
--- Usuario administrador del sistema
 INSERT INTO "user" (
     rut, 
     name, 
@@ -342,7 +325,7 @@ INSERT INTO "user" (
     '12345678-9',
     'Administrador del Sistema',
     'admin@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'admin',
     1,
     true,
@@ -350,7 +333,6 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
--- Usuario de pabellón de ejemplo
 INSERT INTO "user" (
     rut, 
     name, 
@@ -365,7 +347,7 @@ INSERT INTO "user" (
     '87654321-0',
     'Usuario Pabellón',
     'pabellon@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'pabellón',
     1,
     true,
@@ -373,7 +355,6 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
--- Usuario encargado de bodega de ejemplo
 INSERT INTO "user" (
     rut, 
     name, 
@@ -388,7 +369,7 @@ INSERT INTO "user" (
     '11111111-1',
     'Encargado Bodega',
     'bodega@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'encargado de bodega',
     1,
     true,
@@ -396,7 +377,6 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
--- Usuario enfermera de ejemplo
 INSERT INTO "user" (
     rut, 
     name, 
@@ -411,7 +391,7 @@ INSERT INTO "user" (
     '22222222-2',
     'María González',
     'enfermera@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'enfermera',
     1,
     true,
@@ -419,7 +399,6 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
--- Usuario doctor de ejemplo
 INSERT INTO "user" (
     rut, 
     name, 
@@ -434,7 +413,7 @@ INSERT INTO "user" (
     '33333333-3',
     'Dr. Carlos Pérez',
     'doctor@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
     true,
@@ -442,7 +421,6 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
--- Usuario especial del sistema para operaciones automáticas
 INSERT INTO "user" (
     rut, 
     name, 
@@ -457,7 +435,7 @@ INSERT INTO "user" (
     'SYSTEM-INIT',
     'Sistema de Inicialización',
     'system@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- admin123 hasheada con bcrypt
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'admin',
     1,
     true,
@@ -465,13 +443,6 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
--- ============================================
--- POBLADO DE HISTORIALES
--- ============================================
-
--- NOTA: No se incluye historial de insumos para mantener todos los insumos en estado inicial "disponible"
-
--- Poblar historial de lotes
 INSERT INTO batch_history (date_time, change_details, previous_values, new_values, user_name, batch_id, user_rut, batch_number) VALUES
 ('2025-08-16 10:00:00', 'Lote creado', NULL, '{"expiration_date": "2026-12-31", "amount": 10, "supplier": "Proveedor Uno", "store_id": 1}', 'Administrador del Sistema', 1, '12345678-9', 1),
 ('2025-08-16 11:00:00', 'Lote creado', NULL, '{"expiration_date": "2025-12-31", "amount": 5, "supplier": "Proveedor Dos", "store_id": 2}', 'Usuario Pabellón', 2, '87654321-0', 2),
@@ -480,7 +451,6 @@ INSERT INTO batch_history (date_time, change_details, previous_values, new_value
 ('2025-08-16 14:00:00', 'Cantidad actualizada', '{"amount": 10}', '{"amount": 8}', 'Encargado Bodega', 1, '11111111-1', 1)
 ON CONFLICT DO NOTHING;
 
--- Insertar solicitud de ejemplo
 INSERT INTO supply_request (
     request_number, pavilion_id, requested_by, requested_by_name,
     request_date, status, priority, notes, medical_center_id
@@ -490,7 +460,6 @@ INSERT INTO supply_request (
     'Solicitud de prueba para implementación de trazabilidad QR', 1
 );
 
--- Insertar items de ejemplo
 INSERT INTO supply_request_item (
     supply_request_id, supply_code, supply_name, quantity_requested,
     specifications, is_pediatric, size, urgency_level
@@ -498,32 +467,17 @@ INSERT INTO supply_request_item (
 (1, 1001, 'Guantes', 50, 'Talla M, látex libre', FALSE, 'M', 'normal'),
 (1, 1002, 'Mascarillas', 100, 'N95, uso pediátrico', TRUE, 'Pediatric', 'high');
 
--- Script para arreglar el problema de secuencia en la tabla batch
--- Este script resetea la secuencia de auto-incremento al valor correcto
-
--- Verificar el ID máximo actual en la tabla batch
 SELECT 'ID máximo actual en batch:' as info, COALESCE(MAX(id), 0) as max_id FROM batch;
 
--- Resetear la secuencia al valor correcto
--- La secuencia debe ser mayor que el ID máximo existente
 SELECT setval('batch_id_seq', COALESCE((SELECT MAX(id) FROM batch), 0) + 1, false);
 
--- Verificar el estado de la secuencia después del reset
 SELECT 'Secuencia después del reset:' as info, last_value, is_called FROM batch_id_seq;
 
--- También verificar que no hay problemas con QR codes duplicados
 SELECT 'QR codes duplicados:' as info, qr_code, COUNT(*) as count 
 FROM batch 
 WHERE qr_code IS NOT NULL 
 GROUP BY qr_code 
 HAVING COUNT(*) > 1;
-
--- Migración para poblar correctamente la tabla supply_history
--- Fecha: 2025-01-20
--- Descripción: Agregar registros de historial para mostrar que los insumos estuvieron en bodega
-
--- Insertar historial inicial para todos los insumos disponibles
--- Esto simula que todos los insumos estuvieron inicialmente en bodega antes de estar disponibles
 
 INSERT INTO supply_history (
     date_time,
@@ -535,7 +489,7 @@ INSERT INTO supply_history (
     notes
 )
 SELECT 
-    NOW() - INTERVAL '30 days' AS date_time,  -- Hace 30 días
+    NOW() - INTERVAL '30 days' AS date_time,
     'disponible' AS status,
     'store' AS destination_type,
     b.store_id AS destination_id,
@@ -550,14 +504,12 @@ AND NOT EXISTS (
     WHERE sh.medical_supply_id = ms.id
 );
 
--- Verificar los registros insertados
 SELECT 
     'Registros de historial agregados:' as info,
     COUNT(*) as total_records
 FROM supply_history 
 WHERE user_rut = 'SYSTEM-INIT';
 
--- Mostrar ejemplo de registros insertados
 SELECT 
     'Ejemplo de registros insertados:' as info,
     ms.qr_code,
@@ -573,11 +525,6 @@ JOIN store s ON sh.destination_id = s.id
 WHERE sh.user_rut = 'SYSTEM-INIT'
 LIMIT 5;
 
--- ============================================
--- POBLADO DE TABLAS DE RESUMEN DE INVENTARIO
--- ============================================
-
--- Poblar resumen de inventario de bodega (store_inventory_summary)
 INSERT INTO store_inventory_summary (
     store_id,
     batch_id,
@@ -609,44 +556,25 @@ WHERE b.location_type = 'store'
 GROUP BY b.store_id, b.id, ms.code, b.surgery_id, b.amount
 ON CONFLICT (batch_id) DO NOTHING;
 
--- Verificar los registros de resumen de bodega
 SELECT 
     'Registros de resumen de bodega:' as info,
     COUNT(*) as total_records
 FROM store_inventory_summary;
 
-
--- Script para arreglar las secuencias de auto-incremento
--- Ejecutar después de poblar la base de datos con datos iniciales
-
--- Arreglar secuencia de surgery
 SELECT setval('surgery_id_seq', (SELECT COALESCE(MAX(id), 0) FROM surgery));
 
--- Arreglar secuencia de medical_center
 SELECT setval('medical_center_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_center));
 
--- Arreglar secuencia de pavilion
 SELECT setval('pavilion_id_seq', (SELECT COALESCE(MAX(id), 0) FROM pavilion));
 
--- Arreglar secuencia de store
 SELECT setval('store_id_seq', (SELECT COALESCE(MAX(id), 0) FROM store));
 
--- Arreglar secuencia de batch
 SELECT setval('batch_id_seq', (SELECT COALESCE(MAX(id), 0) FROM batch));
 
--- NOTA: supply_code no tiene secuencia automática porque usa INTEGER PRIMARY KEY sin SERIAL
--- Si necesitas agregar una secuencia, ejecuta:
--- CREATE SEQUENCE IF NOT EXISTS supply_code_code_seq OWNED BY supply_code.code;
--- ALTER TABLE supply_code ALTER COLUMN code SET DEFAULT nextval('supply_code_code_seq');
--- SELECT setval('supply_code_code_seq', (SELECT COALESCE(MAX(code), 0) FROM supply_code));
-
--- Arreglar secuencia de medical_supply
 SELECT setval('medical_supply_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_supply));
 
--- Arreglar secuencia de supply_history
 SELECT setval('supply_history_id_seq', (SELECT COALESCE(MAX(id), 0) FROM supply_history));
 
--- Arreglar secuencia de supply_transfer (solo si existe la tabla)
 DO $$
 DECLARE
     max_id INTEGER;
@@ -659,7 +587,6 @@ BEGIN
     END IF;
 END $$;
 
--- Arreglar secuencia de store_inventory_summary (solo si existe la tabla)
 DO $$
 DECLARE
     max_id INTEGER;
@@ -672,7 +599,6 @@ BEGIN
     END IF;
 END $$;
 
--- Arreglar secuencia de pavilion_inventory_summary (solo si existe la tabla)
 DO $$
 DECLARE
     max_id INTEGER;
@@ -685,7 +611,6 @@ BEGIN
     END IF;
 END $$;
 
--- Arreglar secuencia de batch_history (solo si existe la tabla)
 DO $$
 DECLARE
     max_id INTEGER;
@@ -698,7 +623,6 @@ BEGIN
     END IF;
 END $$;
 
--- Arreglar secuencia de supply_request (solo si existe la tabla)
 DO $$
 DECLARE
     max_id INTEGER;
@@ -711,7 +635,6 @@ BEGIN
     END IF;
 END $$;
 
--- Arreglar secuencia de supply_request_item (solo si existe la tabla)
 DO $$
 DECLARE
     max_id INTEGER;
@@ -724,7 +647,6 @@ BEGIN
     END IF;
 END $$;
 
--- Verificar que las secuencias están correctas
 SELECT 'surgery_id_seq' as sequence_name, last_value FROM surgery_id_seq
 UNION ALL
 SELECT 'medical_center_id_seq', last_value FROM medical_center_id_seq
