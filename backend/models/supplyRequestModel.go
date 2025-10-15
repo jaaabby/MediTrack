@@ -12,8 +12,8 @@ type SupplyRequest struct {
 	RequestedBy     string     `json:"requested_by" gorm:"not null"` // RUT del solicitante
 	RequestedByName string     `json:"requested_by_name" gorm:"not null"`
 	RequestDate     time.Time  `json:"request_date" gorm:"not null"`
+	SurgeryDatetime time.Time  `json:"surgery_datetime" gorm:"not null"`
 	Status          string     `json:"status" gorm:"not null;default:pending"`
-	Priority        string     `json:"priority" gorm:"not null;default:normal"`
 	Notes           string     `json:"notes" gorm:"type:text"`
 	ApprovedBy      *string    `json:"approved_by"`
 	ApprovedByName  *string    `json:"approved_by_name"`
@@ -33,12 +33,7 @@ type SupplyRequestItem struct {
 	QuantityRequested int       `json:"quantity_requested" gorm:"not null"`
 	QuantityApproved  *int      `json:"quantity_approved"`
 	QuantityDelivered int       `json:"quantity_delivered" gorm:"default:0"`
-	Specifications    string    `json:"specifications" gorm:"type:text"`
 	IsPediatric       bool      `json:"is_pediatric" gorm:"default:false"`
-	Size              *string   `json:"size"`
-	Brand             *string   `json:"brand"`
-	SpecialRequests   string    `json:"special_requests" gorm:"type:text"`
-	UrgencyLevel      string    `json:"urgency_level" gorm:"default:normal"`
 	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
@@ -52,7 +47,6 @@ type SupplyRequestQRAssignment struct {
 	ID                  int        `json:"id" gorm:"primaryKey;autoIncrement"`
 	SupplyRequestID     int        `json:"supply_request_id" gorm:"not null"`
 	SupplyRequestItemID int        `json:"supply_request_item_id" gorm:"not null"`
-	QRCode              string     `json:"qr_code" gorm:"not null"`
 	MedicalSupplyID     int        `json:"medical_supply_id" gorm:"not null"`
 	AssignedDate        time.Time  `json:"assigned_date" gorm:"not null"`
 	AssignedBy          string     `json:"assigned_by" gorm:"not null"`
@@ -79,22 +73,6 @@ const (
 	RequestStatusInProcess = "in_process"
 	RequestStatusCompleted = "completed"
 	RequestStatusCancelled = "cancelled"
-)
-
-// Constantes para Priority de SupplyRequest
-const (
-	RequestPriorityLow      = "low"
-	RequestPriorityNormal   = "normal"
-	RequestPriorityHigh     = "high"
-	RequestPriorityCritical = "critical"
-)
-
-// Constantes para UrgencyLevel de SupplyRequestItem
-const (
-	UrgencyLevelLow      = "low"
-	UrgencyLevelNormal   = "normal"
-	UrgencyLevelHigh     = "high"
-	UrgencyLevelCritical = "critical"
 )
 
 // Constantes para Status de SupplyRequestQRAssignment
@@ -141,22 +119,6 @@ func (s *SupplyRequest) GetStatusLabel() string {
 	}
 }
 
-// GetPriorityLabel retorna una etiqueta legible para la prioridad
-func (s *SupplyRequest) GetPriorityLabel() string {
-	switch s.Priority {
-	case RequestPriorityLow:
-		return "Baja"
-	case RequestPriorityNormal:
-		return "Normal"
-	case RequestPriorityHigh:
-		return "Alta"
-	case RequestPriorityCritical:
-		return "Crítica"
-	default:
-		return "Normal"
-	}
-}
-
 // IsEditable verifica si la solicitud puede ser editada
 func (s *SupplyRequest) IsEditable() bool {
 	return s.Status == RequestStatusPending
@@ -170,6 +132,16 @@ func (s *SupplyRequest) CanBeApproved() bool {
 // CanBeProcessed verifica si la solicitud puede ser procesada (asignar QRs)
 func (s *SupplyRequest) CanBeProcessed() bool {
 	return s.Status == RequestStatusApproved
+}
+
+// GetHoursUntilSurgery retorna las horas restantes hasta la cirugía
+func (s *SupplyRequest) GetHoursUntilSurgery() float64 {
+	return s.SurgeryDatetime.Sub(time.Now()).Hours()
+}
+
+// IsSurgeryOverdue verifica si la cirugía ya pasó
+func (s *SupplyRequest) IsSurgeryOverdue() bool {
+	return time.Now().After(s.SurgeryDatetime)
 }
 
 // GenerateRequestNumber genera un número de solicitud único

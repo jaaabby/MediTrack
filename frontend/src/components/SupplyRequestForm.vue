@@ -3,7 +3,7 @@
     <!-- Título principal -->
     <div class="mb-6">
       <h2 class="text-2xl font-bold text-gray-900 mb-2">Nueva Solicitud de Insumo</h2>
-      <p class="text-gray-600">Crear solicitud con trazabilidad QR completa</p>
+      <p class="text-gray-600">Crear solicitud con trazabilidad completa</p>
     </div>
 
     <!-- Mostrar errores generales -->
@@ -26,7 +26,34 @@
       <div class="bg-gray-50 p-4 rounded-lg">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Información Básica</h3>
         
+        <!-- Información del solicitante (automática) -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Solicitante
+          </label>
+          <div class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
+            <div class="font-medium">{{ authStore.getUserName || 'Usuario' }}</div>
+            <div class="text-sm text-gray-500">{{ authStore.getUserRut || 'RUT no disponible' }}</div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Fecha y hora de cirugía -->
+          <div>
+            <label for="surgery_datetime" class="block text-sm font-medium text-gray-700 mb-1">
+              Fecha y Hora de Cirugía <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="datetime-local"
+              id="surgery_datetime"
+              v-model="requestForm.surgery_datetime"
+              required
+              :min="minDateTime"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p class="text-xs text-gray-500 mt-1">Selecciona la fecha y hora programada para la cirugía</p>
+          </div>
+
           <!-- Selección de Pabellón -->
           <div>
             <label for="pavilion" class="block text-sm font-medium text-gray-700 mb-1">
@@ -49,54 +76,7 @@
               </option>
             </select>
             <p v-if="loadingPavilions" class="text-xs text-gray-500 mt-1">Cargando pabellones...</p>
-          </div>
-
-          <!-- Prioridad -->
-          <div>
-            <label for="priority" class="block text-sm font-medium text-gray-700 mb-1">
-              Prioridad <span class="text-red-500">*</span>
-            </label>
-            <select
-              id="priority"
-              v-model="requestForm.priority"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="low">Baja</option>
-              <option value="normal">Normal</option>
-              <option value="high">Alta</option>
-              <option value="critical">Crítica</option>
-            </select>
-          </div>
-
-          <!-- Solicitante -->
-          <div>
-            <label for="requestedBy" class="block text-sm font-medium text-gray-700 mb-1">
-              Solicitante (RUT) <span class="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="requestedBy"
-              v-model="requestForm.requested_by"
-              required
-              placeholder="12.345.678-9"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <!-- Nombre del solicitante -->
-          <div>
-            <label for="requestedByName" class="block text-sm font-medium text-gray-700 mb-1">
-              Nombre Completo <span class="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="requestedByName"
-              v-model="requestForm.requested_by_name"
-              required
-              placeholder="Nombre y apellidos"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+                      <p class="text-xs text-gray-500 mt-1">Selecciona el pabellón donde se realizará la cirugía</p>
           </div>
         </div>
 
@@ -173,18 +153,50 @@
                 />
               </div>
 
-              <!-- Nombre del insumo -->
-              <div>
+              <!-- Nombre del insumo con autocompletado -->
+              <div class="relative">
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Nombre Insumo <span class="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  v-model="item.supply_name"
+                  :value="supplySearchTerms[index] || item.supply_name"
+                  @input="onSupplyInputChange(index, $event.target.value)"
+                  @focus="onSupplyInputFocus(index)"
+                  @blur="onSupplyInputBlur(index)"
                   required
-                  placeholder="Nombre del insumo"
+                  placeholder="Buscar insumo..."
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  autocomplete="off"
                 />
+                
+                <!-- Dropdown de sugerencias -->
+                <div 
+                  v-if="showSupplyDropdowns[index] && medicalSupplies.length > 0"
+                  class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                >
+                  <div 
+                    v-for="supply in getFilteredSupplies(index)" 
+                    :key="supply.id"
+                    @click="selectSupply(index, supply)"
+                    class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div class="font-medium text-gray-900">{{ supply.name }}</div>
+                    <div class="text-sm text-gray-500">Código: {{ supply.code }}</div>
+                  </div>
+                  
+                  <div v-if="getFilteredSupplies(index).length === 0" class="px-3 py-2 text-gray-500 text-center">
+                    No se encontraron insumos
+                  </div>
+                </div>
+                
+                <!-- Indicador de carga -->
+                <div v-if="loadingSupplies" class="absolute right-3 top-9 text-gray-400">
+                  <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
               </div>
 
               <!-- Cantidad solicitada -->
@@ -205,7 +217,7 @@
 
             <!-- Especificaciones técnicas -->
             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- Medidas/Tamaño -->
+              <!-- Medidas/Tamaño 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Medidas/Tamaño
@@ -216,9 +228,9 @@
                   placeholder="Ej: Grande, Mediano, 20cm, etc."
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-              </div>
+              </div>-->
 
-              <!-- Marca -->
+              <!-- Marca 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Marca
@@ -230,10 +242,10 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-            </div>
+            </div>-->
 
-            <!-- Características especiales -->
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Características especiales
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">-->
               <!-- Es pediátrico -->
               <div class="flex items-center">
                 <input
@@ -246,25 +258,9 @@
                   Es insumo pediátrico
                 </label>
               </div>
-
-              <!-- Nivel de urgencia -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Urgencia del Item
-                </label>
-                <select
-                  v-model="item.urgency_level"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="low">Baja</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">Alta</option>
-                  <option value="critical">Crítica</option>
-                </select>
-              </div>
             </div>
 
-            <!-- Especificaciones y observaciones del insumo -->
+            <!-- Especificaciones y observaciones del insumo 
             <div class="mt-4">
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 Especificaciones Técnicas
@@ -275,9 +271,9 @@
                 placeholder="Especificaciones técnicas del insumo (material, dimensiones exactas, características especiales, etc.)"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               ></textarea>
-            </div>
+            </div>-->
 
-            <!-- Solicitudes especiales -->
+            <!-- Solicitudes especiales
             <div class="mt-4">
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 Solicitudes Especiales
@@ -288,7 +284,7 @@
                 placeholder="Solicitudes especiales para este insumo (entrega urgente, manipulación especial, etc.)"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               ></textarea>
-            </div>
+            </div>-->
           </div>
         </div>
       </div>
@@ -338,9 +334,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
+import inventoryService from '../services/inventoryService'
 
 // Props
 const props = defineProps({
@@ -357,18 +355,34 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['success', 'cancel', 'error'])
 
+// Stores
+const authStore = useAuthStore()
+
 // Estado reactivo
 const submitting = ref(false)
 const errors = ref([])
 const pavilions = ref([])
 const loadingPavilions = ref(false)
+const medicalSupplies = ref([])
+const loadingSupplies = ref(false)
+const supplySearchTerms = ref([])
+const showSupplyDropdowns = ref([])
+
+// Fecha mínima para la cirugía (hoy)
+const minDateTime = computed(() => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+})
 
 // Formulario de solicitud
 const requestForm = reactive({
   pavilion_id: '',
-  requested_by: '',
-  requested_by_name: '',
-  priority: 'normal',
+  surgery_datetime: '',
   notes: '',
   items: []
 })
@@ -402,12 +416,72 @@ const loadPavilions = async () => {
   }
 }
 
+const loadMedicalSupplies = async () => {
+  loadingSupplies.value = true
+  try {
+    const result = await inventoryService.getAllSupplyCodes()
+    medicalSupplies.value = result
+    console.log('Códigos de insumo cargados:', medicalSupplies.value)
+  } catch (error) {
+    console.error('Error cargando códigos de insumo:', error)
+    errors.value.push('Error al cargar la lista de códigos de insumo')
+    emit('error', error)
+  } finally {
+    loadingSupplies.value = false
+  }
+}
+
 const addSupplyItem = () => {
-  requestForm.items.push(newSupplyItem())
+  requestForm.items.unshift(newSupplyItem())
+  // Inicializar estados de búsqueda para el nuevo item al principio
+  supplySearchTerms.value.unshift('')
+  showSupplyDropdowns.value.unshift(false)
 }
 
 const removeSupplyItem = (index) => {
   requestForm.items.splice(index, 1)
+  // También remover los estados de búsqueda correspondientes
+  supplySearchTerms.value.splice(index, 1)
+  showSupplyDropdowns.value.splice(index, 1)
+}
+
+// Funciones para autocompletado de insumos
+const getFilteredSupplies = (index) => {
+  const searchTerm = supplySearchTerms.value[index] || ''
+  if (!searchTerm) return medicalSupplies.value.slice(0, 10) // Mostrar primeros 10 si no hay búsqueda
+  
+  return medicalSupplies.value.filter(supply => 
+    supply.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    supply.code?.toString().includes(searchTerm)
+  ).slice(0, 10) // Limitar a 10 resultados
+}
+
+const selectSupply = (index, supply) => {
+  requestForm.items[index].supply_name = supply.name
+  requestForm.items[index].supply_code = supply.code
+  supplySearchTerms.value[index] = supply.name
+  showSupplyDropdowns.value[index] = false
+}
+
+const onSupplyInputFocus = (index) => {
+  showSupplyDropdowns.value[index] = true
+  // Inicializar el término de búsqueda si no existe
+  if (!supplySearchTerms.value[index]) {
+    supplySearchTerms.value[index] = requestForm.items[index].supply_name || ''
+  }
+}
+
+const onSupplyInputBlur = (index) => {
+  // Delay para permitir clicks en el dropdown
+  setTimeout(() => {
+    showSupplyDropdowns.value[index] = false
+  }, 200)
+}
+
+const onSupplyInputChange = (index, value) => {
+  supplySearchTerms.value[index] = value
+  requestForm.items[index].supply_name = value
+  showSupplyDropdowns.value[index] = true
 }
 
 const validateForm = () => {
@@ -419,9 +493,7 @@ const validateForm = () => {
 const resetForm = () => {
   Object.assign(requestForm, {
     pavilion_id: '',
-    requested_by: '',
-    requested_by_name: '',
-    priority: 'normal',
+    surgery_datetime: '',
     notes: '',
     items: []
   })
@@ -476,6 +548,7 @@ const submitRequest = async () => {
 // Lifecycle
 onMounted(() => {
   loadPavilions()
+  loadMedicalSupplies()
   // Agregar un insumo por defecto
   addSupplyItem()
 })

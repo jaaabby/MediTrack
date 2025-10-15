@@ -4,7 +4,12 @@
     <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-blue-100 mt-1">Sistema de gestión de inventario médico</p>
+          <h1 class="text-2xl font-bold text-white mb-1">
+            Bienvenido{{ authStore.getUserName ? ', ' + authStore.getUserName : '' }}
+          </h1>
+          <p class="text-blue-100 mt-1">
+            {{ authStore.isDoctor ? 'Panel de Solicitudes Médicas' : 'Sistema de gestión de inventario médico' }}
+          </p>
         </div>
         <div class="text-right">
           <p class="text-sm text-blue-100">Fecha actual</p>
@@ -13,8 +18,8 @@
       </div>
     </div>
 
-    <!-- Barra de búsqueda principal -->
-    <div class="card">
+    <!-- Barra de búsqueda principal - Solo para roles que pueden ver inventario -->
+    <div v-if="!authStore.isDoctor" class="card">
       <div class="flex items-center gap-4">
         <div class="flex-1">
           <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
@@ -54,9 +59,45 @@
     </div>
 
     <!-- Funcionalidades principales -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Vista específica para doctores -->
+    <div v-if="authStore.isDoctor" class="max-w-2xl mx-auto">
+      <div class="text-center mb-8">
+        <p class="text-gray-600">Gestiona tus solicitudes de insumos médicos de manera rápida y eficiente.</p>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Nueva Solicitud de Insumo -->
+        <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer transform hover:scale-105" @click="navigateTo('/supply-requests/new')">
+          <div class="text-center p-6">
+            <div class="bg-teal-100 p-4 rounded-full mx-auto w-20 h-20 flex items-center justify-center mb-4">
+              <svg class="h-10 w-10 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">Nueva Solicitud</h3>
+            <p class="text-gray-600">Crear una nueva solicitud de insumos médicos para tu área de trabajo</p>
+          </div>
+        </div>
+
+        <!-- Gestión de Solicitudes -->
+        <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer transform hover:scale-105" @click="navigateTo('/supply-requests')">
+          <div class="text-center p-6">
+            <div class="bg-indigo-100 p-4 rounded-full mx-auto w-20 h-20 flex items-center justify-center mb-4">
+              <svg class="h-10 w-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">Mis Solicitudes</h3>
+            <p class="text-gray-600">Ver el estado y gestionar todas tus solicitudes de insumos</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vista completa para otros roles -->
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Gestión de inventario -->
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/inventory')">
+      <div v-if="authStore.canViewInventory" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/inventory')">
         <div class="flex items-center gap-4">
           <div class="bg-blue-100 p-3 rounded-lg">
             <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +112,7 @@
       </div>
 
       <!-- Agregar nuevo insumo -->
-    <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/inventory/add')">
+      <div v-if="authStore.canViewInventory" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/inventory/add')">
         <div class="flex items-center gap-4">
           <div class="bg-green-100 p-3 rounded-lg">
             <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,7 +127,7 @@
       </div>
 
       <!-- Escanear QR -->
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/qr')">
+      <div v-if="authStore.canViewQR" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/qr')">
         <div class="flex items-center gap-4">
           <div class="bg-yellow-100 p-3 rounded-lg">
             <svg class="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,7 +142,7 @@
       </div>
 
       <!-- Estadísticas -->
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/statistics')">
+      <div v-if="authStore.canViewStatistics" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/statistics')">
         <div class="flex items-center gap-4">
           <div class="bg-purple-100 p-3 rounded-lg">
             <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +157,7 @@
       </div>
 
       <!-- Nueva Solicitud de Insumo -->
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/supply-requests/new')">
+      <div v-if="authStore.canCreateRequests" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/supply-requests/new')">
         <div class="flex items-center gap-4">
           <div class="bg-teal-100 p-3 rounded-lg">
             <svg class="h-8 w-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,7 +172,7 @@
       </div>
 
       <!-- Gestión de Solicitudes -->
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/supply-requests')">
+      <div v-if="authStore.canViewRequests" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/supply-requests')">
         <div class="flex items-center gap-4">
           <div class="bg-indigo-100 p-3 rounded-lg">
             <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,48 +185,17 @@
           </div>
         </div>
       </div>
-
-      <!-- Movimientos de stock
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer opacity-75" @click="navigateTo('/inventory/movements')">
-        <div class="flex items-center gap-4">
-          <div class="bg-indigo-100 p-3 rounded-lg">
-            <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">Movimientos</h3>
-            <p class="text-gray-600 text-sm">Entradas y salidas de stock <span class="text-yellow-600">(Próximamente)</span></p>
-          </div>
-        </div>
-      </div>-->
-
-      <!-- Configuración
-      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer opacity-75" @click="navigateTo('/inventory/settings')">
-        <div class="flex items-center gap-4">
-          <div class="bg-gray-100 p-3 rounded-lg">
-            <svg class="h-8 w-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">Configuración</h3>
-            <p class="text-gray-600 text-sm">Ajustes del sistema <span class="text-yellow-600">(Próximamente)</span></p>
-          </div>
-        </div>
-      </div>-->
     </div>
-
-    
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const searchQuery = ref('')
 
 const currentDate = computed(() => {
@@ -198,6 +208,12 @@ const currentDate = computed(() => {
 })
 
 const handleSearch = () => {
+  // Los doctores no pueden acceder al inventario, redireccionar a solicitudes
+  if (authStore.isDoctor) {
+    router.push('/supply-requests')
+    return
+  }
+  
   if (searchQuery.value.trim()) {
     router.push({
       name: 'Inventory',

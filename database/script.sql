@@ -483,20 +483,16 @@ ON CONFLICT DO NOTHING;
 -- Insertar solicitud de ejemplo
 INSERT INTO supply_request (
     request_number, pavilion_id, requested_by, requested_by_name,
-    request_date, status, priority, notes, medical_center_id
+    request_date, surgery_datetime, status, notes, medical_center_id
 ) VALUES (
     'SOL-20250120140000', 1, '12345678-9', 'Juan Pérez',
-    NOW() - INTERVAL '1 hour', 'pending', 'normal',
-    'Solicitud de prueba para implementación de trazabilidad QR', 1
+    NOW() - INTERVAL '1 hour', NOW() + INTERVAL '23 hours', 'pending', 'Solicitud de prueba para implementación de trazabilidad QR', 1
 );
 
 -- Insertar items de ejemplo
-INSERT INTO supply_request_item (
-    supply_request_id, supply_code, supply_name, quantity_requested,
-    specifications, is_pediatric, size, urgency_level
-) VALUES 
-(1, 1001, 'Guantes', 50, 'Talla M, látex libre', FALSE, 'M', 'normal'),
-(1, 1002, 'Mascarillas', 100, 'N95, uso pediátrico', TRUE, 'Pediatric', 'high');
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric) VALUES 
+(1, 1001, 'Guantes', 50, FALSE),
+(1, 1002, 'Mascarillas', 100, TRUE);
 
 -- Script para arreglar el problema de secuencia en la tabla batch
 -- Este script resetea la secuencia de auto-incremento al valor correcto

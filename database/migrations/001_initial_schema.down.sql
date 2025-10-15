@@ -53,7 +53,6 @@ DROP INDEX IF EXISTS idx_qr_assignment_request;
 
 -- Índices de supply_request_item
 DROP INDEX IF EXISTS idx_supply_request_item_pediatric;
-DROP INDEX IF EXISTS idx_supply_request_item_urgency;
 DROP INDEX IF EXISTS idx_supply_request_item_supply_code;
 DROP INDEX IF EXISTS idx_supply_request_item_request;
 

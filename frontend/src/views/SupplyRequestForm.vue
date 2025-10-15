@@ -10,7 +10,7 @@
               <h4 class="font-semibold mb-1">Información básica:</h4>
               <ul class="list-disc list-inside space-y-1">
                 <li>Selecciona el pabellón que solicita</li>
-                <li>Define la prioridad según urgencia</li>
+                <li>Indica la fecha y hora de la cirugía</li>
                 <li>Agrega observaciones si es necesario</li>
               </ul>
             </div>

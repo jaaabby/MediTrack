@@ -292,6 +292,23 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // Protección específica para doctores - solo pueden acceder a rutas de solicitudes, home y perfil
+  if (authStore.isAuthenticated && authStore.isDoctor) {
+    const allowedRoutesForDoctor = [
+      'Home',
+      'SupplyRequestList', 
+      'SupplyRequestForm', 
+      'SupplyRequestDetails', 
+      'SupplyRequestSuccess',
+      'Profile'
+    ]
+    
+    if (!allowedRoutesForDoctor.includes(to.name)) {
+      next({ name: 'Home' })
+      return
+    }
+  }
+
   next()
 })
 

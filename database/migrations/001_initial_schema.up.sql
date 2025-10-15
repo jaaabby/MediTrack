@@ -205,8 +205,8 @@ CREATE TABLE IF NOT EXISTS supply_request (
     requested_by VARCHAR(20) NOT NULL REFERENCES "user"(rut),
     requested_by_name VARCHAR(255) NOT NULL,
     request_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    surgery_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
-    priority VARCHAR(20) NOT NULL DEFAULT 'normal',
     notes TEXT,
     approved_by VARCHAR(20) REFERENCES "user"(rut),
     approved_by_name VARCHAR(255),
@@ -218,7 +218,7 @@ CREATE TABLE IF NOT EXISTS supply_request (
     
     -- Constraints
     CONSTRAINT chk_supply_request_status CHECK (status IN ('pending', 'approved', 'rejected', 'in_process', 'completed', 'cancelled')),
-    CONSTRAINT chk_supply_request_priority CHECK (priority IN ('low', 'normal', 'high', 'critical'))
+    CONSTRAINT chk_surgery_datetime_future CHECK (surgery_datetime >= request_date)
 );
 
 -- Índices para la tabla supply_request
@@ -226,6 +226,7 @@ CREATE INDEX idx_supply_request_status ON supply_request(status);
 CREATE INDEX idx_supply_request_pavilion ON supply_request(pavilion_id);
 CREATE INDEX idx_supply_request_requested_by ON supply_request(requested_by);
 CREATE INDEX idx_supply_request_date ON supply_request(request_date);
+CREATE INDEX idx_supply_request_surgery_datetime ON supply_request(surgery_datetime);
 CREATE INDEX idx_supply_request_number ON supply_request(request_number);
 
 -- =======================
@@ -240,17 +241,11 @@ CREATE TABLE IF NOT EXISTS supply_request_item (
     quantity_requested INTEGER NOT NULL CHECK (quantity_requested > 0),
     quantity_approved INTEGER CHECK (quantity_approved >= 0),
     quantity_delivered INTEGER NOT NULL DEFAULT 0 CHECK (quantity_delivered >= 0),
-    specifications TEXT,
     is_pediatric BOOLEAN NOT NULL DEFAULT FALSE,
-    size VARCHAR(50),
-    brand VARCHAR(100),
-    special_requests TEXT,
-    urgency_level VARCHAR(20) NOT NULL DEFAULT 'normal',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
     -- Constraints
-    CONSTRAINT chk_supply_request_item_urgency CHECK (urgency_level IN ('low', 'normal', 'high', 'critical')),
     CONSTRAINT chk_quantities_logical CHECK (
         quantity_approved IS NULL OR quantity_approved <= quantity_requested
     ),
@@ -262,7 +257,6 @@ CREATE TABLE IF NOT EXISTS supply_request_item (
 -- Índices para la tabla supply_request_item
 CREATE INDEX idx_supply_request_item_request ON supply_request_item(supply_request_id);
 CREATE INDEX idx_supply_request_item_supply_code ON supply_request_item(supply_code);
-CREATE INDEX idx_supply_request_item_urgency ON supply_request_item(urgency_level);
 CREATE INDEX idx_supply_request_item_pediatric ON supply_request_item(is_pediatric);
 
 -- =======================
@@ -403,95 +397,6 @@ BEGIN
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
-
--- =======================
--- VISTAS ÚTILES PARA REPORTING
--- =======================
-
--- Vista con información completa de solicitudes
-CREATE OR REPLACE VIEW v_supply_requests_detail AS
-SELECT 
-    sr.id,
-    sr.request_number,
-    sr.status,
-    sr.priority,
-    sr.request_date,
-    sr.requested_by,
-    sr.requested_by_name,
-    sr.approved_by,
-    sr.approved_by_name,
-    sr.approval_date,
-    sr.completed_date,
-    sr.notes,
-    p.name AS pavilion_name,
-    mc.name AS medical_center_name,
-    COUNT(sri.id) AS total_items,
-    SUM(sri.quantity_requested) AS total_quantity_requested,
-    SUM(COALESCE(sri.quantity_approved, 0)) AS total_quantity_approved,
-    SUM(sri.quantity_delivered) AS total_quantity_delivered,
-    COUNT(srqa.id) AS total_qr_assignments,
-    sr.created_at,
-    sr.updated_at
-FROM supply_request sr
-JOIN pavilion p ON sr.pavilion_id = p.id
-JOIN medical_center mc ON sr.medical_center_id = mc.id
-LEFT JOIN supply_request_item sri ON sr.id = sri.supply_request_id
-LEFT JOIN supply_request_qr_assignment srqa ON sr.id = srqa.supply_request_id
-GROUP BY sr.id, p.name, mc.name;
-
--- Vista de trazabilidad de QR
-CREATE OR REPLACE VIEW v_qr_traceability AS
-SELECT 
-    ms.qr_code,
-    ms.id AS medical_supply_id,
-    ms.code AS supply_code,
-    sc.name AS supply_name,
-    b.id AS batch_id,
-    b.supplier,
-    b.expiration_date,
-    b.amount AS batch_amount,
-    
-    -- Información de solicitud si existe
-    srqa.id AS assignment_id,
-    srqa.status AS assignment_status,
-    srqa.assigned_date,
-    srqa.delivered_date,
-    sr.id AS request_id,
-    sr.request_number,
-    sr.status AS request_status,
-    p.name AS pavilion_name,
-    
-    -- Último movimiento del historial
-    sh.status AS last_movement_status,
-    sh.date_time AS last_movement_date,
-    sh.destination_type AS last_destination_type,
-    sh.destination_id AS last_destination_id,
-    
-    -- Indicadores
-    CASE 
-        WHEN sh.status = 'consumido' THEN 'consumed'
-        WHEN srqa.status IS NOT NULL THEN srqa.status
-        WHEN sh.status IS NOT NULL THEN sh.status
-        ELSE 'available'
-    END AS current_status,
-    
-    b.expiration_date < NOW() AS is_expired,
-    b.expiration_date < (NOW() + INTERVAL '30 days') AS expires_soon
-    
-FROM medical_supply ms
-JOIN supply_code sc ON ms.code = sc.code
-JOIN batch b ON ms.batch_id = b.id
-LEFT JOIN supply_request_qr_assignment srqa ON ms.qr_code = srqa.qr_code 
-    AND srqa.status NOT IN ('consumed', 'returned')
-LEFT JOIN supply_request sr ON srqa.supply_request_id = sr.id
-LEFT JOIN pavilion p ON sr.pavilion_id = p.id
-LEFT JOIN LATERAL (
-    SELECT status, date_time, destination_type, destination_id
-    FROM supply_history sh2 
-    WHERE sh2.medical_supply_id = ms.id 
-    ORDER BY date_time DESC 
-    LIMIT 1
-) sh ON TRUE;
 
 -- =======================
 -- MIGRACIÓN: EVENTOS DE ESCANEO QR CON TRAZABILIDAD COMPLETA

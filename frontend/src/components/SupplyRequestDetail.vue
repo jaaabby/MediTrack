@@ -42,9 +42,6 @@
               <span :class="getStatusBadgeClass(request.status)" class="inline-flex px-3 py-1 text-sm font-semibold rounded-full">
                 {{ getStatusLabel(request.status) }}
               </span>
-              <span :class="getPriorityBadgeClass(request.priority)" class="inline-flex px-3 py-1 text-sm font-semibold rounded-full">
-                {{ getPriorityLabel(request.priority) }}
-              </span>
               <span class="text-sm text-gray-600">
                 Creada: {{ formatDate(request.request_date) }}
               </span>
@@ -54,7 +51,7 @@
           <!-- Acciones -->
           <div class="flex space-x-2">
             <button
-              v-if="request.status === 'pending' && authStore.canViewAllRequests"
+              v-if="request.status === 'pending' && authStore.canApproveRequests"
               @click="approveRequest"
               :disabled="processing"
               class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
@@ -66,13 +63,13 @@
             </button>
 
             <button
-              v-if="request.status === 'pending' && authStore.canViewAllRequests"
+              v-if="request.status === 'pending' && authStore.canApproveRequests"
               @click="rejectRequest"
               :disabled="processing"
               class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
             >
               <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-weight="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
               Rechazar
             </button>
@@ -100,6 +97,10 @@
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Información Básica</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label class="block text-sm font-medium text-gray-700">Centro Médico</label>
+                <p class="text-sm text-gray-900 mt-1">{{ getMedicalCenterName() }}</p>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-gray-700">Pabellón</label>
                 <p class="text-sm text-gray-900 mt-1">{{ getPavilionName(request.pavilion_id) }}</p>
               </div>
@@ -112,10 +113,24 @@
                 <label class="block text-sm font-medium text-gray-700">Fecha de Solicitud</label>
                 <p class="text-sm text-gray-900 mt-1">{{ formatDate(request.request_date) }}</p>
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Fecha de Cirugía</label>
+                <p class="text-sm text-gray-900 mt-1">{{ formatDate(request.surgery_datetime) }}</p>
+                <p v-if="isSurgeryUrgent(request.surgery_datetime)" class="text-xs text-red-600 font-medium">
+                  <svg class="inline h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  Cirugía próxima
+                </p>
+              </div>
               <div v-if="request.approval_date">
                 <label class="block text-sm font-medium text-gray-700">Fecha de Aprobación</label>
                 <p class="text-sm text-gray-900 mt-1">{{ formatDate(request.approval_date) }}</p>
                 <p class="text-xs text-gray-500">{{ request.approved_by_name }}</p>
+              </div>
+              <div v-if="request.completed_date">
+                <label class="block text-sm font-medium text-gray-700">Fecha de Completado</label>
+                <p class="text-sm text-gray-900 mt-1">{{ formatDate(request.completed_date) }}</p>
               </div>
             </div>
             
@@ -123,6 +138,75 @@
             <div v-if="request.notes" class="mt-4">
               <label class="block text-sm font-medium text-gray-700">Observaciones</label>
               <p class="text-sm text-gray-900 mt-1 bg-gray-50 p-3 rounded">{{ request.notes }}</p>
+            </div>
+          </div>
+
+          <!-- Cronología de la solicitud -->
+          <div class="bg-white rounded-lg shadow border p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Cronología</h3>
+            <div class="flow-root">
+              <ul class="-mb-8">
+                <!-- Solicitud creada -->
+                <li>
+                  <div class="relative pb-8">
+                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Solicitud creada</p>
+                        <p class="text-sm text-gray-500">{{ formatDate(request.request_date) }}</p>
+                        <p class="text-xs text-gray-400">por {{ request.requested_by_name }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Aprobación (si existe) -->
+                <li v-if="request.approval_date">
+                  <div class="relative pb-8">
+                    <span v-if="!request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Solicitud aprobada</p>
+                        <p class="text-sm text-gray-500">{{ formatDate(request.approval_date) }}</p>
+                        <p class="text-xs text-gray-400">por {{ request.approved_by_name }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Completado (si existe) -->
+                <li v-if="request.completed_date">
+                  <div class="relative">
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Solicitud completada</p>
+                        <p class="text-sm text-gray-500">{{ formatDate(request.completed_date) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              </ul>
             </div>
           </div>
 
@@ -164,11 +248,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                       </svg>
                       Pediátrico
-                    </span>
-                  </div>
-                  <div class="md:col-span-2">
-                    <span :class="getUrgencyBadgeClass(item.urgency_level)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                      Urgencia: {{ getPriorityLabel(item.urgency_level) }}
                     </span>
                   </div>
                 </div>
@@ -214,7 +293,7 @@
                 </div>
 
                 <!-- Botón para asignar QR -->
-                <div v-if="request.status === 'approved' && getItemAssignments(item.id).length < item.quantity_approved && authStore.canViewAllRequests" class="mt-4">
+                <div v-if="request.status === 'approved' && getItemAssignments(item.id).length < item.quantity_approved && authStore.canApproveRequests" class="mt-4">
                   <button
                     @click="openAssignQRModal(item)"
                     class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100"
@@ -240,21 +319,25 @@
                 <span class="text-sm text-gray-600">Total Items:</span>
                 <span class="text-sm font-medium text-gray-900">{{ items.length }}</span>
               </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Items Solicitados:</span>
+                <span class="text-sm font-medium text-gray-900">{{ getTotalRequestedQuantity() }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-sm text-gray-600">Items Aprobados:</span>
+                <span class="text-sm font-medium text-green-600">{{ getTotalApprovedQuantity() }}</span>
+              </div>
               <!--<div class="flex justify-between">
                 <span class="text-sm text-gray-600">QRs Asignados:</span>
-                <span class="text-sm font-medium text-gray-900">{{ assignments.length }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-sm text-gray-600">QRs Entregados:</span>
-                <span class="text-sm font-medium text-green-600">{{ getDeliveredAssignments().length }}</span>
+                <span class="text-sm font-medium text-blue-600">{{ assignments.length }}</span>
               </div>-->
-              <div class="flex justify-between">
+              <!--<div class="flex justify-between">
                 <span class="text-sm text-gray-600">Progreso:</span>
                 <span class="text-sm font-medium text-blue-600">{{ getProgressPercentage() }}%</span>
-              </div>
+              </div>-->
             </div>
             
-            <!-- Barra de progreso -->
+            <!-- Barra de progreso 
             <div class="mt-4">
               <div class="bg-gray-200 rounded-full h-2">
                 <div
@@ -262,7 +345,7 @@
                   :style="`width: ${getProgressPercentage()}%`"
                 ></div>
               </div>
-            </div>
+            </div>-->
           </div>
 
           <!-- Trazabilidad QR -->
@@ -591,14 +674,57 @@ const getDeliveredAssignments = () => {
 }
 
 const getProgressPercentage = () => {
-  const totalItems = items.value.reduce((sum, item) => sum + (item.quantity_approved || item.quantity_requested), 0)
-  const deliveredItems = getDeliveredAssignments().length
-  return totalItems > 0 ? Math.round((deliveredItems / totalItems) * 100) : 0
+  const totalApproved = getTotalApprovedQuantity()
+  const assignedCount = assignments.value.length
+  return totalApproved > 0 ? Math.round((assignedCount / totalApproved) * 100) : 0
+}
+
+const getTotalRequestedQuantity = () => {
+  return items.value.reduce((sum, item) => sum + item.quantity_requested, 0)
+}
+
+const getTotalApprovedQuantity = () => {
+  return items.value.reduce((sum, item) => sum + (item.quantity_approved || 0), 0)
+}
+
+const getSurgeryUrgencyClass = (surgeryDatetime) => {
+  if (!surgeryDatetime) return 'text-gray-500'
+  
+  const surgeryDate = new Date(surgeryDatetime)
+  const now = new Date()
+  const hoursUntilSurgery = (surgeryDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+  
+  if (hoursUntilSurgery < 0) return 'text-gray-500' // Ya pasó
+  if (hoursUntilSurgery <= 4) return 'text-red-600' // Muy urgente
+  if (hoursUntilSurgery <= 12) return 'text-orange-600' // Urgente
+  if (hoursUntilSurgery <= 24) return 'text-yellow-600' // Próximo
+  return 'text-green-600' // Programado
+}
+
+const getSurgeryUrgencyText = (surgeryDatetime) => {
+  if (!surgeryDatetime) return 'No programada'
+  
+  const surgeryDate = new Date(surgeryDatetime)
+  const now = new Date()
+  const hoursUntilSurgery = (surgeryDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+  
+  if (hoursUntilSurgery < 0) return 'Completada'
+  if (hoursUntilSurgery <= 4) return `En ${Math.round(hoursUntilSurgery)}h - MUY URGENTE`
+  if (hoursUntilSurgery <= 12) return `En ${Math.round(hoursUntilSurgery)}h - Urgente`
+  if (hoursUntilSurgery <= 24) return `En ${Math.round(hoursUntilSurgery)}h - Próxima`
+  
+  const daysUntilSurgery = Math.round(hoursUntilSurgery / 24)
+  return `En ${daysUntilSurgery} día${daysUntilSurgery > 1 ? 's' : ''}`
 }
 
 const getPavilionName = (pavilionId) => {
   const pavilion = pavilions.value.find(p => p.id === pavilionId)
   return pavilion ? pavilion.name : `Pabellón ${pavilionId}`
+}
+
+const getMedicalCenterName = () => {
+  const pavilion = pavilions.value.find(p => p.id === request.value?.pavilion_id)
+  return pavilion?.medical_center?.name || 'Centro Médico'
 }
 
 const formatDate = (dateString) => {
@@ -608,6 +734,14 @@ const formatDate = (dateString) => {
   } catch {
     return dateString
   }
+}
+
+const isSurgeryUrgent = (surgeryDatetime) => {
+  if (!surgeryDatetime) return false
+  const surgeryDate = new Date(surgeryDatetime)
+  const now = new Date()
+  const hoursUntilSurgery = (surgeryDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+  return hoursUntilSurgery <= 24 && hoursUntilSurgery > 0 // Próxima en las siguientes 24 horas
 }
 
 // Métodos de estilo
@@ -626,19 +760,15 @@ const getStatusBadgeClass = (status) => {
   return classes[color] || classes.gray
 }
 
-const getPriorityBadgeClass = (priority) => {
-  const color = supplyRequestService.getPriorityColor(priority)
-  const classes = {
-    'gray': 'bg-gray-100 text-gray-800',
-    'blue': 'bg-blue-100 text-blue-800',
-    'orange': 'bg-orange-100 text-orange-800',
-    'red': 'bg-red-100 text-red-800'
-  }
-  return classes[color] || classes.blue
-}
-
 const getUrgencyBadgeClass = (urgency) => {
-  return getPriorityBadgeClass(urgency)
+  // Implementación directa para urgencia de items
+  const urgencyColors = {
+    'low': 'bg-gray-100 text-gray-800',
+    'normal': 'bg-blue-100 text-blue-800',
+    'high': 'bg-orange-100 text-orange-800',
+    'critical': 'bg-red-100 text-red-800'
+  }
+  return urgencyColors[urgency] || urgencyColors.normal
 }
 
 const getAssignmentStatusBadgeClass = (status) => {

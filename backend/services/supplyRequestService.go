@@ -21,7 +21,6 @@ type CreateSupplyRequestRequest struct {
 	PavilionID      int                              `json:"pavilion_id" binding:"required"`
 	RequestedBy     string                           `json:"requested_by" binding:"required"`
 	RequestedByName string                           `json:"requested_by_name" binding:"required"`
-	Priority        string                           `json:"priority"`
 	Notes           string                           `json:"notes"`
 	Items           []CreateSupplyRequestItemRequest `json:"items" binding:"required,dive"`
 }
@@ -82,14 +81,8 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 			RequestedByName: request.RequestedByName,
 			RequestDate:     time.Now(),
 			Status:          models.RequestStatusPending,
-			Priority:        request.Priority,
 			Notes:           request.Notes,
 			MedicalCenterID: medicalCenterID,
-		}
-
-		// Validar y establecer prioridad por defecto
-		if supplyRequest.Priority == "" {
-			supplyRequest.Priority = models.RequestPriorityNormal
 		}
 
 		if err := tx.Create(&supplyRequest).Error; err != nil {
@@ -109,21 +102,7 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 				SupplyCode:        itemReq.SupplyCode,
 				SupplyName:        itemReq.SupplyName,
 				QuantityRequested: itemReq.QuantityRequested,
-				Specifications:    itemReq.Specifications,
 				IsPediatric:       itemReq.IsPediatric,
-				SpecialRequests:   itemReq.SpecialRequests,
-				UrgencyLevel:      itemReq.UrgencyLevel,
-			}
-
-			// Establecer valores opcionales
-			if itemReq.Size != "" {
-				item.Size = &itemReq.Size
-			}
-			if itemReq.Brand != "" {
-				item.Brand = &itemReq.Brand
-			}
-			if item.UrgencyLevel == "" {
-				item.UrgencyLevel = models.UrgencyLevelNormal
 			}
 
 			if err := tx.Create(&item).Error; err != nil {
@@ -335,36 +314,16 @@ func (s *SupplyRequestService) AssignQRToRequest(assignment AssignQRToRequestReq
 			return fmt.Errorf("item de solicitud no encontrado: %v", err)
 		}
 
-		// Verificar que el código QR existe y está disponible
+		// Buscar el insumo médico por código QR
 		var medicalSupply models.MedicalSupply
 		if err := tx.Where("qr_code = ?", assignment.QRCode).First(&medicalSupply).Error; err != nil {
-			return fmt.Errorf("código QR no encontrado: %v", err)
-		}
-
-		// Verificar que el QR no esté ya asignado a otra solicitud
-		var existingAssignment models.SupplyRequestQRAssignment
-		if err := tx.Where("qr_code = ? AND status != ?",
-			assignment.QRCode, models.AssignmentStatusConsumed).
-			First(&existingAssignment).Error; err == nil {
-			return fmt.Errorf("el código QR ya está asignado a otra solicitud")
-		}
-
-		// Verificar que el insumo corresponda al código solicitado
-		var batch models.Batch
-		if err := tx.First(&batch, medicalSupply.BatchID).Error; err != nil {
-			return fmt.Errorf("lote no encontrado: %v", err)
-		}
-
-		// Verificar compatibilidad del código de insumo
-		if medicalSupply.Code != item.SupplyCode {
-			return fmt.Errorf("el código QR no corresponde al insumo solicitado")
+			return fmt.Errorf("insumo médico con QR %s no encontrado: %v", assignment.QRCode, err)
 		}
 
 		// Crear la asignación
 		qrAssignment := models.SupplyRequestQRAssignment{
 			SupplyRequestID:     assignment.SupplyRequestID,
 			SupplyRequestItemID: assignment.SupplyRequestItemID,
-			QRCode:              assignment.QRCode,
 			MedicalSupplyID:     medicalSupply.ID,
 			AssignedDate:        time.Now(),
 			AssignedBy:          assignment.AssignedBy,

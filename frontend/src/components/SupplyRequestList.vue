@@ -44,25 +44,6 @@
           </select>
         </div>
 
-        <!-- Filtro por prioridad -->
-        <div>
-          <label for="priorityFilter" class="block text-sm font-medium text-gray-700 mb-1">
-            Prioridad
-          </label>
-          <select
-            id="priorityFilter"
-            v-model="filters.priority"
-            @change="filterRequests"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Todas las prioridades</option>
-            <option value="low">Baja</option>
-            <option value="normal">Normal</option>
-            <option value="high">Alta</option>
-            <option value="critical">Crítica</option>
-          </select>
-        </div>
-
         <!-- Búsqueda por número de solicitud -->
         <div>
           <label for="searchNumber" class="block text-sm font-medium text-gray-700 mb-1">
@@ -223,7 +204,7 @@
                 Estado
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Prioridad
+                Fecha de Cirugía
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Fecha
@@ -274,10 +255,13 @@
                 </span>
               </td>
 
-              <!-- Prioridad -->
+              <!-- Fecha de Cirugía -->
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getPriorityBadgeClass(request.priority)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                  {{ getPriorityLabel(request.priority) }}
+                <div class="text-sm text-gray-900">
+                  {{ formatSurgeryDateTime(request.surgery_datetime) }}
+                </div>
+                <span :class="getUrgencyBadgeClass(request.surgery_datetime)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1">
+                  {{ getUrgencyLabel(request.surgery_datetime) }}
                 </span>
               </td>
 
@@ -306,7 +290,7 @@
                   </button>
 
                   <button
-                    v-if="request.status === 'pending' && authStore.canViewAllRequests"
+                    v-if="request.status === 'pending' && authStore.canApproveRequests"
                     @click.stop="approveRequest(request.id)"
                     class="text-green-600 hover:text-green-900 p-1"
                     title="Aprobar solicitud"
@@ -317,7 +301,7 @@
                   </button>
 
                   <button
-                    v-if="request.status === 'pending' && authStore.canViewAllRequests"
+                    v-if="request.status === 'pending' && authStore.canApproveRequests"
                     @click.stop="rejectRequest(request.id)"
                     class="text-red-600 hover:text-red-900 p-1"
                     title="Rechazar solicitud"
@@ -385,7 +369,7 @@ const pageSize = ref(10)
 // Filtros
 const filters = ref({
   status: '',
-  priority: '',
+  urgency: '',
   search: ''
 })
 
@@ -393,8 +377,9 @@ const filters = ref({
 const filteredRequests = computed(() => {
   let filtered = requests.value
 
-  if (filters.value.priority) {
-    filtered = filtered.filter(request => request.priority === filters.value.priority)
+  if (filters.value.urgency) {
+    filtered = filtered.filter(request => 
+      supplyRequestService.calculateUrgencyFromSurgeryDate(request.surgery_datetime) === filters.value.urgency)
   }
 
   if (filters.value.search) {
@@ -584,17 +569,28 @@ const getStatusBadgeClass = (status) => {
   return classes[color] || classes.gray
 }
 
-const getPriorityLabel = (priority) => {
-  return supplyRequestService.getPriorityLabel(priority)
+const formatSurgeryDateTime = (surgeryDateTime) => {
+  return supplyRequestService.formatSurgeryDateTime(surgeryDateTime)
 }
 
-const getPriorityBadgeClass = (priority) => {
-  const color = supplyRequestService.getPriorityColor(priority)
+const getUrgencyLabel = (surgeryDateTime) => {
+  const urgency = supplyRequestService.calculateUrgencyFromSurgeryDate(surgeryDateTime)
+  const labels = {
+    'critical': 'Crítica',
+    'high': 'Alta',
+    'normal': 'Normal',
+    'low': 'Baja'
+  }
+  return labels[urgency] || 'Normal'
+}
+
+const getUrgencyBadgeClass = (surgeryDateTime) => {
+  const color = supplyRequestService.getUrgencyColor(surgeryDateTime)
   const classes = {
-    'gray': 'bg-gray-100 text-gray-800',
-    'blue': 'bg-blue-100 text-blue-800',
+    'red': 'bg-red-100 text-red-800',
     'orange': 'bg-orange-100 text-orange-800',
-    'red': 'bg-red-100 text-red-800'
+    'blue': 'bg-blue-100 text-blue-800',
+    'gray': 'bg-gray-100 text-gray-800'
   }
   return classes[color] || classes.blue
 }

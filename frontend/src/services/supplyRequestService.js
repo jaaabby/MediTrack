@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
 
@@ -212,13 +213,7 @@ class SupplyRequestService {
       errors.push('El pabellón es obligatorio')
     }
 
-    if (!requestData.requested_by) {
-      errors.push('El solicitante es obligatorio')
-    }
-
-    if (!requestData.requested_by_name) {
-      errors.push('El nombre del solicitante es obligatorio')
-    }
+    // Los datos del solicitante se obtienen automáticamente de la sesión
 
     if (!requestData.items || requestData.items.length === 0) {
       errors.push('Debe agregar al menos un insumo')
@@ -238,8 +233,15 @@ class SupplyRequestService {
       })
     }
 
-    if (!['low', 'normal', 'high', 'critical'].includes(requestData.priority)) {
-      errors.push('La prioridad debe ser: low, normal, high o critical')
+    if (!requestData.surgery_datetime) {
+      errors.push('La fecha y hora de cirugía es obligatoria')
+    } else {
+      // Validar que la fecha no sea en el pasado
+      const surgeryDate = new Date(requestData.surgery_datetime)
+      const now = new Date()
+      if (surgeryDate < now) {
+        errors.push('La fecha y hora de cirugía no puede ser en el pasado')
+      }
     }
 
     return {
@@ -250,11 +252,13 @@ class SupplyRequestService {
 
   // Formatear datos para envío
   formatSupplyRequestForAPI(formData) {
+    const authStore = useAuthStore()
+    
     return {
       pavilion_id: parseInt(formData.pavilion_id),
-      requested_by: formData.requested_by || 'SYSTEM',
-      requested_by_name: formData.requested_by_name || 'Sistema MediTrack',
-      priority: formData.priority || 'normal',
+      requested_by: authStore.getUserRut || 'SYSTEM',
+      requested_by_name: authStore.getUserName || 'Usuario Sistema',
+      surgery_datetime: formData.surgery_datetime,
       notes: formData.notes || '',
       items: formData.items.map(item => ({
         supply_code: parseInt(item.supply_code),
@@ -294,6 +298,47 @@ class SupplyRequestService {
       'cancelled': 'gray'
     }
     return colors[status] || 'gray'
+  }
+
+  // Formatear fecha de cirugía para mostrar
+  formatSurgeryDateTime(surgeryDateTime) {
+    if (!surgeryDateTime) return 'No programada'
+    
+    const date = new Date(surgeryDateTime)
+    return date.toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+  }
+
+  // Calcular urgencia basada en la fecha de cirugía
+  calculateUrgencyFromSurgeryDate(surgeryDateTime) {
+    if (!surgeryDateTime) return 'normal'
+    
+    const surgeryDate = new Date(surgeryDateTime)
+    const now = new Date()
+    const diffHours = (surgeryDate - now) / (1000 * 60 * 60)
+    
+    if (diffHours < 6) return 'critical'
+    if (diffHours < 24) return 'high'
+    if (diffHours < 72) return 'normal'
+    return 'low'
+  }
+
+  // Obtener color basado en urgencia de fecha de cirugía
+  getUrgencyColor(surgeryDateTime) {
+    const urgency = this.calculateUrgencyFromSurgeryDate(surgeryDateTime)
+    const colors = {
+      'critical': 'red',
+      'high': 'orange', 
+      'normal': 'blue',
+      'low': 'gray'
+    }
+    return colors[urgency] || 'blue'
   }
 
   // Obtener etiquetas de prioridad

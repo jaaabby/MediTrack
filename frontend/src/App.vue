@@ -13,7 +13,7 @@
           
           <!-- Navegación principal (desktop y tablet) -->
           <nav class="hidden lg:flex items-center space-x-4 xl:space-x-8 flex-1 justify-center max-w-4xl">
-            <router-link v-if="authStore.isAuthenticated"
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewHome"
               to="/"
               class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
               :class="{ 'bg-blue-700': $route.path === '/' }"
@@ -40,7 +40,7 @@
               Solicitudes
             </router-link>
             
-            <router-link v-if="authStore.isAuthenticated"
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewQR"
               to="/qr"
               class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
               :class="{ 'bg-blue-700': $route.path.startsWith('/qr') }"
@@ -49,7 +49,7 @@
               Escaner QR
             </router-link>
 
-            <router-link v-if="authStore.isAuthenticated"
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewStatistics"
               to="/statistics"
               class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
               :class="{ 'bg-blue-700': $route.path === '/statistics' }"
@@ -70,7 +70,7 @@
 
           <!-- Navegación tablet (oculta en desktop y mobile) -->
           <nav class="hidden md:flex lg:hidden items-center space-x-2 flex-1 justify-center">
-            <router-link v-if="authStore.isAuthenticated"
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewHome"
               to="/"
               class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
               :class="{ 'bg-blue-700': $route.path === '/' }"
@@ -106,7 +106,7 @@
               </svg>
             </router-link>
             
-            <router-link v-if="authStore.isAuthenticated"
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewQR"
               to="/qr"
               class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
               :class="{ 'bg-blue-700': $route.path.startsWith('/qr') }"
@@ -118,7 +118,7 @@
               </svg>
             </router-link>
 
-            <router-link v-if="authStore.isAuthenticated"
+            <router-link v-if="authStore.isAuthenticated && authStore.canViewStatistics"
               to="/statistics"
               class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
               :class="{ 'bg-blue-700': $route.path === '/statistics' }"
@@ -199,7 +199,7 @@
       <div v-if="mobileMenuOpen" class="md:hidden">
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-blue-700">
           <router-link
-            v-if="authStore.isAuthenticated"
+            v-if="authStore.isAuthenticated && authStore.canViewHome"
             to="/"
             @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
@@ -229,7 +229,7 @@
           </router-link>
           
           <router-link
-            v-if="authStore.isAuthenticated"
+            v-if="authStore.isAuthenticated && authStore.canViewQR"
             to="/qr"
             @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
@@ -239,7 +239,7 @@
           </router-link>
 
           <router-link
-            v-if="authStore.isAuthenticated"
+            v-if="authStore.isAuthenticated && authStore.canViewStatistics"
             to="/statistics"
             @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
@@ -277,10 +277,25 @@
     </main>
 
     <!-- Navegacion inferior (inspirada en la app movil) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40">
-      <div class="grid grid-cols-5 gap-1">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40" v-if="authStore.isAuthenticated">
+      <!-- Para doctores: solo mostrar solicitudes -->
+      <div v-if="authStore.isDoctor" class="flex justify-center">
         <router-link
-          v-if="authStore.isAuthenticated"
+          to="/supply-requests"
+          class="flex flex-col items-center py-3 px-6 text-sm font-medium transition-colors"
+          :class="$route.path.startsWith('/supply-requests') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+        >
+          <svg class="h-8 w-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          <span class="text-sm leading-tight">Solicitudes</span>
+        </router-link>
+      </div>
+      
+      <!-- Para otros roles: navegación completa -->
+      <div v-else class="grid grid-cols-5 gap-1">
+        <router-link
+          v-if="authStore.canViewHome"
           to="/"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
           :class="$route.path === '/' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
@@ -292,7 +307,7 @@
         </router-link>
         
         <router-link
-          v-if="authStore.isAuthenticated && authStore.canViewInventory"
+          v-if="authStore.canViewInventory"
           to="/inventory"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
           :class="$route.path === '/inventory' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
@@ -304,7 +319,7 @@
         </router-link>
         
         <router-link
-          v-if="authStore.isAuthenticated && authStore.canViewRequests"
+          v-if="authStore.canViewRequests"
           to="/supply-requests"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors relative"
           :class="$route.path.startsWith('/supply-requests') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
@@ -316,7 +331,7 @@
         </router-link>
         
         <router-link
-          v-if="authStore.isAuthenticated"
+          v-if="authStore.canViewQR"
           to="/qr"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
           :class="$route.path.startsWith('/qr') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
@@ -328,7 +343,7 @@
         </router-link>
 
         <router-link
-          v-if="authStore.isAuthenticated"
+          v-if="authStore.canViewStatistics"
           to="/statistics"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
           :class="$route.path === '/statistics' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"

@@ -46,23 +46,6 @@ func (c *SupplyRequestController) CreateSupplyRequest(ctx *gin.Context) {
 		return
 	}
 
-	// Validar prioridad
-	validPriorities := []string{"low", "normal", "high", "critical", ""}
-	validPriority := false
-	for _, p := range validPriorities {
-		if request.Priority == p {
-			validPriority = true
-			break
-		}
-	}
-	if !validPriority {
-		ctx.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Prioridad inválida. Debe ser: low, normal, high o critical",
-		})
-		return
-	}
-
 	supplyRequest, err := c.supplyRequestService.CreateSupplyRequest(request)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
@@ -227,6 +210,34 @@ func (c *SupplyRequestController) GetSupplyRequestsByPavilion(ctx *gin.Context) 
 
 // ApproveSupplyRequest aprueba una solicitud
 func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
+	// Verificar permisos - solo encargado de bodega puede aprobar
+	user, exists := ctx.Get("user")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, Response{
+			Success: false,
+			Error:   "Usuario no autenticado",
+		})
+		return
+	}
+
+	userClaims, ok := user.(map[string]interface{})
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error procesando información del usuario",
+		})
+		return
+	}
+
+	userRole, exists := userClaims["role"].(string)
+	if !exists || userRole != "encargado de bodega" {
+		ctx.JSON(http.StatusForbidden, Response{
+			Success: false,
+			Error:   "No tiene permisos para aprobar solicitudes. Solo encargados de bodega pueden realizar esta acción",
+		})
+		return
+	}
+
 	id := ctx.Param("id")
 	if id == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
@@ -278,6 +289,34 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 
 // RejectSupplyRequest rechaza una solicitud
 func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
+	// Verificar permisos - solo encargado de bodega puede rechazar
+	user, exists := ctx.Get("user")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, Response{
+			Success: false,
+			Error:   "Usuario no autenticado",
+		})
+		return
+	}
+
+	userClaims, ok := user.(map[string]interface{})
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error procesando información del usuario",
+		})
+		return
+	}
+
+	userRole, exists := userClaims["role"].(string)
+	if !exists || userRole != "encargado de bodega" {
+		ctx.JSON(http.StatusForbidden, Response{
+			Success: false,
+			Error:   "No tiene permisos para rechazar solicitudes. Solo encargados de bodega pueden realizar esta acción",
+		})
+		return
+	}
+
 	id := ctx.Param("id")
 	if id == "" {
 		ctx.JSON(http.StatusBadRequest, Response{

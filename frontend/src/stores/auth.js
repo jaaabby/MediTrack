@@ -41,11 +41,26 @@ export const useAuthStore = defineStore('auth', {
     // Verificar si puede ver todas las solicitudes (admin o encargado de bodega)
     canViewAllRequests: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
     
+    // Verificar si puede aprobar/rechazar solicitudes (solo encargado de bodega)
+    canApproveRequests: (state) => state.user?.role === 'encargado de bodega',
+    
+    // Verificar si puede gestionar inventario y QRs (admin o encargado de bodega)
+    canManageInventory: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
+    
     // Verificar si puede ver solicitudes (todos excepto pabellón)
     canViewRequests: (state) => state.user?.role !== 'pabellón',
     
-    // Verificar si puede ver inventario (todos excepto pabellón)
-    canViewInventory: (state) => state.user?.role !== 'pabellón',
+    // Verificar si puede ver inventario (todos excepto pabellón y doctor)
+    canViewInventory: (state) => state.user?.role !== 'pabellón' && state.user?.role !== 'doctor',
+    
+    // Verificar si puede ver estadísticas (todos excepto pabellón y doctor)
+    canViewStatistics: (state) => state.user?.role !== 'pabellón' && state.user?.role !== 'doctor',
+    
+    // Verificar si puede ver inicio/dashboard (todos pueden ver home)
+    canViewHome: (state) => true,
+    
+    // Verificar si puede ver QR scanner (todos excepto doctor)
+    canViewQR: (state) => state.user?.role !== 'doctor',
     
     // Obtener el nombre del usuario
     getUserName: (state) => state.user?.name,
