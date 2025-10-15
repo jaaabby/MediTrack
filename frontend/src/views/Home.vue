@@ -145,6 +145,51 @@
         </div>
       </div>
 
+      <!-- Transferencias -->
+      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/transfers')">
+        <div class="flex items-center gap-4">
+          <div class="bg-cyan-100 p-3 rounded-lg">
+            <svg class="h-8 w-8 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Transferencias</h3>
+            <p class="text-gray-600 text-sm">Gestionar traslados de insumos</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cirugías -->
+      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/surgeries')">
+        <div class="flex items-center gap-4">
+          <div class="bg-red-100 p-3 rounded-lg">
+            <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Cirugías</h3>
+            <p class="text-gray-600 text-sm">Tipos de procedimientos quirúrgicos</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historial de Insumos -->
+      <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/supply-history')">
+        <div class="flex items-center gap-4">
+          <div class="bg-lime-100 p-3 rounded-lg">
+            <svg class="h-8 w-8 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Historial de Insumos</h3>
+            <p class="text-gray-600 text-sm">Movimientos y trazabilidad</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Movimientos de stock
       <div class="card hover:shadow-lg transition-all duration-200 cursor-pointer opacity-75" @click="navigateTo('/inventory/movements')">
         <div class="flex items-center gap-4">

@@ -11,22 +11,30 @@ class StoreService {
         'Content-Type': 'application/json'
       }
     })
+
+    // Interceptor para agregar el token de autenticación
+    this.api.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('auth_token')
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+        return config
+      },
+      (error) => {
+        return Promise.reject(error)
+      }
+    )
   }
 
   // Obtener todos los almacenes/stores
   async getAllStores() {
     try {
-      const response = await this.api.get('/stores')
+      const response = await this.api.get('/stores/')
       return response.data.data || response.data || []
     } catch (error) {
-      // Fallback con slash final
-      try {
-        const response = await this.api.get('/stores/')
-        return response.data.data || response.data || []
-      } catch (fallbackError) {
-        console.error('Error al obtener almacenes:', error)
-        throw error
-      }
+      console.error('Error al obtener almacenes:', error)
+      throw error
     }
   }
 

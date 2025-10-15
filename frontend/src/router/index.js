@@ -222,6 +222,82 @@ const routes = [
     }
   },
 
+  // === NUEVAS RUTAS DE GESTIÓN ===
+  
+  // Gestión de Transferencias
+  {
+    path: '/transfers',
+    name: 'TransferManagement',
+    component: () => import('@/views/TransferManagement.vue'),
+    meta: {
+      title: 'Transferencias - MediTrack',
+      description: 'Gestión de transferencias entre bodegas y pabellones',
+      requiresAuth: true
+    }
+  },
+
+  // Gestión de Tipos de Cirugía
+  {
+    path: '/surgeries',
+    name: 'SurgeryManagement',
+    component: () => import('@/views/SurgeryManagement.vue'),
+    meta: {
+      title: 'Tipos de Cirugía - MediTrack',
+      description: 'Administración de tipos de procedimientos quirúrgicos',
+      requiresAuth: true
+    }
+  },
+
+  // Historial de Insumos
+  {
+    path: '/supply-history',
+    name: 'SupplyHistoryView',
+    component: () => import('@/views/SupplyHistoryView.vue'),
+    meta: {
+      title: 'Historial de Insumos - MediTrack',
+      description: 'Registro completo de movimientos de insumos',
+      requiresAuth: true
+    }
+  },
+
+  // === NUEVAS RUTAS DE INVENTARIO POR UBICACIÓN ===
+  
+  // Dashboard de Inventario
+  {
+    path: '/inventory/dashboard',
+    name: 'InventoryDashboard',
+    component: () => import('@/views/InventoryDashboard.vue'),
+    meta: {
+      title: 'Dashboard de Inventario - MediTrack',
+      description: 'Resumen general del inventario por ubicaciones',
+      requiresAuth: true
+    }
+  },
+
+  // Inventario de Bodegas
+  {
+    path: '/inventory/store',
+    name: 'StoreInventoryView',
+    component: () => import('@/views/StoreInventoryView.vue'),
+    meta: {
+      title: 'Inventario de Bodegas - MediTrack',
+      description: 'Stock detallado en cada bodega del sistema',
+      requiresAuth: true
+    }
+  },
+
+  // Inventario de Pabellones
+  {
+    path: '/inventory/pavilion',
+    name: 'PavilionInventoryView',
+    component: () => import('@/views/PavilionInventoryView.vue'),
+    meta: {
+      title: 'Inventario de Pabellones - MediTrack',
+      description: 'Stock disponible en cada pabellón del hospital',
+      requiresAuth: true
+    }
+  },
+
   // Catch-all para rutas no encontradas
   {
     path: '/:pathMatch(.*)*',

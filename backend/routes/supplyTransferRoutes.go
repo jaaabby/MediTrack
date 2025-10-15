@@ -15,15 +15,15 @@ func SetupSupplyTransferRoutes(router *gin.RouterGroup, transferService *service
 	transfers.Use(middleware.AuthMiddleware(secretKey)) // Aplicar autenticación a todas las rutas
 	{
 		// Crear transferencias
-		transfers.POST("/to-pavilion", transferController.TransferToPavilion)
-		transfers.POST("/return-to-store", transferController.ReturnToStore)
+		transfers.POST("/to-pavilion/", transferController.TransferToPavilion)
+		transfers.POST("/return-to-store/", transferController.ReturnToStore)
 
 		// Confirmar y gestionar transferencias
-		transfers.POST("/:code/confirm", transferController.ConfirmReception)
-		transfers.POST("/:code/cancel", transferController.CancelTransfer)
+		transfers.POST("/:code/confirm/", transferController.ConfirmReception)
+		transfers.POST("/:code/cancel/", transferController.CancelTransfer)
 
 		// Consultar transferencias
-		transfers.GET("/:code", transferController.GetTransferByCode)
+		transfers.GET("/:code/", transferController.GetTransferByCode)
 		transfers.GET("/", transferController.GetTransfers)
 	}
 }
