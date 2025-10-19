@@ -82,7 +82,6 @@
                 muted 
                 playsinline
                 class="w-full h-full object-cover"
-                style="transform: scaleX(-1);"
               ></video>
               
               <div class="absolute inset-0 flex items-center justify-center">

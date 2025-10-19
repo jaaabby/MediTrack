@@ -101,9 +101,24 @@ func main() {
 	go medicalSupplyService.StartAutomaticReturnChecker()
 	log.Println("✅ Iniciado verificador automático de retornos a bodega")
 
-	// Iniciar servidor correctamente con Gin
-	log.Printf("Servidor iniciando en puerto %d", cfg.Server.Port)
-	if err := router.Run(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {
-		log.Fatalf("Error al iniciar servidor: %v", err)
+	// Iniciar servidor con HTTPS
+	log.Printf("Servidor iniciando en puerto %d con HTTPS", cfg.Server.Port)
+
+	// Verificar si existen los certificados SSL
+	certFile := "certs/server.crt"
+	keyFile := "certs/server.key"
+
+	if _, err := os.Stat(certFile); err == nil {
+		// Certificados existen, usar HTTPS
+		log.Println("✅ Certificados SSL encontrados, usando HTTPS")
+		if err := router.RunTLS(fmt.Sprintf(":%d", cfg.Server.Port), certFile, keyFile); err != nil {
+			log.Fatalf("Error al iniciar servidor HTTPS: %v", err)
+		}
+	} else {
+		// Sin certificados, usar HTTP (desarrollo)
+		log.Println("⚠️  Certificados SSL no encontrados, usando HTTP")
+		if err := router.Run(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {
+			log.Fatalf("Error al iniciar servidor HTTP: %v", err)
+		}
 	}
 }

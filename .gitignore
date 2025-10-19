@@ -1,2 +1,6 @@
 node_modules
 .env
+
+# Certificados SSL (desarrollo)
+backend/certs/*.crt
+backend/certs/*.key
