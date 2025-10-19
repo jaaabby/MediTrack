@@ -292,6 +292,7 @@
             
             <!-- Menu hamburguesa (movil) -->
             <button 
+              v-if="authStore.isAuthenticated"
               @click="mobileMenuOpen = !mobileMenuOpen"
               class="md:hidden p-2 rounded-lg hover:bg-blue-700 transition-colors"
               aria-label="Abrir menu"
@@ -318,15 +319,55 @@
             Inicio
           </router-link>
           
-          <router-link
-            v-if="authStore.isAuthenticated && authStore.canViewInventory"
-            to="/inventory"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/inventory' }"
-          >
-            Inventario
-          </router-link>
+          <!-- Sección de Inventario -->
+          <div v-if="authStore.isAuthenticated && authStore.canViewInventory" class="space-y-1">
+            <div class="text-blue-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide">
+              Inventario
+            </div>
+            <router-link
+              to="/inventory"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory' }"
+            >
+              Ver Lotes
+            </router-link>
+            <router-link
+              to="/inventory/dashboard"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/dashboard' }"
+            >
+              Dashboard
+            </router-link>
+            <router-link
+              to="/inventory/store"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/store' }"
+            >
+              Bodegas
+            </router-link>
+            <router-link
+              to="/inventory/pavilion"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/pavilion' }"
+            >
+              Pabellones
+            </router-link>
+            <router-link
+              to="/inventory/add"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/add' }"
+            >
+              Agregar Insumo
+            </router-link>
+          </div>
+          
+          <!-- Separador -->
+          <div class="border-t border-blue-600 my-2"></div>
           
           <router-link
             v-if="authStore.isAuthenticated && authStore.canViewRequests"
@@ -361,58 +402,39 @@
           <!-- Separador -->
           <div class="border-t border-blue-600 my-2"></div>
           
-          <router-link
-            v-if="authStore.isAuthenticated"
-            to="/transfers"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/transfers' }"
-          >
-            Transferencias
-          </router-link>
+          <!-- Sección de Gestión -->
+          <div v-if="authStore.isAuthenticated" class="space-y-1">
+            <div class="text-blue-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide">
+              Gestión
+            </div>
+            <router-link
+              to="/transfers"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/transfers' }"
+            >
+              Transferencias
+            </router-link>
 
-          <router-link
-            v-if="authStore.isAuthenticated"
-            to="/surgeries"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/surgeries' }"
-          >
-            Cirugías
-          </router-link>
+            <router-link
+              to="/surgeries"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/surgeries' }"
+            >
+              Cirugías
+            </router-link>
 
-          <router-link
-            v-if="authStore.isAuthenticated"
-            to="/supply-history"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/supply-history' }"
-          >
-            Historial de Insumos
-          </router-link>
+            <router-link
+              to="/supply-history"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/supply-history' }"
+            >
+              Historial de Insumos
+            </router-link>
+          </div>
 
-          <!-- Separador -->
-          <div class="border-t border-blue-600 my-2"></div>
-          
-          <router-link
-            v-if="authStore.isAuthenticated"
-            to="/reports"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path.startsWith('/reports') }"
-          >
-            Reportes
-          </router-link>
-          
-          <router-link
-            v-if="authStore.isAuthenticated && authStore.canViewInventory"
-            to="/inventory/add"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/inventory/add' }"
-          >
-            Agregar Insumo
-          </router-link>
         </div>
       </div>
     </header>
@@ -423,7 +445,7 @@
     </main>
 
     <!-- Navegacion inferior (inspirada en la app movil) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40">
+    <nav v-if="authStore.isAuthenticated" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40">
       <div class="grid grid-cols-5 gap-1">
         <router-link
           v-if="authStore.isAuthenticated"
@@ -441,7 +463,7 @@
           v-if="authStore.isAuthenticated && authStore.canViewInventory"
           to="/inventory"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
-          :class="$route.path === '/inventory' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path.startsWith('/inventory') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -473,22 +495,22 @@
           <span class="text-xs leading-tight">Escaner</span>
         </router-link>
 
-        <router-link
+        <button
           v-if="authStore.isAuthenticated"
-          to="/statistics"
+          @click="mobileMenuOpen = !mobileMenuOpen"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
-          :class="$route.path === '/statistics' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="mobileMenuOpen ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          <span class="text-xs leading-tight">Estadisticas</span>
-        </router-link>
+          <span class="text-xs leading-tight">Más</span>
+        </button>
       </div>
     </nav>
 
     <!-- Padding para la navegacion inferior en moviles -->
-    <div class="h-20 md:hidden"></div>
+    <div v-if="authStore.isAuthenticated" class="h-20 md:hidden"></div>
 
     <!-- Toast/Notificacion global (futuro) -->
     <!-- <div v-if="globalNotification" class="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50">

@@ -1,16 +1,16 @@
 <template>
-  <div class="max-w-7xl mx-auto p-6">
+  <div class="max-w-7xl mx-auto p-3 sm:p-6">
     <!-- Encabezado -->
-    <div class="mb-6">
-      <div class="flex justify-between items-center">
+    <div class="mb-4 sm:mb-6">
+      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Solicitudes de Insumo</h1>
-          <p class="mt-1 text-gray-600">Gestión de solicitudes con trazabilidad QR</p>
+          <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Solicitudes de Insumo</h1>
+          <p class="mt-1 text-sm sm:text-base text-gray-600">Gestión de solicitudes con trazabilidad QR</p>
         </div>
         <router-link
           v-if="authStore.canCreateRequests"
           to="/supply-requests/new"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
         >
           <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -21,8 +21,8 @@
     </div>
 
     <!-- Filtros y búsqueda -->
-    <div class="mb-6 bg-white p-4 rounded-lg shadow border">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <!-- Filtro por estado -->
         <div>
           <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">
@@ -95,67 +95,67 @@
     </div>
 
     <!-- Estadísticas rápidas -->
-    <div v-if="stats" class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-white p-4 rounded-lg shadow border">
+    <div v-if="stats" class="mb-4 sm:mb-6 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
         <div class="flex items-center">
           <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-              <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-gray-500">Pendientes</p>
-            <p class="text-lg font-semibold text-gray-900">{{ stats.pending || 0 }}</p>
+          <div class="ml-2 sm:ml-3 min-w-0">
+            <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Pendientes</p>
+            <p class="text-base sm:text-lg font-semibold text-gray-900">{{ stats.pending || 0 }}</p>
           </div>
         </div>
       </div>
 
-      <div class="bg-white p-4 rounded-lg shadow border">
+      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
         <div class="flex items-center">
           <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-7 h-7 sm:w-8 sm:h-8 bg-green-100 rounded-full flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
             </div>
           </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-gray-500">Aprobadas</p>
-            <p class="text-lg font-semibold text-gray-900">{{ stats.approved || 0 }}</p>
+          <div class="ml-2 sm:ml-3 min-w-0">
+            <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Aprobadas</p>
+            <p class="text-base sm:text-lg font-semibold text-gray-900">{{ stats.approved || 0 }}</p>
           </div>
         </div>
       </div>
 
-      <div class="bg-white p-4 rounded-lg shadow border">
+      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
         <div class="flex items-center">
           <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-              <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-7 h-7 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
           </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-gray-500">Rechazadas</p>
-            <p class="text-lg font-semibold text-gray-900">{{ stats.rejected || 0 }}</p>
+          <div class="ml-2 sm:ml-3 min-w-0">
+            <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Rechazadas</p>
+            <p class="text-base sm:text-lg font-semibold text-gray-900">{{ stats.rejected || 0 }}</p>
           </div>
         </div>
       </div>
 
-      <div class="bg-white p-4 rounded-lg shadow border">
+      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
         <div class="flex items-center">
           <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-              <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 rounded-full flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
           </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-gray-500">Total</p>
-            <p class="text-lg font-semibold text-gray-900">{{ totalRequests }}</p>
+          <div class="ml-2 sm:ml-3 min-w-0">
+            <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Total</p>
+            <p class="text-base sm:text-lg font-semibold text-gray-900">{{ totalRequests }}</p>
           </div>
         </div>
       </div>
@@ -205,8 +205,108 @@
         </router-link>
       </div>
 
-      <!-- Table -->
-      <div v-else class="overflow-x-auto">
+      <!-- Contenido con datos -->
+      <div v-else>
+        <!-- Vista de tarjetas para móviles -->
+        <div class="md:hidden">
+          <div class="space-y-3 p-3">
+            <div 
+              v-for="request in paginatedRequests" 
+              :key="request.id"
+              @click="viewRequest(request.id)"
+              class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <!-- Header con número y fecha -->
+              <div class="flex items-start justify-between mb-3 pb-3 border-b border-gray-100">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span class="text-sm font-semibold text-gray-900 truncate">{{ request.request_number }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-xs text-gray-500">
+                    <svg class="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>{{ formatDate(request.request_date) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Información principal -->
+              <div class="space-y-2.5">
+                <!-- Pabellón -->
+                <div class="flex items-start">
+                  <div class="w-20 text-xs font-medium text-gray-500 flex-shrink-0">Pabellón:</div>
+                  <div class="text-sm text-gray-900 font-medium">{{ getPavilionName(request.pavilion_id) }}</div>
+                </div>
+
+                <!-- Solicitante -->
+                <div class="flex items-start">
+                  <div class="w-20 text-xs font-medium text-gray-500 flex-shrink-0">Solicitante:</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 truncate">{{ request.requested_by_name }}</div>
+                    <div class="text-xs text-gray-500 truncate">{{ request.requested_by }}</div>
+                  </div>
+                </div>
+
+                <!-- Items -->
+                <div class="flex items-center">
+                  <div class="w-20 text-xs font-medium text-gray-500 flex-shrink-0">Items:</div>
+                  <div class="text-sm text-gray-900">{{ request.total_items || 'N/A' }} items</div>
+                </div>
+
+                <!-- Estado y Prioridad -->
+                <div class="flex items-center gap-2 pt-2">
+                  <span :class="getStatusBadgeClass(request.status)" class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full">
+                    {{ getStatusLabel(request.status) }}
+                  </span>
+                  <span :class="getPriorityBadgeClass(request.priority)" class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full">
+                    {{ getPriorityLabel(request.priority) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Acciones -->
+              <div class="flex gap-2 pt-3 mt-3 border-t border-gray-100" @click.stop>
+                <button
+                  @click.stop="viewRequest(request.id)"
+                  class="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Ver
+                </button>
+                
+                <button
+                  v-if="request.status === 'pending' && authStore.canViewAllRequests"
+                  @click.stop="approveRequest(request.id)"
+                  class="inline-flex items-center justify-center px-3 py-2 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+
+                <button
+                  v-if="request.status === 'pending' && authStore.canViewAllRequests"
+                  @click.stop="rejectRequest(request.id)"
+                  class="inline-flex items-center justify-center px-3 py-2 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vista de tabla para desktop -->
+        <div class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -331,28 +431,34 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- Paginación -->
-      <div v-if="totalPages > 1" class="px-6 py-4 border-t border-gray-200 bg-gray-50">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-500">
-            Mostrando {{ (currentPage - 1) * pageSize + 1 }} a {{ Math.min(currentPage * pageSize, totalRequests) }} de {{ totalRequests }} solicitudes
+      <div class="px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-gray-50">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+          <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+            Mostrando {{ filteredRequests.length > 0 ? startIndex + 1 : 0 }} a {{ endIndex }} de {{ totalRequests }} solicitudes
           </div>
-          <div class="flex space-x-2">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
             <button
               @click="previousPage"
               :disabled="currentPage === 1"
-              class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn-secondary px-3 py-2 text-xs sm:text-sm min-w-[60px] sm:min-w-[70px] disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-initial"
             >
-              Anterior
+              <span class="hidden sm:inline">Anterior</span>
+              <span class="sm:hidden">Ant.</span>
             </button>
+            <span class="px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-md min-w-[80px] sm:min-w-[90px] text-center font-medium whitespace-nowrap">
+              Pág {{ currentPage }} / {{ totalPages }}
+            </span>
             <button
               @click="nextPage"
               :disabled="currentPage === totalPages"
-              class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn-secondary px-3 py-2 text-xs sm:text-sm min-w-[60px] sm:min-w-[70px] disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-initial"
             >
-              Siguiente
+              <span class="hidden sm:inline">Siguiente</span>
+              <span class="sm:hidden">Sig.</span>
             </button>
           </div>
         </div>
@@ -415,6 +521,9 @@ const paginatedRequests = computed(() => {
 
 const totalRequests = computed(() => filteredRequests.value.length)
 const totalPages = computed(() => Math.ceil(totalRequests.value / pageSize.value))
+
+const startIndex = computed(() => (currentPage.value - 1) * pageSize.value)
+const endIndex = computed(() => Math.min(startIndex.value + pageSize.value, totalRequests.value))
 
 // Calcular estadísticas localmente basándose en las solicitudes filtradas
 const stats = computed(() => {
@@ -612,5 +721,139 @@ onMounted(async () => {
 /* Estilos adicionales */
 .hover\:bg-gray-50:hover {
   background-color: #f9fafb;
+}
+
+/* Estilos para botones secundarios */
+.btn-secondary {
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  color: #374151;
+  background-color: white;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #f9fafb;
+}
+
+.btn-secondary:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mejoras para dispositivos móviles */
+@media (max-width: 640px) {
+  /* Inputs más grandes para fácil toque en móviles */
+  input[type="text"],
+  select {
+    min-height: 42px;
+    font-size: 16px; /* Previene zoom en iOS */
+  }
+
+  /* Mejorar la altura mínima de los botones para toque fácil */
+  button,
+  .btn-secondary {
+    min-height: 44px; /* Tamaño recomendado por Apple para touch targets */
+  }
+
+  /* Animación suave al aparecer las tarjetas */
+  .space-y-3 > div {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Efecto hover/active en las tarjetas */
+  .space-y-3 > div:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease-in-out;
+  }
+
+  /* Mejorar la legibilidad de los badges */
+  .inline-flex.rounded-full {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+}
+
+/* Paginación responsiva */
+.pagination-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  min-width: 80px;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.pagination-info {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background-color: #f3f4f6;
+  border-radius: 0.375rem;
+  min-width: 100px;
+  text-align: center;
+}
+
+/* Animaciones suaves para mejorar la experiencia */
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  .btn-secondary {
+    transition: all 0.15s ease-in-out;
+  }
+}
+
+/* Estilos para vista de tarjetas */
+.space-y-3 > * + * {
+  margin-top: 0.75rem;
+}
+
+/* Mejoras de accesibilidad táctil */
+@media (max-width: 768px) {
+  /* Asegurar que todos los elementos interactivos sean táctiles */
+  button,
+  a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mejorar el espaciado de las tarjetas */
+  .space-y-3 {
+    padding: 0.75rem;
+  }
+
+  /* Optimizar badges para móviles */
+  .inline-flex.px-2 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* Ajustes para tablets */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Mantener un buen equilibrio entre compacto y legible */
+  .text-sm {
+    font-size: 0.875rem;
+  }
+
+  .text-xs {
+    font-size: 0.75rem;
+  }
 }
 </style>
