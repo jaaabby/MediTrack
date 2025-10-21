@@ -167,8 +167,12 @@ const handleLogin = async () => {
     await authStore.login(loginForm.email, loginForm.password)
     
     // Redirigir al usuario después del login exitoso
-    const redirectTo = router.currentRoute.value.query.redirect || '/'
-    router.push(redirectTo)
+    const redirectTo = router.currentRoute.value.query.redirect || '/home'
+    console.log('Redirigiendo a:', redirectTo)
+    
+    // Usar replace en lugar de push para evitar que el usuario vuelva al login con el botón atrás
+    await router.replace(redirectTo)
+    console.log('Redirección completada')
     
   } catch (error) {
     console.error('Error en login:', error)

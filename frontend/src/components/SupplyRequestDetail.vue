@@ -134,16 +134,11 @@
               </div>
             </div>
             
-            <!-- Observaciones -->
-            <div v-if="request.notes" class="mt-3 sm:mt-4">
-              <label class="block text-xs sm:text-sm font-medium text-gray-700">Observaciones</label>
-              <p class="text-sm text-gray-900 mt-1 bg-gray-50 p-2 sm:p-3 rounded">{{ request.notes }}</p>
-            </div>
           </div>
 
           <!-- Cronología de la solicitud -->
           <div class="bg-white rounded-lg shadow border p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Cronología</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Cronología del Proceso</h3>
             <div class="flow-root">
               <ul class="-mb-8">
                 <!-- Solicitud creada -->
@@ -162,6 +157,30 @@
                         <p class="text-sm font-medium text-gray-900">Solicitud creada</p>
                         <p class="text-sm text-gray-500">{{ formatDate(request.request_date) }}</p>
                         <p class="text-xs text-gray-400">por {{ request.requested_by_name }}</p>
+                        <p v-if="request.notes" class="text-xs text-gray-600 mt-1 italic">"{{ request.notes }}"</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Asignación por Pavedad (si existe) -->
+                <li v-if="request.assigned_date">
+                  <div class="relative pb-8">
+                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Asignada a bodega</p>
+                        <p class="text-sm text-gray-500">{{ formatDate(request.assigned_date) }}</p>
+                        <p class="text-xs text-gray-400">por {{ request.assigned_by_pavedad_name }}</p>
+                        <p class="text-xs text-gray-600 mt-1">Asignada a: {{ request.assigned_to_name }}</p>
+                        <p v-if="request.pavedad_notes" class="text-xs text-gray-600 mt-1 italic">"{{ request.pavedad_notes }}"</p>
                       </div>
                     </div>
                   </div>
@@ -188,12 +207,51 @@
                   </div>
                 </li>
 
+                <!-- Rechazada (si existe) -->
+                <li v-if="request.status === 'rechazado'">
+                  <div class="relative pb-8">
+                    <span v-if="!request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-red-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Solicitud rechazada</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Devuelta (si existe) -->
+                <li v-if="request.status === 'devuelto'">
+                  <div class="relative pb-8">
+                    <span v-if="!request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Items devueltos</p>
+                        <p class="text-xs text-gray-600 mt-1">Algunos items requieren revisión del solicitante</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
                 <!-- Completado (si existe) -->
                 <li v-if="request.completed_date">
                   <div class="relative">
                     <div class="relative flex space-x-3">
                       <div>
-                        <span class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center ring-8 ring-white">
+                        <span class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center ring-8 ring-white">
                           <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
@@ -346,6 +404,121 @@
                 ></div>
               </div>
             </div>-->
+
+            <!-- Estado y Acciones -->
+            <div class="mt-4 pt-4 border-t border-gray-200">
+              <h4 class="text-sm font-semibold text-gray-900 mb-3">Estado y Acciones</h4>
+              
+              <!-- Estado actual -->
+              <div class="mb-3">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Estado Actual</label>
+                <span :class="getStatusBadgeClass(request.status)" class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full">
+                  {{ getStatusLabel(request.status) }}
+                </span>
+              </div>
+
+              <!-- Acciones disponibles según rol y estado -->
+              <div class="space-y-2">
+                <label class="block text-xs font-medium text-gray-700">Acciones Disponibles</label>
+                
+                <!-- Pavedad puede asignar -->
+                <button
+                  v-if="request.status === 'pendiente_pavedad' && authStore.isPavedad"
+                  @click="openAssignModal"
+                  class="w-full inline-flex items-center justify-center px-3 py-2 border border-purple-300 rounded-md text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100"
+                >
+                  <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  </svg>
+                  Asignar a Bodega
+                </button>
+
+                <!-- Encargado de bodega puede revisar items -->
+                <button
+                  v-if="(request.status === 'asignado_bodega' || request.status === 'en_proceso') && authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
+                  @click="openReviewItemsModal"
+                  class="w-full inline-flex items-center justify-center px-3 py-2 border border-blue-300 rounded-md text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+                >
+                  <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Revisar Insumos
+                </button>
+
+                <!-- Doctor puede editar y reenviar solicitud devuelta -->
+                <button
+                  v-if="request.status === 'devuelto' && (authStore.isDoctor || authStore.isNurse) && request.requested_by === authStore.getUserRut"
+                  @click="goToEditRequest"
+                  class="w-full inline-flex items-center justify-center px-3 py-2 border border-orange-300 rounded-md text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100"
+                >
+                  <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Editar y Reenviar
+                </button>
+
+                <!-- Si ya está procesada -->
+                <div v-if="['aprobado', 'rechazado', 'parcialmente_aprobado', 'completado'].includes(request.status)" class="p-2 bg-gray-50 rounded text-center">
+                  <p class="text-xs text-gray-600">
+                    Solicitud procesada
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Comentarios y Observaciones -->
+            <div class="mt-4 pt-4 border-t border-gray-200">
+              <h4 class="text-sm font-semibold text-gray-900 mb-3">Comentarios y Observaciones</h4>
+              
+              <div class="space-y-3">
+                <!-- Notas del solicitante -->
+                <div v-if="getOriginalNotes()" class="p-2 bg-blue-50 rounded-lg">
+                  <div class="flex items-start">
+                    <svg class="h-4 w-4 text-blue-600 mt-0.5 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <div class="flex-1">
+                      <p class="text-xs font-medium text-gray-700 mb-0.5">Solicitante</p>
+                      <p class="text-xs text-gray-900 whitespace-pre-wrap">{{ getOriginalNotes() }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Notas de Pavedad -->
+                <div v-if="request.pavedad_notes" class="p-2 bg-purple-50 rounded-lg">
+                  <div class="flex items-start">
+                    <svg class="h-4 w-4 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div class="flex-1">
+                      <p class="text-xs font-medium text-gray-700 mb-0.5">Pavedad</p>
+                      <p class="text-xs text-gray-900">{{ request.pavedad_notes }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Comentarios de devolución del Encargado de Bodega -->
+                <div v-if="getReturnComments()" class="p-2 bg-orange-50 rounded-lg">
+                  <div class="flex items-start">
+                    <svg class="h-4 w-4 text-orange-600 mt-0.5 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                    <div class="flex-1">
+                      <p class="text-xs font-medium text-gray-700 mb-0.5">{{ getReturnCommentsAuthor() }}</p>
+                      <p class="text-xs text-gray-900 whitespace-pre-wrap">{{ getReturnComments() }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Si no hay comentarios -->
+                <div v-if="!request.notes && !request.pavedad_notes" class="p-3 text-center text-gray-400 text-xs">
+                  <svg class="h-6 w-6 mx-auto mb-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <p>No hay comentarios u observaciones para esta solicitud</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Trazabilidad QR -->
@@ -465,6 +638,21 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de Asignación -->
+    <AssignRequestModal
+      :show="showAssignModal"
+      :request="request"
+      @close="showAssignModal = false"
+    />
+
+    <!-- Modal de Revisión de Items -->
+    <ReviewItemsModal
+      :show="showReviewItemsModal"
+      :request="request"
+      @close="showReviewItemsModal = false"
+      @itemsReviewed="handleItemsReviewed"
+    />
   </div>
 </template>
 
@@ -477,6 +665,8 @@ import pavilionService from '../services/pavilionService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Swal from 'sweetalert2'
+import AssignRequestModal from '@/components/AssignRequestModal.vue'
+import ReviewItemsModal from '@/components/ReviewItemsModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -494,6 +684,8 @@ const pavilions = ref([])
 const selectedQRTraceability = ref(null)
 const showAssignQRModal = ref(false)
 const selectedItem = ref(null)
+const showAssignModal = ref(false)
+const showReviewItemsModal = ref(false)
 
 // Formulario de asignación QR
 const qrAssignmentForm = reactive({
@@ -590,7 +782,7 @@ const rejectRequest = async () => {
     const rejectionData = {
       rejected_by: 'ADMIN',
       rejected_by_name: 'Sistema Admin',
-      rejection_reason: reason
+      notes: reason
     }
     
     await supplyRequestService.rejectSupplyRequest(requestId.value, rejectionData)
@@ -604,6 +796,57 @@ const rejectRequest = async () => {
     })
   } finally {
     processing.value = false
+  }
+}
+
+const openAssignModal = () => {
+  showAssignModal.value = true
+}
+
+const openReviewItemsModal = () => {
+  showReviewItemsModal.value = true
+}
+
+const openEditReturnedModal = () => {
+  showEditReturnedModal.value = true
+}
+
+const handleRequestResubmitted = async () => {
+  showEditReturnedModal.value = false
+  await loadSupplyRequest()
+}
+
+const goToEditRequest = async () => {
+  // Obtener el ID de la solicitud actual
+  const id = request.value?.id || requestId.value
+  
+  if (!id) {
+    console.error('No se pudo obtener el ID de la solicitud')
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'No se pudo determinar el ID de la solicitud'
+    })
+    return
+  }
+  
+  console.log('Navegando a editar solicitud con ID:', id)
+  console.log('Nombre de ruta:', 'EditSupplyRequest')
+  console.log('Params:', { id: id.toString() })
+  
+  try {
+    await router.push({
+      name: 'EditSupplyRequest',
+      params: { id: id.toString() }
+    })
+    console.log('Navegación exitosa')
+  } catch (error) {
+    console.error('Error en navegación:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error de Navegación',
+      text: 'No se pudo navegar a la página de edición: ' + error.message
+    })
   }
 }
 
@@ -747,6 +990,52 @@ const isSurgeryUrgent = (surgeryDatetime) => {
 // Métodos de estilo
 const getStatusLabel = (status) => supplyRequestService.getStatusLabel(status)
 const getPriorityLabel = (priority) => supplyRequestService.getPriorityLabel(priority)
+
+// Parsear comentarios del campo notes
+const getOriginalNotes = () => {
+  if (!request.value?.notes) return ''
+  
+  const notes = request.value.notes
+  // Buscar el marcador de devolución
+  const devolucionMatch = notes.match(/\n\n\[Devolución por .+\]:\n/)
+  
+  if (devolucionMatch) {
+    // Extraer solo la parte antes del marcador de devolución
+    return notes.substring(0, devolucionMatch.index).trim()
+  }
+  
+  return notes
+}
+
+const getReturnComments = () => {
+  if (!request.value?.notes) return ''
+  
+  const notes = request.value.notes
+  // Buscar el marcador de devolución
+  const devolucionMatch = notes.match(/\n\n\[Devolución por .+\]:\n/)
+  
+  if (devolucionMatch) {
+    // Extraer todo después del marcador (incluyendo el contenido)
+    const startIndex = devolucionMatch.index + devolucionMatch[0].length
+    return notes.substring(startIndex).trim()
+  }
+  
+  return ''
+}
+
+const getReturnCommentsAuthor = () => {
+  if (!request.value?.notes) return ''
+  
+  const notes = request.value.notes
+  // Buscar el nombre del autor en el marcador
+  const authorMatch = notes.match(/\[Devolución por (.+)\]:/)
+  
+  if (authorMatch && authorMatch[1]) {
+    return authorMatch[1]
+  }
+  
+  return 'Encargado de Bodega'
+}
 
 const getStatusBadgeClass = (status) => {
   const color = supplyRequestService.getStatusColor(status)

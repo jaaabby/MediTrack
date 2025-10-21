@@ -2,8 +2,12 @@
   <div class="max-w-4xl mx-auto p-3 sm:p-6 bg-white rounded-lg shadow-lg">
     <!-- Título principal -->
     <div class="mb-6">
-      <h2 class="text-2xl font-bold text-gray-900 mb-2">Nueva Solicitud de Insumo</h2>
-      <p class="text-gray-600">Crear solicitud con trazabilidad completa</p>
+      <h2 class="text-2xl font-bold text-gray-900 mb-2">
+        {{ props.editMode ? 'Editar Solicitud de Insumo' : 'Nueva Solicitud de Insumo' }}
+      </h2>
+      <p class="text-gray-600">
+        {{ props.editMode ? 'Modificar y reenviar solicitud devuelta' : 'Crear solicitud con trazabilidad completa' }}
+      </p>
     </div>
 
     <!-- Mostrar errores generales -->
@@ -43,7 +47,13 @@
             <label for="surgery_datetime" class="block text-sm font-medium text-gray-700 mb-1">
               Fecha y Hora de Cirugía <span class="text-red-500">*</span>
             </label>
+            <!-- Modo edición: mostrar como solo lectura -->
+            <div v-if="props.editMode" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
+              {{ originalRequestData.surgery_datetime_display }}
+            </div>
+            <!-- Modo creación: campo editable -->
             <input
+              v-else
               type="datetime-local"
               id="surgery_datetime"
               v-model="requestForm.surgery_datetime"
@@ -51,7 +61,9 @@
               :min="minDateTime"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-            <p class="text-xs text-gray-500 mt-1">Selecciona la fecha y hora programada para la cirugía</p>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ props.editMode ? 'Fecha y hora programada para la cirugía' : 'Selecciona la fecha y hora programada para la cirugía' }}
+            </p>
           </div>
 
           <!-- Selección de Pabellón -->
@@ -59,7 +71,13 @@
             <label for="pavilion" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Pabellón <span class="text-red-500">*</span>
             </label>
+            <!-- Modo edición: mostrar como solo lectura -->
+            <div v-if="props.editMode" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
+              {{ originalRequestData.pavilion_name }}
+            </div>
+            <!-- Modo creación: campo editable -->
             <select
+              v-else
               id="pavilion"
               v-model="requestForm.pavilion_id"
               required
@@ -75,8 +93,10 @@
                 {{ pavilion.name }}
               </option>
             </select>
-            <p v-if="loadingPavilions" class="text-xs text-gray-500 mt-1">Cargando pabellones...</p>
-                      <p class="text-xs text-gray-500 mt-1">Selecciona el pabellón donde se realizará la cirugía</p>
+            <p v-if="loadingPavilions && !props.editMode" class="text-xs text-gray-500 mt-1">Cargando pabellones...</p>
+            <p v-else class="text-xs text-gray-500 mt-1">
+              {{ props.editMode ? 'Pabellón donde se realizará la cirugía' : 'Selecciona el pabellón donde se realizará la cirugía' }}
+            </p>
           </div>
         </div>
 
@@ -325,7 +345,12 @@
             <svg v-if="!submitting" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            {{ submitting ? 'Creando Solicitud...' : 'Crear Solicitud' }}
+            <span v-if="props.editMode">
+              {{ submitting ? 'Reenviando Solicitud...' : 'Reenviar Solicitud' }}
+            </span>
+            <span v-else>
+              {{ submitting ? 'Creando Solicitud...' : 'Crear Solicitud' }}
+            </span>
           </button>
         </div>
       </div>
@@ -334,7 +359,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
@@ -379,12 +404,43 @@ const minDateTime = computed(() => {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 })
 
+// Formatear fecha para mostrar (en modo edición)
+const formatDateTimeForDisplay = (dateString) => {
+  if (!dateString) return 'No especificada'
+  
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Fecha inválida'
+    
+    const options = {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }
+    return date.toLocaleDateString('es-CL', options)
+  } catch (error) {
+    console.error('Error formateando fecha:', error)
+    return dateString
+  }
+}
+
 // Formulario de solicitud
 const requestForm = reactive({
   pavilion_id: '',
   surgery_datetime: '',
   notes: '',
   items: []
+})
+
+// Datos originales para mostrar en modo edición (solo lectura)
+const originalRequestData = ref({
+  pavilion_name: '',
+  surgery_datetime_display: '',
+  requester_name: '',
+  requester_rut: ''
 })
 
 // Template para nuevo item
@@ -405,8 +461,13 @@ const loadPavilions = async () => {
   loadingPavilions.value = true
   try {
     const result = await pavilionService.getAllPavilions()
+    console.log('📥 Resultado crudo de getAllPavilions:', result)
+    console.log('📥 Tipo:', typeof result, '¿Es array?', Array.isArray(result))
+    if (result && result.length > 0) {
+      console.log('📥 Primer elemento:', result[0])
+    }
     pavilions.value = result
-    console.log('Pabellones cargados:', pavilions.value)
+    console.log('✅ Pabellones asignados a pavilions.value:', pavilions.value)
   } catch (error) {
     console.error('Error cargando pabellones:', error)
     errors.value.push('Error al cargar la lista de pabellones')
@@ -513,25 +574,17 @@ const submitRequest = async () => {
   errors.value = []
 
   try {
-    const formattedData = supplyRequestService.formatSupplyRequestForAPI(requestForm)
-    console.log('Enviando solicitud:', formattedData)
-    
-    const result = await supplyRequestService.createSupplyRequest(formattedData)
-    
-    if (result.success) {
-      console.log('Solicitud creada exitosamente:', result)
-      
-      // Emitir evento de éxito con los datos de la solicitud
-      emit('success', result.data?.request || result.data)
+    // Si está en modo edición, reenviar la solicitud devuelta
+    if (props.editMode && props.id) {
+      await resubmitRequest()
     } else {
-      const errorMessage = 'Error al crear la solicitud: ' + (result.error || 'Error desconocido')
-      errors.value.push(errorMessage)
-      emit('error', new Error(errorMessage))
+      // Crear nueva solicitud
+      await createNewRequest()
     }
   } catch (error) {
     console.error('Error al enviar solicitud:', error)
     
-    let errorMessage = 'Error desconocido al crear la solicitud'
+    let errorMessage = 'Error desconocido al procesar la solicitud'
     if (error.response?.data?.error) {
       errorMessage = 'Error del servidor: ' + error.response.data.error
     } else if (error.message) {
@@ -545,13 +598,181 @@ const submitRequest = async () => {
   }
 }
 
+// Crear nueva solicitud
+const createNewRequest = async () => {
+  const formattedData = supplyRequestService.formatSupplyRequestForAPI(requestForm)
+  console.log('Enviando solicitud:', formattedData)
+  
+  const result = await supplyRequestService.createSupplyRequest(formattedData)
+  
+  if (result.success) {
+    console.log('Solicitud creada exitosamente:', result)
+    emit('success', result.data?.request || result.data)
+  } else {
+    const errorMessage = 'Error al crear la solicitud: ' + (result.error || 'Error desconocido')
+    errors.value.push(errorMessage)
+    emit('error', new Error(errorMessage))
+  }
+}
+
+// Reenviar solicitud devuelta
+const resubmitRequest = async () => {
+  // Preparar solo los items que fueron devueltos con sus nuevas cantidades
+  const updatedItems = requestForm.items
+    .filter(item => item.item_status === 'devuelto')
+    .map(item => ({
+      item_id: item.id,
+      quantity: item.quantity_requested
+    }))
+  
+  console.log('Reenviando solicitud con items:', updatedItems)
+  
+  const result = await supplyRequestService.resubmitReturnedRequest(props.id, updatedItems)
+  
+  if (result.success) {
+    console.log('Solicitud reenviada exitosamente')
+    
+    await Swal.fire({
+      icon: 'success',
+      title: 'Solicitud Reenviada',
+      text: 'La solicitud ha sido reenviada al encargado de bodega',
+      timer: 2000,
+      showConfirmButton: false
+    })
+    
+    emit('success', { id: props.id })
+  } else {
+    const errorMessage = 'Error al reenviar la solicitud: ' + (result.error || 'Error desconocido')
+    errors.value.push(errorMessage)
+    emit('error', new Error(errorMessage))
+  }
+}
+
 // Lifecycle
-onMounted(() => {
-  loadPavilions()
-  loadMedicalSupplies()
-  // Agregar un insumo por defecto
-  addSupplyItem()
+onMounted(async () => {
+  // Cargar listas primero
+  await Promise.all([
+    loadPavilions(),
+    loadMedicalSupplies()
+  ])
+  
+  // Si está en modo edición, cargar la solicitud DESPUÉS de que las listas estén listas
+  if (props.editMode && props.id) {
+    await loadRequestForEdit()
+  } else {
+    // Agregar un insumo por defecto solo si no está en modo edición
+    addSupplyItem()
+  }
 })
+
+// Función auxiliar para extraer solo las notas originales del solicitante
+const extractOriginalNotes = (fullNotes) => {
+  if (!fullNotes) return ''
+  
+  // Buscar el marcador de devolución
+  const devolucionIndex = fullNotes.indexOf('[Devolución por')
+  
+  // Si no hay marcador, devolver todas las notas
+  if (devolucionIndex === -1) {
+    return fullNotes.trim()
+  }
+  
+  // Extraer solo la parte antes del marcador
+  return fullNotes.substring(0, devolucionIndex).trim()
+}
+
+// Cargar solicitud para editar
+const loadRequestForEdit = async () => {
+  try {
+    console.log('🔄 Cargando solicitud para editar, ID:', props.id)
+    const response = await supplyRequestService.getSupplyRequestById(props.id)
+    console.log('📦 Respuesta de la solicitud:', response)
+    
+    if (response.success && response.data) {
+      const request = response.data
+      console.log('✅ Datos de la solicitud:', request)
+      console.log('🏥 Pabellones disponibles:', pavilions.value)
+      console.log('🔍 Buscando pavilion_id:', request.pavilion_id, 'tipo:', typeof request.pavilion_id)
+      
+      // Cargar datos básicos
+      requestForm.pavilion_id = request.pavilion_id ? request.pavilion_id.toString() : ''
+      requestForm.surgery_datetime = formatDateTimeForInput(request.surgery_datetime)
+      requestForm.notes = extractOriginalNotes(request.notes)
+      
+      // Guardar datos originales para mostrar en modo solo lectura
+      // Buscar el pabellón usando un loop directo para evitar problemas con Proxy
+      let pavilionName = `Pabellón ID: ${request.pavilion_id}`
+      for (let i = 0; i < pavilions.value.length; i++) {
+        const p = pavilions.value[i]
+        console.log(`  Checking pabellón [${i}]:`, p.id, '===', request.pavilion_id, '?', p.id === request.pavilion_id)
+        if (p.id === request.pavilion_id) {
+          pavilionName = p.name
+          console.log('✅ ¡Encontrado!:', pavilionName)
+          break
+        }
+      }
+      
+      originalRequestData.value = {
+        pavilion_name: pavilionName,
+        surgery_datetime_display: formatDateTimeForDisplay(request.surgery_datetime),
+        requester_name: request.requested_by_name || 'No disponible',
+        requester_rut: request.requested_by || 'No disponible'
+      }
+      
+      console.log('📝 Datos originales guardados:', originalRequestData.value)
+      
+      // Forzar actualización del DOM
+      await nextTick()
+      
+      console.log('📝 Formulario actualizado:', {
+        pavilion_id: requestForm.pavilion_id,
+        surgery_datetime: requestForm.surgery_datetime,
+        notes: requestForm.notes
+      })
+      
+      // Cargar items
+      const itemsResponse = await supplyRequestService.getSupplyRequestItems(props.id)
+      if (itemsResponse.success && itemsResponse.data) {
+        requestForm.items = itemsResponse.data.map(item => ({
+          id: item.id, // Incluir ID para tracking
+          supply_code: item.supply_code,
+          supply_name: item.supply_name,
+          quantity_requested: item.quantity_requested,
+          is_pediatric: item.is_pediatric,
+          item_status: item.item_status, // Para saber cuáles son editables
+          specifications: '',
+          special_requests: '',
+          urgency_level: 'normal',
+          size: '',
+          brand: ''
+        }))
+        
+        // Inicializar arrays de búsqueda
+        supplySearchTerms.value = requestForm.items.map(() => '')
+        showSupplyDropdowns.value = requestForm.items.map(() => false)
+      }
+    }
+  } catch (error) {
+    console.error('Error cargando solicitud:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'No se pudo cargar la solicitud para editar'
+    })
+  }
+}
+
+// Función auxiliar para formatear fecha para input datetime-local
+const formatDateTimeForInput = (dateString) => {
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
 </script>
 
 <style scoped>

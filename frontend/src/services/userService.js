@@ -268,6 +268,23 @@ export const userService = {
         error: error.response?.data?.message || 'Error al eliminar usuario'
       }
     }
+  },
+
+  // Obtener usuarios por rol
+  async getUsersByRole(role) {
+    try {
+      const response = await apiClient.get(`/v1/users/by-role?role=${encodeURIComponent(role)}`)
+      return {
+        success: true,
+        data: response.data.data || []
+      }
+    } catch (error) {
+      console.error('Error obteniendo usuarios por rol:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      }
+    }
   }
 }
 

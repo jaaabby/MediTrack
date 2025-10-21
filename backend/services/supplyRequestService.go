@@ -2,7 +2,10 @@ package services
 
 import (
 	"fmt"
+	"meditrack/mailer"
 	"meditrack/models"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -16,11 +19,45 @@ func NewSupplyRequestService(db *gorm.DB) *SupplyRequestService {
 	return &SupplyRequestService{DB: db}
 }
 
+// FlexibleTime es un tipo personalizado que acepta múltiples formatos de fecha
+type FlexibleTime struct {
+	time.Time
+}
+
+// UnmarshalJSON implementa el unmarshaler personalizado para aceptar múltiples formatos
+func (ft *FlexibleTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" || s == "" {
+		ft.Time = time.Time{}
+		return nil
+	}
+
+	// Intentar diferentes formatos
+	formats := []string{
+		time.RFC3339,                 // 2006-01-02T15:04:05Z07:00
+		"2006-01-02T15:04:05",        // 2006-01-02T15:04:05
+		"2006-01-02T15:04",           // 2006-01-02T15:04 (datetime-local)
+		"2006-01-02 15:04:05",        // 2006-01-02 15:04:05
+		"2006-01-02 15:04",           // 2006-01-02 15:04
+	}
+
+	var err error
+	for _, format := range formats {
+		ft.Time, err = time.Parse(format, s)
+		if err == nil {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("no se pudo parsear la fecha: %s", s)
+}
+
 // CreateSupplyRequestRequest representa la estructura para crear una solicitud
 type CreateSupplyRequestRequest struct {
 	PavilionID      int                              `json:"pavilion_id" binding:"required"`
 	RequestedBy     string                           `json:"requested_by" binding:"required"`
 	RequestedByName string                           `json:"requested_by_name" binding:"required"`
+	SurgeryDatetime FlexibleTime                     `json:"surgery_datetime" binding:"required"`
 	Notes           string                           `json:"notes"`
 	Items           []CreateSupplyRequestItemRequest `json:"items" binding:"required,dive"`
 }
@@ -80,7 +117,8 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 			RequestedBy:     request.RequestedBy,
 			RequestedByName: request.RequestedByName,
 			RequestDate:     time.Now(),
-			Status:          models.RequestStatusPending,
+			SurgeryDatetime: request.SurgeryDatetime.Time,
+			Status:          models.RequestStatusPendingPavedad, // Estado inicial: pendiente de asignación por Pavedad
 			Notes:           request.Notes,
 			MedicalCenterID: medicalCenterID,
 		}
@@ -554,4 +592,429 @@ func (s *SupplyRequestService) GetSupplyRequestStats() (map[string]interface{}, 
 	stats["generated_at"] = time.Now()
 
 	return stats, nil
+}
+
+// AssignRequestToWarehouseManager asigna una solicitud a un encargado de bodega (usado por Pavedad)
+type AssignRequestToWarehouseManagerRequest struct {
+	AssignedTo            string `json:"assigned_to" binding:"required"`            // RUT del encargado de bodega
+	AssignedToName        string `json:"assigned_to_name" binding:"required"`        // Nombre del encargado
+	AssignedByPavedad     string `json:"assigned_by_pavedad" binding:"required"`     // RUT del usuario Pavedad
+	AssignedByPavedadName string `json:"assigned_by_pavedad_name" binding:"required"` // Nombre del usuario Pavedad
+	PavedadNotes          string `json:"pavedad_notes"`                              // Notas de Pavedad
+}
+
+func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, req AssignRequestToWarehouseManagerRequest) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		// Obtener la solicitud
+		var supplyRequest models.SupplyRequest
+		if err := tx.First(&supplyRequest, requestID).Error; err != nil {
+			return fmt.Errorf("solicitud no encontrada: %v", err)
+		}
+
+		// Validar que la solicitud está en estado pendiente_pavedad
+		if supplyRequest.Status != "pendiente_pavedad" {
+			return fmt.Errorf("la solicitud debe estar en estado 'pendiente_pavedad' para ser asignada. Estado actual: %s", supplyRequest.Status)
+		}
+
+		// Validar que el usuario asignado existe y es encargado de bodega
+		var assignedUser models.User
+		if err := tx.Where("rut = ?", req.AssignedTo).First(&assignedUser).Error; err != nil {
+			return fmt.Errorf("usuario a asignar no encontrado: %v", err)
+		}
+		if assignedUser.Role != "encargado de bodega" {
+			return fmt.Errorf("el usuario debe tener el rol 'encargado de bodega'. Rol actual: %s", assignedUser.Role)
+		}
+
+		// Validar que el usuario que asigna es Pavedad
+		var pavedadUser models.User
+		if err := tx.Where("rut = ?", req.AssignedByPavedad).First(&pavedadUser).Error; err != nil {
+			return fmt.Errorf("usuario Pavedad no encontrado: %v", err)
+		}
+		if pavedadUser.Role != "pavedad" {
+			return fmt.Errorf("solo usuarios con rol 'pavedad' pueden asignar solicitudes. Rol actual: %s", pavedadUser.Role)
+		}
+
+		// Actualizar la solicitud
+		now := time.Now()
+		supplyRequest.AssignedTo = &req.AssignedTo
+		supplyRequest.AssignedToName = &req.AssignedToName
+		supplyRequest.AssignedDate = &now
+		supplyRequest.AssignedByPavedad = &req.AssignedByPavedad
+		supplyRequest.AssignedByPavedadName = &req.AssignedByPavedadName
+		if req.PavedadNotes != "" {
+			supplyRequest.PavedadNotes = &req.PavedadNotes
+		}
+		supplyRequest.Status = "asignado_bodega"
+
+		if err := tx.Save(&supplyRequest).Error; err != nil {
+			return fmt.Errorf("error asignando solicitud: %v", err)
+		}
+
+		// Enviar correo al solicitante notificando la asignación
+		go func() {
+			if err := s.sendRequestAssignedEmail(&supplyRequest); err != nil {
+				fmt.Printf("Error enviando correo de asignación: %v\n", err)
+			}
+		}()
+
+		return nil
+	})
+}
+
+// GetPendingRequestsForPavedad obtiene todas las solicitudes para Pavedad (pendientes y asignadas)
+func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]models.SupplyRequest, error) {
+	var requests []models.SupplyRequest
+	// Pavedad ve tanto las pendientes como las ya asignadas
+	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "parcialmente_aprobado", "pendiente_revision", "devuelto"}).
+		Order("request_date DESC").
+		Find(&requests).Error
+	
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo solicitudes para Pavedad: %v", err)
+	}
+	
+	return requests, nil
+}
+
+// GetAssignedRequestsForWarehouseManager obtiene las solicitudes asignadas a un encargado de bodega específico
+func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseManagerRut string) ([]models.SupplyRequest, error) {
+	var requests []models.SupplyRequest
+	// Incluir todos los estados relevantes para el encargado de bodega
+	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "completado"}).
+		Order("assigned_date DESC").
+		Find(&requests).Error
+	
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo solicitudes asignadas: %v", err)
+	}
+	
+	return requests, nil
+}
+
+// ReviewItemRequest representa la estructura para revisar un item individual
+type ReviewItemRequest struct {
+	ItemStatus     string  `json:"item_status" binding:"required,oneof=aceptado rechazado devuelto"`
+	ReviewedBy     string  `json:"reviewed_by" binding:"required"`
+	ReviewedByName string  `json:"reviewed_by_name" binding:"required"`
+	Comment        *string `json:"comment"` // Observaciones o comentarios sobre el item
+}
+
+// ReviewSupplyRequestItem permite al encargado de bodega revisar un item individual
+func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewItemRequest) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		var item models.SupplyRequestItem
+		if err := tx.First(&item, itemID).Error; err != nil {
+			return fmt.Errorf("item no encontrado: %v", err)
+		}
+
+		// Actualizar estado del item
+		now := time.Now()
+		item.ItemStatus = req.ItemStatus
+		item.ReviewedBy = &req.ReviewedBy
+		item.ReviewedByName = &req.ReviewedByName
+		item.ReviewedAt = &now
+
+		// Asignar comentario
+		if req.Comment != nil && *req.Comment != "" {
+			item.ItemNotes = req.Comment
+		}
+
+		if err := tx.Save(&item).Error; err != nil {
+			return fmt.Errorf("error actualizando item: %v", err)
+		}
+
+		// Verificar si todos los items han sido revisados
+		var totalItems, reviewedItems int64
+		tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ?", item.SupplyRequestID).Count(&totalItems)
+		tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status != ?", item.SupplyRequestID, "pendiente").Count(&reviewedItems)
+
+		// Si todos los items fueron revisados, actualizar el estado de la solicitud
+		if totalItems == reviewedItems {
+			var allAccepted, hasReturned int64
+			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "aceptado").Count(&allAccepted)
+			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Count(&hasReturned)
+
+			var request models.SupplyRequest
+			if err := tx.First(&request, item.SupplyRequestID).Error; err != nil {
+				return fmt.Errorf("error obteniendo solicitud: %v", err)
+			}
+
+			// Determinar nuevo estado de la solicitud
+			if hasReturned > 0 {
+				request.Status = "devuelto" // Al menos un item devuelto
+				
+				// Agregar comentarios de items devueltos al campo notes de la solicitud
+				var returnedItems []models.SupplyRequestItem
+				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Find(&returnedItems)
+				
+				var returnComments string
+				for _, ri := range returnedItems {
+					if ri.ItemNotes != nil && *ri.ItemNotes != "" {
+						if returnComments != "" {
+							returnComments += "\n"
+						}
+						returnComments += fmt.Sprintf("- %s: %s", ri.SupplyName, *ri.ItemNotes)
+					}
+				}
+				
+				if returnComments != "" {
+					reviewerName := "Encargado de Bodega"
+					if req.ReviewedByName != "" {
+						reviewerName = req.ReviewedByName
+					}
+					
+					notesHeader := fmt.Sprintf("\n\n[Devolución por %s]:\n", reviewerName)
+					if request.Notes == "" {
+						request.Notes = notesHeader + returnComments
+					} else {
+						request.Notes = request.Notes + notesHeader + returnComments
+					}
+				}
+
+				// Enviar correo de devolución
+				go func() {
+					if err := s.sendRequestReturnedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de devolución: %v\n", err)
+					}
+				}()
+
+			} else if allAccepted == totalItems {
+				request.Status = "aprobado" // Todos aceptados
+				
+				// Enviar correo de aprobación
+				go func() {
+					if err := s.sendRequestApprovedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de aprobación: %v\n", err)
+					}
+				}()
+
+			} else {
+				request.Status = "parcialmente_aprobado" // Algunos rechazados
+				
+				// Enviar correo de aprobación parcial (usar template de aprobado)
+				go func() {
+					if err := s.sendRequestApprovedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de aprobación parcial: %v\n", err)
+					}
+				}()
+			}
+
+			if err := tx.Save(&request).Error; err != nil {
+				return fmt.Errorf("error actualizando estado de solicitud: %v", err)
+			}
+		}
+
+		return nil
+	})
+}
+
+// UpdatedItemRequest representa la actualización de un item devuelto
+type UpdatedItemRequest struct {
+	ItemID   int `json:"item_id"`
+	Quantity int `json:"quantity"`
+}
+
+// ResubmitReturnedRequest permite al doctor reenviar una solicitud devuelta
+// Solo resetea los items devueltos a pendiente, manteniendo los aceptados
+func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, updatedItems []UpdatedItemRequest) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		var request models.SupplyRequest
+		if err := tx.First(&request, requestID).Error; err != nil {
+			return fmt.Errorf("solicitud no encontrada: %v", err)
+		}
+
+		// Verificar que la solicitud esté en estado devuelto
+		if request.Status != "devuelto" {
+			return fmt.Errorf("solo se pueden reenviar solicitudes devueltas")
+		}
+
+		// Actualizar los items según los cambios del doctor
+		for _, updatedItem := range updatedItems {
+			var item models.SupplyRequestItem
+			if err := tx.First(&item, updatedItem.ItemID).Error; err != nil {
+				continue // Si no se encuentra el item, continuar
+			}
+
+			// Solo actualizar items que fueron devueltos
+			if item.ItemStatus == "devuelto" {
+				// Actualizar cantidad si se modificó
+				if updatedItem.Quantity > 0 {
+					item.QuantityRequested = updatedItem.Quantity
+				}
+				
+				// Resetear el estado a pendiente para que sea revisado nuevamente
+				item.ItemStatus = "pendiente"
+				item.ItemNotes = nil
+				item.ReviewedBy = nil
+				item.ReviewedByName = nil
+				item.ReviewedAt = nil
+				
+				if err := tx.Save(&item).Error; err != nil {
+					return fmt.Errorf("error actualizando item: %v", err)
+				}
+			}
+			// Los items aceptados no se tocan, se mantienen como están
+		}
+
+		// Cambiar el estado de la solicitud de vuelta a asignado_bodega
+		request.Status = "asignado_bodega"
+		
+		if err := tx.Save(&request).Error; err != nil {
+			return fmt.Errorf("error actualizando solicitud: %v", err)
+		}
+
+		return nil
+	})
+}
+
+// Helper functions para envío de correos
+
+func (s *SupplyRequestService) sendRequestAssignedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	templatePath := filepath.Join("mailer", "templates", "request_assigned.html")
+	
+	data := map[string]interface{}{
+		"RecipientName":   request.RequestedByName,
+		"RequestNumber":   request.RequestNumber,
+		"PavilionName":    pavilion.Name,
+		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"AssignedByName":  *request.AssignedByPavedadName,
+		"Notes":           request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Asignada a Bodega - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestApprovedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items aprobados
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "aceptado").Find(&items)
+
+	itemsData := []map[string]interface{}{}
+	for _, item := range items {
+		itemsData = append(itemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_approved.html")
+	
+	data := map[string]interface{}{
+		"RecipientName":   request.RequestedByName,
+		"RequestNumber":   request.RequestNumber,
+		"PavilionName":    pavilion.Name,
+		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ApprovedByName":  *request.AssignedToName,
+		"Items":           itemsData,
+		"Notes":           request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Aprobada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestReturnedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items devueltos con sus comentarios
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "devuelto").Find(&items)
+
+	returnedItems := []map[string]interface{}{}
+	for _, item := range items {
+		comments := "Sin comentarios"
+		if item.ItemNotes != nil {
+			comments = *item.ItemNotes
+		}
+		returnedItems = append(returnedItems, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Comments":   comments,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_returned.html")
+	
+	data := map[string]interface{}{
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ReturnedByName": *request.AssignedToName,
+		"ReturnedItems":  returnedItems,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Devuelta para Revisión - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestRejectedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	templatePath := filepath.Join("mailer", "templates", "request_rejected.html")
+	
+	data := map[string]interface{}{
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"RejectedByName": *request.AssignedToName,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Rechazada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
 }

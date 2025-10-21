@@ -11,8 +11,8 @@
             </router-link>
           </div>
           
-          <!-- Navegación principal (desktop y tablet) -->
-          <nav class="hidden lg:flex items-center space-x-4 xl:space-x-8 flex-1 justify-center max-w-4xl">
+          <!-- Navegación principal (desktop y tablet) - Oculta en login -->
+          <nav v-if="$route.name !== 'Login'" class="hidden lg:flex items-center space-x-4 xl:space-x-8 flex-1 justify-center max-w-4xl">
             <router-link v-if="authStore.isAuthenticated && authStore.canViewHome"
               to="/"
               class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
@@ -133,7 +133,7 @@
             </router-link>
 
             <!-- Menú desplegable Gestión -->
-            <div v-if="authStore.isAuthenticated" class="relative">
+            <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad" class="relative">
               <button
                 @click="managementMenuOpen = !managementMenuOpen"
                 class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
@@ -253,8 +253,8 @@
             </router-link>
           </nav>
           
-          <!-- Menu de usuario -->
-          <div class="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+          <!-- Menu de usuario - Oculto en login -->
+          <div v-if="$route.name !== 'Login'" class="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
             <!-- Informacion del usuario autenticado -->
             <div v-if="authStore.isAuthenticated" class="flex items-center space-x-2 sm:space-x-3">
               <div class="text-right text-white hidden sm:block">
@@ -403,7 +403,7 @@
           <div class="border-t border-blue-600 my-2"></div>
           
           <!-- Sección de Gestión -->
-          <div v-if="authStore.isAuthenticated" class="space-y-1">
+          <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad" class="space-y-1">
             <div class="text-blue-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide">
               Gestión
             </div>
@@ -446,8 +446,18 @@
 
     <!-- Navegacion inferior (inspirada en la app movil) -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40" v-if="authStore.isAuthenticated">
-      <!-- Para doctores: solo mostrar solicitudes -->
-      <div v-if="authStore.isDoctor" class="flex justify-center">
+      <!-- Para doctores y pavedad: solo mostrar inicio y solicitudes -->
+      <div v-if="authStore.isDoctor || authStore.isPavedad" class="grid grid-cols-2 gap-1">
+        <router-link
+          to="/"
+          class="flex flex-col items-center py-3 px-6 text-sm font-medium transition-colors"
+          :class="$route.path === '/' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+        >
+          <svg class="h-8 w-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <span class="text-sm leading-tight">Inicio</span>
+        </router-link>
         <router-link
           to="/supply-requests"
           class="flex flex-col items-center py-3 px-6 text-sm font-medium transition-colors"
@@ -520,7 +530,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
           <span class="text-xs leading-tight">Más</span>
-        </button>
+        </router-link>
       </div>
     </nav>
 

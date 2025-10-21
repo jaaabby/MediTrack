@@ -47,7 +47,7 @@
 
       <!-- Próximos pasos -->
       <div class="bg-blue-50 rounded-lg p-4 mb-6">
-        <h3 class="text-sm font-semibold text-blue-900 mb-2">📋 Próximos pasos:</h3>
+        <h3 class="text-sm font-semibold text-blue-900 mb-2">Próximos pasos:</h3>
         <ul class="text-sm text-blue-800 space-y-1">
           <li>• La solicitud será revisada por el personal autorizado</li>
           <li>• Recibirás notificaciones sobre el estado de tu solicitud</li>
@@ -70,6 +70,7 @@
 
         <div class="flex space-x-3">
           <button
+            v-if="authStore.canCreateRequests"
             @click="createAnotherRequest"
             class="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center"
           >
@@ -81,7 +82,8 @@
 
           <button
             @click="goToRequestsList"
-            class="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center"
+            :class="authStore.canCreateRequests ? 'flex-1' : 'w-full'"
+            class="bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center"
           >
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -107,11 +109,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '@/services/supplyRequestService'
 import pavilionService from '@/services/pavilionService'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const requestData = ref(null)
 const pavilions = ref([])

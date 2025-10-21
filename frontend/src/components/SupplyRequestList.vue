@@ -243,9 +243,6 @@
                   <span :class="getStatusBadgeClass(request.status)" class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full">
                     {{ getStatusLabel(request.status) }}
                   </span>
-                  <span :class="getPriorityBadgeClass(request.priority)" class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full">
-                    {{ getPriorityLabel(request.priority) }}
-                  </span>
                 </div>
               </div>
 
@@ -262,24 +259,42 @@
                   Ver
                 </button>
                 
+                <!-- Botón de Asignar para Pavedad -->
                 <button
-                  v-if="request.status === 'pending' && authStore.canViewAllRequests"
-                  @click.stop="approveRequest(request.id)"
-                  class="inline-flex items-center justify-center px-3 py-2 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                  v-if="authStore.isPavedad"
+                  @click.stop="request.status === 'pendiente_pavedad' ? openAssignModal(request) : null"
+                  :disabled="request.status !== 'pendiente_pavedad'"
+                  :class="[
+                    'inline-flex items-center justify-center px-3 py-2 border rounded-md text-xs font-medium',
+                    request.status === 'pendiente_pavedad' 
+                      ? 'border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 cursor-pointer'
+                      : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
+                  ]"
+                  :title="request.status === 'pendiente_pavedad' ? 'Asignar' : 'Ya asignada'"
                 >
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                   </svg>
+                  <span v-if="request.status !== 'pendiente_pavedad'" class="ml-1">✓</span>
                 </button>
-
+                
+                <!-- Botón Revisar Items para Encargado de Bodega -->
                 <button
-                  v-if="request.status === 'pending' && authStore.canViewAllRequests"
-                  @click.stop="rejectRequest(request.id)"
-                  class="inline-flex items-center justify-center px-3 py-2 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+                  v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
+                  @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? openReviewItemsModal(request) : null"
+                  :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'"
+                  :class="[
+                    'flex-1 inline-flex items-center justify-center px-3 py-2 border rounded-md text-xs font-medium',
+                    (request.status === 'asignado_bodega' || request.status === 'en_proceso')
+                      ? 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer'
+                      : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
+                  ]"
+                  :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar Insumos' : 'Ya revisada'"
                 >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
+                  {{ (request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar Items' : 'Revisado ✓' }}
                 </button>
               </div>
             </div>
@@ -389,26 +404,42 @@
                     </svg>
                   </button>
 
+                  <!-- Botón de Asignar para Pavedad -->
                   <button
-                    v-if="request.status === 'pending' && authStore.canApproveRequests"
-                    @click.stop="approveRequest(request.id)"
-                    class="text-green-600 hover:text-green-900 p-1"
-                    title="Aprobar solicitud"
+                    v-if="authStore.isPavedad"
+                    @click.stop="request.status === 'pendiente_pavedad' ? openAssignModal(request) : null"
+                    :disabled="request.status !== 'pendiente_pavedad'"
+                    :class="[
+                      'p-1',
+                      request.status === 'pendiente_pavedad'
+                        ? 'text-purple-600 hover:text-purple-900 cursor-pointer'
+                        : 'text-gray-400 cursor-not-allowed opacity-60'
+                    ]"
+                    :title="request.status === 'pendiente_pavedad' ? 'Asignar' : 'Ya asignada'"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                     </svg>
+                    <span v-if="request.status !== 'pendiente_pavedad'" class="text-xs">✓</span>
                   </button>
 
+                  <!-- Botón Revisar Items para Encargado de Bodega -->
                   <button
-                    v-if="request.status === 'pending' && authStore.canApproveRequests"
-                    @click.stop="rejectRequest(request.id)"
-                    class="text-red-600 hover:text-red-900 p-1"
-                    title="Rechazar solicitud"
+                    v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
+                    @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? openReviewItemsModal(request) : null"
+                    :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'"
+                    :class="[
+                      'p-1',
+                      (request.status === 'asignado_bodega' || request.status === 'en_proceso')
+                        ? 'text-blue-600 hover:text-blue-900 cursor-pointer'
+                        : 'text-gray-400 cursor-not-allowed opacity-60'
+                    ]"
+                    :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar insumos' : 'Ya revisada'"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
+                    <span v-if="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'" class="text-xs">✓</span>
                   </button>
                 </div>
               </td>
@@ -448,6 +479,22 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de Asignación -->
+    <AssignRequestModal
+      :show="showAssignModal"
+      :request="selectedRequestForAssignment"
+      @close="showAssignModal = false"
+      @assigned="handleRequestAssigned"
+    />
+
+    <!-- Modal de Revisión de Items -->
+    <ReviewItemsModal
+      :show="showReviewItemsModal"
+      :request="selectedRequestForReview"
+      @close="showReviewItemsModal = false"
+      @itemsReviewed="handleItemsReviewed"
+    />
   </div>
 </template>
 
@@ -457,12 +504,22 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
+import AssignRequestModal from '@/components/AssignRequestModal.vue'
+import ReviewItemsModal from '@/components/ReviewItemsModal.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Swal from 'sweetalert2'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+// Estado del modal de asignación
+const showAssignModal = ref(false)
+const selectedRequestForAssignment = ref(null)
+
+// Estado del modal de revisión de items
+const showReviewItemsModal = ref(false)
+const selectedRequestForReview = ref(null)
 
 // Estado reactivo
 const loading = ref(false)
@@ -528,22 +585,38 @@ const loadSupplyRequests = async () => {
   error.value = null
 
   try {
-    const result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+    let result
+    
+    // Si es encargado de bodega, obtener solo sus solicitudes asignadas
+    if (authStore.isWarehouseManager) {
+      const userRut = authStore.getUserRut
+      result = await supplyRequestService.getAssignedRequestsForWarehouseManager(userRut)
+    } 
+    // Si es Pavedad, obtener solicitudes pendientes para asignar
+    else if (authStore.isPavedad) {
+      result = await supplyRequestService.getPendingRequestsForPavedad()
+    }
+    // Admin ve todas las solicitudes
+    else if (authStore.isAdmin) {
+      result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+    }
+    // Doctor ve solo sus solicitudes
+    else if (authStore.canCreateRequests) {
+      result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+    }
+    else {
+      result = { success: true, data: { requests: [] } }
+    }
     
     if (result.success && result.data) {
-      let allRequests = result.data.requests || []
+      let allRequests = result.data.requests || result.data || []
       
-      // Filtrar solicitudes según el rol del usuario
-      if (authStore.canViewAllRequests) {
-        // Admin y encargado de bodega ven todas las solicitudes
-        requests.value = allRequests
-      } else if (authStore.canCreateRequests) {
-        // Enfermera y doctor solo ven sus propias solicitudes
+      // Filtrar por doctor si corresponde
+      if (authStore.canCreateRequests && !authStore.isAdmin && !authStore.isPavedad && !authStore.isWarehouseManager) {
         const userRut = authStore.getUserRut
         requests.value = allRequests.filter(request => request.requested_by === userRut)
       } else {
-        // Otros roles no deberían ver solicitudes (esto no debería pasar por la navegación)
-        requests.value = []
+        requests.value = allRequests
       }
       
       console.log('Solicitudes cargadas:', requests.value)
@@ -584,12 +657,21 @@ const viewRequest = (id) => {
 const approveRequest = async (id) => {
   try {
     const approvalData = {
-      approved_by: 'ADMIN',
-      approved_by_name: 'Sistema Admin',
+      approved_by: authStore.getUserRut || 'ADMIN',
+      approved_by_name: authStore.getUserName || 'Sistema Admin',
       approval_notes: 'Aprobada desde interfaz web'
     }
     
     await supplyRequestService.approveSupplyRequest(id, approvalData)
+    
+    await Swal.fire({
+      icon: 'success',
+      title: 'Solicitud Aprobada',
+      text: 'La solicitud ha sido aprobada exitosamente',
+      timer: 2000,
+      showConfirmButton: false
+    })
+    
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error aprobando solicitud:', err)
@@ -618,12 +700,21 @@ const rejectRequest = async (id) => {
 
   try {
     const rejectionData = {
-      rejected_by: 'ADMIN',
-      rejected_by_name: 'Sistema Admin',
-      rejection_reason: reason
+      rejected_by: authStore.getUserRut || 'ADMIN',
+      rejected_by_name: authStore.getUserName || 'Sistema Admin',
+      notes: reason
     }
     
     await supplyRequestService.rejectSupplyRequest(id, rejectionData)
+    
+    await Swal.fire({
+      icon: 'success',
+      title: 'Solicitud Rechazada',
+      text: 'La solicitud ha sido rechazada',
+      timer: 2000,
+      showConfirmButton: false
+    })
+    
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error rechazando solicitud:', err)
@@ -631,6 +722,66 @@ const rejectRequest = async (id) => {
       icon: 'error',
       title: 'Error al rechazar la solicitud',
       text: err.response?.data?.error || err.message
+    })
+  }
+}
+
+const openAssignModal = (request) => {
+  selectedRequestForAssignment.value = request
+  showAssignModal.value = true
+}
+
+const handleRequestAssigned = () => {
+  showAssignModal.value = false
+  selectedRequestForAssignment.value = null
+  loadSupplyRequests()
+}
+
+const openReviewItemsModal = (request) => {
+  selectedRequestForReview.value = request
+  showReviewItemsModal.value = true
+}
+
+const handleItemsReviewed = () => {
+  loadSupplyRequests()
+}
+
+const startProcessing = async (id) => {
+  try {
+    const result = await Swal.fire({
+      title: '¿Iniciar procesamiento?',
+      text: 'La solicitud pasará a estado "En Proceso"',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, iniciar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#3B82F6'
+    })
+
+    if (result.isConfirmed) {
+      // Cambiar estado a "en_proceso"
+      const updateData = {
+        status: 'en_proceso'
+      }
+      
+      await supplyRequestService.updateSupplyRequestStatus(id, updateData)
+      
+      await Swal.fire({
+        icon: 'success',
+        title: 'Proceso Iniciado',
+        text: 'La solicitud ahora está en proceso',
+        timer: 2000,
+        showConfirmButton: false
+      })
+      
+      await loadSupplyRequests()
+    }
+  } catch (err) {
+    console.error('Error iniciando proceso:', err)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: err.response?.data?.error || err.message || 'Error al iniciar el proceso'
     })
   }
 }
@@ -673,6 +824,8 @@ const getStatusBadgeClass = (status) => {
     'green': 'bg-green-100 text-green-800',
     'red': 'bg-red-100 text-red-800',
     'blue': 'bg-blue-100 text-blue-800',
+    'purple': 'bg-purple-100 text-purple-800',
+    'orange': 'bg-orange-100 text-orange-800',
     'gray': 'bg-gray-100 text-gray-800'
   }
   return classes[color] || classes.gray

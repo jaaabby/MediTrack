@@ -53,7 +53,7 @@ CREATE TABLE "user" (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')),
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
     is_active BOOLEAN DEFAULT TRUE,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
@@ -200,8 +200,16 @@ CREATE TABLE IF NOT EXISTS supply_request (
     requested_by_name VARCHAR(255) NOT NULL,
     request_date TIMESTAMP WITH TIME ZONE NOT NULL,
     surgery_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    status VARCHAR(20) NOT NULL DEFAULT 'pendiente_pavedad',
     notes TEXT,
+    -- Campos de Pavedad
+    assigned_to VARCHAR(20) REFERENCES "user"(rut),
+    assigned_to_name VARCHAR(255),
+    assigned_date TIMESTAMP WITH TIME ZONE,
+    assigned_by_pavedad VARCHAR(20) REFERENCES "user"(rut),
+    assigned_by_pavedad_name VARCHAR(255),
+    pavedad_notes TEXT,
+    -- Campos de aprobación/rechazo
     approved_by VARCHAR(20) REFERENCES "user"(rut),
     approved_by_name VARCHAR(255),
     approval_date TIMESTAMP WITH TIME ZONE,
@@ -210,7 +218,7 @@ CREATE TABLE IF NOT EXISTS supply_request (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
-    CONSTRAINT chk_supply_request_status CHECK (status IN ('pending', 'approved', 'rejected', 'in_process', 'completed', 'cancelled')),
+    CONSTRAINT chk_supply_request_status CHECK (status IN ('pendiente_pavedad', 'asignado_bodega', 'en_proceso', 'aprobado', 'rechazado', 'completado', 'cancelado', 'parcialmente_aprobado', 'pendiente_revision', 'devuelto')),
     CONSTRAINT chk_surgery_datetime_future CHECK (surgery_datetime >= request_date)
 );
 
@@ -220,6 +228,8 @@ CREATE INDEX idx_supply_request_requested_by ON supply_request(requested_by);
 CREATE INDEX idx_supply_request_date ON supply_request(request_date);
 CREATE INDEX idx_supply_request_surgery_datetime ON supply_request(surgery_datetime);
 CREATE INDEX idx_supply_request_number ON supply_request(request_number);
+CREATE INDEX idx_supply_request_assigned_to ON supply_request(assigned_to);
+CREATE INDEX idx_supply_request_assigned_by_pavedad ON supply_request(assigned_by_pavedad);
 
 CREATE TABLE IF NOT EXISTS supply_request_item (
     id SERIAL PRIMARY KEY,
@@ -230,6 +240,14 @@ CREATE TABLE IF NOT EXISTS supply_request_item (
     quantity_approved INTEGER CHECK (quantity_approved >= 0),
     quantity_delivered INTEGER NOT NULL DEFAULT 0 CHECK (quantity_delivered >= 0),
     is_pediatric BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    -- Campos para revisión individual por encargado de bodega
+    item_status VARCHAR(50) DEFAULT 'pendiente',
+    item_notes TEXT,
+    reviewed_by VARCHAR(20) REFERENCES "user"(rut),
+    reviewed_by_name VARCHAR(255),
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
@@ -245,6 +263,8 @@ CREATE TABLE IF NOT EXISTS supply_request_item (
 CREATE INDEX idx_supply_request_item_request ON supply_request_item(supply_request_id);
 CREATE INDEX idx_supply_request_item_supply_code ON supply_request_item(supply_code);
 CREATE INDEX idx_supply_request_item_pediatric ON supply_request_item(is_pediatric);
+CREATE INDEX idx_supply_request_item_status ON supply_request_item(item_status);
+CREATE INDEX idx_supply_request_item_request_status ON supply_request_item(supply_request_id, item_status);
 
 CREATE TABLE IF NOT EXISTS supply_request_qr_assignment (
     id SERIAL PRIMARY KEY,

@@ -443,6 +443,29 @@ INSERT INTO "user" (
     EXTRACT(EPOCH FROM NOW())
 ) ON CONFLICT (rut) DO NOTHING;
 
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id, 
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES (
+    '44444444-4',
+    'Pavedad',
+    'pavedad@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- Reemplazar con contraseña hasheada real
+    'pavedad',
+    1,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+)
+ON CONFLICT (rut) DO NOTHING;
+
 INSERT INTO batch_history (date_time, change_details, previous_values, new_values, user_name, batch_id, user_rut, batch_number) VALUES
 ('2025-08-16 10:00:00', 'Lote creado', NULL, '{"expiration_date": "2026-12-31", "amount": 10, "supplier": "Proveedor Uno", "store_id": 1}', 'Administrador del Sistema', 1, '12345678-9', 1),
 ('2025-08-16 11:00:00', 'Lote creado', NULL, '{"expiration_date": "2025-12-31", "amount": 5, "supplier": "Proveedor Dos", "store_id": 2}', 'Usuario Pabellón', 2, '87654321-0', 2),
@@ -456,7 +479,7 @@ INSERT INTO supply_request (
     request_date, surgery_datetime, status, notes, medical_center_id
 ) VALUES (
     'SOL-20250120140000', 1, '12345678-9', 'Juan Pérez',
-    NOW() - INTERVAL '1 hour', NOW() + INTERVAL '23 hours', 'pending', 'Solicitud de prueba para implementación de trazabilidad QR', 1
+    NOW() - INTERVAL '1 hour', NOW() + INTERVAL '23 hours', 'pendiente_pavedad', 'Solicitud de prueba para implementación de trazabilidad QR', 1
 );
 
 -- Insertar items de ejemplo

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud Asignada</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-row {
+            margin: 10px 0;
+        }
+        .label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .value {
+            color: #212529;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Solicitud Asignada a Bodega</h1>
+        </div>
+        <div class="content">
+            <p>Estimado/a <strong>{{.RecipientName}}</strong>,</p>
+            
+            <p>Te informamos que la solicitud de insumos médicos ha sido <strong>asignada al encargado de bodega</strong> para su revisión y aprobación.</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">Número de Solicitud:</span>
+                    <span class="value">{{.RequestNumber}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Pabellón:</span>
+                    <span class="value">{{.PavilionName}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Fecha de Cirugía:</span>
+                    <span class="value">{{.SurgeryDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Asignado por:</span>
+                    <span class="value">{{.AssignedByName}}</span>
+                </div>
+            </div>
+
+            {{if .Notes}}
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">Observaciones:</span>
+                    <p class="value">{{.Notes}}</p>
+                </div>
+            </div>
+            {{end}}
+
+            <p>El encargado de bodega revisará los insumos solicitados y te notificará cuando procese la solicitud.</p>
+        </div>
+        <div class="footer">
+            <p>Este es un correo automático de MediTrack. Por favor, no responder a este mensaje.</p>
+            <p>&copy; 2025 MediTrack - Sistema de Gestión de Insumos Médicos</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -619,3 +619,173 @@ func (c *SupplyRequestController) BulkAssignQRs(ctx *gin.Context) {
 		})
 	}
 }
+
+// AssignRequestToWarehouseManager asigna una solicitud a un encargado de bodega (usado por Pavedad)
+func (c *SupplyRequestController) AssignRequestToWarehouseManager(ctx *gin.Context) {
+	requestID, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de solicitud inválido",
+		})
+		return
+	}
+
+	var request services.AssignRequestToWarehouseManagerRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	if err := c.supplyRequestService.AssignRequestToWarehouseManager(requestID, request); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Solicitud asignada exitosamente a encargado de bodega",
+	})
+}
+
+// GetPendingRequestsForPavedad obtiene todas las solicitudes pendientes de asignación por Pavedad
+func (c *SupplyRequestController) GetPendingRequestsForPavedad(ctx *gin.Context) {
+	requests, err := c.supplyRequestService.GetPendingRequestsForPavedad()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    requests,
+	})
+}
+
+// GetAssignedRequestsForWarehouseManager obtiene las solicitudes asignadas a un encargado de bodega
+func (c *SupplyRequestController) GetAssignedRequestsForWarehouseManager(ctx *gin.Context) {
+	warehouseManagerRut := ctx.Param("rut")
+	
+	requests, err := c.supplyRequestService.GetAssignedRequestsForWarehouseManager(warehouseManagerRut)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    requests,
+	})
+}
+
+// ReviewSupplyRequestItem permite revisar un item individual (aceptar/rechazar/devolver)
+func (c *SupplyRequestController) ReviewSupplyRequestItem(ctx *gin.Context) {
+	itemIDStr := ctx.Param("itemId")
+	itemID, err := strconv.Atoi(itemIDStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de item inválido",
+		})
+		return
+	}
+
+	var req services.ReviewItemRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	if err := c.supplyRequestService.ReviewSupplyRequestItem(itemID, req); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Item revisado exitosamente",
+	})
+}
+
+// GetSupplyRequestItemsController obtiene todos los items de una solicitud
+func (c *SupplyRequestController) GetSupplyRequestItemsController(ctx *gin.Context) {
+	requestIDStr := ctx.Param("id")
+	requestID, err := strconv.Atoi(requestIDStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de solicitud inválido",
+		})
+		return
+	}
+
+	items, err := c.supplyRequestService.GetSupplyRequestItems(requestID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    items,
+	})
+}
+
+// ResubmitReturnedRequest permite al doctor reenviar una solicitud devuelta
+func (c *SupplyRequestController) ResubmitReturnedRequest(ctx *gin.Context) {
+	requestIDStr := ctx.Param("id")
+	requestID, err := strconv.Atoi(requestIDStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de solicitud inválido",
+		})
+		return
+	}
+
+	var req struct {
+		UpdatedItems []services.UpdatedItemRequest `json:"updated_items"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	if err := c.supplyRequestService.ResubmitReturnedRequest(requestID, req.UpdatedItems); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Solicitud reenviada exitosamente",
+	})
+}

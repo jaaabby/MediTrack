@@ -113,6 +113,17 @@ class SupplyRequestService {
     }
   }
 
+  // Actualizar estado de solicitud
+  async updateSupplyRequestStatus(id, statusData) {
+    try {
+      const response = await this.api.put(`/supply-requests/${id}/status`, statusData)
+      return response.data
+    } catch (error) {
+      console.error('Error al actualizar estado:', error)
+      throw error
+    }
+  }
+
   // Eliminar solicitud
   async deleteSupplyRequest(id) {
     try {
@@ -254,11 +265,23 @@ class SupplyRequestService {
   formatSupplyRequestForAPI(formData) {
     const authStore = useAuthStore()
     
+    // Validar y formatear surgery_datetime
+    let surgeryDatetime = formData.surgery_datetime
+    if (!surgeryDatetime || surgeryDatetime === '' || surgeryDatetime === '0000-00-00 00:00:00') {
+      // Si no hay fecha, usar la fecha actual + 24 horas como mínimo
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      surgeryDatetime = tomorrow.toISOString()
+    } else if (typeof surgeryDatetime === 'string' && !surgeryDatetime.includes('T')) {
+      // Si es un datetime-local format (YYYY-MM-DDTHH:mm), convertir a ISO
+      surgeryDatetime = new Date(surgeryDatetime).toISOString()
+    }
+    
     return {
       pavilion_id: parseInt(formData.pavilion_id),
       requested_by: authStore.getUserRut || 'SYSTEM',
       requested_by_name: authStore.getUserName || 'Usuario Sistema',
-      surgery_datetime: formData.surgery_datetime,
+      surgery_datetime: surgeryDatetime,
       notes: formData.notes || '',
       items: formData.items.map(item => ({
         supply_code: parseInt(item.supply_code),
@@ -278,11 +301,21 @@ class SupplyRequestService {
   getStatusLabel(status) {
     const labels = {
       'pending': 'Pendiente',
+      'pendiente_pavedad': 'Pendiente Pavedad',
+      'asignado_bodega': 'Asignado a Bodega',
+      'en_proceso': 'En Proceso',
       'approved': 'Aprobada',
+      'aprobado': 'Aprobado',
       'rejected': 'Rechazada',
+      'rechazado': 'Rechazado',
       'in_process': 'En Proceso',
       'completed': 'Completada',
-      'cancelled': 'Cancelada'
+      'completado': 'Completado',
+      'cancelled': 'Cancelada',
+      'cancelado': 'Cancelado',
+      'parcialmente_aprobado': 'Parcialmente Aprobado',
+      'pendiente_revision': 'Pendiente de Revisión',
+      'devuelto': 'Devuelto'
     }
     return labels[status] || status
   }
@@ -291,11 +324,21 @@ class SupplyRequestService {
   getStatusColor(status) {
     const colors = {
       'pending': 'yellow',
+      'pendiente_pavedad': 'purple',
+      'asignado_bodega': 'blue',
+      'en_proceso': 'blue',
       'approved': 'green',
+      'aprobado': 'green',
       'rejected': 'red',
+      'rechazado': 'red',
       'in_process': 'blue',
       'completed': 'green',
-      'cancelled': 'gray'
+      'completado': 'green',
+      'cancelled': 'gray',
+      'cancelado': 'gray',
+      'parcialmente_aprobado': 'yellow',
+      'pendiente_revision': 'orange',
+      'devuelto': 'orange'
     }
     return colors[status] || 'gray'
   }
@@ -361,6 +404,88 @@ class SupplyRequestService {
       'critical': 'red'
     }
     return colors[priority] || 'blue'
+  }
+
+  // ========================
+  // WORKFLOW DE APROBACIÓN (PAVEDAD)
+  // ========================
+
+  // Asignar solicitud a encargado de bodega (solo Pavedad)
+  async assignRequestToWarehouseManager(requestId, assignmentData) {
+    try {
+      const response = await this.api.put(`/supply-requests/${requestId}/assign`, assignmentData)
+      return response.data
+    } catch (error) {
+      console.error('Error al asignar solicitud:', error)
+      throw error
+    }
+  }
+
+  // Obtener solicitudes pendientes de asignación por Pavedad
+  async getPendingRequestsForPavedad() {
+    try {
+      const response = await this.api.get('/supply-requests/pending-pavedad')
+      return response.data
+    } catch (error) {
+      console.error('Error al obtener solicitudes pendientes para Pavedad:', error)
+      throw error
+    }
+  }
+
+  // Obtener solicitudes asignadas a un encargado de bodega
+  async getAssignedRequestsForWarehouseManager(warehouseManagerRut) {
+    try {
+      const response = await this.api.get(`/supply-requests/assigned/${warehouseManagerRut}`)
+      return response.data
+    } catch (error) {
+      console.error('Error al obtener solicitudes asignadas:', error)
+      throw error
+    }
+  }
+
+  // ========================
+  // REVISIÓN INDIVIDUAL DE ITEMS
+  // ========================
+
+  // Obtener items de una solicitud
+  async getSupplyRequestItems(requestId) {
+    try {
+      const response = await this.api.get(`/supply-requests/${requestId}/items`)
+      return {
+        success: true,
+        data: response.data.data || response.data
+      }
+    } catch (error) {
+      console.error('Error al obtener items:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      }
+    }
+  }
+
+  // Revisar un item individual (aceptar, rechazar o devolver)
+  async reviewSupplyRequestItem(itemId, reviewData) {
+    try {
+      const response = await this.api.put(`/supply-requests/items/${itemId}/review`, reviewData)
+      return response.data
+    } catch (error) {
+      console.error('Error al revisar item:', error)
+      throw error
+    }
+  }
+
+  // Reenviar una solicitud devuelta
+  async resubmitReturnedRequest(requestId, updatedItems) {
+    try {
+      const response = await this.api.put(`/supply-requests/${requestId}/resubmit`, {
+        updated_items: updatedItems
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error al reenviar solicitud:', error)
+      throw error
+    }
   }
 }
 

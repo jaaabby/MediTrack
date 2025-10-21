@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud Aprobada</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-row {
+            margin: 10px 0;
+        }
+        .label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .value {
+            color: #212529;
+        }
+        .items-list {
+            margin: 15px 0;
+        }
+        .item {
+            padding: 10px;
+            background-color: #e7f5ee;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Solicitud Aprobada</h1>
+        </div>
+        <div class="content">
+            <p>Estimado/a <strong>{{.RecipientName}}</strong>,</p>
+            
+            <p>¡Excelentes noticias! Tu solicitud de insumos médicos ha sido <strong>aprobada</strong> por el encargado de bodega.</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">Número de Solicitud:</span>
+                    <span class="value">{{.RequestNumber}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Pabellón:</span>
+                    <span class="value">{{.PavilionName}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Fecha de Cirugía:</span>
+                    <span class="value">{{.SurgeryDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Aprobado por:</span>
+                    <span class="value">{{.ApprovedByName}}</span>
+                </div>
+            </div>
+
+            {{if .Items}}
+            <h3>Insumos Aprobados:</h3>
+            <div class="items-list">
+                {{range .Items}}
+                <div class="item">
+                    <span>{{.SupplyName}}</span>
+                    <span><strong>Cantidad: {{.Quantity}}</strong></span>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+
+            {{if .Notes}}
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">Comentarios:</span>
+                    <p class="value">{{.Notes}}</p>
+                </div>
+            </div>
+            {{end}}
+
+            <p>Los insumos están listos para su uso en la cirugía programada.</p>
+        </div>
+        <div class="footer">
+            <p>Este es un correo automático de MediTrack. Por favor, no responder a este mensaje.</p>
+            <p>&copy; 2025 MediTrack - Sistema de Gestión de Insumos Médicos</p>
+        </div>
+    </div>
+</body>
+</html>

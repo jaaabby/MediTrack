@@ -7,6 +7,7 @@ const (
 	RoleStoreManager = "encargado de bodega"
 	RoleNurse        = "enfermera"
 	RoleDoctor       = "doctor"
+	RolePavedad      = "pavedad"
 )
 
 // User representa un usuario del sistema
@@ -15,7 +16,7 @@ type User struct {
 	Name            string         `json:"name" db:"name" gorm:"not null"`
 	Email           string         `json:"email" db:"email"`
 	Password        string         `json:"password" db:"password" gorm:"not null"`
-	Role            string         `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor')"`
+	Role            string         `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')"`
 	MedicalCenterID int            `json:"medical_center_id" db:"medical_center_id" gorm:"not null"`
 	MedicalCenter   *MedicalCenter `json:"medical_center,omitempty" gorm:"foreignKey:MedicalCenterID"`
 	IsActive        bool           `json:"is_active" db:"is_active" gorm:"default:true"`
@@ -53,7 +54,12 @@ func (u User) ToResponse() UserResponse {
 
 // IsValidRole verifica si el rol es válido
 func (u User) IsValidRole() bool {
-	return u.Role == RoleAdmin || u.Role == RolePavilion || u.Role == RoleStoreManager
+	return u.Role == RoleAdmin || 
+		   u.Role == RolePavilion || 
+		   u.Role == RoleStoreManager || 
+		   u.Role == RoleNurse || 
+		   u.Role == RoleDoctor || 
+		   u.Role == RolePavedad
 }
 
 func (u User) TableName() string {

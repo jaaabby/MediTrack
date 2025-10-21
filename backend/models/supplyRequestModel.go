@@ -6,22 +6,30 @@ import (
 
 // SupplyRequest representa una solicitud de insumo con trazabilidad QR
 type SupplyRequest struct {
-	ID              int        `json:"id" gorm:"primaryKey;autoIncrement"`
-	RequestNumber   string     `json:"request_number" gorm:"unique;not null"`
-	PavilionID      int        `json:"pavilion_id" gorm:"not null"`
-	RequestedBy     string     `json:"requested_by" gorm:"not null"` // RUT del solicitante
-	RequestedByName string     `json:"requested_by_name" gorm:"not null"`
-	RequestDate     time.Time  `json:"request_date" gorm:"not null"`
-	SurgeryDatetime time.Time  `json:"surgery_datetime" gorm:"not null"`
-	Status          string     `json:"status" gorm:"not null;default:pending"`
-	Notes           string     `json:"notes" gorm:"type:text"`
-	ApprovedBy      *string    `json:"approved_by"`
-	ApprovedByName  *string    `json:"approved_by_name"`
-	ApprovalDate    *time.Time `json:"approval_date"`
-	CompletedDate   *time.Time `json:"completed_date"`
-	MedicalCenterID int        `json:"medical_center_id" gorm:"not null"`
-	CreatedAt       time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt       time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                     int        `json:"id" gorm:"primaryKey;autoIncrement"`
+	RequestNumber          string     `json:"request_number" gorm:"unique;not null"`
+	PavilionID             int        `json:"pavilion_id" gorm:"not null"`
+	RequestedBy            string     `json:"requested_by" gorm:"not null"` // RUT del solicitante
+	RequestedByName        string     `json:"requested_by_name" gorm:"not null"`
+	RequestDate            time.Time  `json:"request_date" gorm:"not null"`
+	SurgeryDatetime        time.Time  `json:"surgery_datetime" gorm:"not null"`
+	Status                 string     `json:"status" gorm:"not null;default:pendiente_pavedad"`
+	Notes                  string     `json:"notes" gorm:"type:text"`
+	// Campos de asignación por Pavedad
+	AssignedTo             *string    `json:"assigned_to"`
+	AssignedToName         *string    `json:"assigned_to_name"`
+	AssignedDate           *time.Time `json:"assigned_date"`
+	AssignedByPavedad      *string    `json:"assigned_by_pavedad"`
+	AssignedByPavedadName  *string    `json:"assigned_by_pavedad_name"`
+	PavedadNotes           *string    `json:"pavedad_notes" gorm:"type:text"`
+	// Campos de aprobación/rechazo
+	ApprovedBy             *string    `json:"approved_by"`
+	ApprovedByName         *string    `json:"approved_by_name"`
+	ApprovalDate           *time.Time `json:"approval_date"`
+	CompletedDate          *time.Time `json:"completed_date"`
+	MedicalCenterID        int        `json:"medical_center_id" gorm:"not null"`
+	CreatedAt              time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt              time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // SupplyRequestItem representa un item individual dentro de una solicitud
@@ -34,6 +42,12 @@ type SupplyRequestItem struct {
 	QuantityApproved  *int      `json:"quantity_approved"`
 	QuantityDelivered int       `json:"quantity_delivered" gorm:"default:0"`
 	IsPediatric       bool      `json:"is_pediatric" gorm:"default:false"`
+	// Campos para gestión individual por bodega
+	ItemStatus        string    `json:"item_status" gorm:"default:pendiente"` // pendiente, aceptado, rechazado, devuelto
+	ItemNotes         *string   `json:"item_notes" gorm:"type:text"`
+	ReviewedBy        *string   `json:"reviewed_by"` // RUT del que revisó
+	ReviewedByName    *string   `json:"reviewed_by_name"`
+	ReviewedAt        *time.Time `json:"reviewed_at"`
 	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
@@ -67,12 +81,16 @@ type SupplyRequestQRAssignment struct {
 
 // Constantes para Status de SupplyRequest
 const (
-	RequestStatusPending   = "pending"
-	RequestStatusApproved  = "approved"
-	RequestStatusRejected  = "rejected"
-	RequestStatusInProcess = "in_process"
-	RequestStatusCompleted = "completed"
-	RequestStatusCancelled = "cancelled"
+	RequestStatusPendingPavedad = "pendiente_pavedad" // Doctor crea solicitud
+	RequestStatusAssignedStore  = "asignado_bodega"   // Pavedad asigna a encargado de bodega
+	RequestStatusInProcess      = "en_proceso"        // Encargado de bodega está procesando
+	RequestStatusApproved       = "aprobado"          // Encargado de bodega aprueba
+	RequestStatusRejected       = "rechazado"         // Encargado de bodega rechaza
+	RequestStatusCompleted      = "completado"        // Solicitud completada
+	RequestStatusCancelled      = "cancelado"         // Solicitud cancelada
+	
+	// Alias para compatibilidad con código existente
+	RequestStatusPending = RequestStatusPendingPavedad
 )
 
 // Constantes para Status de SupplyRequestQRAssignment
