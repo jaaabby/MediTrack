@@ -10,6 +10,13 @@ type MedicalSupply struct {
 	BatchID   int       `json:"batch_id" db:"batch_id" gorm:"not null"`
 	Status    string    `json:"status" db:"status" gorm:"not null;default:'disponible'"` // Estado actual del insumo
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at" gorm:"autoUpdateTime"`
+
+	// Nuevos campos para gestión de inventario por ubicación
+	LocationType  string     `json:"location_type" gorm:"not null;default:'store'"` // 'store' o 'pavilion'
+	LocationID    int        `json:"location_id" gorm:"not null"`                   // ID de la ubicación actual
+	InTransit     bool       `json:"in_transit" gorm:"default:false"`               // Si está en tránsito
+	TransferDate  *time.Time `json:"transfer_date,omitempty"`                       // Fecha de última transferencia
+	TransferredBy *string    `json:"transferred_by,omitempty"`                      // RUT de quien transfirió
 }
 
 // Constantes para los estados de insumos médicos
@@ -19,6 +26,12 @@ const (
 	StatusReceived          = "recepcionado"
 	StatusConsumed          = "consumido"
 	StatusEnRouteToStore    = "en_camino_a_bodega"
+)
+
+// Constantes para tipos de ubicación de insumos
+const (
+	SupplyLocationStore    = "store"
+	SupplyLocationPavilion = "pavilion"
 )
 
 func (m MedicalSupply) TableName() string {

@@ -19,6 +19,9 @@ func SetupRoutes(
 	supplyCodeService services.SupplyCodeService,
 	qrService services.QRService,
 	batchHistoryService services.BatchHistoryService,
+	transferService *services.SupplyTransferService,
+	inventoryService *services.InventoryService,
+	surgeryService *services.SurgeryService,
 	secretKey string,
 ) {
 	// API v1
@@ -56,6 +59,15 @@ func SetupRoutes(
 
 		// Configurar rutas de historial de lotes
 		SetupBatchHistoryRoutes(v1, batchHistoryService)
+
+		// Configurar rutas de transferencias
+		SetupSupplyTransferRoutes(v1, transferService, secretKey)
+
+		// Configurar rutas de inventario
+		SetupInventoryRoutes(v1, inventoryService)
+
+		// Configurar rutas de tipos de cirugía
+		SetupSurgeryRoutes(v1, surgeryService)
 	}
 
 	// Ruta de health check

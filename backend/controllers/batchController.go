@@ -240,9 +240,45 @@ func (c *BatchController) GetBatchByQR(ctx *gin.Context) {
 	})
 }
 
-// GetAllBatches obtiene todos los lotes
+// GetAllBatches obtiene todos los lotes con filtros opcionales
 func (c *BatchController) GetAllBatches(ctx *gin.Context) {
-	batches, err := c.batchService.GetAllBatches()
+	// Obtener parámetros de query opcionales
+	var surgeryID *int
+	if surgeryIDStr := ctx.Query("surgery_id"); surgeryIDStr != "" {
+		if id, err := strconv.Atoi(surgeryIDStr); err == nil {
+			surgeryID = &id
+		}
+	}
+
+	var storeID *int
+	if storeIDStr := ctx.Query("store_id"); storeIDStr != "" {
+		if id, err := strconv.Atoi(storeIDStr); err == nil {
+			storeID = &id
+		}
+	}
+
+	supplier := ctx.Query("supplier")
+
+	// Si no hay filtros, obtener todos
+	if surgeryID == nil && storeID == nil && supplier == "" {
+		batches, err := c.batchService.GetAllBatches()
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, Response{
+				Success: false,
+				Error:   "Error al obtener lotes: " + err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, Response{
+			Success: true,
+			Data:    batches,
+		})
+		return
+	}
+
+	// Obtener lotes con filtros
+	batches, err := c.batchService.GetBatchesWithFilters(surgeryID, storeID, supplier)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,

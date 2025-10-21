@@ -2,28 +2,28 @@
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white shadow-sm border-b">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center space-x-4">
-            <router-link to="/qr" class="text-gray-400 hover:text-gray-600">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-14 sm:h-16">
+          <div class="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
+            <router-link to="/qr" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+              <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
             </router-link>
-            <h1 class="text-xl font-semibold text-gray-900">Trazabilidad del Insumo</h1>
+            <h1 class="text-sm sm:text-xl font-semibold text-gray-900 truncate">Trazabilidad del Insumo</h1>
           </div>
-          <div class="flex items-center space-x-3">
-            <button @click="exportTraceability" class="btn-secondary text-sm">
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <button @click="exportTraceability" class="btn-secondary text-xs sm:text-sm p-2 sm:px-4 sm:py-2">
+              <svg class="h-4 w-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Exportar
+              <span class="hidden sm:inline">Exportar</span>
             </button>
-            <button @click="printTraceability" class="btn-secondary text-sm">
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button @click="printTraceability" class="btn-secondary text-xs sm:text-sm p-2 sm:px-4 sm:py-2">
+              <svg class="h-4 w-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-              Imprimir
+              <span class="hidden sm:inline">Imprimir</span>
             </button>
           </div>
         </div>
@@ -31,27 +31,27 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center items-center py-12">
+    <div v-if="loading" class="flex justify-center items-center py-8 sm:py-12">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p class="mt-4 text-gray-600">Cargando trazabilidad...</p>
+        <div class="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p class="mt-4 text-sm sm:text-base text-gray-600">Cargando trazabilidad...</p>
       </div>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="max-w-4xl mx-auto px-4 py-8">
-      <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+    <div v-else-if="error" class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6">
         <div class="flex">
           <div class="flex-shrink-0">
             <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-800">Error al cargar trazabilidad</h3>
-            <div class="mt-2 text-sm text-red-700">{{ error }}</div>
+          <div class="ml-3 flex-1 min-w-0">
+            <h3 class="text-xs sm:text-sm font-medium text-red-800">Error al cargar trazabilidad</h3>
+            <div class="mt-2 text-xs sm:text-sm text-red-700 break-words">{{ error }}</div>
             <div class="mt-4">
-              <button @click="loadTraceability" class="btn-primary text-sm">
+              <button @click="loadTraceability" class="btn-primary text-xs sm:text-sm">
                 Reintentar
               </button>
             </div>
@@ -61,83 +61,81 @@
     </div>
 
     <!-- Main Content -->
-    <div v-else-if="traceabilityData" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div v-else-if="traceabilityData" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
       <!-- Product Summary Card -->
-      <div class="bg-white rounded-lg shadow-sm border mb-8">
-        <div class="p-6">
-          <div class="flex items-start justify-between">
-            <div class="flex items-center space-x-4">
-              <!-- QR Code Icon -->
-              <div class="bg-blue-100 p-3 rounded-lg">
-                <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
-                </svg>
-              </div>
-              
-              <!-- Product Info -->
-              <div>
-                <h2 class="text-2xl font-bold text-gray-900">
-                  {{ qrInfo?.supply_info?.name || 'Insumo Médico' }}
-                </h2>
-                <p class="text-gray-600 font-mono text-sm mt-1">{{ qrCode }}</p>
-                <div class="flex items-center mt-2 space-x-4">
-                  <span :class="getCurrentStatusBadgeClass()" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                    {{ getCurrentStatusLabel() }}
-                  </span>
-                  <span class="text-sm text-gray-500">
-                    En sistema desde {{ getTimeInSystem() }}
-                  </span>
-                </div>
-              </div>
+      <div class="bg-white rounded-lg shadow-sm border mb-4 sm:mb-8">
+        <div class="p-4 sm:p-6">
+          <!-- Product Info Section -->
+          <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 mb-4 sm:mb-4">
+            <!-- QR Code Icon -->
+            <div class="bg-blue-100 p-3 rounded-lg flex-shrink-0 self-start">
+              <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
+              </svg>
             </div>
-
-            <!-- Current Location -->
-            <div v-if="getCurrentLocation()" class="text-right">
-              <div class="text-sm text-gray-500">Ubicación actual</div>
-              <div class="text-lg font-semibold text-gray-900">{{ getCurrentLocation() }}</div>
+            
+            <!-- Product Info -->
+            <div class="flex-1 min-w-0">
+              <h2 class="text-lg sm:text-2xl font-bold text-gray-900 break-words leading-snug mb-2">
+                {{ qrInfo?.supply_info?.name || 'Insumo Medico' }}
+              </h2>
+              <p class="text-gray-600 font-mono text-xs sm:text-sm break-all mb-3">{{ qrCode }}</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <span :class="getCurrentStatusBadgeClass()" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap">
+                  {{ getCurrentStatusLabel() }}
+                </span>
+                <span class="text-xs text-gray-500">
+                  En sistema desde {{ getTimeInSystem() }}
+                </span>
+              </div>
             </div>
           </div>
 
-          <!-- Stats Bar -->
-          <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <!-- COMENTADO: No mostrar estadística de escaneos -->
-            <!-- <div class="bg-gray-50 rounded-lg p-4">
-              <div class="text-2xl font-bold text-blue-600">{{ getEventCount('scan') }}</div>
-              <div class="text-sm text-gray-600">Escaneos</div>
-            </div> -->
-            <div class="bg-gray-50 rounded-lg p-4">
-              <div class="text-2xl font-bold text-green-600">{{ getEventCount('movement') }}</div>
-              <div class="text-sm text-gray-600">Cambios de Estado</div>
+          <!-- Current Location - Mobile Optimized -->
+          <div v-if="getCurrentLocation()" class="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+            <div class="text-xs font-medium text-blue-700 mb-1">Ubicacion actual</div>
+            <div class="text-sm sm:text-base font-semibold text-gray-900 break-words leading-relaxed">
+              {{ getCurrentLocation() }}
             </div>
-            <div class="bg-gray-50 rounded-lg p-4">
-              <div class="text-2xl font-bold text-purple-600">{{ getLocationCount() }}</div>
-              <div class="text-sm text-gray-600">Ubicaciones</div>
+          </div>
+
+          <!-- Stats Bar - Mobile Optimized -->
+          <div class="grid grid-cols-3 gap-2 sm:gap-4">
+            <div class="bg-gray-50 rounded-lg p-3 sm:p-4 text-center">
+              <div class="text-xl sm:text-2xl font-bold text-green-600">{{ getEventCount('movement') }}</div>
+              <div class="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">Cambios</div>
             </div>
-            <div class="bg-gray-50 rounded-lg p-4">
-              <div class="text-2xl font-bold text-orange-600">{{ getUserCount() }}</div>
-              <div class="text-sm text-gray-600">Usuarios</div>
+            <div class="bg-gray-50 rounded-lg p-3 sm:p-4 text-center">
+              <div class="text-xl sm:text-2xl font-bold text-purple-600">{{ getLocationCount() }}</div>
+              <div class="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">Ubicaciones</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3 sm:p-4 text-center">
+              <div class="text-xl sm:text-2xl font-bold text-orange-600">{{ getUserCount() }}</div>
+              <div class="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">Usuarios</div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Journey Map -->
-      <div class="bg-white rounded-lg shadow-sm border mb-8">
-        <div class="p-6">
-          <h3 class="text-lg font-medium text-gray-900 mb-6">Recorrido del Insumo</h3>
+      <div class="bg-white rounded-lg shadow-sm border mb-4 sm:mb-8">
+        <div class="p-4 sm:p-6">
+          <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-4">Recorrido del Insumo</h3>
           
           <!-- Progress Bar -->
-          <div class="mb-8">
-            <div class="flex items-center justify-between text-sm text-gray-500 mb-2">
-              <span>En bodega</span>
-              <span>En tránsito</span>
-              <span>Recepcionado</span>
-              <span>Consumido</span>
+          <div class="mb-6 sm:mb-8">
+            <!-- Labels for Mobile -->
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-2 px-0">
+              <span class="text-center flex-1">En bodega</span>
+              <span class="text-center flex-1">En transito</span>
+              <span class="text-center flex-1">Recepcionado</span>
+              <span class="text-center flex-1">Consumido</span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
+            
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
               <div 
                 :class="[
-                  'h-2 rounded-full transition-all duration-1000',
+                  'h-2.5 rounded-full transition-all duration-1000',
                   getProgressBarColor()
                 ]"
                 :style="`width: ${getProgressPercentage()}%`"
@@ -145,33 +143,35 @@
             </div>
           </div>
 
-          <!-- Location Journey -->
-          <div v-if="getLocationJourney().length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Location Journey - Mobile Optimized -->
+          <div v-if="getLocationJourney().length > 0" class="space-y-3">
             <div
               v-for="(location, index) in getLocationJourney()"
               :key="index"
               class="relative"
             >
               <div :class="[
-                'p-4 rounded-lg border-2 transition-all duration-300',
+                'p-3 sm:p-4 rounded-lg border-2 transition-all duration-300',
                 location.is_current ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
               ]">
                 <div class="flex items-center justify-between mb-2">
                   <div :class="[
-                    'flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium',
+                    'flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold',
                     location.is_current ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
                   ]">
                     {{ index + 1 }}
                   </div>
                   <div v-if="location.is_current" class="flex items-center text-blue-600 text-xs font-medium">
-                    <div class="w-2 h-2 bg-blue-600 rounded-full mr-1 animate-pulse"></div>
+                    <div class="w-2 h-2 bg-blue-600 rounded-full mr-1.5 animate-pulse"></div>
                     Actual
                   </div>
                 </div>
-                <div class="text-sm font-medium text-gray-900">{{ location.name }}</div>
-                <div class="text-xs text-gray-500 mt-1">{{ formatDateTime(location.date) }}</div>
+                <div class="text-sm sm:text-base font-semibold text-gray-900 break-words leading-relaxed mb-1">
+                  {{ location.name }}
+                </div>
+                <div class="text-xs text-gray-500">{{ formatDateTime(location.date) }}</div>
                 <div v-if="location.duration" class="text-xs text-gray-400 mt-1">
-                  Duración: {{ location.duration }}
+                  Duracion: {{ location.duration }}
                 </div>
               </div>
             </div>
@@ -181,15 +181,13 @@
 
       <!-- Timeline -->
       <div class="bg-white rounded-lg shadow-sm border">
-        <div class="p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-medium text-gray-900">Historial Completo</h3>
-            <div class="flex items-center space-x-3">
+        <div class="p-4 sm:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900">Historial Completo</h3>
+            <div class="w-full sm:w-auto">
               <!-- Filters -->
-              <select v-model="selectedEventFilter" class="form-select text-sm" @change="applyFilters">
+              <select v-model="selectedEventFilter" class="form-select text-sm w-full" @change="applyFilters">
                 <option value="">Todos los eventos</option>
-                <!-- COMENTADO: No mostrar opción de escaneos -->
-                <!-- <option value="scan">Solo escaneos</option> -->
                 <option value="movement">Solo movimientos</option>
                 <option value="consumption">Solo consumos</option>
                 <option value="transfer">Solo transferencias</option>
@@ -199,21 +197,21 @@
 
           <!-- Timeline Events -->
           <div class="flow-root">
-            <ul class="-mb-8">
+            <ul class="space-y-0">
               <li v-for="(event, index) in filteredEvents" :key="index">
                 <div class="relative pb-8">
                   <!-- Connector Line -->
                   <span
                     v-if="index !== filteredEvents.length - 1"
-                    class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                    class="absolute top-5 left-4 -ml-px h-full w-0.5 bg-gray-200"
                     aria-hidden="true"
                   ></span>
                   
                   <div class="relative flex space-x-3">
                     <!-- Event Icon -->
-                    <div>
+                    <div class="flex-shrink-0">
                       <span :class="[
-                        'h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white',
+                        'h-8 w-8 rounded-full flex items-center justify-center ring-4 ring-white',
                         getEventIconClass(event)
                       ]">
                         <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,38 +221,38 @@
                     </div>
                     
                     <!-- Event Content -->
-                    <div class="min-w-0 flex-1 pt-1.5">
+                    <div class="min-w-0 flex-1">
                       <div>
-                        <div class="flex items-center justify-between">
-                          <div class="text-sm text-gray-900 font-medium">
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
+                          <div class="text-sm font-semibold text-gray-900 break-words pr-2">
                             {{ getEventTitle(event) }}
                           </div>
-                          <div class="text-sm text-gray-500">
+                          <div class="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
                             {{ formatRelativeTime(event.date_time || event.timestamp) }}
                           </div>
                         </div>
-                        <div class="mt-1 text-sm text-gray-600">
+                        <div class="text-sm text-gray-600 break-words leading-relaxed">
                           {{ getEventDescription(event) }}
                         </div>
                         
                         <!-- Event Details -->
                         <div v-if="hasEventDetails(event)" class="mt-2">
-                          <div class="bg-gray-50 rounded-md p-3 text-xs space-y-1">
-                            <div v-if="event.user_name" class="flex justify-between">
-                              <span class="text-gray-500">Usuario:</span>
-                              <span class="text-gray-900">{{ event.user_name }}</span>
+                          <div class="bg-gray-50 rounded-lg p-3 text-xs space-y-2">
+                            <div v-if="event.user_name" class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                              <span class="text-gray-500 font-medium">Usuario:</span>
+                              <span class="text-gray-900 break-words">{{ event.user_name }}</span>
                             </div>
-                            <div v-if="event.location" class="flex justify-between">
-                              <span class="text-gray-500">Ubicación:</span>
-                              <span class="text-gray-900">{{ event.location }}</span>
+                            <div v-if="event.location" class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                              <span class="text-gray-500 font-medium">Ubicacion:</span>
+                              <span class="text-gray-900 break-words">{{ event.location }}</span>
                             </div>
-                            <div v-if="event.notes" class="flex justify-between">
-                              <span class="text-gray-500">Notas:</span>
-                              <span class="text-gray-900">{{ event.notes }}</span>
+                            <div v-if="event.notes" class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                              <span class="text-gray-500 font-medium">Notas:</span>
+                              <span class="text-gray-900 break-words">{{ event.notes }}</span>
                             </div>
-                            <div class="flex justify-between">
-                              <span class="text-gray-500">Fecha exacta:</span>
-                              <span class="text-gray-900">{{ formatDateTime(event.date_time || event.timestamp) }}</span>
+                            <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                              <span class="text-gray-500 font-medium">Fecha exacta:</span>
+                              <span class="text-gray-900 whitespace-nowrap">{{ formatDateTime(event.date_time || event.timestamp) }}</span>
                             </div>
                           </div>
                         </div>
@@ -290,7 +288,6 @@ import qrService from '@/services/qrService'
 const route = useRoute()
 const router = useRouter()
 
-// Props
 const props = defineProps({
   qrCode: {
     type: String,
@@ -298,14 +295,12 @@ const props = defineProps({
   }
 })
 
-// Estado del componente
 const loading = ref(false)
 const error = ref(null)
 const traceabilityData = ref(null)
 const qrInfo = ref(null)
 const selectedEventFilter = ref('')
 
-// Computed properties
 const qrCode = computed(() => props.qrCode || route.params.qrCode)
 
 const filteredEvents = computed(() => {
@@ -329,20 +324,17 @@ const filteredEvents = computed(() => {
   })
 })
 
-// Métodos principales
 const loadTraceability = async () => {
   loading.value = true
   error.value = null
   
   try {
-    // Cargar trazabilidad completa
     const traceData = await qrService.getCompleteTraceability(qrCode.value)
     traceabilityData.value = traceData
     
-    // Cargar información del QR
     const qrData = await qrService.scanQRCode(qrCode.value, {
       scan_purpose: 'traceability_view',
-      scan_source: 'web' // Usar valor válido permitido por la BD
+      scan_source: 'web'
     })
     qrInfo.value = qrData
     
@@ -354,26 +346,18 @@ const loadTraceability = async () => {
   }
 }
 
-// Funciones de datos
 const getAllEvents = () => {
   if (!traceabilityData.value) return []
 
   const events = []
-
-  // NO mostrar escaneos de QR, solo cambios de estado importantes
-  // Los escaneos se registran automáticamente pero no son relevantes para el usuario final
   
-  // Agregar solo movimientos (cambios de estado) que representen acciones reales
   if (traceabilityData.value.supply_history) {
-    // Filtrar duplicados más estrictamente
     const uniqueMovements = new Map()
     
     traceabilityData.value.supply_history.forEach(movement => {
-      // Usar una clave más específica para evitar duplicados
       const timestamp = movement.timestamp || movement.date_time
       const key = `${movement.status}_${timestamp}_${movement.destination_id}_${movement.user_rut}`
       
-      // Solo agregar movimientos únicos (evitar duplicados exactos)
       if (!uniqueMovements.has(key)) {
         uniqueMovements.set(key, {
           ...movement,
@@ -388,7 +372,6 @@ const getAllEvents = () => {
     events.push(...Array.from(uniqueMovements.values()))
   }
 
-  // Ordenar por fecha (más reciente primero)
   return events.sort((a, b) => new Date(b.date_time) - new Date(a.date_time))
 }
 
@@ -396,7 +379,7 @@ const getMovementTitle = (movement) => {
   if (movement.status === 'consumido') return 'Insumo Consumido'
   if (movement.status === 'transferido') return 'Insumo Transferido'
   if (movement.status === 'creado') return 'Insumo Creado'
-  if (movement.status === 'en_camino_a_pabellon') return 'En camino a pabellón'
+  if (movement.status === 'en_camino_a_pabellon') return 'En camino a pabellon'
   if (movement.status === 'recepcionado') return 'Insumo Recepcionado'
   if (movement.status === 'disponible') return 'Insumo Disponible'
   return `Movimiento: ${movement.status || movement.movement_type || 'Cambio'}`
@@ -404,17 +387,16 @@ const getMovementTitle = (movement) => {
 
 const getMovementLocation = (movement) => {
   if (movement.destination_name) {
-    const type = movement.destination_type === 'pavilion' ? 'Pabellón' : 'Almacén'
+    const type = movement.destination_type === 'pavilion' ? 'Pabellon' : 'Almacen'
     let location = `${type}: ${movement.destination_name}`
     if (movement.medical_center_name) {
       location += ` (${movement.medical_center_name})`
     }
     return location
   }
-  return movement.location || 'Ubicación no especificada'
+  return movement.location || 'Ubicacion no especificada'
 }
 
-// Funciones de estado y estadísticas
 const getCurrentStatusLabel = () => {
   if (!qrInfo.value) return 'Desconocido'
   
@@ -446,7 +428,7 @@ const getCurrentStatusBadgeClass = () => {
 const getCurrentLocation = () => {
   const events = getAllEvents()
   const lastMovement = events.find(e => e.event_type === 'movement' && e.location)
-  return lastMovement?.location || 'Sin ubicación registrada'
+  return lastMovement?.location || 'Sin ubicacion registrada'
 }
 
 const getTimeInSystem = () => {
@@ -458,7 +440,7 @@ const getTimeInSystem = () => {
     
     const days = differenceInDays(now, createdDate)
     if (days > 0) {
-      return `${days} día${days > 1 ? 's' : ''}`
+      return `${days} dia${days > 1 ? 's' : ''}`
     }
     
     const hours = differenceInHours(now, createdDate)
@@ -478,16 +460,15 @@ const getProgressPercentage = () => {
   
   const status = qrInfo.value.supply_info?.status || qrInfo.value.status
   
-  // Progreso basado en los 4 estados del recorrido
   switch (status) {
     case 'disponible':
-      return 25 // En bodega
+      return 25
     case 'en_camino_a_pabellon':
-      return 50 // En tránsito
+      return 50
     case 'recepcionado':
-      return 75 // Recepcionado
+      return 75
     case 'consumido':
-      return 100 // Consumido
+      return 100
     default:
       return 0
   }
@@ -498,24 +479,21 @@ const getProgressBarColor = () => {
   
   const status = qrInfo.value.supply_info?.status || qrInfo.value.status
   
-  // Color de la barra de progreso basado en el estado
   switch (status) {
     case 'disponible':
-      return 'bg-green-500' // Verde para en bodega
+      return 'bg-green-500'
     case 'en_camino_a_pabellon':
-      return 'bg-yellow-500' // Amarillo para en tránsito
+      return 'bg-yellow-500'
     case 'recepcionado':
-      return 'bg-blue-500' // Azul para recepcionado
+      return 'bg-blue-500'
     case 'consumido':
-      return 'bg-red-500' // Rojo para consumido
+      return 'bg-red-500'
     default:
       return 'bg-gray-500'
   }
 }
 
-// Funciones de conteo
 const getEventCount = (type) => {
-  // COMENTADO: No contar escaneos, solo movimientos
   if (type === 'scan') return 0
   return getAllEvents().filter(e => e.event_type === type).length
 }
@@ -536,11 +514,10 @@ const getUserCount = () => {
   return users.size
 }
 
-// Funciones de recorrido
 const getLocationJourney = () => {
   const movements = getAllEvents()
     .filter(e => e.event_type === 'movement' && e.location)
-    .reverse() // Orden cronológico
+    .reverse()
 
   const journey = []
   const seenLocations = new Set()
@@ -560,7 +537,7 @@ const getLocationJourney = () => {
           const days = differenceInDays(end, start)
           
           if (days > 0) {
-            duration = `${days} día${days > 1 ? 's' : ''}`
+            duration = `${days} dia${days > 1 ? 's' : ''}`
           } else if (hours > 0) {
             duration = `${hours} hora${hours > 1 ? 's' : ''}`
           } else {
@@ -584,11 +561,10 @@ const getLocationJourney = () => {
   return journey
 }
 
-// Funciones de eventos del timeline
 const getEventTitle = (event) => {
   switch (event.event_type) {
     case 'scan':
-      return 'Código QR Escaneado'
+      return 'Codigo QR Escaneado'
     case 'movement':
       return getMovementTitle(event)
     default:
@@ -599,7 +575,7 @@ const getEventTitle = (event) => {
 const getEventDescription = (event) => {
   switch (event.event_type) {
     case 'scan':
-      return `Escaneado por ${event.user_name || 'Usuario desconocido'} desde ${event.scan_source || 'aplicación'}`
+      return `Escaneado por ${event.user_name || 'Usuario desconocido'} desde ${event.scan_source || 'aplicacion'}`
     case 'movement':
       const statusText = getStatusText(event.status)
       let description = event.observations || `Estado: ${statusText}`
@@ -608,14 +584,14 @@ const getEventDescription = (event) => {
       }
       return description
     default:
-      return 'Información no disponible'
+      return 'Informacion no disponible'
   }
 }
 
 const getStatusText = (status) => {
   switch (status) {
     case 'disponible': return 'Disponible'
-    case 'en_camino_a_pabellon': return 'En camino a pabellón'
+    case 'en_camino_a_pabellon': return 'En camino a pabellon'
     case 'recepcionado': return 'Recepcionado'
     case 'consumido': return 'Consumido'
     case 'transferido': return 'Transferido'
@@ -655,10 +631,9 @@ const getEventIconClass = (event) => {
 }
 
 const hasEventDetails = (event) => {
-  return event.user_name || event.location || event.notes || true // Siempre mostrar fecha exacta
+  return event.user_name || event.location || event.notes || true
 }
 
-// Funciones de formato
 const formatDateTime = (dateString) => {
   if (!dateString) return 'N/A'
   try {
@@ -677,7 +652,6 @@ const formatRelativeTime = (dateString) => {
   }
 }
 
-// Funciones de exportación
 const exportTraceability = () => {
   const data = {
     qr_code: qrCode.value,
@@ -712,10 +686,9 @@ const printTraceability = () => {
 }
 
 const applyFilters = () => {
-  // Los filtros se aplican automáticamente a través del computed
+  // Los filtros se aplican automaticamente
 }
 
-// Lifecycle hooks
 onMounted(() => {
   if (qrCode.value) {
     loadTraceability()
@@ -725,38 +698,57 @@ onMounted(() => {
 
 <style scoped>
 .form-select {
-  @apply block px-3 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500;
+  @apply block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white;
+  min-height: 44px;
 }
 
 .btn-primary {
-  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200;
+  min-height: 44px;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  @apply inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200;
+  min-height: 44px;
 }
 
 .flow-root {
-  overflow: hidden;
+  overflow: visible;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+select,
+.form-select {
+  transition: all 0.2s ease-in-out;
+}
+
+@media (max-width: 640px) {
+  select,
+  .form-select {
+    font-size: 16px;
+  }
 }
 
 @media print {
   .no-print {
-    display: none !important;
+    display: none;
   }
   
   .print-only {
-    display: block !important;
+    display: block;
   }
 }
 
-/* Animaciones */
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
   }
   50% {
-    opacity: .5;
+    opacity: 0.5;
   }
 }
 

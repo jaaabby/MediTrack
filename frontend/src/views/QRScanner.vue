@@ -1,33 +1,33 @@
 <template>
-  <div class="max-w-4xl mx-auto p-6">
+  <div class="max-w-4xl mx-auto p-3 sm:p-6">
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Escáner QR</h1>
-      <p class="text-gray-600 mt-2">Escanea códigos QR para gestionar insumos médicos</p>
+    <div class="mb-4 sm:mb-6">
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Escáner QR</h1>
+      <p class="text-sm sm:text-base text-gray-600 mt-2">Escanea códigos QR para gestionar insumos médicos</p>
     </div>
 
     <!-- Sección de Escaneo -->
-    <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
-      <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+    <div class="bg-white rounded-lg shadow-sm border p-3 sm:p-6 mb-4 sm:mb-6">
+      <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4 flex items-center">
         <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5l2 3h3l2-3h5v5M4 4v5m16-5v5" />
         </svg>
         Escanear Código QR
       </h3>
 
-      <div class="grid lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <!-- Entrada Manual -->
-        <div class="space-y-4">
-          <label for="qr-input" class="block text-sm font-medium text-gray-700">
+        <div class="space-y-3 sm:space-y-4">
+          <label for="qr-input" class="block text-xs sm:text-sm font-medium text-gray-700">
             Código QR del Insumo:
           </label>
-          <div class="flex space-x-3">
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <input
               id="qr-input"
               v-model="qrInput"
               type="text"
               placeholder="SUPPLY_1755580808_def456"
-              class="form-input flex-1"
+              class="form-input flex-1 text-sm"
               @keyup.enter="scanQRCode"
               @paste="handlePaste"
               :disabled="loading"
@@ -35,7 +35,7 @@
             <button
               @click="scanQRCode"
               :disabled="!qrInput.trim() || loading"
-              class="btn-primary"
+              class="btn-primary w-full sm:w-auto justify-center"
             >
               <svg v-if="loading" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -46,23 +46,23 @@
           </div>
           
           <!-- Ayuda de formato -->
-          <div class="p-3 bg-green-50 rounded-lg">
-            <p class="text-sm text-green-800">
+          <div class="p-2 sm:p-3 bg-green-50 rounded-lg">
+            <p class="text-xs sm:text-sm text-green-800">
               <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <strong>Formatos válidos:</strong>
             </p>
-            <ul class="text-sm text-green-700 mt-1 space-y-1">
-              <li>• <code class="bg-green-100 px-1 rounded">SUPPLY_...</code> - Insumos individuales</li>
-              <li>• <code class="bg-blue-100 px-1 rounded">BATCH_...</code> - Información del lote</li>
+            <ul class="text-xs sm:text-sm text-green-700 mt-1 space-y-1">
+              <li>• <code class="bg-green-100 px-1 rounded text-xs">SUPPLY_...</code> - Insumos individuales</li>
+              <li>• <code class="bg-blue-100 px-1 rounded text-xs">BATCH_...</code> - Información del lote</li>
             </ul>
           </div>
         </div>
 
         <!-- Escáner con Cámara -->
-        <div class="space-y-4">
-          <label class="block text-sm font-medium text-gray-700">
+        <div class="space-y-3 sm:space-y-4">
+          <label class="block text-xs sm:text-sm font-medium text-gray-700">
             Usar Cámara:
           </label>
           
@@ -89,8 +89,8 @@
                 <div class="w-48 h-48 border-2 border-white opacity-50 rounded"></div>
               </div>
               
-              <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                <button @click="stopCamera" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+              <div class="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2">
+                <button @click="stopCamera" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 sm:py-1 rounded text-xs sm:text-sm">
                   Detener Cámara
                 </button>
               </div>
@@ -100,26 +100,26 @@
             <button
               v-else
               @click="startCameraScanner"
-              class="w-full h-32 border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-lg flex flex-col items-center justify-center transition-colors"
+              class="w-full h-28 sm:h-32 border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-lg flex flex-col items-center justify-center transition-colors"
               :disabled="cameraStarting"
             >
-              <svg class="h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="h-7 w-7 sm:h-8 sm:w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span class="text-sm text-gray-600">
+              <span class="text-xs sm:text-sm text-gray-600">
                 {{ cameraStarting ? 'Iniciando Cámara...' : 'Activar Cámara' }}
               </span>
             </button>
           </div>
           
           <!-- Error de cámara -->
-          <div v-if="cameraError" class="text-sm text-red-600 bg-red-50 p-2 rounded">
+          <div v-if="cameraError" class="text-xs sm:text-sm text-red-600 bg-red-50 p-2 rounded">
             {{ cameraError }}
           </div>
           
           <!-- Instrucciones -->
-          <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+          <div class="text-xs sm:text-sm text-gray-600 bg-gray-50 p-2 sm:p-3 rounded-lg">
             <p class="font-medium mb-1">Instrucciones:</p>
             <ul class="space-y-1 text-xs">
               <li>• Posicione el código QR dentro del marco</li>
@@ -132,15 +132,15 @@
     </div>
 
     <!-- Mensaje de Error -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-      <div class="flex items-start space-x-3">
-        <svg class="h-5 w-5 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+      <div class="flex items-start space-x-2 sm:space-x-3">
+        <svg class="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <div class="flex-1">
-          <h4 class="text-sm font-medium text-red-800">Error al escanear</h4>
-          <p class="text-sm text-red-700 mt-1">{{ error }}</p>
-          <button @click="clearError" class="text-sm text-red-600 hover:text-red-800 mt-2 underline">
+        <div class="flex-1 min-w-0">
+          <h4 class="text-xs sm:text-sm font-medium text-red-800">Error al escanear</h4>
+          <p class="text-xs sm:text-sm text-red-700 mt-1 break-words">{{ error }}</p>
+          <button @click="clearError" class="text-xs sm:text-sm text-red-600 hover:text-red-800 mt-2 underline">
             Limpiar error
           </button>
         </div>
@@ -148,7 +148,7 @@
     </div>
 
     <!-- Información del Insumo Escaneado -->
-    <div v-if="scannedInfo && !error" class="bg-white rounded-lg shadow-sm border overflow-hidden mb-6">
+    <div v-if="scannedInfo && !error" class="bg-white rounded-lg shadow-sm border overflow-hidden mb-4 sm:mb-6">
       <QRInfoDisplay 
         :qr-info="scannedInfo"
         :show-traceability="true"
@@ -159,19 +159,19 @@
       />
       
       <!-- NUEVA LÓGICA: State-specific recommendations -->
-      <div v-if="getStateRecommendation(scannedInfo)" class="p-4 border-t border-gray-200">
-        <div :class="getRecommendationClass(scannedInfo)" class="rounded-md p-4">
+      <div v-if="getStateRecommendation(scannedInfo)" class="p-3 sm:p-4 border-t border-gray-200">
+        <div :class="getRecommendationClass(scannedInfo)" class="rounded-md p-3 sm:p-4">
           <div class="flex">
             <div class="flex-shrink-0">
               <svg :class="getRecommendationIconClass(scannedInfo)" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getRecommendationIcon(scannedInfo)" />
               </svg>
             </div>
-            <div class="ml-3">
-              <h3 :class="getRecommendationTitleClass(scannedInfo)" class="text-sm font-medium">
+            <div class="ml-2 sm:ml-3">
+              <h3 :class="getRecommendationTitleClass(scannedInfo)" class="text-xs sm:text-sm font-medium">
                 {{ getStateRecommendation(scannedInfo).title }}
               </h3>
-              <div :class="getRecommendationTextClass(scannedInfo)" class="mt-2 text-sm">
+              <div :class="getRecommendationTextClass(scannedInfo)" class="mt-1 sm:mt-2 text-xs sm:text-sm">
                 {{ getStateRecommendation(scannedInfo).message }}
               </div>
             </div>
@@ -180,8 +180,8 @@
       </div>
       
       <!-- NUEVA LÓGICA: Acciones basadas en estado -->
-      <div v-if="scannedInfo.supply_info && !scannedInfo.is_consumed" class="p-4 border-t border-gray-200 bg-gray-50">
-        <div class="flex flex-wrap gap-3">
+      <div v-if="scannedInfo.supply_info && !scannedInfo.is_consumed" class="p-3 sm:p-4 border-t border-gray-200 bg-gray-50">
+        <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
           <!-- NUEVA LÓGICA: Solo mostrar consumir si estado es "recepcionado" -->
           <router-link 
             v-if="canBeConsumed(scannedInfo)"
@@ -256,36 +256,36 @@
     </div>
 
     <!-- Historial de Escaneos -->
-    <div v-if="scanHistory.length > 0" class="bg-white rounded-lg shadow-sm border p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-medium text-gray-900 flex items-center">
-          <svg class="h-5 w-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div v-if="scanHistory.length > 0" class="bg-white rounded-lg shadow-sm border p-3 sm:p-6">
+      <div class="flex items-center justify-between mb-3 sm:mb-4">
+        <h3 class="text-base sm:text-lg font-medium text-gray-900 flex items-center">
+          <svg class="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Historial Reciente
         </h3>
-        <button @click="clearHistory" class="text-sm text-gray-500 hover:text-gray-700">
+        <button @click="clearHistory" class="text-xs sm:text-sm text-gray-500 hover:text-gray-700">
           Limpiar
         </button>
       </div>
       
-      <div class="space-y-3 max-h-80 overflow-y-auto">
+      <div class="space-y-2 sm:space-y-3 max-h-80 overflow-y-auto">
         <button 
           v-for="(item, index) in scanHistory" 
           :key="index"
           @click="quickRescan(item.qr_code)"
-          class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors border border-gray-200 hover:border-blue-300"
+          class="w-full text-left p-2 sm:p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors border border-gray-200 hover:border-blue-300"
         >
-          <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-2 sm:space-x-3">
             <!-- Icono según tipo de código -->
             <div class="flex-shrink-0">
-              <div v-if="item.type === 'medical_supply'" class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div v-if="item.type === 'medical_supply'" class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <svg class="h-4 w-4 sm:h-6 sm:w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <div v-else class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div v-else class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg class="h-4 w-4 sm:h-6 sm:w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
@@ -293,11 +293,11 @@
             
             <!-- Contenido principal -->
             <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                  <code class="text-sm font-mono text-gray-900 truncate">{{ item.qr_code }}</code>
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
+                <div class="flex items-center space-x-1 sm:space-x-2 flex-wrap">
+                  <code class="text-xs sm:text-sm font-mono text-gray-900 truncate">{{ item.qr_code }}</code>
                   <span :class="[
-                    'px-2 py-1 text-xs font-medium rounded-full',
+                    'px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs font-medium rounded-full whitespace-nowrap',
                     item.type === 'medical_supply' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                   ]">
                     {{ item.type === 'medical_supply' ? 'Insumo' : 'Lote' }}
@@ -305,14 +305,14 @@
                 </div>
                 <span class="text-xs text-gray-500">{{ formatDate(item.scanned_at) }}</span>
               </div>
-              <div v-if="item.supply_name" class="text-sm text-gray-700 mt-1 truncate font-medium">
+              <div v-if="item.supply_name" class="text-xs sm:text-sm text-gray-700 mt-1 truncate font-medium">
                 {{ item.supply_name }}
               </div>
             </div>
             
             <!-- Indicador de acción -->
             <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </div>
@@ -323,9 +323,9 @@
   </div>
 
   <!-- Sistema de Notificaciones -->
-  <div v-if="notification" class="fixed top-4 right-4 z-50 max-w-sm w-full">
+  <div v-if="notification" class="fixed top-4 right-4 left-4 sm:left-auto z-50 max-w-sm sm:w-full">
     <div :class="[
-      'rounded-lg p-4 shadow-lg border transition-all duration-300',
+      'rounded-lg p-3 sm:p-4 shadow-lg border transition-all duration-300',
       notification.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
     ]">
       <div class="flex items-start">
@@ -337,15 +337,15 @@
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
           </svg>
         </div>
-        <div class="ml-3 flex-1">
+        <div class="ml-2 sm:ml-3 flex-1 min-w-0">
           <p :class="[
-            'text-sm font-medium',
+            'text-xs sm:text-sm font-medium break-words',
             notification.type === 'success' ? 'text-green-800' : 'text-red-800'
           ]">
             {{ notification.message }}
           </p>
         </div>
-        <div class="ml-4 flex-shrink-0">
+        <div class="ml-2 sm:ml-4 flex-shrink-0">
           <button @click="closeNotification" :class="[
             'rounded-md inline-flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2',
             notification.type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-500' : 'text-red-500 hover:text-red-600 focus:ring-red-500'
@@ -1022,5 +1022,54 @@ onUnmounted(() => {
 
 .btn-success {
   @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Mejorar experiencia táctil en móviles */
+@media (max-width: 640px) {
+  /* Aumentar área táctil de botones */
+  button,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-success {
+    min-height: 44px;
+  }
+  
+  /* Mejorar áreas de entrada */
+  input,
+  select,
+  textarea,
+  .form-input {
+    min-height: 44px;
+    font-size: 16px; /* Prevenir zoom automático en iOS */
+  }
+
+  /* Mejorar scrolling en historial */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Suavizar transiciones */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mejorar códigos QR en móvil */
+  code {
+    word-break: break-all;
+  }
+}
+
+/* Transiciones suaves */
+button,
+input,
+select,
+textarea {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Mejorar contraste en modo oscuro de cámara */
+video {
+  max-width: 100%;
 }
 </style>

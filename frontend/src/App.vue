@@ -22,14 +22,88 @@
               Inicio
             </router-link>
             
-            <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
-              to="/inventory"
-              class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
-              :class="{ 'bg-blue-700': $route.path === '/inventory' }"
-              @click.stop
-            >
-              Inventario
-            </router-link>
+            <!-- Menú desplegable Inventario -->
+            <div v-if="authStore.isAuthenticated && authStore.canViewInventory" class="relative">
+              <button
+                @click="inventoryMenuOpen = !inventoryMenuOpen"
+                class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
+                :class="{ 'bg-blue-700': $route.path.startsWith('/inventory') }"
+              >
+                Inventario
+                <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': inventoryMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <!-- Dropdown menu -->
+              <div v-if="inventoryMenuOpen" class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                <router-link
+                  to="/inventory"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory' }"
+                  @click="inventoryMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    Ver Lotes
+                  </div>
+                </router-link>
+                <router-link
+                  to="/inventory/dashboard"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/dashboard' }"
+                  @click="inventoryMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Dashboard
+                  </div>
+                </router-link>
+                <router-link
+                  to="/inventory/store"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/store' }"
+                  @click="inventoryMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    Bodegas
+                  </div>
+                </router-link>
+                <router-link
+                  to="/inventory/pavilion"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/pavilion' }"
+                  @click="inventoryMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Pabellones
+                  </div>
+                </router-link>
+                <router-link
+                  to="/inventory/add"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-t border-gray-200"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/add' }"
+                  @click="inventoryMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Agregar Insumo
+                  </div>
+                </router-link>
+              </div>
+            </div>
             
             <router-link v-if="authStore.isAuthenticated && authStore.canViewRequests"
               to="/supply-requests"
@@ -57,15 +131,63 @@
             >
               Estadisticas
             </router-link>
-            
-            <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
-              to="/inventory/add"
-              class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
-              :class="{ 'bg-blue-700': $route.path === '/inventory/add' }"
-              @click.stop
-            >
-              Agregar Insumo
-            </router-link>
+
+            <!-- Menú desplegable Gestión -->
+            <div v-if="authStore.isAuthenticated" class="relative">
+              <button
+                @click="managementMenuOpen = !managementMenuOpen"
+                class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
+                :class="{ 'bg-blue-700': ['/transfers', '/surgeries', '/supply-history'].some(path => $route.path.startsWith(path)) }"
+              >
+                Gestión
+                <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': managementMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <!-- Dropdown menu -->
+              <div v-if="managementMenuOpen" class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                <router-link
+                  to="/transfers"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/transfers' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    Transferencias
+                  </div>
+                </router-link>
+                <router-link
+                  to="/surgeries"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/surgeries' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Cirugías
+                  </div>
+                </router-link>
+                <router-link
+                  to="/supply-history"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/supply-history' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Historial de Insumos
+                  </div>
+                </router-link>
+              </div>
+            </div>
           </nav>
 
           <!-- Navegación tablet (oculta en desktop y mobile) -->
@@ -129,18 +251,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </router-link>
-            
-            <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
-              to="/inventory/add"
-              class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
-              :class="{ 'bg-blue-700': $route.path === '/inventory/add' }"
-              @click.stop
-              title="Agregar Insumo"
-            >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </router-link>
           </nav>
           
           <!-- Menu de usuario -->
@@ -182,6 +292,7 @@
             
             <!-- Menu hamburguesa (movil) -->
             <button 
+              v-if="authStore.isAuthenticated"
               @click="mobileMenuOpen = !mobileMenuOpen"
               class="md:hidden p-2 rounded-lg hover:bg-blue-700 transition-colors"
               aria-label="Abrir menu"
@@ -208,15 +319,55 @@
             Inicio
           </router-link>
           
-          <router-link
-            v-if="authStore.isAuthenticated && authStore.canViewInventory"
-            to="/inventory"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/inventory' }"
-          >
-            Inventario
-          </router-link>
+          <!-- Sección de Inventario -->
+          <div v-if="authStore.isAuthenticated && authStore.canViewInventory" class="space-y-1">
+            <div class="text-blue-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide">
+              Inventario
+            </div>
+            <router-link
+              to="/inventory"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory' }"
+            >
+              Ver Lotes
+            </router-link>
+            <router-link
+              to="/inventory/dashboard"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/dashboard' }"
+            >
+              Dashboard
+            </router-link>
+            <router-link
+              to="/inventory/store"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/store' }"
+            >
+              Bodegas
+            </router-link>
+            <router-link
+              to="/inventory/pavilion"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/pavilion' }"
+            >
+              Pabellones
+            </router-link>
+            <router-link
+              to="/inventory/add"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/inventory/add' }"
+            >
+              Agregar Insumo
+            </router-link>
+          </div>
+          
+          <!-- Separador -->
+          <div class="border-t border-blue-600 my-2"></div>
           
           <router-link
             v-if="authStore.isAuthenticated && authStore.canViewRequests"
@@ -247,26 +398,43 @@
           >
             Estadisticas
           </router-link>
+
+          <!-- Separador -->
+          <div class="border-t border-blue-600 my-2"></div>
           
-          <router-link
-            v-if="authStore.isAuthenticated"
-            to="/reports"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path.startsWith('/reports') }"
-          >
-            Reportes
-          </router-link>
-          
-          <router-link
-            v-if="authStore.isAuthenticated && authStore.canViewInventory"
-            to="/inventory/add"
-            @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/inventory/add' }"
-          >
-            Agregar Insumo
-          </router-link>
+          <!-- Sección de Gestión -->
+          <div v-if="authStore.isAuthenticated" class="space-y-1">
+            <div class="text-blue-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide">
+              Gestión
+            </div>
+            <router-link
+              to="/transfers"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/transfers' }"
+            >
+              Transferencias
+            </router-link>
+
+            <router-link
+              to="/surgeries"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/surgeries' }"
+            >
+              Cirugías
+            </router-link>
+
+            <router-link
+              to="/supply-history"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/supply-history' }"
+            >
+              Historial de Insumos
+            </router-link>
+          </div>
+
         </div>
       </div>
     </header>
@@ -310,7 +478,7 @@
           v-if="authStore.canViewInventory"
           to="/inventory"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
-          :class="$route.path === '/inventory' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path.startsWith('/inventory') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -346,18 +514,18 @@
           v-if="authStore.canViewStatistics"
           to="/statistics"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
-          :class="$route.path === '/statistics' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="mobileMenuOpen ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          <span class="text-xs leading-tight">Estadisticas</span>
-        </router-link>
+          <span class="text-xs leading-tight">Más</span>
+        </button>
       </div>
     </nav>
 
     <!-- Padding para la navegacion inferior en moviles -->
-    <div class="h-20 md:hidden"></div>
+    <div v-if="authStore.isAuthenticated" class="h-20 md:hidden"></div>
 
     <!-- Toast/Notificacion global (futuro) -->
     <!-- <div v-if="globalNotification" class="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50">
@@ -375,6 +543,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 const searchQuery = ref('')
 const mobileMenuOpen = ref(false)
+const managementMenuOpen = ref(false)
+const inventoryMenuOpen = ref(false)
 
 // Inicializar autenticacion al montar el componente
 onMounted(() => {
@@ -397,6 +567,8 @@ const handleLogout = () => {
 // Cerrar menu movil cuando se cambia de ruta
 router.afterEach(() => {
   mobileMenuOpen.value = false
+  managementMenuOpen.value = false
+  inventoryMenuOpen.value = false
 })
 
 // Metodos para futuras funcionalidades
@@ -432,6 +604,12 @@ router.afterEach(() => {
 /* Hover effects mejorados */
 .transition-colors {
   transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+/* Rotación del icono del dropdown */
+.rotate-180 {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease-in-out;
 }
 
 /* Efecto de resaltado para navegacion activa */
