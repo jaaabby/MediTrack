@@ -34,11 +34,11 @@ func (ft *FlexibleTime) UnmarshalJSON(b []byte) error {
 
 	// Intentar diferentes formatos
 	formats := []string{
-		time.RFC3339,                 // 2006-01-02T15:04:05Z07:00
-		"2006-01-02T15:04:05",        // 2006-01-02T15:04:05
-		"2006-01-02T15:04",           // 2006-01-02T15:04 (datetime-local)
-		"2006-01-02 15:04:05",        // 2006-01-02 15:04:05
-		"2006-01-02 15:04",           // 2006-01-02 15:04
+		time.RFC3339,          // 2006-01-02T15:04:05Z07:00
+		"2006-01-02T15:04:05", // 2006-01-02T15:04:05
+		"2006-01-02T15:04",    // 2006-01-02T15:04 (datetime-local)
+		"2006-01-02 15:04:05", // 2006-01-02 15:04:05
+		"2006-01-02 15:04",    // 2006-01-02 15:04
 	}
 
 	var err error
@@ -596,11 +596,11 @@ func (s *SupplyRequestService) GetSupplyRequestStats() (map[string]interface{}, 
 
 // AssignRequestToWarehouseManager asigna una solicitud a un encargado de bodega (usado por Pavedad)
 type AssignRequestToWarehouseManagerRequest struct {
-	AssignedTo            string `json:"assigned_to" binding:"required"`            // RUT del encargado de bodega
-	AssignedToName        string `json:"assigned_to_name" binding:"required"`        // Nombre del encargado
-	AssignedByPavedad     string `json:"assigned_by_pavedad" binding:"required"`     // RUT del usuario Pavedad
+	AssignedTo            string `json:"assigned_to" binding:"required"`              // RUT del encargado de bodega
+	AssignedToName        string `json:"assigned_to_name" binding:"required"`         // Nombre del encargado
+	AssignedByPavedad     string `json:"assigned_by_pavedad" binding:"required"`      // RUT del usuario Pavedad
 	AssignedByPavedadName string `json:"assigned_by_pavedad_name" binding:"required"` // Nombre del usuario Pavedad
-	PavedadNotes          string `json:"pavedad_notes"`                              // Notas de Pavedad
+	PavedadNotes          string `json:"pavedad_notes"`                               // Notas de Pavedad
 }
 
 func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, req AssignRequestToWarehouseManagerRequest) error {
@@ -668,11 +668,11 @@ func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]models.SupplyRe
 	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "parcialmente_aprobado", "pendiente_revision", "devuelto"}).
 		Order("request_date DESC").
 		Find(&requests).Error
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo solicitudes para Pavedad: %v", err)
 	}
-	
+
 	return requests, nil
 }
 
@@ -683,11 +683,11 @@ func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseM
 	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "completado"}).
 		Order("assigned_date DESC").
 		Find(&requests).Error
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo solicitudes asignadas: %v", err)
 	}
-	
+
 	return requests, nil
 }
 
@@ -742,11 +742,11 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 			// Determinar nuevo estado de la solicitud
 			if hasReturned > 0 {
 				request.Status = "devuelto" // Al menos un item devuelto
-				
+
 				// Agregar comentarios de items devueltos al campo notes de la solicitud
 				var returnedItems []models.SupplyRequestItem
 				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Find(&returnedItems)
-				
+
 				var returnComments string
 				for _, ri := range returnedItems {
 					if ri.ItemNotes != nil && *ri.ItemNotes != "" {
@@ -756,13 +756,13 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 						returnComments += fmt.Sprintf("- %s: %s", ri.SupplyName, *ri.ItemNotes)
 					}
 				}
-				
+
 				if returnComments != "" {
 					reviewerName := "Encargado de Bodega"
 					if req.ReviewedByName != "" {
 						reviewerName = req.ReviewedByName
 					}
-					
+
 					notesHeader := fmt.Sprintf("\n\n[Devolución por %s]:\n", reviewerName)
 					if request.Notes == "" {
 						request.Notes = notesHeader + returnComments
@@ -780,7 +780,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 			} else if allAccepted == totalItems {
 				request.Status = "aprobado" // Todos aceptados
-				
+
 				// Enviar correo de aprobación
 				go func() {
 					if err := s.sendRequestApprovedEmail(&request); err != nil {
@@ -790,7 +790,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 			} else {
 				request.Status = "parcialmente_aprobado" // Algunos rechazados
-				
+
 				// Enviar correo de aprobación parcial (usar template de aprobado)
 				go func() {
 					if err := s.sendRequestApprovedEmail(&request); err != nil {
@@ -841,14 +841,14 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, updatedIte
 				if updatedItem.Quantity > 0 {
 					item.QuantityRequested = updatedItem.Quantity
 				}
-				
+
 				// Resetear el estado a pendiente para que sea revisado nuevamente
 				item.ItemStatus = "pendiente"
 				item.ItemNotes = nil
 				item.ReviewedBy = nil
 				item.ReviewedByName = nil
 				item.ReviewedAt = nil
-				
+
 				if err := tx.Save(&item).Error; err != nil {
 					return fmt.Errorf("error actualizando item: %v", err)
 				}
@@ -858,7 +858,7 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, updatedIte
 
 		// Cambiar el estado de la solicitud de vuelta a asignado_bodega
 		request.Status = "asignado_bodega"
-		
+
 		if err := tx.Save(&request).Error; err != nil {
 			return fmt.Errorf("error actualizando solicitud: %v", err)
 		}
@@ -885,14 +885,14 @@ func (s *SupplyRequestService) sendRequestAssignedEmail(request *models.SupplyRe
 	s.DB.First(&pavilion, request.PavilionID)
 
 	templatePath := filepath.Join("mailer", "templates", "request_assigned.html")
-	
+
 	data := map[string]interface{}{
-		"RecipientName":   request.RequestedByName,
-		"RequestNumber":   request.RequestNumber,
-		"PavilionName":    pavilion.Name,
-		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
-		"AssignedByName":  *request.AssignedByPavedadName,
-		"Notes":           request.Notes,
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"AssignedByName": *request.AssignedByPavedadName,
+		"Notes":          request.Notes,
 	}
 
 	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Asignada a Bodega - "+request.RequestNumber)
@@ -927,15 +927,15 @@ func (s *SupplyRequestService) sendRequestApprovedEmail(request *models.SupplyRe
 	}
 
 	templatePath := filepath.Join("mailer", "templates", "request_approved.html")
-	
+
 	data := map[string]interface{}{
-		"RecipientName":   request.RequestedByName,
-		"RequestNumber":   request.RequestNumber,
-		"PavilionName":    pavilion.Name,
-		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
-		"ApprovedByName":  *request.AssignedToName,
-		"Items":           itemsData,
-		"Notes":           request.Notes,
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ApprovedByName": *request.AssignedToName,
+		"Items":          itemsData,
+		"Notes":          request.Notes,
 	}
 
 	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Aprobada - "+request.RequestNumber)
@@ -974,7 +974,7 @@ func (s *SupplyRequestService) sendRequestReturnedEmail(request *models.SupplyRe
 	}
 
 	templatePath := filepath.Join("mailer", "templates", "request_returned.html")
-	
+
 	data := map[string]interface{}{
 		"RecipientName":  request.RequestedByName,
 		"RequestNumber":  request.RequestNumber,
@@ -1005,7 +1005,7 @@ func (s *SupplyRequestService) sendRequestRejectedEmail(request *models.SupplyRe
 	s.DB.First(&pavilion, request.PavilionID)
 
 	templatePath := filepath.Join("mailer", "templates", "request_rejected.html")
-	
+
 	data := map[string]interface{}{
 		"RecipientName":  request.RequestedByName,
 		"RequestNumber":  request.RequestNumber,

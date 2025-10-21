@@ -674,7 +674,7 @@ func (c *SupplyRequestController) GetPendingRequestsForPavedad(ctx *gin.Context)
 // GetAssignedRequestsForWarehouseManager obtiene las solicitudes asignadas a un encargado de bodega
 func (c *SupplyRequestController) GetAssignedRequestsForWarehouseManager(ctx *gin.Context) {
 	warehouseManagerRut := ctx.Param("rut")
-	
+
 	requests, err := c.supplyRequestService.GetAssignedRequestsForWarehouseManager(warehouseManagerRut)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
