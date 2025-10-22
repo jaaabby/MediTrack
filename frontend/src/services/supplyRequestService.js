@@ -315,7 +315,8 @@ class SupplyRequestService {
       'cancelado': 'Cancelado',
       'parcialmente_aprobado': 'Parcialmente Aprobado',
       'pendiente_revision': 'Pendiente de Revisión',
-      'devuelto': 'Devuelto'
+      'devuelto': 'Devuelto al Solicitante',
+      'devuelto_al_encargado': 'Devuelto al Encargado'
     }
     return labels[status] || status
   }
@@ -338,7 +339,8 @@ class SupplyRequestService {
       'cancelado': 'gray',
       'parcialmente_aprobado': 'yellow',
       'pendiente_revision': 'orange',
-      'devuelto': 'orange'
+      'devuelto': 'orange',
+      'devuelto_al_encargado': 'blue'
     }
     return colors[status] || 'gray'
   }
@@ -476,10 +478,11 @@ class SupplyRequestService {
   }
 
   // Reenviar una solicitud devuelta
-  async resubmitReturnedRequest(requestId, updatedItems) {
+  async resubmitReturnedRequest(requestId, updatedItems, notes = '') {
     try {
       const response = await this.api.put(`/supply-requests/${requestId}/resubmit`, {
-        updated_items: updatedItems
+        updated_items: updatedItems,
+        notes: notes
       })
       return response.data
     } catch (error) {

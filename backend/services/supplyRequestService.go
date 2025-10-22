@@ -600,7 +600,7 @@ type AssignRequestToWarehouseManagerRequest struct {
 	AssignedToName        string `json:"assigned_to_name" binding:"required"`         // Nombre del encargado
 	AssignedByPavedad     string `json:"assigned_by_pavedad" binding:"required"`      // RUT del usuario Pavedad
 	AssignedByPavedadName string `json:"assigned_by_pavedad_name" binding:"required"` // Nombre del usuario Pavedad
-	PavedadNotes          string `json:"pavedad_notes"`                               // Notas de Pavedad
+	PavedadNotes          string `json:"pavedad_notes"`                               // Notas opcionales - se agregan al historial de notes
 }
 
 func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, req AssignRequestToWarehouseManagerRequest) error {
@@ -641,9 +641,20 @@ func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, re
 		supplyRequest.AssignedDate = &now
 		supplyRequest.AssignedByPavedad = &req.AssignedByPavedad
 		supplyRequest.AssignedByPavedadName = &req.AssignedByPavedadName
+
+		// Agregar notas de Pavedad al historial de notes
 		if req.PavedadNotes != "" {
-			supplyRequest.PavedadNotes = &req.PavedadNotes
+			timestamp := now.Format("02/01/2006 15:04")
+			pavedadHeader := fmt.Sprintf("\n\n[Asignación por %s - %s]:\n", req.AssignedByPavedadName, timestamp)
+			pavedadComment := fmt.Sprintf("Asignado a: %s\n%s", req.AssignedToName, req.PavedadNotes)
+
+			if supplyRequest.Notes == "" {
+				supplyRequest.Notes = pavedadHeader + pavedadComment
+			} else {
+				supplyRequest.Notes = supplyRequest.Notes + pavedadHeader + pavedadComment
+			}
 		}
+
 		supplyRequest.Status = "asignado_bodega"
 
 		if err := tx.Save(&supplyRequest).Error; err != nil {
@@ -680,7 +691,7 @@ func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]models.SupplyRe
 func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseManagerRut string) ([]models.SupplyRequest, error) {
 	var requests []models.SupplyRequest
 	// Incluir todos los estados relevantes para el encargado de bodega
-	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "completado"}).
+	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "devuelto_al_encargado", "completado"}).
 		Order("assigned_date DESC").
 		Find(&requests).Error
 
@@ -743,7 +754,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 			if hasReturned > 0 {
 				request.Status = "devuelto" // Al menos un item devuelto
 
-				// Agregar comentarios de items devueltos al campo notes de la solicitud
+				// Agregar comentarios de items devueltos al historial de notes
 				var returnedItems []models.SupplyRequestItem
 				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Find(&returnedItems)
 
@@ -753,17 +764,21 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 						if returnComments != "" {
 							returnComments += "\n"
 						}
-						returnComments += fmt.Sprintf("- %s: %s", ri.SupplyName, *ri.ItemNotes)
+						returnComments += fmt.Sprintf("• %s (Cant: %d): %s", ri.SupplyName, ri.QuantityRequested, *ri.ItemNotes)
 					}
 				}
 
+				// Agregar al historial de notes si hay comentarios
 				if returnComments != "" {
 					reviewerName := "Encargado de Bodega"
 					if req.ReviewedByName != "" {
 						reviewerName = req.ReviewedByName
 					}
 
-					notesHeader := fmt.Sprintf("\n\n[Devolución por %s]:\n", reviewerName)
+					now := time.Now()
+					timestamp := now.Format("02/01/2006 15:04")
+					notesHeader := fmt.Sprintf("\n\n[Devolución por %s - %s]:\n", reviewerName, timestamp)
+
 					if request.Notes == "" {
 						request.Notes = notesHeader + returnComments
 					} else {
@@ -814,9 +829,15 @@ type UpdatedItemRequest struct {
 	Quantity int `json:"quantity"`
 }
 
+// ResubmitReturnedRequestData representa los datos para reenviar una solicitud
+type ResubmitReturnedRequestData struct {
+	UpdatedItems []UpdatedItemRequest `json:"updated_items"`
+	Notes        string               `json:"notes"` // Nuevas observaciones del solicitante
+}
+
 // ResubmitReturnedRequest permite al doctor reenviar una solicitud devuelta
 // Solo resetea los items devueltos a pendiente, manteniendo los aceptados
-func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, updatedItems []UpdatedItemRequest) error {
+func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data ResubmitReturnedRequestData) error {
 	return s.DB.Transaction(func(tx *gorm.DB) error {
 		var request models.SupplyRequest
 		if err := tx.First(&request, requestID).Error; err != nil {
@@ -829,7 +850,7 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, updatedIte
 		}
 
 		// Actualizar los items según los cambios del doctor
-		for _, updatedItem := range updatedItems {
+		for _, updatedItem := range data.UpdatedItems {
 			var item models.SupplyRequestItem
 			if err := tx.First(&item, updatedItem.ItemID).Error; err != nil {
 				continue // Si no se encuentra el item, continuar
@@ -856,8 +877,21 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, updatedIte
 			// Los items aceptados no se tocan, se mantienen como están
 		}
 
-		// Cambiar el estado de la solicitud de vuelta a asignado_bodega
-		request.Status = "asignado_bodega"
+		// Agregar las nuevas observaciones del solicitante al historial
+		if data.Notes != "" {
+			now := time.Now()
+			timestamp := now.Format("02/01/2006 15:04")
+			resubmitHeader := fmt.Sprintf("\n\n[Reenvío por %s - %s]:\n", request.RequestedByName, timestamp)
+
+			if request.Notes == "" {
+				request.Notes = resubmitHeader + data.Notes
+			} else {
+				request.Notes = request.Notes + resubmitHeader + data.Notes
+			}
+		}
+
+		// Cambiar el estado de la solicitud a "devuelto_al_encargado" para que el encargado revise nuevamente
+		request.Status = models.RequestStatusReturnedToStore
 
 		if err := tx.Save(&request).Error; err != nil {
 			return fmt.Errorf("error actualizando solicitud: %v", err)

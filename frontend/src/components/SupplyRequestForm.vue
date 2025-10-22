@@ -48,7 +48,7 @@
               Fecha y Hora de Cirugía <span class="text-red-500">*</span>
             </label>
             <!-- Modo edición: mostrar como solo lectura -->
-            <div v-if="props.editMode" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
+            <div v-if="props.editMode" class="w-full px-3 py-2 bg-gray-200 border border-gray-400 rounded-md text-gray-600 font-medium cursor-not-allowed">
               {{ originalRequestData.surgery_datetime_display }}
             </div>
             <!-- Modo creación: campo editable -->
@@ -72,7 +72,7 @@
               Pabellón <span class="text-red-500">*</span>
             </label>
             <!-- Modo edición: mostrar como solo lectura -->
-            <div v-if="props.editMode" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
+            <div v-if="props.editMode" class="w-full px-3 py-2 bg-gray-200 border border-gray-400 rounded-md text-gray-600 font-medium cursor-not-allowed">
               {{ originalRequestData.pavilion_name }}
             </div>
             <!-- Modo creación: campo editable -->
@@ -109,7 +109,7 @@
             id="notes"
             v-model="requestForm.notes"
             rows="3"
-            placeholder="Observaciones adicionales sobre la solicitud..."
+            :placeholder="props.editMode ? 'Observaciones sobre los cambios realizados en esta solicitud...' : 'Observaciones adicionales sobre la solicitud...'"
             class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           ></textarea>
         </div>
@@ -364,6 +364,7 @@ import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
 import inventoryService from '../services/inventoryService'
+import Swal from 'sweetalert2'
 
 // Props
 const props = defineProps({
@@ -626,8 +627,9 @@ const resubmitRequest = async () => {
     }))
   
   console.log('Reenviando solicitud con items:', updatedItems)
+  console.log('Notas del solicitante:', requestForm.notes)
   
-  const result = await supplyRequestService.resubmitReturnedRequest(props.id, updatedItems)
+  const result = await supplyRequestService.resubmitReturnedRequest(props.id, updatedItems, requestForm.notes)
   
   if (result.success) {
     console.log('Solicitud reenviada exitosamente')
@@ -689,35 +691,55 @@ const loadRequestForEdit = async () => {
     console.log('📦 Respuesta de la solicitud:', response)
     
     if (response.success && response.data) {
-      const request = response.data
-      console.log('✅ Datos de la solicitud:', request)
-      console.log('🏥 Pabellones disponibles:', pavilions.value)
-      console.log('🔍 Buscando pavilion_id:', request.pavilion_id, 'tipo:', typeof request.pavilion_id)
+      // El backend devuelve data.request, data.items, data.assignments
+      const request = response.data.request || response.data
+      console.log('✅ Datos de la solicitud completa:', JSON.stringify(request, null, 2))
+      console.log('🏥 Pabellones disponibles:', JSON.stringify(pavilions.value, null, 2))
+      console.log('🔍 Datos directos - pavilion_id:', request.pavilion_id, 'surgery_datetime:', request.surgery_datetime)
+      
+      const pavilionId = request.pavilion_id
+      const surgeryDatetime = request.surgery_datetime
+      
+      console.log('📊 Valores finales - pavilionId:', pavilionId, 'surgeryDatetime:', surgeryDatetime)
       
       // Cargar datos básicos
-      requestForm.pavilion_id = request.pavilion_id ? request.pavilion_id.toString() : ''
-      requestForm.surgery_datetime = formatDateTimeForInput(request.surgery_datetime)
-      requestForm.notes = extractOriginalNotes(request.notes)
+      requestForm.pavilion_id = pavilionId ? pavilionId.toString() : ''
+      requestForm.surgery_datetime = surgeryDatetime ? formatDateTimeForInput(surgeryDatetime) : ''
+      // En modo edición, dejar las observaciones vacías para que el usuario ingrese nuevas
+      requestForm.notes = ''
       
       // Guardar datos originales para mostrar en modo solo lectura
-      // Buscar el pabellón usando un loop directo para evitar problemas con Proxy
-      let pavilionName = `Pabellón ID: ${request.pavilion_id}`
-      for (let i = 0; i < pavilions.value.length; i++) {
-        const p = pavilions.value[i]
-        console.log(`  Checking pabellón [${i}]:`, p.id, '===', request.pavilion_id, '?', p.id === request.pavilion_id)
-        if (p.id === request.pavilion_id) {
-          pavilionName = p.name
-          console.log('✅ ¡Encontrado!:', pavilionName)
-          break
+      // Buscar el pabellón por ID - probar con conversión de tipos
+      const pavilionIdToFind = parseInt(pavilionId || 0)
+      let pavilionName = 'No especificado'
+      
+      console.log('🔍 Buscando pabellón con ID:', pavilionIdToFind)
+      console.log('📋 Pabellones disponibles:', pavilions.value)
+      
+      if (pavilionIdToFind > 0) {
+        const foundPavilion = pavilions.value.find(p => {
+          const pId = parseInt(p.id)
+          console.log(`  Comparando: ${pId} === ${pavilionIdToFind}?`, pId === pavilionIdToFind)
+          return pId === pavilionIdToFind
+        })
+        
+        if (foundPavilion) {
+          pavilionName = foundPavilion.name
+          console.log('✅ Pabellón encontrado:', pavilionName)
+        } else {
+          console.warn('⚠️ Pabellón no encontrado para ID:', pavilionIdToFind)
+          pavilionName = `Pabellón ID: ${pavilionIdToFind}`
         }
       }
       
       originalRequestData.value = {
         pavilion_name: pavilionName,
-        surgery_datetime_display: formatDateTimeForDisplay(request.surgery_datetime),
+        surgery_datetime_display: surgeryDatetime ? formatDateTimeForDisplay(surgeryDatetime) : 'No especificada',
         requester_name: request.requested_by_name || 'No disponible',
         requester_rut: request.requested_by || 'No disponible'
       }
+      
+      console.log('📝 Datos originales asignados:', originalRequestData.value)
       
       console.log('📝 Datos originales guardados:', originalRequestData.value)
       

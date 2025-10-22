@@ -281,20 +281,20 @@
                 <!-- Botón Revisar Items para Encargado de Bodega -->
                 <button
                   v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
-                  @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? openReviewItemsModal(request) : null"
-                  :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'"
+                  @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
+                  :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'"
                   :class="[
                     'flex-1 inline-flex items-center justify-center px-3 py-2 border rounded-md text-xs font-medium',
-                    (request.status === 'asignado_bodega' || request.status === 'en_proceso')
+                    (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
                       ? 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer'
                       : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
                   ]"
-                  :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar Insumos' : 'Ya revisada'"
+                  :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar Insumos' : 'Ya revisada'"
                 >
                   <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
-                  {{ (request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar Items' : 'Revisado ✓' }}
+                  {{ (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar Items' : 'Revisado ✓' }}
                 </button>
               </div>
             </div>
@@ -426,20 +426,20 @@
                   <!-- Botón Revisar Items para Encargado de Bodega -->
                   <button
                     v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
-                    @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? openReviewItemsModal(request) : null"
-                    :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'"
+                    @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
+                    :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'"
                     :class="[
                       'p-1',
-                      (request.status === 'asignado_bodega' || request.status === 'en_proceso')
+                      (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
                         ? 'text-blue-600 hover:text-blue-900 cursor-pointer'
                         : 'text-gray-400 cursor-not-allowed opacity-60'
                     ]"
-                    :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar insumos' : 'Ya revisada'"
+                    :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar insumos' : 'Ya revisada'"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    <span v-if="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'" class="text-xs">✓</span>
+                    <span v-if="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'" class="text-xs">✓</span>
                   </button>
                 </div>
               </td>

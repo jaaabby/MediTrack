@@ -764,9 +764,7 @@ func (c *SupplyRequestController) ResubmitReturnedRequest(ctx *gin.Context) {
 		return
 	}
 
-	var req struct {
-		UpdatedItems []services.UpdatedItemRequest `json:"updated_items"`
-	}
+	var req services.ResubmitReturnedRequestData
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
@@ -776,7 +774,7 @@ func (c *SupplyRequestController) ResubmitReturnedRequest(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.supplyRequestService.ResubmitReturnedRequest(requestID, req.UpdatedItems); err != nil {
+	if err := c.supplyRequestService.ResubmitReturnedRequest(requestID, req); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   err.Error(),
