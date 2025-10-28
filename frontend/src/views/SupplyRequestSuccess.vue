@@ -20,13 +20,13 @@
         </p>
       </div>
 
-      <!-- Información de la solicitud -->
-      <div v-if="requestData" class="bg-gray-50 rounded-lg p-4 mb-6">
+      <!-- Información de la solicitud 
+      <div v-if="requestData || requestId" class="bg-gray-50 rounded-lg p-4 mb-6">
         <h3 class="text-sm font-semibold text-gray-700 mb-3">Detalles de la solicitud:</h3>
         <div class="space-y-2 text-sm">
           <div class="flex justify-between">
             <span class="text-gray-600">Número de solicitud:</span>
-            <span class="font-medium">{{ requestData.request_number || requestData.id }}</span>
+            <span class="font-medium">{{ requestData?.request_number || requestData?.id || requestId }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-600">Estado:</span>
@@ -34,18 +34,18 @@
               Pendiente
             </span>
           </div>
-          <div class="flex justify-between">
+          <div v-if="requestData?.priority" class="flex justify-between">
             <span class="text-gray-600">Prioridad:</span>
             <span class="font-medium capitalize">{{ getPriorityLabel(requestData.priority) }}</span>
           </div>
-          <div class="flex justify-between">
+          <div v-if="requestData?.pavilion_id || requestData?.pavilion_name" class="flex justify-between">
             <span class="text-gray-600">Pabellón:</span>
-            <span class="font-medium">{{ getPavilionName(requestData.pavilion_id) }}</span>
+            <span class="font-medium">{{ requestData?.pavilion_name || getPavilionName(requestData?.pavilion_id) }}</span>
           </div>
         </div>
-      </div>
+      </div>-->
 
-      <!-- Próximos pasos -->
+      <!-- Próximos pasos 
       <div class="bg-blue-50 rounded-lg p-4 mb-6">
         <h3 class="text-sm font-semibold text-blue-900 mb-2">Próximos pasos:</h3>
         <ul class="text-sm text-blue-800 space-y-1">
@@ -53,7 +53,7 @@
           <li>• Recibirás notificaciones sobre el estado de tu solicitud</li>
           <li>• Una vez aprobada, se asignarán códigos QR a los insumos</li>
         </ul>
-      </div>
+      </div>-->
 
       <!-- Botones de acción -->
       <div class="flex flex-col space-y-3">
@@ -113,18 +113,34 @@ import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '@/services/supplyRequestService'
 import pavilionService from '@/services/pavilionService'
 
+// Props
+const props = defineProps({
+  requestId: {
+    type: Number,
+    default: null
+  },
+  requestData: {
+    type: Object,
+    default: null
+  }
+})
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
 const requestData = ref(null)
+const requestId = ref(null)
 const pavilions = ref([])
 
 // Cargar datos de la solicitud desde los parámetros de la ruta
 onMounted(async () => {
+  // Obtener el ID de la solicitud (desde props o desde params)
+  requestId.value = props.requestId || parseInt(route.params.id)
+  
   // Obtener datos de la solicitud desde el state de la navegación
-  if (route.params.requestData) {
-    requestData.value = route.params.requestData
+  if (props.requestData || route.params.requestData) {
+    requestData.value = props.requestData || route.params.requestData
   }
   
   // Cargar pabellones para mostrar nombres
@@ -141,15 +157,26 @@ const getPriorityLabel = (priority) => {
 }
 
 const getPavilionName = (pavilionId) => {
-  const pavilion = pavilions.value.find(p => p.id === pavilionId)
-  return pavilion ? pavilion.name : `Pabellón ${pavilionId}`
+  // Buscar el pavilion_id en diferentes ubicaciones posibles
+  const id = pavilionId || 
+             requestData.value?.pavilion_id || 
+             requestData.value?.request?.pavilion_id
+  
+  if (!id) return 'No especificado'
+  
+  const pavilion = pavilions.value.find(p => p.id === id)
+  return pavilion ? pavilion.name : `Pabellón ${id}`
 }
 
 // Métodos de navegación
 const viewRequestDetails = () => {
-  if (requestData.value && requestData.value.id) {
-    router.push(`/supply-requests/${requestData.value.id}`)
+  if (requestId.value) {
+    router.push({
+      name: 'SupplyRequestDetails',
+      params: { id: requestId.value }
+    })
   } else {
+    console.warn('No se encontró el ID de la solicitud, navegando al listado')
     router.push('/supply-requests')
   }
 }

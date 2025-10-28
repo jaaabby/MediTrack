@@ -137,9 +137,6 @@ class ReturnToBodegaService {
         data = []
       }
       
-      console.log('✅ Datos finales extraídos:', data)
-      console.log('✅ Cantidad de elementos:', data.length)
-      
       return data
     } catch (error) {
       console.error('❌ Error obteniendo insumos para retorno:', error)

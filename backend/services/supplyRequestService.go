@@ -110,6 +110,12 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 		}
 		medicalCenterID = pavilion.MedicalCenterID
 
+		// Si no hay notas iniciales, guardar un espacio para mantener el orden
+		notes := request.Notes
+		if notes == "" {
+			notes = " " // Espacio en blanco para indicar "sin observaciones"
+		}
+
 		// Crear la solicitud principal
 		supplyRequest = models.SupplyRequest{
 			RequestNumber:   models.GenerateRequestNumber(),
@@ -119,7 +125,7 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 			RequestDate:     time.Now(),
 			SurgeryDatetime: request.SurgeryDatetime.Time,
 			Status:          models.RequestStatusPendingPavedad, // Estado inicial: pendiente de asignación por Pavedad
-			Notes:           request.Notes,
+			Notes:           notes,
 			MedicalCenterID: medicalCenterID,
 		}
 
@@ -642,17 +648,17 @@ func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, re
 		supplyRequest.AssignedByPavedad = &req.AssignedByPavedad
 		supplyRequest.AssignedByPavedadName = &req.AssignedByPavedadName
 
-		// Agregar notas de Pavedad al historial de notes
-		if req.PavedadNotes != "" {
-			timestamp := now.Format("02/01/2006 15:04")
-			pavedadHeader := fmt.Sprintf("\n\n[Asignación por %s - %s]:\n", req.AssignedByPavedadName, timestamp)
-			pavedadComment := fmt.Sprintf("Asignado a: %s\n%s", req.AssignedToName, req.PavedadNotes)
+		// Agregar notas de Pavedad al historial de notes (solo el comentario)
+		// Si no hay notas de Pavedad, agregar un espacio para mantener el orden
+		pavedadComment := req.PavedadNotes
+		if pavedadComment == "" {
+			pavedadComment = " " // Espacio en blanco para indicar "sin observaciones"
+		}
 
-			if supplyRequest.Notes == "" {
-				supplyRequest.Notes = pavedadHeader + pavedadComment
-			} else {
-				supplyRequest.Notes = supplyRequest.Notes + pavedadHeader + pavedadComment
-			}
+		if supplyRequest.Notes == "" {
+			supplyRequest.Notes = pavedadComment
+		} else {
+			supplyRequest.Notes = supplyRequest.Notes + "\n\n" + pavedadComment
 		}
 
 		supplyRequest.Status = "asignado_bodega"
@@ -768,22 +774,16 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 					}
 				}
 
-				// Agregar al historial de notes si hay comentarios
-				if returnComments != "" {
-					reviewerName := "Encargado de Bodega"
-					if req.ReviewedByName != "" {
-						reviewerName = req.ReviewedByName
-					}
+				// Agregar comentarios de devolución a notes (solo los comentarios)
+				// Si no hay comentarios de devolución, agregar un espacio para mantener el orden
+				if returnComments == "" {
+					returnComments = " " // Espacio en blanco para indicar "sin observaciones"
+				}
 
-					now := time.Now()
-					timestamp := now.Format("02/01/2006 15:04")
-					notesHeader := fmt.Sprintf("\n\n[Devolución por %s - %s]:\n", reviewerName, timestamp)
-
-					if request.Notes == "" {
-						request.Notes = notesHeader + returnComments
-					} else {
-						request.Notes = request.Notes + notesHeader + returnComments
-					}
+				if request.Notes == "" {
+					request.Notes = returnComments
+				} else {
+					request.Notes = request.Notes + "\n\n" + returnComments
 				}
 
 				// Enviar correo de devolución
@@ -795,6 +795,9 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 			} else if allAccepted == totalItems {
 				request.Status = "aprobado" // Todos aceptados
+				request.ApprovalDate = &now
+				request.ApprovedBy = &req.ReviewedBy
+				request.ApprovedByName = &req.ReviewedByName
 
 				// Enviar correo de aprobación
 				go func() {
@@ -805,6 +808,9 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 			} else {
 				request.Status = "parcialmente_aprobado" // Algunos rechazados
+				request.ApprovalDate = &now
+				request.ApprovedBy = &req.ReviewedBy
+				request.ApprovedByName = &req.ReviewedByName
 
 				// Enviar correo de aprobación parcial (usar template de aprobado)
 				go func() {
@@ -877,17 +883,17 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			// Los items aceptados no se tocan, se mantienen como están
 		}
 
-		// Agregar las nuevas observaciones del solicitante al historial
-		if data.Notes != "" {
-			now := time.Now()
-			timestamp := now.Format("02/01/2006 15:04")
-			resubmitHeader := fmt.Sprintf("\n\n[Reenvío por %s - %s]:\n", request.RequestedByName, timestamp)
+		// Agregar las nuevas observaciones del solicitante al historial (solo el comentario)
+		// Si no hay notas de reenvío, agregar un espacio para mantener el orden
+		resubmitComment := data.Notes
+		if resubmitComment == "" {
+			resubmitComment = " " // Espacio en blanco para indicar "sin observaciones"
+		}
 
-			if request.Notes == "" {
-				request.Notes = resubmitHeader + data.Notes
-			} else {
-				request.Notes = request.Notes + resubmitHeader + data.Notes
-			}
+		if request.Notes == "" {
+			request.Notes = resubmitComment
+		} else {
+			request.Notes = request.Notes + "\n\n" + resubmitComment
 		}
 
 		// Cambiar el estado de la solicitud a "devuelto_al_encargado" para que el encargado revise nuevamente

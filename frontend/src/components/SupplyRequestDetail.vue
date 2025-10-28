@@ -144,7 +144,11 @@
                 <!-- Solicitud creada -->
                 <li>
                   <div class="relative pb-8">
-                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <span 
+                      v-if="request.assigned_date || request.approval_date || request.status === 'rechazado' || request.status === 'devuelto' || request.status === 'devuelto_al_encargado' || request.completed_date || parseAllComments().some(c => c.type === 'devolución' || c.type === 'reenvío')" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
                     <div class="relative flex space-x-3">
                       <div>
                         <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
@@ -157,7 +161,9 @@
                         <p class="text-sm font-medium text-gray-900">Solicitud creada</p>
                         <p class="text-sm text-gray-500">{{ formatDate(request.request_date) }}</p>
                         <p class="text-xs text-gray-400">por {{ request.requested_by_name }}</p>
-                        <p v-if="getOriginalNotes()" class="text-xs text-gray-600 mt-1 italic">"{{ getOriginalNotes() }}"</p>
+                        <p class="text-xs mt-1 italic" :class="getOriginalNotes() && getOriginalNotes().trim() === '' ? 'text-gray-400' : 'text-gray-600'">
+                          "{{ getOriginalNotes() && getOriginalNotes().trim() === '' ? 'No hay observaciones' : getOriginalNotes() }}"
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -166,7 +172,11 @@
                 <!-- Asignación por Pavedad (si existe) -->
                 <li v-if="request.assigned_date">
                   <div class="relative pb-8">
-                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <span 
+                      v-if="request.approval_date || request.status === 'rechazado' || request.status === 'devuelto' || request.status === 'devuelto_al_encargado' || request.status === 'cancelado' || request.completed_date || parseAllComments().some(c => c.type === 'devolución' || c.type === 'reenvío')" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
                     <div class="relative flex space-x-3">
                       <div>
                         <span class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center ring-8 ring-white">
@@ -176,13 +186,42 @@
                         </span>
                       </div>
                       <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Asignada a bodega</p>
+                        <p class="text-sm font-medium text-gray-900">Asignada</p>
                         <p class="text-sm text-gray-500">{{ formatDate(request.assigned_date) }}</p>
                         <p class="text-xs text-gray-400">por {{ request.assigned_by_pavedad_name }}</p>
                         <p class="text-xs text-gray-600 mt-1">Asignada a: {{ request.assigned_to_name }}</p>
                         <template v-for="comment in parseAllComments().filter(c => c.type === 'asignación')" :key="comment.date">
-                          <p class="text-xs text-gray-600 mt-1 italic">"{{ comment.content }}"</p>
+                          <p class="text-xs mt-1 italic" :class="comment.content.trim() === '' ? 'text-gray-400' : 'text-gray-600'">
+                            "{{ comment.content.trim() === '' ? 'No hay observaciones' : comment.content }}"
+                          </p>
                         </template>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Aprobada (si existe) -->
+                <li v-if="request.approval_date && !['rechazado', 'devuelto', 'devuelto_al_encargado'].includes(request.status)">
+                  <div class="relative pb-8">
+                    <span 
+                      v-if="request.status === 'devuelto' || request.status === 'devuelto_al_encargado' || request.completed_date || parseAllComments().some(c => c.type === 'devolución' || c.type === 'reenvío')" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">
+                          {{ request.status === 'parcialmente_aprobado' ? 'Solicitud parcialmente aprobada' : 'Solicitud aprobada' }}
+                        </p>
+                        <p class="text-sm text-gray-500">{{ formatDate(request.approval_date) }}</p>
+                        <p class="text-xs text-gray-400">por {{ request.approved_by_name }}</p>
                       </div>
                     </div>
                   </div>
@@ -191,7 +230,7 @@
                 <!-- Rechazada (si existe) -->
                 <li v-if="request.status === 'rechazado'">
                   <div class="relative pb-8">
-                    <span v-if="!request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <span v-if="request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
                     <div class="relative flex space-x-3">
                       <div>
                         <span class="h-8 w-8 rounded-full bg-red-500 flex items-center justify-center ring-8 ring-white">
@@ -207,31 +246,14 @@
                   </div>
                 </li>
 
-                <!-- Items aprobados (si el encargado aprobó items) -->
-                <li v-if="request.approval_date && request.status !== 'rechazado'">
-                  <div class="relative pb-8">
-                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Items revisados</p>
-                        <p class="text-sm text-gray-500">{{ formatDate(request.approval_date) }}</p>
-                        <p class="text-xs text-gray-400">por {{ request.approved_by_name }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
                 <!-- Devuelta (si existe y aún está devuelta) -->
                 <li v-if="request.status === 'devuelto' || request.status === 'devuelto_al_encargado' || parseAllComments().some(c => c.type === 'devolución')">
                   <div class="relative pb-8">
-                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <span 
+                      v-if="request.status === 'devuelto_al_encargado' || request.status === 'cancelado' || request.completed_date || parseAllComments().some(c => c.type === 'reenvío')" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
                     <div class="relative flex space-x-3">
                       <div>
                         <span class="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center ring-8 ring-white">
@@ -257,7 +279,11 @@
                 <!-- Reenviado al encargado (si existe) -->
                 <li v-if="request.status === 'devuelto_al_encargado' || parseAllComments().some(c => c.type === 'reenvío')">
                   <div class="relative pb-8">
-                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <span 
+                      v-if="request.status === 'cancelado' || request.completed_date" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
                     <div class="relative flex space-x-3">
                       <div>
                         <span class="h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center ring-8 ring-white">
@@ -275,45 +301,6 @@
                             <p class="text-gray-600 mt-0.5 italic whitespace-pre-wrap">"{{ comment.content }}"</p>
                           </div>
                         </template>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
-                <!-- Cancelado (si existe) -->
-                <li v-if="request.status === 'cancelado'">
-                  <div class="relative pb-8">
-                    <span v-if="!request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-gray-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Solicitud cancelada</p>
-                        <p class="text-xs text-gray-600 mt-1">La solicitud fue cancelada</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
-                <!-- Completado (si existe) -->
-                <li v-if="request.completed_date">
-                  <div class="relative">
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Solicitud completada</p>
-                        <p class="text-sm text-gray-500">{{ formatDate(request.completed_date) }}</p>
                       </div>
                     </div>
                   </div>
@@ -606,7 +593,9 @@
                         <p class="text-xs font-medium text-gray-700">{{ comment.author }}</p>
                         <p v-if="comment.date" class="text-xs text-gray-500 ml-2">{{ comment.date }}</p>
                       </div>
-                      <p class="text-xs text-gray-900 whitespace-pre-wrap mt-0.5">{{ comment.content }}</p>
+                      <p class="text-xs whitespace-pre-wrap mt-0.5" :class="comment.content.trim() === '' ? 'text-gray-400 italic' : 'text-gray-900'">
+                        {{ comment.content.trim() === '' ? 'No hay observaciones' : comment.content }}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -812,6 +801,9 @@ const loadSupplyRequest = async () => {
       items.value = result.data.items || []
       assignments.value = result.data.assignments || []
       console.log('Solicitud cargada:', result.data)
+      console.log('Estado:', request.value.status)
+      console.log('Fecha de aprobación:', request.value.approval_date)
+      console.log('Aprobado por:', request.value.approved_by_name)
     } else {
       error.value = result.error || 'Solicitud no encontrada'
     }
@@ -1092,67 +1084,79 @@ const isSurgeryUrgent = (surgeryDatetime) => {
 const getStatusLabel = (status) => supplyRequestService.getStatusLabel(status)
 const getPriorityLabel = (priority) => supplyRequestService.getPriorityLabel(priority)
 
-// Parsear comentarios del campo notes y separarlos por tipo
+// Parsear comentarios del campo notes y separarlos por tipo usando los campos de la BD
 const parseAllComments = () => {
-  if (!request.value?.notes) return []
-  
-  const notes = request.value.notes
   const comments = []
   
-  // Regex para encontrar todos los marcadores [Tipo por Autor - Fecha]:
-  const markerRegex = /\n\n\[(Asignación|Devolución|Reenvío) por (.+?) - (.+?)\]:\n/g
+  if (!request.value) return comments
   
-  let lastIndex = 0
-  let match
+  // Dividir el campo notes por doble salto de línea - NO FILTRAR espacios para mantener posiciones
+  const notesArray = request.value.notes ? request.value.notes.split('\n\n') : []
   
-  // Buscar todos los marcadores
-  const markers = []
-  while ((match = markerRegex.exec(notes)) !== null) {
-    markers.push({
-      type: match[1], // "Asignación" o "Devolución"
-      author: match[2],
-      date: match[3],
-      startIndex: match.index,
-      endIndex: match.index + match[0].length
+  if (notesArray.length === 0) return comments
+  
+  // Construir una línea de tiempo con todos los eventos que pueden tener comentarios
+  const timeline = []
+  
+  // 1. Comentario original del solicitante (request_date) - SIEMPRE existe
+  timeline.push({
+    type: 'solicitante',
+    author: request.value.requested_by_name || 'Solicitante',
+    date: request.value.request_date ? new Date(request.value.request_date) : null,
+    hasComment: true
+  })
+  
+  // 2. Comentario de asignación por Pavedad (assigned_date)
+  if (request.value.assigned_date && request.value.assigned_by_pavedad_name) {
+    timeline.push({
+      type: 'asignación',
+      author: request.value.assigned_by_pavedad_name,
+      date: new Date(request.value.assigned_date),
+      hasComment: true
     })
   }
   
-  // Si hay marcadores, procesar
-  if (markers.length > 0) {
-    // Agregar el comentario original (antes del primer marcador)
-    const originalNotes = notes.substring(0, markers[0].startIndex).trim()
-    if (originalNotes) {
-      comments.push({
-        type: 'solicitante',
-        author: request.value.requested_by_name || 'Solicitante',
-        content: originalNotes,
-        date: null
-      })
-    }
-    
-    // Agregar cada comentario marcado
-    markers.forEach((marker, index) => {
-      const nextMarkerIndex = index < markers.length - 1 ? markers[index + 1].startIndex : notes.length
-      const content = notes.substring(marker.endIndex, nextMarkerIndex).trim()
-      
-      comments.push({
-        type: marker.type.toLowerCase(),
-        author: marker.author,
-        content: content,
-        date: marker.date
-      })
+  // 3. Comentarios de devolución (approval_date cuando hay items devueltos)
+  const hasReturnedItems = items.value?.some(item => item.item_status === 'devuelto')
+  if (hasReturnedItems && request.value.approval_date) {
+    timeline.push({
+      type: 'devolución',
+      author: request.value.approved_by_name || 'Encargado de Bodega',
+      date: new Date(request.value.approval_date),
+      hasComment: true
     })
-  } else {
-    // Si no hay marcadores, todo es del solicitante
-    if (notes.trim()) {
+  }
+  
+  // 4. Comentario de reenvío (cuando el status es devuelto_al_encargado)
+  if (request.value.status === 'devuelto_al_encargado') {
+    timeline.push({
+      type: 'reenvío',
+      author: request.value.requested_by_name || 'Solicitante',
+      date: request.value.updated_at ? new Date(request.value.updated_at) : new Date(),
+      hasComment: true
+    })
+  }
+  
+  // Ordenar la línea de tiempo por fecha
+  timeline.sort((a, b) => {
+    if (!a.date) return -1
+    if (!b.date) return 1
+    return a.date - b.date
+  })
+  
+  // Asignar los comentarios del array notesArray a la línea de tiempo
+  // IMPORTANTE: No filtrar, respetar el orden y las posiciones
+  timeline.forEach((event, index) => {
+    if (index < notesArray.length) {
+      const content = notesArray[index]
       comments.push({
-        type: 'solicitante',
-        author: request.value.requested_by_name || 'Solicitante',
-        content: notes.trim(),
-        date: null
+        type: event.type,
+        author: event.author,
+        content: content, // Mantener el contenido tal cual (puede ser espacio)
+        date: formatDate(event.date)
       })
     }
-  }
+  })
   
   return comments
 }

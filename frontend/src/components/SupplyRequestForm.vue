@@ -462,13 +462,7 @@ const loadPavilions = async () => {
   loadingPavilions.value = true
   try {
     const result = await pavilionService.getAllPavilions()
-    console.log('📥 Resultado crudo de getAllPavilions:', result)
-    console.log('📥 Tipo:', typeof result, '¿Es array?', Array.isArray(result))
-    if (result && result.length > 0) {
-      console.log('📥 Primer elemento:', result[0])
-    }
     pavilions.value = result
-    console.log('✅ Pabellones asignados a pavilions.value:', pavilions.value)
   } catch (error) {
     console.error('Error cargando pabellones:', error)
     errors.value.push('Error al cargar la lista de pabellones')
@@ -483,7 +477,6 @@ const loadMedicalSupplies = async () => {
   try {
     const result = await inventoryService.getAllSupplyCodes()
     medicalSupplies.value = result
-    console.log('Códigos de insumo cargados:', medicalSupplies.value)
   } catch (error) {
     console.error('Error cargando códigos de insumo:', error)
     errors.value.push('Error al cargar la lista de códigos de insumo')
