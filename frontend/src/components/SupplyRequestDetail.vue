@@ -264,11 +264,11 @@
                       </div>
                       <div class="min-w-0 flex-1 pt-1.5">
                         <p class="text-sm font-medium text-gray-900">Items devueltos</p>
-                        <p class="text-xs text-gray-600 mt-1">Algunos items requieren revisión del solicitante</p>
                         <template v-for="comment in parseAllComments().filter(c => c.type === 'devolución')" :key="comment.date">
-                          <div class="mt-2 text-xs">
-                            <p class="text-gray-500">{{ comment.author }} - {{ comment.date }}</p>
-                            <p class="text-gray-600 mt-0.5 italic whitespace-pre-wrap">"{{ comment.content }}"</p>
+                          <div class="mt-2">
+                            <p class="text-sm text-gray-500">{{ comment.date }}</p>
+                            <p class="text-xs text-gray-400">por {{ comment.author }}</p>
+                            <p class="text-xs mt-1 italic text-gray-600 whitespace-pre-wrap">"{{ comment.content }}"</p>
                           </div>
                         </template>
                       </div>
@@ -318,7 +318,13 @@
               <div v-for="(item, index) in items" :key="item.id" class="p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
                   <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-medium text-gray-900 truncate">{{ item.supply_name }}</h4>
+                    <div class="flex items-center gap-2 mb-1">
+                      <h4 class="text-sm font-medium text-gray-900 truncate">{{ item.supply_name }}</h4>
+                      <!-- Badge de estado del item -->
+                      <span v-if="item.item_status && item.item_status !== 'pendiente'" :class="getItemStatusBadgeClass(item.item_status)" class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap">
+                        {{ getItemStatusLabel(item.item_status) }}
+                      </span>
+                    </div>
                     <p class="text-xs sm:text-sm text-gray-500">Código: {{ item.supply_code }}</p>
                   </div>
                   <div class="text-left sm:text-right flex-shrink-0">
@@ -363,7 +369,31 @@
                   <p class="text-xs sm:text-sm text-gray-900 mt-1 bg-yellow-50 p-2 rounded">{{ item.special_requests }}</p>
                 </div>
 
-                <!-- Nota de devolución del encargado -->
+                <!-- Estado y comentarios del encargado de bodega -->
+                <!-- Item Rechazado -->
+                <div v-if="item.item_status === 'rechazado' && item.item_notes" class="mt-3 sm:mt-4">
+                  <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div class="flex items-start">
+                      <svg class="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div class="flex-1">
+                        <label class="block text-xs sm:text-sm font-medium text-red-800 mb-1">
+                          Motivo del rechazo
+                          <span v-if="item.reviewed_by_name" class="text-xs font-normal text-red-600">
+                            (por {{ item.reviewed_by_name }})
+                          </span>
+                        </label>
+                        <p class="text-xs sm:text-sm text-red-900">{{ item.item_notes }}</p>
+                        <p v-if="item.reviewed_at" class="text-xs text-red-600 mt-1">
+                          {{ formatDate(item.reviewed_at) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Item Devuelto -->
                 <div v-if="item.item_status === 'devuelto' && item.item_notes" class="mt-3 sm:mt-4">
                   <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
                     <div class="flex items-start">
@@ -379,6 +409,29 @@
                         </label>
                         <p class="text-xs sm:text-sm text-orange-900">{{ item.item_notes }}</p>
                         <p v-if="item.reviewed_at" class="text-xs text-orange-600 mt-1">
+                          {{ formatDate(item.reviewed_at) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Item Aceptado con comentario -->
+                <div v-if="item.item_status === 'aceptado' && item.item_notes" class="mt-3 sm:mt-4">
+                  <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div class="flex items-start">
+                      <svg class="h-5 w-5 text-green-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div class="flex-1">
+                        <label class="block text-xs sm:text-sm font-medium text-green-800 mb-1">
+                          Comentario
+                          <span v-if="item.reviewed_by_name" class="text-xs font-normal text-green-600">
+                            (por {{ item.reviewed_by_name }})
+                          </span>
+                        </label>
+                        <p class="text-xs sm:text-sm text-green-900">{{ item.item_notes }}</p>
+                        <p v-if="item.reviewed_at" class="text-xs text-green-600 mt-1">
                           {{ formatDate(item.reviewed_at) }}
                         </p>
                       </div>
@@ -1157,6 +1210,20 @@ const parseAllComments = () => {
       })
     }
   })
+
+    // 5. Agregar observaciones de items devueltos
+  if (items.value && items.value.length > 0) {
+    items.value.forEach(item => {
+      if (item.item_status === 'devuelto' && item.item_notes && item.item_notes.trim() !== '') {
+        comments.push({
+          type: 'devolución',
+          author: item.reviewed_by_name || 'Encargado de Bodega',
+          content: `Item "${item.supply_name}": ${item.item_notes}`,
+          date: item.reviewed_at ? formatDate(item.reviewed_at) : 'Sin fecha'
+        })
+      }
+    })
+  }
   
   return comments
 }
@@ -1190,6 +1257,26 @@ const getStatusBadgeClass = (status) => {
     'gray': 'bg-gray-100 text-gray-800'
   }
   return classes[color] || classes.gray
+}
+
+const getItemStatusBadgeClass = (status) => {
+  const classes = {
+    'pendiente': 'bg-yellow-100 text-yellow-800',
+    'aceptado': 'bg-green-100 text-green-800',
+    'rechazado': 'bg-red-100 text-red-800',
+    'devuelto': 'bg-orange-100 text-orange-800'
+  }
+  return classes[status] || 'bg-gray-100 text-gray-800'
+}
+
+const getItemStatusLabel = (status) => {
+  const labels = {
+    'pendiente': 'Pendiente',
+    'aceptado': 'Aceptado',
+    'rechazado': 'Rechazado',
+    'devuelto': 'Devuelto'
+  }
+  return labels[status] || status
 }
 
 const getUrgencyBadgeClass = (urgency) => {

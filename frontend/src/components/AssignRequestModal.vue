@@ -234,6 +234,9 @@ const handleAssign = async () => {
 
     emit('assigned')
     closeModal()
+    
+    // Recargar la página completa
+    window.location.reload()
   } catch (error) {
     console.error('Error asignando solicitud:', error)
     errorMessage.value = error.response?.data?.error || error.message || 'Error al asignar la solicitud'

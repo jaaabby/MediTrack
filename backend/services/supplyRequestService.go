@@ -679,7 +679,7 @@ func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, re
 }
 
 // GetPendingRequestsForPavedad obtiene todas las solicitudes para Pavedad (pendientes y asignadas)
-func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]models.SupplyRequest, error) {
+func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]SupplyRequestWithItems, error) {
 	var requests []models.SupplyRequest
 	// Pavedad ve tanto las pendientes como las ya asignadas
 	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "parcialmente_aprobado", "pendiente_revision", "devuelto"}).
@@ -690,11 +690,25 @@ func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]models.SupplyRe
 		return nil, fmt.Errorf("error obteniendo solicitudes para Pavedad: %v", err)
 	}
 
-	return requests, nil
+	// Convertir a SupplyRequestWithItems y calcular total_items
+	var requestsWithItems []SupplyRequestWithItems
+	for _, request := range requests {
+		var itemCount int64
+		s.DB.Model(&models.SupplyRequestItem{}).
+			Where("supply_request_id = ?", request.ID).
+			Count(&itemCount)
+
+		requestsWithItems = append(requestsWithItems, SupplyRequestWithItems{
+			SupplyRequest: request,
+			TotalItems:    itemCount,
+		})
+	}
+
+	return requestsWithItems, nil
 }
 
 // GetAssignedRequestsForWarehouseManager obtiene las solicitudes asignadas a un encargado de bodega específico
-func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseManagerRut string) ([]models.SupplyRequest, error) {
+func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseManagerRut string) ([]SupplyRequestWithItems, error) {
 	var requests []models.SupplyRequest
 	// Incluir todos los estados relevantes para el encargado de bodega
 	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "devuelto_al_encargado", "completado"}).
@@ -705,7 +719,21 @@ func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseM
 		return nil, fmt.Errorf("error obteniendo solicitudes asignadas: %v", err)
 	}
 
-	return requests, nil
+	// Convertir a SupplyRequestWithItems y calcular total_items
+	var requestsWithItems []SupplyRequestWithItems
+	for _, request := range requests {
+		var itemCount int64
+		s.DB.Model(&models.SupplyRequestItem{}).
+			Where("supply_request_id = ?", request.ID).
+			Count(&itemCount)
+
+		requestsWithItems = append(requestsWithItems, SupplyRequestWithItems{
+			SupplyRequest: request,
+			TotalItems:    itemCount,
+		})
+	}
+
+	return requestsWithItems, nil
 }
 
 // ReviewItemRequest representa la estructura para revisar un item individual
