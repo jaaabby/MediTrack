@@ -584,7 +584,7 @@ class InventoryService {
       params.append('end_date', endDate)
       params.append('group_by', groupBy)
 
-      const response = await this.api.get(`/inventory/transfer-report?${params.toString()}`)
+      const response = await this.api.get(`/inventory/reports/transfers?${params.toString()}`)
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener reporte de transferencias:', error)

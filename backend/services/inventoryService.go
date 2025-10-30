@@ -319,28 +319,28 @@ func (s *InventoryService) GetInventorySummary(medicalCenterID *int) (map[string
 	// Total en bodegas
 	var totalInStores int64
 	query.Model(&models.StoreInventorySummary{}).
-		Select("SUM(current_in_store)").
+		Select("COALESCE(SUM(current_in_store), 0)").
 		Scan(&totalInStores)
 	summary["total_in_stores"] = totalInStores
 
 	// Total en pabellones
 	var totalInPavilions int64
 	query.Model(&models.PavilionInventorySummary{}).
-		Select("SUM(current_available)").
+		Select("COALESCE(SUM(current_available), 0)").
 		Scan(&totalInPavilions)
 	summary["total_in_pavilions"] = totalInPavilions
 
 	// Total transferido
 	var totalTransferred int64
 	query.Model(&models.StoreInventorySummary{}).
-		Select("SUM(total_transferred_out)").
+		Select("COALESCE(SUM(total_transferred_out), 0)").
 		Scan(&totalTransferred)
 	summary["total_transferred"] = totalTransferred
 
 	// Total consumido
 	var totalConsumed int64
 	query.Model(&models.PavilionInventorySummary{}).
-		Select("SUM(total_consumed)").
+		Select("COALESCE(SUM(total_consumed), 0)").
 		Scan(&totalConsumed)
 	summary["total_consumed"] = totalConsumed
 
