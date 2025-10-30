@@ -40,14 +40,6 @@
               @keyup.enter="handleSearch"
             />
           </div>
-          <input
-            id="search"
-            type="text"
-            placeholder="Ingrese nombre, código o lote del insumo..."
-            class="form-input pl-10 w-full"
-            v-model="searchQuery"
-            @keyup.enter="handleSearch"
-          />
         </div>
         <div class="flex flex-col sm:flex-row gap-3 md:flex-shrink-0">
           <button @click="handleSearch" class="btn-primary w-full sm:w-auto flex items-center justify-center whitespace-nowrap">
