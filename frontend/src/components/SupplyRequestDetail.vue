@@ -251,21 +251,39 @@
                       :key="assignment.id"
                       class="bg-blue-50 p-2 sm:p-3 rounded border"
                     >
-                      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                        <code class="text-xs font-mono break-all">{{ assignment.qr_code }}</code>
-                        <span :class="getAssignmentStatusBadgeClass(assignment.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap self-start sm:self-auto">
+                      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                        <!-- Imagen del QR Code -->
+                        <div class="flex items-center gap-3 flex-1">
+                          <div class="flex-shrink-0 bg-white p-2 rounded border border-gray-200 shadow-sm">
+                            <QrcodeVue 
+                              :value="assignment.qr_code" 
+                              :size="80" 
+                              level="M"
+                              render-as="canvas"
+                            />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <code class="text-xs font-mono break-all block mb-1 font-semibold text-gray-700">{{ assignment.qr_code }}</code>
+                            <div v-if="assignment.assigned_date" class="text-xs text-gray-500 mb-2">
+                              Asignado: {{ formatDate(assignment.assigned_date) }}
+                            </div>
+                            <!-- Botones de acción -->
+                            <div class="flex flex-wrap gap-2 mt-2">
+                              <button
+                                v-if="authStore.user?.role === 'encargado de bodega'"
+                                @click="goToScannerWithQR(assignment.qr_code)"
+                                class="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                              >
+                                Ver trazabilidad →
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <!-- Badge de estado -->
+                        <span :class="getAssignmentStatusBadgeClass(assignment.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap self-start">
                           {{ getAssignmentStatusLabel(assignment.status) }}
                         </span>
                       </div>
-                      <div v-if="assignment.assigned_date" class="text-xs text-gray-500 mt-1">
-                        Asignado: {{ formatDate(assignment.assigned_date) }}
-                      </div>
-                      <button
-                        @click="viewQRTraceability(assignment.qr_code)"
-                        class="text-xs text-blue-600 hover:text-blue-800 mt-2 block"
-                      >
-                        Ver trazabilidad →
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -635,50 +653,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Trazabilidad QR -->
-          <div v-if="selectedQRTraceability" class="bg-white rounded-lg shadow border p-4 sm:p-6">
-            <div class="flex justify-between items-center mb-3 sm:mb-4">
-              <h3 class="text-base sm:text-lg font-semibold text-gray-900">Trazabilidad QR</h3>
-              <button
-                @click="selectedQRTraceability = null"
-                class="text-gray-400 hover:text-gray-600"
-              >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div class="space-y-2 sm:space-y-3">
-              <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700">Código QR</label>
-                <code class="text-xs sm:text-sm bg-gray-100 px-2 py-1 rounded break-all">{{ selectedQRTraceability.qr_code }}</code>
-              </div>
-              <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700">Estado Actual</label>
-                <span :class="getAssignmentStatusBadgeClass(selectedQRTraceability.current_status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1">
-                  {{ getAssignmentStatusLabel(selectedQRTraceability.current_status) }}
-                </span>
-              </div>
-              
-              <!-- Historial de movimientos -->
-              <div v-if="selectedQRTraceability.assignments && selectedQRTraceability.assignments.length > 0">
-                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Historial</label>
-                <div class="space-y-2">
-                  <div
-                    v-for="assignment in selectedQRTraceability.assignments"
-                    :key="assignment.id"
-                    class="border-l-2 border-blue-200 pl-2 sm:pl-3 pb-2"
-                  >
-                    <div class="text-xs sm:text-sm font-medium text-gray-900">{{ assignment.status }}</div>
-                    <div class="text-xs text-gray-500">{{ formatDate(assignment.assigned_date) }}</div>
-                    <div v-if="assignment.notes" class="text-xs text-gray-600 mt-1">{{ assignment.notes }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -782,6 +756,7 @@ import { es } from 'date-fns/locale'
 import Swal from 'sweetalert2'
 import AssignRequestModal from '@/components/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/ReviewItemsModal.vue'
+import QrcodeVue from 'qrcode.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -966,6 +941,16 @@ const goToEditRequest = async () => {
       text: 'No se pudo navegar a la página de edición: ' + error.message
     })
   }
+}
+
+const goToScannerWithQR = (qrCode) => {
+  // Navegar al escáner QR con el código pre-escaneado
+  router.push({
+    name: 'QRScanner',
+    query: { 
+      qr: qrCode // El componente QRScanner espera el parámetro 'qr'
+    }
+  })
 }
 
 const viewQRTraceability = async (qrCode) => {

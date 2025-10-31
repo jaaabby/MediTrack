@@ -161,8 +161,27 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 		return nil, err
 	}
 
+	// Obtener la solicitud completa con items
+	fullRequest, err := s.GetSupplyRequestByID(supplyRequest.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Enviar correos de notificación
+	go func() {
+		// Correo al solicitante
+		if err := s.sendRequestCreatedEmailToRequester(fullRequest); err != nil {
+			fmt.Printf("Error enviando correo al solicitante: %v\n", err)
+		}
+
+		// Correo a todos los usuarios Pavedad
+		if err := s.sendRequestCreatedEmailToPavedad(fullRequest); err != nil {
+			fmt.Printf("Error enviando correo a Pavedad: %v\n", err)
+		}
+	}()
+
 	// Retornar la solicitud completa con items
-	return s.GetSupplyRequestByID(supplyRequest.ID)
+	return fullRequest, nil
 }
 
 // GetSupplyRequestByID obtiene una solicitud por ID con todos sus items y relaciones
@@ -369,6 +388,7 @@ func (s *SupplyRequestService) AssignQRToRequest(assignment AssignQRToRequestReq
 			SupplyRequestID:     assignment.SupplyRequestID,
 			SupplyRequestItemID: assignment.SupplyRequestItemID,
 			MedicalSupplyID:     medicalSupply.ID,
+			QRCode:              assignment.QRCode,
 			AssignedDate:        time.Now(),
 			AssignedBy:          assignment.AssignedBy,
 			AssignedByName:      assignment.AssignedByName,
@@ -764,6 +784,73 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 			item.ItemNotes = req.Comment
 		}
 
+		// Si el item fue ACEPTADO, asignar automáticamente insumos del inventario
+		if req.ItemStatus == "aceptado" {
+			// Buscar insumos disponibles con el mismo código (supply_code)
+			var availableSupplies []models.MedicalSupply
+			if err := tx.Where("code = ? AND status = ? AND location_type = ?",
+				item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
+				Order("updated_at ASC"). // FIFO: primero el más antiguo
+				Limit(item.QuantityRequested).
+				Find(&availableSupplies).Error; err != nil {
+				return fmt.Errorf("error buscando insumos disponibles: %v", err)
+			}
+
+			// Verificar que hay suficientes insumos disponibles
+			if len(availableSupplies) < item.QuantityRequested {
+				return fmt.Errorf("no hay suficientes insumos disponibles. Requeridos: %d, Disponibles: %d",
+					item.QuantityRequested, len(availableSupplies))
+			}
+
+			// Crear asignaciones QR automáticas para cada insumo
+			for i := 0; i < item.QuantityRequested; i++ {
+				supply := availableSupplies[i]
+
+				// Obtener el insumo completo con su QR code
+				var fullSupply models.MedicalSupply
+				if err := tx.First(&fullSupply, supply.ID).Error; err != nil {
+					return fmt.Errorf("error obteniendo insumo: %v", err)
+				}
+
+				// Crear la asignación QR (insertando directamente con SQL para incluir qr_code)
+				qrAssignment := map[string]interface{}{
+					"supply_request_id":      item.SupplyRequestID,
+					"supply_request_item_id": item.ID,
+					"medical_supply_id":      fullSupply.ID,
+					"qr_code":                fullSupply.QRCode,
+					"assigned_date":          now,
+					"assigned_by":            req.ReviewedBy,
+					"assigned_by_name":       req.ReviewedByName,
+					"status":                 models.AssignmentStatusAssigned,
+					"notes":                  "Asignado automáticamente al aprobar el item",
+					"created_at":             now,
+					"updated_at":             now,
+				}
+
+				if err := tx.Table("supply_request_qr_assignment").Create(qrAssignment).Error; err != nil {
+					return fmt.Errorf("error creando asignación QR: %v", err)
+				}
+
+				// Registrar historial del insumo
+				history := models.SupplyHistory{
+					MedicalSupplyID: supply.ID,
+					DateTime:        now,
+					Status:          "reservado",
+					DestinationType: models.DestinationTypeStore,
+					DestinationID:   supply.LocationID,
+					UserRUT:         req.ReviewedBy,
+					Notes:           fmt.Sprintf("Reservado automáticamente para solicitud. Item: %s", item.SupplyName),
+				}
+
+				if err := tx.Create(&history).Error; err != nil {
+					return fmt.Errorf("error registrando historial: %v", err)
+				}
+			}
+
+			// Actualizar quantity_approved del item con la cantidad asignada
+			item.QuantityApproved = &item.QuantityRequested
+		}
+
 		if err := tx.Save(&item).Error; err != nil {
 			return fmt.Errorf("error actualizando item: %v", err)
 		}
@@ -929,16 +1016,14 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			// Los items aceptados no se tocan, se mantienen como están
 		}
 
-		// Agregar las nuevas observaciones del solicitante al historial del reenvío
-		// Los comentarios de items y el comentario general van juntos en la posición de "reenvío"
+		// Agregar las nuevas observaciones del solicitante al historial
+		// Primero los comentarios de items, luego el comentario general
 		var resubmitComment string
-		
-		// Agregar comentarios de items si existen
 		if itemComments != "" {
 			resubmitComment = itemComments
 		}
 
-		// Agregar comentario general del doctor si existe
+		// Si hay comentario general del doctor, agregarlo
 		if data.Notes != "" {
 			if resubmitComment != "" {
 				resubmitComment += "\n" + data.Notes
@@ -947,12 +1032,11 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			}
 		}
 
-		// Si no hay ningún comentario, agregar un espacio para mantener el orden del timeline
+		// Si no hay ningún comentario, agregar un espacio para mantener el orden
 		if resubmitComment == "" {
 			resubmitComment = " "
 		}
 
-		// Agregar el comentario de reenvío a notes (nueva posición en el timeline)
 		if request.Notes == "" {
 			request.Notes = resubmitComment
 		} else {
@@ -1119,5 +1203,124 @@ func (s *SupplyRequestService) sendRequestRejectedEmail(request *models.SupplyRe
 	}
 
 	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Rechazada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestCreatedEmailToRequester(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items de la solicitud
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ?", request.ID).Find(&items)
+
+	itemsData := []map[string]interface{}{}
+	for _, item := range items {
+		itemsData = append(itemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_created_requester.html")
+
+	notes := request.Notes
+	if notes == " " {
+		notes = ""
+	}
+
+	data := map[string]interface{}{
+		"RecipientName": request.RequestedByName,
+		"RequestNumber": request.RequestNumber,
+		"PavilionName":  pavilion.Name,
+		"SurgeryDate":   request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"Items":         itemsData,
+		"Notes":         notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Creada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestCreatedEmailToPavedad(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Pavedad
+	var pavedadUsers []models.User
+	if err := s.DB.Where("role = ?", "pavedad").Find(&pavedadUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Pavedad: %v", err)
+	}
+
+	if len(pavedadUsers) == 0 {
+		return fmt.Errorf("no hay usuarios Pavedad registrados")
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range pavedadUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		return fmt.Errorf("ningún usuario Pavedad tiene email registrado")
+	}
+
+	// Obtener información del pabellón y centro médico
+	var pavilion models.Pavilion
+	s.DB.Preload("MedicalCenter").First(&pavilion, request.PavilionID)
+
+	// Obtener items de la solicitud
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ?", request.ID).Find(&items)
+
+	itemsData := []map[string]interface{}{}
+	for _, item := range items {
+		itemsData = append(itemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	// Verificar si la cirugía es urgente (menos de 48 horas)
+	hoursUntilSurgery := time.Until(request.SurgeryDatetime).Hours()
+	isUrgent := hoursUntilSurgery < 48 && hoursUntilSurgery > 0
+
+	templatePath := filepath.Join("mailer", "templates", "request_created_pavedad.html")
+
+	notes := request.Notes
+	if notes == " " {
+		notes = ""
+	}
+
+	medicalCenterName := "N/A"
+	if pavilion.MedicalCenter.Name != "" {
+		medicalCenterName = pavilion.MedicalCenter.Name
+	}
+
+	data := map[string]interface{}{
+		"RequestNumber":     request.RequestNumber,
+		"RequestedByName":   request.RequestedByName,
+		"PavilionName":      pavilion.Name,
+		"MedicalCenterName": medicalCenterName,
+		"SurgeryDate":       request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"RequestDate":       request.RequestDate.Format("02/01/2006 15:04"),
+		"Items":             itemsData,
+		"TotalItems":        len(items),
+		"Notes":             notes,
+		"IsUrgent":          isUrgent,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Nueva Solicitud Pendiente - "+request.RequestNumber)
 	return mailReq.SendMailSkipTLS(templatePath, data)
 }

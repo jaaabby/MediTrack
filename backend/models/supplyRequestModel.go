@@ -62,6 +62,7 @@ type SupplyRequestQRAssignment struct {
 	SupplyRequestID     int        `json:"supply_request_id" gorm:"not null"`
 	SupplyRequestItemID int        `json:"supply_request_item_id" gorm:"not null"`
 	MedicalSupplyID     int        `json:"medical_supply_id" gorm:"not null"`
+	QRCode              string     `json:"qr_code" gorm:"not null"` // Código QR del insumo asignado
 	AssignedDate        time.Time  `json:"assigned_date" gorm:"not null"`
 	AssignedBy          string     `json:"assigned_by" gorm:"not null"`
 	AssignedByName      string     `json:"assigned_by_name" gorm:"not null"`
