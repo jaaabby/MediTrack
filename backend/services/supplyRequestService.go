@@ -798,7 +798,8 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 						if returnComments != "" {
 							returnComments += "\n"
 						}
-						returnComments += fmt.Sprintf("• %s (Cant: %d): %s", ri.SupplyName, ri.QuantityRequested, *ri.ItemNotes)
+						// Usar formato: Item "NombreItem": observación
+						returnComments += fmt.Sprintf("Item \"%s\": %s", ri.SupplyName, *ri.ItemNotes)
 					}
 				}
 
@@ -859,8 +860,9 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 // UpdatedItemRequest representa la actualización de un item devuelto
 type UpdatedItemRequest struct {
-	ItemID   int `json:"item_id"`
-	Quantity int `json:"quantity"`
+	ItemID   int    `json:"item_id"`
+	Quantity int    `json:"quantity"`
+	Notes    string `json:"notes"` // Nuevas observaciones del doctor sobre este item
 }
 
 // ResubmitReturnedRequestData representa los datos para reenviar una solicitud
@@ -883,6 +885,9 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			return fmt.Errorf("solo se pueden reenviar solicitudes devueltas")
 		}
 
+		// Recopilar observaciones de items para agregar a notes
+		var itemComments string
+
 		// Actualizar los items según los cambios del doctor
 		for _, updatedItem := range data.UpdatedItems {
 			var item models.SupplyRequestItem
@@ -897,12 +902,25 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 					item.QuantityRequested = updatedItem.Quantity
 				}
 
+				// Si hay nuevas notas del doctor, agregarlas a item_notes (sin borrar las anteriores)
+				if updatedItem.Notes != "" {
+					if item.ItemNotes != nil && *item.ItemNotes != "" {
+						// Agregar las nuevas notas con salto de línea doble
+						newNotes := *item.ItemNotes + "\n\n" + updatedItem.Notes
+						item.ItemNotes = &newNotes
+					} else {
+						item.ItemNotes = &updatedItem.Notes
+					}
+
+					// Agregar al comentario de items para notes usando formato: Item "NombreItem": observación
+					if itemComments != "" {
+						itemComments += "\n"
+					}
+					itemComments += fmt.Sprintf("Item \"%s\": %s", item.SupplyName, updatedItem.Notes)
+				}
+
 				// Resetear el estado a pendiente para que sea revisado nuevamente
 				item.ItemStatus = "pendiente"
-				item.ItemNotes = nil
-				item.ReviewedBy = nil
-				item.ReviewedByName = nil
-				item.ReviewedAt = nil
 
 				if err := tx.Save(&item).Error; err != nil {
 					return fmt.Errorf("error actualizando item: %v", err)
@@ -911,13 +929,30 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			// Los items aceptados no se tocan, se mantienen como están
 		}
 
-		// Agregar las nuevas observaciones del solicitante al historial (solo el comentario)
-		// Si no hay notas de reenvío, agregar un espacio para mantener el orden
-		resubmitComment := data.Notes
-		if resubmitComment == "" {
-			resubmitComment = " " // Espacio en blanco para indicar "sin observaciones"
+		// Agregar las nuevas observaciones del solicitante al historial del reenvío
+		// Los comentarios de items y el comentario general van juntos en la posición de "reenvío"
+		var resubmitComment string
+		
+		// Agregar comentarios de items si existen
+		if itemComments != "" {
+			resubmitComment = itemComments
 		}
 
+		// Agregar comentario general del doctor si existe
+		if data.Notes != "" {
+			if resubmitComment != "" {
+				resubmitComment += "\n" + data.Notes
+			} else {
+				resubmitComment = data.Notes
+			}
+		}
+
+		// Si no hay ningún comentario, agregar un espacio para mantener el orden del timeline
+		if resubmitComment == "" {
+			resubmitComment = " "
+		}
+
+		// Agregar el comentario de reenvío a notes (nueva posición en el timeline)
 		if request.Notes == "" {
 			request.Notes = resubmitComment
 		} else {

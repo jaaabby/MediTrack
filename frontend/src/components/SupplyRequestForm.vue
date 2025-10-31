@@ -235,6 +235,33 @@
               </div>
             </div>
 
+            <!-- Observaciones del item devuelto (solo en modo edición cuando item fue devuelto) -->
+            <div v-if="props.editMode && item.item_status === 'devuelto'" class="mt-4 space-y-3">
+              <!-- Mostrar observaciones anteriores del encargado -->
+              <div v-if="item.item_notes" class="bg-orange-50 border border-orange-200 rounded-md p-3">
+                <label class="block text-xs font-semibold text-orange-800 mb-1">
+                  Motivo de devolución del encargado:
+                </label>
+                <p class="text-xs text-orange-900 whitespace-pre-wrap">{{ item.item_notes }}</p>
+              </div>
+              
+              <!-- Campo para nuevas observaciones del doctor -->
+              <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Observaciones Insumo
+                </label>
+                <textarea
+                  v-model="item.resubmit_notes"
+                  rows="2"
+                  placeholder="Agregue sus observaciones..."
+                  class="w-full px-3 py-2 text-sm border border-orange-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                ></textarea>
+                <p class="mt-1 text-xs text-orange-600">
+                  Opcional: Agregue observaciones si modificó la cantidad o desea aclarar algo sobre este insumo.
+                </p>
+              </div>
+            </div>
+
             <!-- Especificaciones técnicas -->
             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Medidas/Tamaño 
@@ -611,12 +638,13 @@ const createNewRequest = async () => {
 
 // Reenviar solicitud devuelta
 const resubmitRequest = async () => {
-  // Preparar solo los items que fueron devueltos con sus nuevas cantidades
+  // Preparar solo los items que fueron devueltos con sus nuevas cantidades y observaciones
   const updatedItems = requestForm.items
     .filter(item => item.item_status === 'devuelto')
     .map(item => ({
       item_id: item.id,
-      quantity: item.quantity_requested
+      quantity: item.quantity_requested,
+      notes: item.resubmit_notes || '' // Nuevas observaciones del doctor sobre este item
     }))
   
   console.log('Reenviando solicitud con items:', updatedItems)
@@ -755,6 +783,8 @@ const loadRequestForEdit = async () => {
           quantity_requested: item.quantity_requested,
           is_pediatric: item.is_pediatric,
           item_status: item.item_status, // Para saber cuáles son editables
+          item_notes: item.item_notes, // Observaciones anteriores del encargado (solo lectura)
+          resubmit_notes: '', // Nuevas observaciones del doctor (editable)
           specifications: '',
           special_requests: '',
           urgency_level: 'normal',
