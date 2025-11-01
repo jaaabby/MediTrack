@@ -59,7 +59,7 @@
               v-model="requestForm.surgery_datetime"
               required
               :min="minDateTime"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="form-input"
             />
             <p class="text-xs text-gray-500 mt-1">
               {{ props.editMode ? 'Fecha y hora programada para la cirugía' : 'Selecciona la fecha y hora programada para la cirugía' }}
@@ -81,7 +81,7 @@
               id="pavilion"
               v-model="requestForm.pavilion_id"
               required
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="form-select text-sm"
               :disabled="loadingPavilions"
             >
               <option value="">Seleccionar pabellón</option>
@@ -110,7 +110,7 @@
             v-model="requestForm.notes"
             rows="3"
             :placeholder="props.editMode ? 'Observaciones sobre los cambios realizados en esta solicitud...' : 'Observaciones adicionales sobre la solicitud...'"
-            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-input text-sm"
           ></textarea>
         </div>
       </div>
@@ -129,7 +129,7 @@
               id="specialty_id"
               v-model="requestForm.specialty_id"
               @change="onSpecialtyChange"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="form-select text-sm"
               :disabled="loadingSpecialties"
             >
               <option :value="null">Seleccionar especialidad</option>
@@ -149,7 +149,7 @@
               id="surgery_id"
               v-model="requestForm.surgery_id"
               @change="onSurgeryChange"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="form-select text-sm"
               :disabled="loadingSurgeries || !requestForm.specialty_id"
             >
               <option :value="null">Seleccionar cirugía</option>
@@ -170,7 +170,7 @@
               id="surgeon_id"
               v-model="requestForm.surgeon_id"
               @change="onSurgeonChange"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="form-select text-sm"
               :disabled="loadingDoctors"
             >
               <option :value="null">Seleccionar cirujano</option>
@@ -205,7 +205,7 @@
           <button
             type="button"
             @click="addSupplyItem"
-            class="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+            class="btn-primary w-full sm:w-auto"
           >
             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -252,7 +252,7 @@
                   v-model.number="item.supply_code"
                   required
                   placeholder="1234"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select text-sm"
                 />
               </div>
 
@@ -269,7 +269,7 @@
                   @blur="onSupplyInputBlur(index)"
                   required
                   placeholder="Buscar insumo..."
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-input"
                   autocomplete="off"
                 />
                 
@@ -313,7 +313,7 @@
                   required
                   min="1"
                   placeholder="1"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select text-sm"
                 />
               </div>
             </div>
@@ -356,7 +356,7 @@
                   type="text"
                   v-model="item.size"
                   placeholder="Ej: Grande, Mediano, 20cm, etc."
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select text-sm"
                 />
               </div>-->
 
@@ -369,7 +369,7 @@
                   type="text"
                   v-model="item.brand"
                   placeholder="Marca preferida"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select text-sm"
                 />
               </div>
             </div>-->
@@ -399,7 +399,7 @@
                 v-model="item.specifications"
                 rows="2"
                 placeholder="Especificaciones técnicas del insumo (material, dimensiones exactas, características especiales, etc.)"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="form-select text-sm"
               ></textarea>
             </div>-->
 
@@ -412,7 +412,7 @@
                 v-model="item.special_requests"
                 rows="2"
                 placeholder="Solicitudes especiales para este insumo (entrega urgente, manipulación especial, etc.)"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="form-select text-sm"
               ></textarea>
             </div>-->
           </div>
@@ -445,7 +445,7 @@
           
           <button
             type="submit"
-            class="inline-flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto order-1"
+            class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto order-1"
             :disabled="submitting"
           >
             <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">

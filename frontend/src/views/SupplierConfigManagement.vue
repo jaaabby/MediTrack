@@ -4,15 +4,15 @@
     <div class="bg-white rounded-lg shadow-sm border p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 class="text-2xl font-semibold text-gray-900">Especialidades Médicas</h2>
-          <p class="text-gray-600 mt-1">Gestiona las especialidades médicas del sistema</p>
-          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedSpecialties.length }} especialidades</p>
+          <h2 class="text-2xl font-semibold text-gray-900">Configuración de Proveedores</h2>
+          <p class="text-gray-600 mt-1">Gestiona las alertas de vencimiento por proveedor</p>
+          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedConfigs.length }} configuraciones</p>
         </div>
         <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          Nueva Especialidad
+          Nueva Configuración
         </button>
       </div>
     </div>
@@ -21,14 +21,14 @@
     <div class="card">
       <div class="flex flex-col sm:flex-row sm:items-end gap-4">
         <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar especialidad</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar proveedor</label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <input type="text" placeholder="Buscar por nombre o código..." 
+            <input type="text" placeholder="Buscar por nombre de proveedor..." 
               class="form-input pl-10 w-full" v-model="searchTerm" @input="handleSearch" />
           </div>
         </div>
@@ -42,7 +42,7 @@
     <div v-if="loading" class="card">
       <div class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <span class="ml-3 text-gray-600">Cargando especialidades...</span>
+        <span class="ml-3 text-gray-600">Cargando configuraciones...</span>
       </div>
     </div>
 
@@ -54,50 +54,50 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-800">Error al cargar especialidades</h3>
+            <h3 class="text-sm font-medium text-red-800">Error al cargar configuraciones</h3>
             <div class="mt-2 text-sm text-red-700">{{ error }}</div>
-            <button @click="loadSpecialties" class="btn-secondary mt-4 text-sm">Reintentar</button>
+            <button @click="loadConfigs" class="btn-secondary mt-4 text-sm">Reintentar</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Tabla de especialidades -->
+    <!-- Tabla de configuraciones -->
     <div v-else class="card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th scope="col" @click="sortBy('id')"
+              <th scope="col" @click="sortBy('supplier_name')"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
                 <div class="flex items-center space-x-1">
-                  <span>ID</span>
+                  <span>Proveedor</span>
                   <span class="flex flex-col -space-y-1">
                     <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'id' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
+                      :class="sortKey === 'supplier_name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
                       fill="currentColor" viewBox="0 0 20 20">
                       <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
                     </svg>
                     <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'id' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
+                      :class="sortKey === 'supplier_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
                       fill="currentColor" viewBox="0 0 20 20">
                       <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
                     </svg>
                   </span>
                 </div>
               </th>
-              <th scope="col" @click="sortBy('name')"
+              <th scope="col" @click="sortBy('expiration_alert_days')"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
                 <div class="flex items-center space-x-1">
-                  <span>Nombre</span>
+                  <span>Días de Alerta</span>
                   <span class="flex flex-col -space-y-1">
                     <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
+                      :class="sortKey === 'expiration_alert_days' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
                       fill="currentColor" viewBox="0 0 20 20">
                       <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
                     </svg>
                     <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
+                      :class="sortKey === 'expiration_alert_days' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
                       fill="currentColor" viewBox="0 0 20 20">
                       <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
                     </svg>
@@ -105,28 +105,7 @@
                 </div>
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Código
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Descripción
-              </th>
-              <th scope="col" @click="sortBy('is_active')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Estado</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'is_active' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'is_active' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
+                Notas
               </th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Acciones
@@ -134,38 +113,35 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="specialty in paginatedSpecialties" :key="specialty.id" 
+            <tr v-for="config in paginatedConfigs" :key="config.supplier_name" 
               class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                #{{ specialty.id }}
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">{{ config.supplier_name }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ specialty.name }}</div>
+                <div class="text-sm text-gray-900">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    :class="getDaysBadgeClass(config.expiration_alert_days)">
+                    {{ config.expiration_alert_days }} días
+                  </span>
+                  <span class="ml-2 text-xs text-gray-500">
+                    ({{ getMonthsText(config.expiration_alert_days) }})
+                  </span>
+                </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ specialty.code || '-' }}
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" :title="specialty.description">
-                {{ specialty.description || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="specialty.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Activa
-                </span>
-                <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  Inactiva
-                </span>
+              <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" :title="config.notes || '-'">
+                {{ config.notes || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex justify-end space-x-2">
-                  <button @click="openEditModal(specialty)" 
+                  <button @click="openEditModal(config)" 
                     class="btn-primary text-xs px-3 py-1.5"
                     title="Editar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
-                  <button @click="confirmDelete(specialty)" 
+                  <button @click="confirmDelete(config)" 
                     class="btn-danger text-xs px-3 py-1.5"
                     title="Eliminar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,10 +157,10 @@
     </div>
 
     <!-- Paginación -->
-    <div v-if="!loading && sortedSpecialties.length > 0" class="card">
+    <div v-if="!loading && sortedConfigs.length > 0" class="card">
       <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedSpecialties.length }} especialidades
+          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedConfigs.length }} configuraciones
         </div>
         <div class="flex items-center gap-2">
           <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
@@ -205,18 +181,18 @@
     </div>
 
     <!-- Mensaje sin resultados -->
-    <div v-if="!loading && specialties.length === 0" class="card text-center py-12">
+    <div v-if="!loading && configs.length === 0" class="card text-center py-12">
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No hay especialidades médicas</h3>
-      <p class="mt-1 text-sm text-gray-500">Comienza creando una nueva especialidad médica.</p>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No hay configuraciones de proveedores</h3>
+      <p class="mt-1 text-sm text-gray-500">Comienza creando una nueva configuración de proveedor.</p>
       <div class="mt-6">
         <button @click="openCreateModal" class="btn-primary">
           <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          Crear Especialidad
+          Crear Configuración
         </button>
       </div>
     </div>
@@ -228,7 +204,7 @@
           <div class="space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
               <h3 class="text-xl font-semibold text-gray-900">
-                {{ isEditing ? 'Editar Especialidad Médica' : 'Crear Especialidad Médica' }}
+                {{ isEditing ? 'Editar Configuración de Proveedor' : 'Crear Configuración de Proveedor' }}
               </h3>
               <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,38 +213,41 @@
               </button>
             </div>
             
-            <form @submit.prevent="saveSpecialty" class="space-y-4">
-              <div>
+            <form @submit.prevent="saveConfig" class="space-y-4">
+              <div v-if="!isEditing">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Nombre <span class="text-red-500">*</span>
+                  Nombre del Proveedor <span class="text-red-500">*</span>
                 </label>
-                <input v-model="specialtyForm.name" type="text" class="form-input" 
-                  placeholder="Ej: Traumatología" required />
+                <input v-model="configForm.supplier_name" type="text" class="form-input" 
+                  placeholder="Ej: Proveedor ABC" required :disabled="isEditing" />
+                <p class="mt-1 text-xs text-gray-500">Nombre único del proveedor</p>
+              </div>
+              <div v-else>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre del Proveedor
+                </label>
+                <input type="text" class="form-input bg-gray-100" 
+                  :value="configForm.supplier_name" disabled />
+                <p class="mt-1 text-xs text-gray-500">El nombre del proveedor no se puede modificar</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Código
+                  Días de Alerta de Vencimiento <span class="text-red-500">*</span>
                 </label>
-                <input v-model="specialtyForm.code" type="text" class="form-input" 
-                  placeholder="Ej: TRAUMA" />
-                <p class="mt-1 text-xs text-gray-500">Código único para identificar la especialidad</p>
+                <input v-model.number="configForm.expiration_alert_days" type="number" min="1" max="365" class="form-input" 
+                  placeholder="90" required />
+                <p class="mt-1 text-xs text-gray-500">
+                  Días de anticipación para alertas de vencimiento (mínimo 90 días / 3 meses recomendado)
+                </p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Descripción
+                  Notas (opcional)
                 </label>
-                <textarea v-model="specialtyForm.description" rows="3" class="form-input" 
-                  placeholder="Descripción de la especialidad médica"></textarea>
-              </div>
-
-              <div>
-                <label class="flex items-center space-x-2">
-                  <input v-model="specialtyForm.is_active" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                  <span class="text-sm font-medium text-gray-700">Especialidad activa</span>
-                </label>
-                <p class="mt-1 text-xs text-gray-500">Las especialidades inactivas no aparecerán en listas de selección</p>
+                <textarea v-model="configForm.notes" rows="3" class="form-input" 
+                  placeholder="Notas adicionales sobre esta configuración"></textarea>
               </div>
 
               <div class="flex justify-end space-x-3 pt-4 border-t">
@@ -288,10 +267,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import medicalSpecialtyService from '@/services/medicalSpecialtyService'
+import supplierConfigService from '@/services/supplierConfigService'
 import Swal from 'sweetalert2'
 
-const specialties = ref([])
+const configs = ref([])
 const loading = ref(false)
 const error = ref(null)
 const searchTerm = ref('')
@@ -300,27 +279,26 @@ const isEditing = ref(false)
 const saving = ref(false)
 
 // Estado de ordenamiento
-const sortKey = ref('id')
+const sortKey = ref('supplier_name')
 const sortOrder = ref('asc')
 
 // Estado de paginación
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-const specialtyForm = ref({
-  name: '',
-  code: '',
-  description: '',
-  is_active: true
+const configForm = ref({
+  supplier_name: '',
+  expiration_alert_days: 90,
+  notes: ''
 })
 
 let searchTimeout = null
 
 // Computed para obtener la lista ordenada
-const sortedSpecialties = computed(() => {
-  if (!specialties.value || specialties.value.length === 0) return []
+const sortedConfigs = computed(() => {
+  if (!configs.value || configs.value.length === 0) return []
   
-  const sorted = [...specialties.value].sort((a, b) => {
+  const sorted = [...configs.value].sort((a, b) => {
     let aVal = a[sortKey.value]
     let bVal = b[sortKey.value]
     
@@ -339,10 +317,9 @@ const sortedSpecialties = computed(() => {
   // Aplicar búsqueda si existe
   if (searchTerm.value.trim()) {
     const term = searchTerm.value.toLowerCase().trim()
-    return sorted.filter(s => 
-      s.name.toLowerCase().includes(term) || 
-      (s.code && s.code.toLowerCase().includes(term)) ||
-      (s.description && s.description.toLowerCase().includes(term))
+    return sorted.filter(c => 
+      c.supplier_name.toLowerCase().includes(term) || 
+      (c.notes && c.notes.toLowerCase().includes(term))
     )
   }
   
@@ -350,13 +327,13 @@ const sortedSpecialties = computed(() => {
 })
 
 // Computed properties para paginación
-const totalPages = computed(() => Math.ceil(sortedSpecialties.value.length / itemsPerPage))
+const totalPages = computed(() => Math.ceil(sortedConfigs.value.length / itemsPerPage))
 
 const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedSpecialties.value.length))
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedConfigs.value.length))
 
-const paginatedSpecialties = computed(() => {
-  return sortedSpecialties.value.slice(startIndex.value, endIndex.value)
+const paginatedConfigs = computed(() => {
+  return sortedConfigs.value.slice(startIndex.value, endIndex.value)
 })
 
 // Función para ordenar por columna
@@ -370,15 +347,15 @@ const sortBy = (key) => {
   currentPage.value = 1
 }
 
-const loadSpecialties = async () => {
+const loadConfigs = async () => {
   loading.value = true
   error.value = null
   try {
-    const data = await medicalSpecialtyService.getAllSpecialties()
-    specialties.value = data
+    const data = await supplierConfigService.getAllSupplierConfigs()
+    configs.value = data
   } catch (err) {
-    error.value = err.message || 'Error al cargar especialidades médicas'
-    console.error('Error loading specialties:', err)
+    error.value = err.response?.data?.error || err.message || 'Error al cargar configuraciones de proveedores'
+    console.error('Error loading configs:', err)
   } finally {
     loading.value = false
   }
@@ -392,149 +369,128 @@ const handleSearch = () => {
   }, 300)
 }
 
+const clearSearch = () => {
+  searchTerm.value = ''
+  currentPage.value = 1
+}
+
 const openCreateModal = () => {
   isEditing.value = false
-  specialtyForm.value = {
-    name: '',
-    code: '',
-    description: '',
-    is_active: true
+  configForm.value = {
+    supplier_name: '',
+    expiration_alert_days: 90,
+    notes: ''
   }
   showModal.value = true
 }
 
-const openEditModal = (specialty) => {
+const openEditModal = (config) => {
   isEditing.value = true
-  specialtyForm.value = {
-    id: specialty.id,
-    name: specialty.name || '',
-    code: specialty.code || '',
-    description: specialty.description || '',
-    is_active: specialty.is_active !== undefined ? specialty.is_active : true
+  configForm.value = {
+    supplier_name: config.supplier_name,
+    expiration_alert_days: config.expiration_alert_days,
+    notes: config.notes || ''
   }
   showModal.value = true
 }
 
 const closeModal = () => {
   showModal.value = false
-  specialtyForm.value = {
-    name: '',
-    code: '',
-    description: '',
-    is_active: true
+  isEditing.value = false
+  configForm.value = {
+    supplier_name: '',
+    expiration_alert_days: 90,
+    notes: ''
   }
 }
 
-const saveSpecialty = async () => {
-  // Validaciones
-  if (!specialtyForm.value.name || !specialtyForm.value.name.trim()) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'El nombre de la especialidad es obligatorio',
-      confirmButtonText: 'Aceptar'
-    })
-    return
-  }
-
+const saveConfig = async () => {
   saving.value = true
   try {
-    const specialtyData = {
-      name: specialtyForm.value.name.trim(),
-      code: specialtyForm.value.code.trim() || null,
-      description: specialtyForm.value.description.trim() || null,
-      is_active: specialtyForm.value.is_active
-    }
-
     if (isEditing.value) {
-      await medicalSpecialtyService.updateSpecialty(specialtyForm.value.id, specialtyData)
-      await loadSpecialties()
-      closeModal()
+      await supplierConfigService.updateSupplierConfig(configForm.value.supplier_name, {
+        expiration_alert_days: configForm.value.expiration_alert_days,
+        notes: configForm.value.notes
+      })
       await Swal.fire({
         icon: 'success',
-        title: 'Actualizado',
-        text: 'Especialidad médica actualizada exitosamente',
+        title: '¡Configuración actualizada!',
+        text: 'La configuración del proveedor ha sido actualizada exitosamente.',
         timer: 2000,
         showConfirmButton: false
       })
     } else {
-      await medicalSpecialtyService.createSpecialty(specialtyData)
-      await loadSpecialties()
-      closeModal()
+      await supplierConfigService.createSupplierConfig(configForm.value)
       await Swal.fire({
         icon: 'success',
-        title: 'Creado',
-        text: 'Especialidad médica creada exitosamente',
+        title: '¡Configuración creada!',
+        text: 'La configuración del proveedor ha sido creada exitosamente.',
         timer: 2000,
         showConfirmButton: false
       })
     }
+    closeModal()
+    await loadConfigs()
   } catch (err) {
-    console.error('Error al guardar:', err)
-    let errorMessage = 'Error desconocido al guardar'
-    
-    if (err.response?.data?.error) {
-      errorMessage = err.response.data.error
-    } else if (err.response?.data?.message) {
-      errorMessage = err.response.data.message
-    } else if (err.message) {
-      errorMessage = err.message
-    }
-
+    const errorMessage = err.response?.data?.error || err.message || 'Error al guardar la configuración'
     await Swal.fire({
       icon: 'error',
-      title: 'Error al guardar',
-      text: errorMessage,
-      confirmButtonText: 'Aceptar'
+      title: 'Error',
+      text: errorMessage
     })
   } finally {
     saving.value = false
   }
 }
 
-const confirmDelete = async (specialty) => {
+const confirmDelete = async (config) => {
   const result = await Swal.fire({
-    title: '¿Estás seguro?',
-    html: `¿Deseas eliminar la especialidad <strong>"${specialty.name}"</strong>?<br><small class="text-gray-600">Esta acción no se puede deshacer.</small>`,
+    title: '¿Eliminar configuración?',
+    text: `¿Estás seguro de que deseas eliminar la configuración para "${config.supplier_name}"?`,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonColor: '#dc2626',
-    cancelButtonColor: '#6b7280',
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
     confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true
+    cancelButtonText: 'Cancelar'
   })
 
   if (result.isConfirmed) {
     try {
-      await medicalSpecialtyService.deleteSpecialty(specialty.id)
-      await loadSpecialties()
+      await supplierConfigService.deleteSupplierConfig(config.supplier_name)
       await Swal.fire({
         icon: 'success',
-        title: 'Eliminado',
-        text: 'Especialidad médica eliminada exitosamente',
+        title: '¡Configuración eliminada!',
+        text: 'La configuración ha sido eliminada exitosamente.',
         timer: 2000,
         showConfirmButton: false
       })
+      await loadConfigs()
     } catch (err) {
-      console.error('Error al eliminar:', err)
+      const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar la configuración'
       await Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Error al eliminar: ' + (err.response?.data?.error || err.message),
-        confirmButtonText: 'Aceptar'
+        text: errorMessage
       })
     }
   }
 }
 
-const clearSearch = () => {
-  searchTerm.value = ''
-  currentPage.value = 1
+// Helper functions
+const getDaysBadgeClass = (days) => {
+  if (days >= 180) return 'bg-green-100 text-green-800'
+  if (days >= 90) return 'bg-blue-100 text-blue-800'
+  return 'bg-yellow-100 text-yellow-800'
+}
+
+const getMonthsText = (days) => {
+  const months = Math.round(days / 30)
+  return months === 1 ? '1 mes' : `${months} meses`
 }
 
 onMounted(() => {
-  loadSpecialties()
+  loadConfigs()
 })
 </script>
 

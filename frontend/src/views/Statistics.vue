@@ -255,14 +255,22 @@
             </div>
           </div>
           <div class="h-20 sm:h-24" v-else>
-            <svg width="100%" height="100%" viewBox="0 0 220 48" preserveAspectRatio="none">
+            <svg width="100%" height="100%" viewBox="0 0 220 48" preserveAspectRatio="none" style="overflow: visible;">
               <defs>
                 <linearGradient id="spark" x1="0" x2="0" y1="0" y2="1">
                   <stop offset="0%" stop-color="#7C3AED" stop-opacity="0.4"/>
                   <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
                 </linearGradient>
               </defs>
-              <path :d="sparklinePath" stroke="#7C3AED" fill="none" stroke-width="2" />
+              <path 
+                v-if="sparklinePath && sparklinePath.length > 0"
+                :d="sparklinePath" 
+                stroke="#7C3AED" 
+                fill="none" 
+                stroke-width="2" 
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
             <div class="text-xs text-gray-500 mt-2">Total: {{ totalTransfers }}</div>
           </div>
@@ -572,7 +580,10 @@ const movementBars = ref({
 })
 const transferTrend = ref([])
 const totalTransfers = computed(() => transferTrend.value.reduce((a, x) => a + (Number(x.count)||0), 0))
-const hasTrendData = computed(() => transferTrend.value.length > 0 && totalTransfers.value > 0)
+const hasTrendData = computed(() => {
+  // Tener datos si hay puntos Y si el total es mayor a 0
+  return transferTrend.value.length > 0 && totalTransfers.value > 0
+})
 const transferRange = ref('7d')
 
 const pavilionList = ref([])
@@ -635,10 +646,42 @@ function formatISODate(d) {
 
 function buildSparklinePath(points, width = 220, height = 48) {
   if (!points.length) return ''
-  const maxY = Math.max(...points.map(p => p.count), 1)
-  const stepX = width / Math.max(points.length - 1, 1)
-  const scaleY = (val) => height - (val / maxY) * (height - 4)
-  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * stepX} ${scaleY(p.count)}`).join(' ')
+  
+  // Obtener todos los counts y encontrar el máximo
+  const counts = points.map(p => Number(p.count) || 0)
+  const maxY = Math.max(...counts, 1) // Al menos 1 para evitar división por cero
+  
+  // Si solo hay un punto, duplicarlo al inicio y al final para que se vea la línea
+  let processedPoints = points
+  if (points.length === 1) {
+    processedPoints = [
+      { count: 0, date: '' },
+      { ...points[0] },
+      { count: 0, date: '' }
+    ]
+  }
+  
+  const pointCount = processedPoints.length
+  const stepX = pointCount > 1 ? width / (pointCount - 1) : width
+  const padding = 4 // Padding vertical para que no toque los bordes
+  const scaleY = (val) => {
+    const scaled = (val / maxY) * (height - padding * 2)
+    return height - scaled - padding
+  }
+  
+  // Construir el path
+  let path = ''
+  processedPoints.forEach((p, i) => {
+    const x = i * stepX
+    const y = scaleY(Number(p.count) || 0)
+    if (i === 0) {
+      path = `M ${x} ${y}`
+    } else {
+      path += ` L ${x} ${y}`
+    }
+  })
+  
+  return path
 }
 
 const sparklinePath = computed(() => buildSparklinePath(transferTrend.value))
@@ -682,7 +725,11 @@ async function loadTopSupplies() {
   ;(Array.isArray(items) ? items : []).forEach(it => {
     const key = it.supply_code || it.code
     const name = it.supply_name || it.name || `Código ${key}`
-    const moved = Number(it.total_transferred_out || 0)
+    // Sumar transferencias, consumos y devoluciones para el total de movimientos
+    const transferred = Number(it.total_transferred_out || 0)
+    const consumed = Number(it.total_consumed_in_store || 0)
+    const returned = Number(it.total_returned_in || 0)
+    const moved = transferred + consumed + returned
     if (!map.has(key)) map.set(key, { code: key, name, total: 0 })
     map.get(key).total += moved
   })
@@ -705,12 +752,15 @@ async function loadTrend() {
   try {
     const { start, now } = getStartDateByRange(transferRange.value)
     const transferReport = await inventoryService.getTransferReport(formatISODate(start), formatISODate(now), 'date')
-    transferTrend.value = (Array.isArray(transferReport) ? transferReport : []).map(r => ({
+    // El backend devuelve {report: [...], ...}, necesitamos extraer el array de report
+    const reportData = transferReport?.report || transferReport || []
+    transferTrend.value = (Array.isArray(reportData) ? reportData : []).map(r => ({
       date: r.transfer_date || r.date || '',
       count: Number(r.transfer_count || 0),
     }))
     movementBars.value.transferencias = totalTransfers.value
-  } catch {
+  } catch (err) {
+    console.error('Error cargando tendencia de transferencias:', err)
     transferTrend.value = []
     movementBars.value.transferencias = 0
   }
@@ -718,54 +768,17 @@ async function loadTrend() {
 
 async function loadMedicalMetrics() {
   try {
-    const [specialties, surgeries, doctors, typicalSupplies] = await Promise.all([
+    const [specialties, surgeries, doctors, typicalSuppliesCount] = await Promise.all([
       medicalSpecialtyService.getAllSpecialties().catch(() => []),
       surgeryService.getAllSurgeries().catch(() => []),
       doctorInfoService.getAllDoctors().catch(() => []),
-      // Obtener todas las asociaciones de insumos típicos
-      // Como no hay endpoint directo, podemos contar desde cirugías
-      Promise.resolve([])
+      surgeryTypicalSupplyService.getTypicalSuppliesCount().catch(() => 0)
     ])
 
     medicalMetrics.value.totalSpecialties = Array.isArray(specialties) ? specialties.filter(s => s.is_active).length : 0
     medicalMetrics.value.totalSurgeries = Array.isArray(surgeries) ? surgeries.length : 0
     medicalMetrics.value.totalDoctors = Array.isArray(doctors) ? doctors.filter(d => d.is_available).length : 0
-
-    // Contar insumos típicos desde cirugías
-    // Si las cirugías ya incluyen typical_supplies en la respuesta, usamos eso
-    // Si no, intentamos obtenerlo para algunas cirugías como muestra
-    let totalTypical = 0
-    if (Array.isArray(surgeries)) {
-      const surgeriesWithSupplies = surgeries.filter(s => s.typical_supplies && Array.isArray(s.typical_supplies))
-      if (surgeriesWithSupplies.length > 0) {
-        // Si algunas cirugías ya tienen typical_supplies cargados, usamos esos
-        totalTypical = surgeriesWithSupplies.reduce((sum, s) => sum + s.typical_supplies.length, 0)
-        // Estimamos el total basado en el promedio
-        if (surgeriesWithSupplies.length < surgeries.length) {
-          const avg = totalTypical / surgeriesWithSupplies.length
-          totalTypical = Math.round(avg * surgeries.length)
-        }
-      } else {
-        // Si no hay datos, intentamos contar desde algunas cirugías como muestra
-        const sampleSize = Math.min(10, surgeries.length)
-        for (let i = 0; i < sampleSize; i++) {
-          try {
-            const surgeryDetail = await surgeryService.getSurgeryByID(surgeries[i].id)
-            if (surgeryDetail && surgeryDetail.typical_supplies && Array.isArray(surgeryDetail.typical_supplies)) {
-              totalTypical += surgeryDetail.typical_supplies.length
-            }
-          } catch {
-            // Ignorar errores
-          }
-        }
-        // Estimar el total basado en la muestra
-        if (sampleSize > 0) {
-          const avg = totalTypical / sampleSize
-          totalTypical = Math.round(avg * surgeries.length)
-        }
-      }
-    }
-    medicalMetrics.value.totalTypicalSupplies = totalTypical
+    medicalMetrics.value.totalTypicalSupplies = Number(typicalSuppliesCount) || 0
 
     // Cargar solicitudes por especialidad (si hay datos disponibles)
     try {

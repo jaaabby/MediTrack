@@ -28,6 +28,7 @@ DROP TRIGGER IF EXISTS update_user_updated_at ON "user";
 DROP TRIGGER IF EXISTS trg_update_doctor_info_updated_at ON doctor_info;
 DROP TRIGGER IF EXISTS trg_update_surgery_typical_supply_updated_at ON surgery_typical_supply;
 DROP TRIGGER IF EXISTS trg_update_medical_specialty_updated_at ON medical_specialty;
+DROP TRIGGER IF EXISTS trg_update_supplier_config_updated_at ON supplier_config;
 
 -- =======================
 -- ELIMINAR FUNCIONES
@@ -50,10 +51,14 @@ DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP FUNCTION IF EXISTS update_doctor_info_updated_at();
 DROP FUNCTION IF EXISTS update_surgery_typical_supply_updated_at();
 DROP FUNCTION IF EXISTS update_medical_specialty_updated_at();
+DROP FUNCTION IF EXISTS update_supplier_config_updated_at();
 
 -- =======================
 -- ELIMINAR ÍNDICES
 -- =======================
+
+-- Índices de supplier_config
+DROP INDEX IF EXISTS idx_supplier_config_alert_days;
 
 -- Índices de store_inventory_summary
 DROP INDEX IF EXISTS idx_store_inventory_current;
@@ -176,6 +181,9 @@ DROP TABLE IF EXISTS supply_code CASCADE;
 DROP TABLE IF EXISTS doctor_info CASCADE;
 DROP TABLE IF EXISTS surgery_typical_supply CASCADE;
 DROP TABLE IF EXISTS medical_specialty CASCADE;
+
+-- Tabla de configuración de proveedores
+DROP TABLE IF EXISTS supplier_config CASCADE;
 
 -- Tablas de estructura organizacional
 DROP TABLE IF EXISTS "user" CASCADE;

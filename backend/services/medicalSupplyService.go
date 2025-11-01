@@ -2,8 +2,10 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"meditrack/mailer"
 	"meditrack/models"
+	"meditrack/pkg"
 	"os"
 	"path/filepath"
 	"time"
@@ -646,11 +648,12 @@ func (s *MedicalSupplyService) GetUnconsumedSupplies() ([]map[string]interface{}
 
 // ===== FUNCIONALIDADES DE RETORNO A BODEGA =====
 
-// GetSuppliesForReturn obtiene insumos que deben regresar a bodega (15 días sin consumir)
+// GetSuppliesForReturn obtiene insumos que deben regresar a bodega (8 horas laborales sin consumir)
 func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
 
-	// Buscar insumos recepcionados hace más de 15 días que no han sido consumidos
+	// Buscar insumos recepcionados que no han sido consumidos
+	// Verificaremos las horas laborales después
 	query := `
 		SELECT 
 			ms.id,
@@ -663,17 +666,15 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			b.expiration_date,
 			s.name as store_name,
 			s.id as store_id,
-			sh.date_time as received_at,
-			EXTRACT(EPOCH FROM (NOW() - sh.date_time))/86400 as days_elapsed
+			sh.date_time as received_at
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
 		JOIN store s ON b.store_id = s.id
 		JOIN supply_history sh ON ms.id = sh.medical_supply_id
 		WHERE ms.status = ? 
-		AND sh.status = ?
+		AND sh.status = ? 
 		AND sh.destination_type = ?
-		AND sh.date_time <= NOW() - INTERVAL '15 days'
 		AND NOT EXISTS (
 			SELECT 1 FROM supply_history sh2 
 			WHERE sh2.medical_supply_id = ms.id 
@@ -688,6 +689,10 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 	}
 	defer rows.Close()
 
+	// Importar el paquete de horas laborales
+	// Calcular horas laborales para cada insumo
+	config := pkg.DefaultBusinessHoursConfig()
+
 	for rows.Next() {
 		var (
 			id             int
@@ -701,30 +706,37 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			storeName      string
 			storeID        int
 			receivedAt     time.Time
-			daysElapsed    float64
 		)
 
-		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt, &daysElapsed); err != nil {
+		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt); err != nil {
 			continue
 		}
 
+		// Calcular horas laborales transcurridas desde la recepción
+		now := time.Now()
+		businessHoursElapsed := pkg.CalculateBusinessHours(receivedAt, now, config)
+		shouldReturn := businessHoursElapsed >= 8.0
+
 		item := map[string]interface{}{
-			"supply_id":       id,
-			"qr_code":         qrCode,
-			"status":          status,
-			"supply_name":     supplyName,
-			"supply_code":     supplyCode,
-			"batch_id":        batchID,
-			"supplier":        supplier,
-			"expiration_date": expirationDate.Format("2006-01-02"),
-			"store_name":      storeName,
-			"store_id":        storeID,
-			"received_at":     receivedAt.Format("2006-01-02 15:04:05"),
-			"days_elapsed":    int(daysElapsed),
-			"should_return":   daysElapsed >= 15,
+			"supply_id":           id,
+			"qr_code":             qrCode,
+			"status":              status,
+			"supply_name":         supplyName,
+			"supply_code":         supplyCode,
+			"batch_id":            batchID,
+			"supplier":            supplier,
+			"expiration_date":     expirationDate.Format("2006-01-02"),
+			"store_name":          storeName,
+			"store_id":            storeID,
+			"received_at":         receivedAt.Format("2006-01-02 15:04:05"),
+			"business_hours_elapsed": businessHoursElapsed,
+			"should_return":       shouldReturn,
 		}
 
-		results = append(results, item)
+		// Solo agregar si debe retornarse (8 horas o más)
+		if shouldReturn {
+			results = append(results, item)
+		}
 	}
 
 	return results, nil
@@ -805,7 +817,7 @@ func (s *MedicalSupplyService) ReturnSupplyToStoreByQR(qrCode string, userRUT st
 	return s.ReturnSupplyToStore(supply.ID, userRUT, notes, isAutomatic)
 }
 
-// ProcessAutomaticReturns procesa automáticamente los retornos de insumos que llevan 15 días sin consumir
+// ProcessAutomaticReturns procesa automáticamente los retornos de insumos que llevan 8 horas laborales sin consumir
 func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 	supplies, err := s.GetSuppliesForReturn()
 	if err != nil {
@@ -816,12 +828,13 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 	for _, supply := range supplies {
 		supplyID := supply["supply_id"].(int)
 		qrCode := supply["qr_code"].(string)
-		daysElapsed := supply["days_elapsed"].(int)
+		businessHoursElapsed := supply["business_hours_elapsed"].(float64)
 
-		if daysElapsed >= 15 {
+		// Ya están filtrados por GetSuppliesForReturn, pero verificamos por seguridad
+		if businessHoursElapsed >= 8.0 {
 			// Usuario del sistema para operaciones automáticas
 			systemUserRUT := "SYSTEM-AUTO"
-			notes := fmt.Sprintf("Retorno automático después de %d días sin consumo", daysElapsed)
+			notes := fmt.Sprintf("Retorno automático después de %.1f horas laborales sin consumo", businessHoursElapsed)
 
 			err := s.ReturnSupplyToStore(supplyID, systemUserRUT, notes, true)
 			if err != nil {
@@ -830,7 +843,7 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 			}
 
 			returnedCount++
-			fmt.Printf("✅ Insumo %s retornado automáticamente a bodega\n", qrCode)
+			fmt.Printf("✅ Insumo %s retornado automáticamente a bodega (%.1f horas laborales)\n", qrCode, businessHoursElapsed)
 		}
 	}
 
@@ -854,6 +867,102 @@ func (s *MedicalSupplyService) StartAutomaticReturnChecker() {
 			fmt.Printf("❌ Error en verificación automática: %v\n", err)
 		}
 	}
+}
+
+// ===== ALERTAS DE STOCK BAJO PARA INSUMOS INDIVIDUALES =====
+
+// CheckLowStockForIndividualSupplies verifica y envía alertas de stock bajo para insumos individuales
+// Alerta cuando quede exactamente 1 insumo disponible por código
+func (s *MedicalSupplyService) CheckLowStockForIndividualSupplies(supplyCode int) error {
+	// Contar insumos disponibles por código
+	var availableCount int64
+	if err := s.DB.Model(&models.MedicalSupply{}).
+		Where("code = ? AND status = ?", supplyCode, models.StatusAvailable).
+		Count(&availableCount).Error; err != nil {
+		return fmt.Errorf("error contando insumos disponibles: %v", err)
+	}
+
+	// Alertar solo cuando quede exactamente 1 insumo
+	if availableCount == 1 {
+		return s.sendLowStockAlertForSupply(supplyCode, int(availableCount))
+	}
+
+	return nil
+}
+
+// CheckAllIndividualSuppliesLowStock verifica todos los códigos de insumos para alertas de stock bajo
+func (s *MedicalSupplyService) CheckAllIndividualSuppliesLowStock() error {
+	// Query para obtener códigos con exactamente 1 insumo disponible
+	query := `
+		SELECT 
+			ms.code,
+			sc.name as supply_name,
+			COUNT(*) as available_count
+		FROM medical_supply ms
+		JOIN supply_code sc ON ms.code = sc.code
+		WHERE ms.status = ?
+		GROUP BY ms.code, sc.name
+		HAVING COUNT(*) = 1
+		ORDER BY ms.code
+	`
+
+	type SupplyStockInfo struct {
+		Code           int    `json:"code"`
+		SupplyName     string `json:"supply_name"`
+		AvailableCount int    `json:"available_count"`
+	}
+
+	var suppliesWithLowStock []SupplyStockInfo
+	if err := s.DB.Raw(query, models.StatusAvailable).Scan(&suppliesWithLowStock).Error; err != nil {
+		return fmt.Errorf("error obteniendo insumos con stock bajo: %v", err)
+	}
+
+	alertsSent := 0
+	errors := 0
+
+	for _, supplyInfo := range suppliesWithLowStock {
+		if err := s.sendLowStockAlertForSupply(supplyInfo.Code, supplyInfo.AvailableCount); err != nil {
+			log.Printf("Error enviando alerta de stock bajo para insumo %d (%s): %v",
+				supplyInfo.Code, supplyInfo.SupplyName, err)
+			errors++
+			continue
+		}
+		alertsSent++
+		log.Printf("Alerta enviada para insumo %d (%s): Queda 1 insumo disponible",
+			supplyInfo.Code, supplyInfo.SupplyName)
+	}
+
+	if alertsSent > 0 {
+		log.Printf("Verificación de stock bajo de insumos completada: %d alertas enviadas, %d errores", alertsSent, errors)
+	}
+
+	return nil
+}
+
+// sendLowStockAlertForSupply envía correo de alerta de stock bajo para insumos individuales
+func (s *MedicalSupplyService) sendLowStockAlertForSupply(supplyCode int, availableCount int) error {
+	// Obtener información del código de insumo
+	var supplyCodeInfo models.SupplyCode
+	if err := s.DB.Where("code = ?", supplyCode).First(&supplyCodeInfo).Error; err != nil {
+		return fmt.Errorf("error al obtener información del código de insumo: %v", err)
+	}
+
+	// Crear datos para la plantilla
+	data := map[string]interface{}{
+		"Code":          supplyCodeInfo.Code,
+		"Name":          supplyCodeInfo.Name,
+		"CurrentStock":  availableCount,
+		"CriticalStock": 1, // Para insumos individuales, el crítico es 1
+		"Date":          time.Now().Format("02/01/2006"),
+		"IsIndividual":  true, // Indicar que es alerta para insumos individuales
+	}
+
+	// Crear solicitud de correo
+	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Stock Crítico - Queda 1 Insumo")
+
+	// Usar la misma plantilla de stock bajo (o crear una específica)
+	templatePath := "mailer/templates/low_stock.html"
+	return req.SendMailSkipTLS(templatePath, data)
 }
 
 // ConfirmArrivalToStore confirma la llegada de un insumo a bodega y lo cambia a estado disponible

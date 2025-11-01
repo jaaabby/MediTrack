@@ -85,6 +85,16 @@ class SurgeryTypicalSupplyService {
       throw error
     }
   }
+
+  async getTypicalSuppliesCount() {
+    try {
+      const response = await this.api.get('/surgery-typical-supplies/count')
+      return response.data.data?.count || response.data.count || 0
+    } catch (error) {
+      console.error('Error en getTypicalSuppliesCount:', error)
+      throw error
+    }
+  }
 }
 
 export default new SurgeryTypicalSupplyService()

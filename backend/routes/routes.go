@@ -4,11 +4,13 @@ import (
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // SetupRoutes configura todas las rutas de la API
 func SetupRoutes(
 	router *gin.Engine,
+	db *gorm.DB,
 	userService services.UserService,
 	medicalSupplyService services.MedicalSupplyService,
 	medicalCenterService services.MedicalCenterService,
@@ -80,6 +82,10 @@ func SetupRoutes(
 
 		// Configurar rutas de información de doctores
 		SetupDoctorInfoRoutes(v1, doctorInfoService)
+
+		// Configurar rutas de configuración de proveedores
+		supplierConfigService := services.NewSupplierConfigService(db)
+		SetupSupplierConfigRoutes(v1, *supplierConfigService)
 	}
 
 	// Ruta de health check

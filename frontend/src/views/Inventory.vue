@@ -56,7 +56,7 @@
 
       <!-- Indicador de carga -->
       <div v-if="loading" class="flex justify-center items-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <span class="ml-2 text-gray-600">Cargando inventario...</span>
       </div>
 
@@ -102,13 +102,13 @@
                   <span>N° de lote</span>
                   <div class="flex flex-col ml-2">
                     <button @click="sortBy('batch_id', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'batch_id' && sortDirection === 'asc' }">
+                      :class="{ 'text-blue-600': sortField === 'batch_id' && sortDirection === 'asc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                       </svg>
                     </button>
                     <button @click="sortBy('batch_id', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'batch_id' && sortDirection === 'desc' }">
+                      :class="{ 'text-blue-600': sortField === 'batch_id' && sortDirection === 'desc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -121,13 +121,13 @@
                   <span>Nombre del Insumo</span>
                   <div class="flex flex-col ml-2">
                     <button @click="sortBy('name', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'name' && sortDirection === 'asc' }">
+                      :class="{ 'text-blue-600': sortField === 'name' && sortDirection === 'asc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                       </svg>
                     </button>
                     <button @click="sortBy('name', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'name' && sortDirection === 'desc' }">
+                      :class="{ 'text-blue-600': sortField === 'name' && sortDirection === 'desc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -140,13 +140,13 @@
                   <span>Código Interno</span>
                   <div class="flex flex-col ml-2">
                     <button @click="sortBy('code', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'code' && sortDirection === 'asc' }">
+                      :class="{ 'text-blue-600': sortField === 'code' && sortDirection === 'asc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                       </svg>
                     </button>
                     <button @click="sortBy('code', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'code' && sortDirection === 'desc' }">
+                      :class="{ 'text-blue-600': sortField === 'code' && sortDirection === 'desc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -159,13 +159,13 @@
                   <span>F. Vencimiento</span>
                   <div class="flex flex-col ml-2">
                     <button @click="sortBy('expiration_date', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'expiration_date' && sortDirection === 'asc' }">
+                      :class="{ 'text-blue-600': sortField === 'expiration_date' && sortDirection === 'asc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                       </svg>
                     </button>
                     <button @click="sortBy('expiration_date', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'expiration_date' && sortDirection === 'desc' }">
+                      :class="{ 'text-blue-600': sortField === 'expiration_date' && sortDirection === 'desc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -178,13 +178,13 @@
                   <span>Cantidad</span>
                   <div class="flex flex-col ml-2">
                     <button @click="sortBy('amount', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'amount' && sortDirection === 'asc' }">
+                      :class="{ 'text-blue-600': sortField === 'amount' && sortDirection === 'asc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                       </svg>
                     </button>
                     <button @click="sortBy('amount', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'amount' && sortDirection === 'desc' }">
+                      :class="{ 'text-blue-600': sortField === 'amount' && sortDirection === 'desc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -197,13 +197,13 @@
                   <span>Proveedor</span>
                   <div class="flex flex-col ml-2">
                     <button @click="sortBy('supplier', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'supplier' && sortDirection === 'asc' }">
+                      :class="{ 'text-blue-600': sortField === 'supplier' && sortDirection === 'asc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                       </svg>
                     </button>
                     <button @click="sortBy('supplier', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-primary-600': sortField === 'supplier' && sortDirection === 'desc' }">
+                      :class="{ 'text-blue-600': sortField === 'supplier' && sortDirection === 'desc' }">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                       </svg>
@@ -273,7 +273,7 @@
               class="btn-secondary px-4 py-2 rounded-lg text-sm sm:text-base w-full sm:w-auto">Cerrar</button>
           </div>
           <div v-if="batchDetailsLoading" class="flex justify-center items-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span class="ml-2 text-gray-600">Cargando insumos del lote...</span>
           </div>
           <div v-else-if="batchDetailsError" class="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
@@ -480,7 +480,7 @@
 
             <!-- Indicador de carga -->
             <div v-if="historyLoading" class="flex justify-center items-center py-6 sm:py-8">
-              <div class="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary-600"></div>
+              <div class="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
               <span class="ml-2 text-gray-600 text-xs sm:text-sm">Cargando...</span>
             </div>
 
@@ -563,7 +563,7 @@
                     <!-- Botón de ver detalles -->
                     <div class="mt-3 pt-2 border-t border-gray-100">
                       <button @click="viewMovementDetails(movement)"
-                        class="w-full text-center text-xs font-medium text-primary-600 hover:text-primary-800 py-1.5">
+                        class="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-800 py-1.5">
                         Ver detalles completos
                       </button>
                     </div>
@@ -583,14 +583,14 @@
                           <span class="text-xs sm:text-sm">Fecha</span>
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortHistoryBy('date', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': sortHistoryField === 'date' && sortHistoryDirection === 'asc' }">
+                              :class="{ 'text-blue-600': sortHistoryField === 'date' && sortHistoryDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
                               </svg>
                             </button>
                             <button @click="sortHistoryBy('date', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': sortHistoryField === 'date' && sortHistoryDirection === 'desc' }">
+                              :class="{ 'text-blue-600': sortHistoryField === 'date' && sortHistoryDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -605,14 +605,14 @@
                           <span class="text-xs sm:text-sm">Tipo</span>
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortHistoryBy('type', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': sortHistoryField === 'type' && sortHistoryDirection === 'asc' }">
+                              :class="{ 'text-blue-600': sortHistoryField === 'type' && sortHistoryDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
                               </svg>
                             </button>
                             <button @click="sortHistoryBy('type', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': sortHistoryField === 'type' && sortHistoryDirection === 'desc' }">
+                              :class="{ 'text-blue-600': sortHistoryField === 'type' && sortHistoryDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -628,7 +628,7 @@
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortHistoryBy('amount', 'asc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': sortHistoryField === 'amount' && sortHistoryDirection === 'asc' }">
+                              :class="{ 'text-blue-600': sortHistoryField === 'amount' && sortHistoryDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
@@ -636,7 +636,7 @@
                             </button>
                             <button @click="sortHistoryBy('amount', 'desc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': sortHistoryField === 'amount' && sortHistoryDirection === 'desc' }">
+                              :class="{ 'text-blue-600': sortHistoryField === 'amount' && sortHistoryDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -651,14 +651,14 @@
                           <span class="text-xs sm:text-sm">Usuario</span>
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortHistoryBy('user', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': sortHistoryField === 'user' && sortHistoryDirection === 'asc' }">
+                              :class="{ 'text-blue-600': sortHistoryField === 'user' && sortHistoryDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
                               </svg>
                             </button>
                             <button @click="sortHistoryBy('user', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': sortHistoryField === 'user' && sortHistoryDirection === 'desc' }">
+                              :class="{ 'text-blue-600': sortHistoryField === 'user' && sortHistoryDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -698,7 +698,7 @@
                       </td>
                       <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                         <div class="flex space-x-2">
-                          <button class="text-primary-600 hover:text-primary-800"
+                          <button class="text-blue-600 hover:text-blue-800"
                             @click="viewMovementDetails(movement)">
                             <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -828,7 +828,7 @@
 
             <!-- Indicador de carga -->
             <div v-if="globalHistoryLoading" class="flex justify-center items-center py-6 sm:py-8">
-              <div class="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary-600"></div>
+              <div class="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
               <span class="ml-2 text-gray-600 text-xs sm:text-sm">Cargando...</span>
             </div>
 
@@ -980,7 +980,7 @@
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortGlobalHistoryBy('date', 'asc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'asc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
@@ -988,7 +988,7 @@
                             </button>
                             <button @click="sortGlobalHistoryBy('date', 'desc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'desc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -1004,7 +1004,7 @@
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortGlobalHistoryBy('batch_id', 'asc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'asc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
@@ -1012,7 +1012,7 @@
                             </button>
                             <button @click="sortGlobalHistoryBy('batch_id', 'desc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'desc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -1028,7 +1028,7 @@
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortGlobalHistoryBy('change_details', 'asc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'asc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
@@ -1036,7 +1036,7 @@
                             </button>
                             <button @click="sortGlobalHistoryBy('change_details', 'desc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'desc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -1052,7 +1052,7 @@
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortGlobalHistoryBy('previous_values', 'asc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'asc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
@@ -1060,7 +1060,7 @@
                             </button>
                             <button @click="sortGlobalHistoryBy('previous_values', 'desc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'desc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -1076,7 +1076,7 @@
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortGlobalHistoryBy('new_values', 'asc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'asc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
@@ -1084,7 +1084,7 @@
                             </button>
                             <button @click="sortGlobalHistoryBy('new_values', 'desc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'desc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -1100,7 +1100,7 @@
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortGlobalHistoryBy('user_rut', 'asc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'asc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
@@ -1108,7 +1108,7 @@
                             </button>
                             <button @click="sortGlobalHistoryBy('user_rut', 'desc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'desc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -1124,7 +1124,7 @@
                           <div class="flex flex-col ml-1 sm:ml-2">
                             <button @click="sortGlobalHistoryBy('user_name', 'asc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'asc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'asc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M5 15l7-7 7 7" />
@@ -1132,7 +1132,7 @@
                             </button>
                             <button @click="sortGlobalHistoryBy('user_name', 'desc')"
                               class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-primary-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'desc' }">
+                              :class="{ 'text-blue-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'desc' }">
                               <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M19 9l-7 7-7-7" />
@@ -2222,7 +2222,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
 
 /* Estilos para el select de filtros */
 .form-select {
-  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm;
+  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
 }
 
 /* Mejoras para dispositivos móviles */

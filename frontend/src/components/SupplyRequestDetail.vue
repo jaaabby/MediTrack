@@ -15,7 +15,7 @@
       <p class="text-sm sm:text-base text-gray-600 mb-4 px-4">{{ error }}</p>
       <button
         @click="loadSupplyRequest"
-        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+        class="btn-primary"
       >
         Reintentar
       </button>
@@ -54,7 +54,7 @@
               v-if="request.status === 'pending' && authStore.canApproveRequests"
               @click="approveRequest"
               :disabled="processing"
-              class="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 w-full sm:w-auto"
+              class="btn-success disabled:opacity-50 w-full sm:w-auto"
             >
               <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -66,7 +66,7 @@
               v-if="request.status === 'pending' && authStore.canApproveRequests"
               @click="rejectRequest"
               :disabled="processing"
-              class="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 w-full sm:w-auto"
+              class="btn-danger disabled:opacity-50 w-full sm:w-auto"
             >
               <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-weight="2" d="M6 18L18 6M6 6l12 12" />
@@ -719,7 +719,7 @@
               @click="assignQR"
               :disabled="!qrAssignmentForm.qrCode || assigningQR"
               type="button"
-              class="w-full sm:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
+              class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
             >
               {{ assigningQR ? 'Asignando...' : 'Asignar' }}
             </button>

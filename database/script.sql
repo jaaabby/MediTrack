@@ -744,3 +744,12 @@ ORDER BY sequence_name;
 -- Ajustar secuencias de configuración médica si es necesario
 SELECT setval('medical_specialty_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_specialty));
 SELECT setval('surgery_typical_supply_id_seq', (SELECT COALESCE(MAX(id), 0) FROM surgery_typical_supply));
+
+-- Poblar configuración de proveedores (alertas de vencimiento)
+-- Default: 90 días (3 meses), algunos proveedores usan 180 días (6 meses)
+INSERT INTO supplier_config (supplier_name, expiration_alert_days, notes) VALUES
+('Proveedor Uno', 90, 'Configuración estándar: 3 meses de anticipación'),
+('Proveedor Dos', 90, 'Configuración estándar: 3 meses de anticipación'),
+('Proveedor Tres', 180, 'Proveedor requiere 6 meses de anticipación'),
+('Proveedor Cuatro', 90, 'Configuración estándar: 3 meses de anticipación')
+ON CONFLICT (supplier_name) DO NOTHING;

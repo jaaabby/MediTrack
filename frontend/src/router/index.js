@@ -301,6 +301,19 @@ const routes = [
     }
   },
 
+  // Configuración - Configuración de Proveedores
+  {
+    path: '/supplier-configs',
+    name: 'SupplierConfigManagement',
+    component: () => import('@/views/SupplierConfigManagement.vue'),
+    meta: {
+      title: 'Configuración de Proveedores - MediTrack',
+      description: 'Gestión de alertas de vencimiento por proveedor',
+      requiresAuth: true,
+      requiredRoles: ['admin', 'encargado de bodega']
+    }
+  },
+
   // Historial de Insumos
   {
     path: '/supply-history',

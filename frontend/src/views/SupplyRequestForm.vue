@@ -85,42 +85,5 @@ const handleSuccess = (requestData) => {
 </script>
 
 <style scoped>
-/* Animaciones y transiciones */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-
-/* Mejoras de UI */
-.bg-gray-50 {
-  background-color: #f9fafb;
-}
-
-.shadow-lg {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Hover effects */
-.hover\:text-blue-600:hover {
-  color: #2563eb;
-}
-
-.hover\:text-gray-600:hover {
-  color: #4b5563;
-}
-
-.hover\:text-gray-900:hover {
-  color: #111827;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .max-w-7xl {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
+/* Los estilos globales están en style.css */
 </style>

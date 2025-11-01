@@ -137,7 +137,7 @@
               <button
                 @click="managementMenuOpen = !managementMenuOpen"
                 class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
-                :class="{ 'bg-blue-700': ['/transfers', '/surgeries', '/supply-history', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info'].some(path => $route.path.startsWith(path)) }"
+                :class="{ 'bg-blue-700': ['/transfers', '/surgeries', '/supply-history', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info', '/supplier-configs'].some(path => $route.path.startsWith(path)) }"
               >
                 Gestión
                 <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': managementMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,6 +231,29 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     Información de Doctores
+                  </div>
+                </router-link>
+                
+                <!-- Separador -->
+                <div class="border-t border-gray-200 my-1"></div>
+                
+                <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Configuración del Sistema
+                </div>
+                
+                <router-link
+                  v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+                  to="/supplier-configs"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/supplier-configs' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Configuración de Proveedores
                   </div>
                 </router-link>
               </div>
@@ -513,6 +536,23 @@
               :class="{ 'bg-blue-800': $route.path === '/doctor-info' }"
             >
               Información de Doctores
+            </router-link>
+            
+            <!-- Separador -->
+            <div class="border-t border-blue-600 my-2"></div>
+            
+            <div class="text-blue-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+              Configuración del Sistema
+            </div>
+            
+            <router-link
+              v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+              to="/supplier-configs"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/supplier-configs' }"
+            >
+              Configuración de Proveedores
             </router-link>
           </div>
 

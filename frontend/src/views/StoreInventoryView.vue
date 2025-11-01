@@ -58,7 +58,7 @@
                 type="checkbox"
                 v-model="filters.low_stock"
                 @change="applyFilters"
-                class="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+                class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
               />
               <span class="ml-2 text-sm text-gray-700">Stock bajo</span>
             </label>
@@ -67,7 +67,7 @@
                 type="checkbox"
                 v-model="filters.near_expiration"
                 @change="applyFilters"
-                class="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+                class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
               />
               <span class="ml-2 text-sm text-gray-700">Próximo a vencer</span>
             </label>
@@ -83,7 +83,7 @@
     <!-- Loading -->
     <div v-if="loading" class="card">
       <div class="flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <span class="ml-3 text-gray-600">Cargando inventario...</span>
       </div>
     </div>
@@ -213,7 +213,7 @@
               <th @click="sortBy('total_transferred_out')"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
                 <div class="flex items-center space-x-1">
-                  <span>Transferidos</span>
+                  <span>Movimientos</span>
                   <span class="flex flex-col -space-y-1">
                     <svg class="h-3 w-3 transition-colors" 
                       :class="sortKey === 'total_transferred_out' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
@@ -307,7 +307,8 @@
                 {{ item.original_amount }} unidades
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ item.total_transferred_out || 0 }}</div>
+                <div class="text-sm text-gray-900">Transferidos: {{ item.total_transferred_out || 0 }}</div>
+                <div class="text-xs text-gray-500">Consumidos: {{ item.total_consumed_in_store || 0 }}</div>
                 <div class="text-xs text-gray-500">Devueltos: {{ item.total_returned_in || 0 }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

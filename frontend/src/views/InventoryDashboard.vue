@@ -8,7 +8,7 @@
 
     <!-- Loading -->
     <div v-if="loading" class="flex justify-center items-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       <span class="ml-3 text-gray-600">Cargando inventario...</span>
     </div>
 
@@ -46,7 +46,7 @@
         </div>
 
         <div v-if="surgeryInventoryLoading" class="flex justify-center items-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <span class="ml-3 text-gray-600">Cargando...</span>
         </div>
 

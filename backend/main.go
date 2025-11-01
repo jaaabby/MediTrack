@@ -79,6 +79,7 @@ func main() {
 	// Configurar rutas principales
 	routes.SetupRoutes(
 		router,
+		db,
 		*userService,
 		*medicalSupplyService,
 		*medicalCenterService,

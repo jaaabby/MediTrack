@@ -790,6 +790,36 @@ CREATE TRIGGER trg_update_doctor_info_updated_at
     EXECUTE FUNCTION update_doctor_info_updated_at();
 
 -- =======================
+-- TABLA DE CONFIGURACIÓN DE PROVEEDORES PARA ALERTAS DE VENCIMIENTO
+-- =======================
+CREATE TABLE IF NOT EXISTS supplier_config (
+    supplier_name VARCHAR(255) PRIMARY KEY,
+    expiration_alert_days INTEGER NOT NULL DEFAULT 90 CHECK (expiration_alert_days > 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    notes TEXT
+);
+
+CREATE INDEX idx_supplier_config_alert_days ON supplier_config(expiration_alert_days);
+
+COMMENT ON TABLE supplier_config IS 'Configuración de alertas de vencimiento por proveedor';
+COMMENT ON COLUMN supplier_config.supplier_name IS 'Nombre del proveedor (debe coincidir con batch.supplier)';
+COMMENT ON COLUMN supplier_config.expiration_alert_days IS 'Días de anticipación para alerta de vencimiento (default: 90 días = 3 meses)';
+
+CREATE OR REPLACE FUNCTION update_supplier_config_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_supplier_config_updated_at
+    BEFORE UPDATE ON supplier_config
+    FOR EACH ROW
+    EXECUTE FUNCTION update_supplier_config_updated_at();
+
+-- =======================
 -- ACTUALIZACIÓN DE STATUS DE INSUMOS MÉDICOS DESDE HISTORIAL
 -- =======================
 UPDATE medical_supply 

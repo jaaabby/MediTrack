@@ -52,7 +52,7 @@
     <!-- Loading -->
     <div v-if="loading" class="card">
       <div class="flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <span class="ml-3 text-gray-600">Cargando transferencias...</span>
       </div>
     </div>
@@ -194,7 +194,7 @@
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex justify-end space-x-2">
                   <button @click="viewDetails(transfer)" 
-                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    class="btn-primary text-xs px-3 py-1.5"
                     title="Ver detalles">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -203,7 +203,7 @@
                   </button>
                   <button v-if="transfer.status === 'pendiente' || transfer.status === 'en_transito'" 
                     @click="openConfirmModal(transfer)" 
-                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                    class="btn-success text-xs px-3 py-1.5"
                     title="Confirmar recepción">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -211,7 +211,7 @@
                   </button>
                   <button v-if="transfer.status === 'pendiente'" 
                     @click="openCancelModal(transfer)" 
-                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                    class="btn-danger text-xs px-3 py-1.5"
                     title="Cancelar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -592,7 +592,7 @@
           <button @click="closeDetailsModal" class="btn-secondary">Cerrar</button>
           <button v-if="selectedTransfer.status === 'pendiente' || selectedTransfer.status === 'en_transito'" 
             @click="openConfirmModal(selectedTransfer); closeDetailsModal()" 
-            class="btn-primary bg-green-600 hover:bg-green-700 flex items-center">
+            class="btn-success flex items-center">
             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
@@ -667,7 +667,7 @@
             <button @click="closeConfirmModal" class="btn-secondary" :disabled="isConfirming">
               Cancelar
             </button>
-            <button @click="confirmReception" class="btn-primary bg-green-600 hover:bg-green-700" :disabled="isConfirming">
+            <button @click="confirmReception" class="btn-success" :disabled="isConfirming">
               <span v-if="isConfirming">Confirmando...</span>
               <span v-else>Confirmar Recepción</span>
             </button>
@@ -743,7 +743,7 @@
             </button>
             <button 
               @click="cancelTransfer" 
-              class="btn-primary bg-red-600 hover:bg-red-700" 
+              class="btn-danger" 
               :disabled="isConfirming || !cancellationReason.trim()"
             >
               <span v-if="isConfirming">Cancelando...</span>

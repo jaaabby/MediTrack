@@ -1038,6 +1038,55 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 		fmt.Printf("✅ DEBUG - Registro de transferencia creado: Code=%s, QR=%s, Origin=%s:%d, Destination=%s:%d\n",
 			transferCode, qrCode, originType, originID, destinationType, destinationID)
 
+		// Actualizar contadores de inventario si se transfiere desde bodega
+		if originType == models.TransferLocationStore || supply.LocationType == models.SupplyLocationStore {
+			var batch models.Batch
+			if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+				return fmt.Errorf("error obteniendo batch: %v", err)
+			}
+
+			var storeSummary models.StoreInventorySummary
+			storeID := originID
+			if storeID == 0 {
+				storeID = supply.LocationID
+			}
+			if err := tx.Where("store_id = ? AND batch_id = ?", storeID, supply.BatchID).
+				First(&storeSummary).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Crear resumen si no existe
+					storeSummary = models.StoreInventorySummary{
+						StoreID:            storeID,
+						BatchID:            supply.BatchID,
+						SupplyCode:         supply.Code,
+						SurgeryID:          batch.SurgeryID,
+						OriginalAmount:     batch.Amount,
+						CurrentInStore:     batch.Amount - 1,
+						TotalTransferredOut: 1,
+					}
+					now := time.Now()
+					storeSummary.LastTransferOutDate = &now
+					if err := tx.Create(&storeSummary).Error; err != nil {
+						return fmt.Errorf("error creando resumen de bodega: %v", err)
+					}
+					fmt.Printf("✅ Resumen de bodega creado al transferir: StoreID=%d, BatchID=%d, CurrentInStore=%d, TotalTransferredOut=1\n",
+						storeID, supply.BatchID, batch.Amount-1)
+				} else {
+					return fmt.Errorf("error obteniendo resumen de bodega: %v", err)
+				}
+			} else {
+				// Actualizar resumen existente
+				storeSummary.CurrentInStore--
+				storeSummary.TotalTransferredOut++
+				now := time.Now()
+				storeSummary.LastTransferOutDate = &now
+				if err := tx.Save(&storeSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de bodega: %v", err)
+				}
+				fmt.Printf("✅ Resumen de bodega actualizado: CurrentInStore=%d, TotalTransferredOut=%d\n",
+					storeSummary.CurrentInStore, storeSummary.TotalTransferredOut)
+			}
+		}
+
 		// NO crear QRScanEvent aquí - SupplyHistory es suficiente para las transferencias
 		// Los QRScanEvent son solo para escaneos, no para cambios de estado
 
@@ -1338,6 +1387,88 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 		newAmount := batch.Amount - 1
 		if err := tx.Model(&batch).Update("amount", newAmount).Error; err != nil {
 			return fmt.Errorf("error actualizando cantidad del lote: %v", err)
+		}
+
+		// Actualizar contadores de inventario según la ubicación del insumo
+		now := time.Now()
+		if supply.LocationType == models.SupplyLocationStore {
+			// Insumo consumido desde bodega - actualizar store_inventory_summary
+			var storeSummary models.StoreInventorySummary
+			if err := tx.Where("store_id = ? AND batch_id = ?", supply.LocationID, supply.BatchID).
+				First(&storeSummary).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Si no existe el resumen, calcular el stock real en bodega
+					var realCount int64
+					tx.Model(&models.MedicalSupply{}).
+						Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
+							supply.BatchID, models.SupplyLocationStore, supply.LocationID, models.StatusConsumed).
+						Count(&realCount)
+					
+					// Crear resumen con valores calculados
+					storeSummary = models.StoreInventorySummary{
+						StoreID:            supply.LocationID,
+						BatchID:            supply.BatchID,
+						SupplyCode:         supply.Code,
+						SurgeryID:          batch.SurgeryID, // Obtener del batch
+						OriginalAmount:     int(realCount) + 1, // Cantidad antes del consumo (real + 1 consumido)
+						CurrentInStore:     int(realCount),     // Stock actual en bodega (sin el que se consumió)
+						TotalConsumedInStore: 1,
+						LastConsumedDate:   &now,
+					}
+					if err := tx.Create(&storeSummary).Error; err != nil {
+						return fmt.Errorf("error creando resumen de bodega: %v", err)
+					}
+					fmt.Printf("✅ Resumen de bodega creado al consumir: StoreID=%d, BatchID=%d, CurrentInStore=%d, TotalConsumedInStore=1\n",
+						supply.LocationID, supply.BatchID, int(realCount))
+				} else {
+					return fmt.Errorf("error obteniendo resumen de bodega: %v", err)
+				}
+			} else {
+				// Actualizar resumen existente
+				storeSummary.CurrentInStore--
+				storeSummary.TotalConsumedInStore++
+				storeSummary.LastConsumedDate = &now
+				if err := tx.Save(&storeSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de bodega: %v", err)
+				}
+				fmt.Printf("✅ Resumen de bodega actualizado: CurrentInStore=%d, TotalConsumedInStore=%d\n",
+					storeSummary.CurrentInStore, storeSummary.TotalConsumedInStore)
+			}
+		} else if supply.LocationType == models.SupplyLocationPavilion {
+			// Insumo consumido desde pabellón - actualizar pavilion_inventory_summary
+			var pavilionSummary models.PavilionInventorySummary
+			if err := tx.Where("pavilion_id = ? AND batch_id = ?", supply.LocationID, supply.BatchID).
+				First(&pavilionSummary).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Si no existe el resumen, crearlo
+					pavilionSummary = models.PavilionInventorySummary{
+						PavilionID:      supply.LocationID,
+						BatchID:         supply.BatchID,
+						SupplyCode:      supply.Code,
+						TotalReceived:    1,
+						CurrentAvailable: 0, // Ya no hay disponible
+						TotalConsumed:    1,
+						LastConsumedDate: &now,
+					}
+					if err := tx.Create(&pavilionSummary).Error; err != nil {
+						return fmt.Errorf("error creando resumen de pabellón: %v", err)
+					}
+					fmt.Printf("✅ Resumen de pabellón creado al consumir: PavilionID=%d, BatchID=%d, TotalConsumed=1\n",
+						supply.LocationID, supply.BatchID)
+				} else {
+					return fmt.Errorf("error obteniendo resumen de pabellón: %v", err)
+				}
+			} else {
+				// Actualizar resumen existente
+				pavilionSummary.CurrentAvailable--
+				pavilionSummary.TotalConsumed++
+				pavilionSummary.LastConsumedDate = &now
+				if err := tx.Save(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de pabellón: %v", err)
+				}
+				fmt.Printf("✅ Resumen de pabellón actualizado: CurrentAvailable=%d, TotalConsumed=%d\n",
+					pavilionSummary.CurrentAvailable, pavilionSummary.TotalConsumed)
+			}
 		}
 
 		// Si hay una asignación activa, actualizarla a consumido

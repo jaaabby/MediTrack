@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"meditrack/models"
 
 	"gorm.io/gorm"
@@ -16,7 +17,14 @@ func NewSurgeryTypicalSupplyService(db *gorm.DB) *SurgeryTypicalSupplyService {
 
 // CreateSurgeryTypicalSupply crea un nuevo insumo típico para una cirugía
 func (s *SurgeryTypicalSupplyService) CreateSurgeryTypicalSupply(typicalSupply *models.SurgeryTypicalSupply) error {
-	return s.DB.Create(typicalSupply).Error
+	if err := s.DB.Create(typicalSupply).Error; err != nil {
+		return err
+	}
+	
+	// Actualizar store_inventory_summary para lotes existentes que tienen este supply_code y no tienen surgery_id
+	s.syncSurgeryIDForSupplyCode(typicalSupply.SupplyCode, typicalSupply.SurgeryID)
+	
+	return nil
 }
 
 // GetSurgeryTypicalSupplyByID obtiene un insumo típico por ID
@@ -81,12 +89,60 @@ func (s *SurgeryTypicalSupplyService) DeleteTypicalSuppliesBySurgeryID(surgeryID
 	return s.DB.Where("surgery_id = ?", surgeryID).Delete(&models.SurgeryTypicalSupply{}).Error
 }
 
+// GetAllTypicalSupplies obtiene todos los insumos típicos
+func (s *SurgeryTypicalSupplyService) GetAllTypicalSupplies() ([]models.SurgeryTypicalSupply, error) {
+	var typicalSupplies []models.SurgeryTypicalSupply
+	if err := s.DB.Find(&typicalSupplies).Error; err != nil {
+		return nil, err
+	}
+	return typicalSupplies, nil
+}
+
+// GetTypicalSuppliesCount obtiene el conteo total de insumos típicos
+func (s *SurgeryTypicalSupplyService) GetTypicalSuppliesCount() (int64, error) {
+	var count int64
+	if err := s.DB.Model(&models.SurgeryTypicalSupply{}).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // BulkCreateSurgeryTypicalSupplies crea múltiples insumos típicos para una cirugía
 func (s *SurgeryTypicalSupplyService) BulkCreateSurgeryTypicalSupplies(surgeryID int, typicalSupplies []models.SurgeryTypicalSupply) error {
 	// Verificar que todos los insumos típicos pertenezcan a la misma cirugía
 	for i := range typicalSupplies {
 		typicalSupplies[i].SurgeryID = surgeryID
 	}
-	return s.DB.Create(&typicalSupplies).Error
+	if err := s.DB.Create(&typicalSupplies).Error; err != nil {
+		return err
+	}
+	
+	// Actualizar store_inventory_summary para todos los supply_code creados
+	supplyCodes := make(map[int]bool)
+	for _, ts := range typicalSupplies {
+		supplyCodes[ts.SupplyCode] = true
+	}
+	for supplyCode := range supplyCodes {
+		s.syncSurgeryIDForSupplyCode(supplyCode, surgeryID)
+	}
+	
+	return nil
+}
+
+// syncSurgeryIDForSupplyCode actualiza el surgery_id en store_inventory_summary
+// para lotes que tienen este supply_code y no tienen surgery_id asignado
+func (s *SurgeryTypicalSupplyService) syncSurgeryIDForSupplyCode(supplyCode int, surgeryID int) {
+	// Actualizar store_inventory_summary donde supply_code coincide y surgery_id es NULL
+	result := s.DB.Model(&models.StoreInventorySummary{}).
+		Where("supply_code = ? AND surgery_id IS NULL", supplyCode).
+		Update("surgery_id", surgeryID)
+	
+	if result.Error != nil {
+		// Log error pero no fallar
+		fmt.Printf("Advertencia: Error actualizando surgery_id para supply_code %d: %v\n", supplyCode, result.Error)
+	} else if result.RowsAffected > 0 {
+		fmt.Printf("✅ Actualizado surgery_id=%d para %d resúmenes de inventario con supply_code=%d\n", 
+			surgeryID, result.RowsAffected, supplyCode)
+	}
 }
 

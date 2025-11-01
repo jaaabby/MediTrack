@@ -10,7 +10,7 @@
         <router-link
           v-if="authStore.canCreateRequests"
           to="/supply-requests/new"
-          class="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+          class="btn-primary w-full sm:w-auto"
         >
           <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -21,7 +21,7 @@
     </div>
 
     <!-- Filtros y búsqueda -->
-    <div class="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow border">
+    <div class="mb-4 sm:mb-6 card p-3 sm:p-4">
       <!-- Badge de filtro activo -->
       <div v-if="filters.statusCategory" class="mb-3 flex items-center gap-2">
         <span class="text-xs font-medium text-gray-600">Filtro activo:</span>
@@ -186,7 +186,7 @@
         <p class="text-gray-600 mb-4">{{ error }}</p>
         <button
           @click="loadSupplyRequests"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          class="btn-primary"
         >
           Reintentar
         </button>
@@ -204,7 +204,7 @@
         <router-link
           v-if="requests.length === 0 && authStore.canCreateRequests && !filters.status && !filters.statusCategory"
           to="/supply-requests/new"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          class="btn-primary"
         >
           <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -1004,27 +1004,7 @@ onMounted(async () => {
 }
 
 /* Estilos para botones secundarios */
-.btn-secondary {
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  color: #374151;
-  background-color: white;
-  transition: all 0.15s ease-in-out;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: #f9fafb;
-}
-
-.btn-secondary:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Usar .btn-secondary de style.css global */
 
 /* Mejoras para dispositivos móviles */
 @media (max-width: 640px) {
