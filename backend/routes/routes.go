@@ -22,6 +22,9 @@ func SetupRoutes(
 	transferService *services.SupplyTransferService,
 	inventoryService *services.InventoryService,
 	surgeryService *services.SurgeryService,
+	specialtyService *services.MedicalSpecialtyService,
+	typicalSupplyService *services.SurgeryTypicalSupplyService,
+	doctorInfoService *services.DoctorInfoService,
 	secretKey string,
 ) {
 	// API v1
@@ -68,6 +71,15 @@ func SetupRoutes(
 
 		// Configurar rutas de tipos de cirugía
 		SetupSurgeryRoutes(v1, surgeryService)
+
+		// Configurar rutas de especialidades médicas
+		SetupMedicalSpecialtyRoutes(v1, specialtyService)
+
+		// Configurar rutas de insumos típicos por cirugía
+		SetupSurgeryTypicalSupplyRoutes(v1, typicalSupplyService)
+
+		// Configurar rutas de información de doctores
+		SetupDoctorInfoRoutes(v1, doctorInfoService)
 	}
 
 	// Ruta de health check

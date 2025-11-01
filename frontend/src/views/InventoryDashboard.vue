@@ -3,13 +3,13 @@
     <!-- Header -->
     <div class="bg-white rounded-lg shadow-sm border p-6">
       <h2 class="text-2xl font-semibold text-gray-900">Dashboard de Inventario</h2>
-      <p class="text-gray-600 mt-2">Resumen general del inventario por ubicaciones</p>
+      <p class="text-gray-600 mt-2">Inventario organizado por tipo de cirugía</p>
     </div>
 
     <!-- Loading -->
     <div v-if="loading" class="flex justify-center items-center py-12">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      <span class="ml-3 text-gray-600">Cargando estadísticas...</span>
+      <span class="ml-3 text-gray-600">Cargando inventario...</span>
     </div>
 
     <!-- Error -->
@@ -20,7 +20,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-800">Error al cargar estadísticas</h3>
+            <h3 class="text-sm font-medium text-red-800">Error al cargar inventario</h3>
             <div class="mt-2 text-sm text-red-700">{{ error }}</div>
             <button @click="loadDashboard" class="btn-secondary mt-4 text-sm">Reintentar</button>
           </div>
@@ -30,118 +30,6 @@
 
     <!-- Dashboard Content -->
     <div v-else class="space-y-8">
-      <!-- Estadísticas Generales -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <!-- Total en Bodegas -->
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-blue-100 text-sm font-medium">Total en Bodegas</p>
-              <p class="text-3xl font-bold mt-2">{{ summary.total_in_stores || 0 }}</p>
-              <p class="text-blue-100 text-xs mt-1">unidades</p>
-            </div>
-            <div class="bg-blue-400 bg-opacity-30 rounded-full p-3">
-              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- Total en Pabellones -->
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-green-100 text-sm font-medium">Total en Pabellones</p>
-              <p class="text-3xl font-bold mt-2">{{ summary.total_in_pavilions || 0 }}</p>
-              <p class="text-green-100 text-xs mt-1">unidades</p>
-            </div>
-            <div class="bg-green-400 bg-opacity-30 rounded-full p-3">
-              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- Total Consumido -->
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-purple-100 text-sm font-medium">Total Consumido</p>
-              <p class="text-3xl font-bold mt-2">{{ summary.total_consumed || 0 }}</p>
-              <p class="text-purple-100 text-xs mt-1">unidades</p>
-            </div>
-            <div class="bg-purple-400 bg-opacity-30 rounded-full p-3">
-              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- Total Transferido -->
-        <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-orange-100 text-sm font-medium">Total Transferido</p>
-              <p class="text-3xl font-bold mt-2">{{ summary.total_transferred || 0 }}</p>
-              <p class="text-orange-100 text-xs mt-1">unidades</p>
-            </div>
-            <div class="bg-orange-400 bg-opacity-30 rounded-full p-3">
-              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Alertas -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        <!-- Stock Bajo -->
-        <div class="card">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Stock Bajo</h3>
-            <span class="flex items-center justify-center h-10 w-10 rounded-full bg-red-100">
-              <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </span>
-          </div>
-          <p class="text-3xl font-bold text-gray-900">{{ summary.low_stock_stores || 0 }}</p>
-          <p class="text-sm text-gray-600 mt-1">lotes con stock bajo</p>
-        </div>
-
-        <!-- Próximos a Vencer -->
-        <div class="card">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Próximos a Vencer</h3>
-            <span class="flex items-center justify-center h-10 w-10 rounded-full bg-yellow-100">
-              <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </span>
-          </div>
-          <p class="text-3xl font-bold text-gray-900">{{ summary.near_expiration || 0 }}</p>
-          <p class="text-sm text-gray-600 mt-1">lotes vencen en 90 días</p>
-        </div>
-
-        <!-- Transferencias Pendientes -->
-        <div class="card">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Transferencias Pendientes</h3>
-            <span class="flex items-center justify-center h-10 w-10 rounded-full bg-blue-100">
-              <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </span>
-          </div>
-          <p class="text-3xl font-bold text-gray-900">{{ summary.pending_transfers || 0 }}</p>
-          <p class="text-sm text-gray-600 mt-1">transferencias en proceso</p>
-        </div>
-      </div>
-
       <!-- Inventario por Tipo de Cirugía -->
       <div class="card">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -169,9 +57,9 @@
           <p class="mt-2 text-sm text-gray-500">No hay inventario organizado por tipo de cirugía</p>
         </div>
 
-        <div v-else class="overflow-x-auto">
+        <div v-else class="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+            <thead class="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th @click="sortSurgeryBy('surgery_name')"
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
@@ -249,7 +137,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="item in paginatedSurgeryInventory" :key="item.surgery_id" class="hover:bg-gray-50">
+              <tr v-for="item in sortedSurgeryInventory" :key="item.surgery_id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
@@ -284,30 +172,6 @@
               </tr>
             </tbody>
           </table>
-        </div>
-      </div>
-
-      <!-- Paginación para tabla de cirugías -->
-      <div v-if="!surgeryInventoryLoading && sortedSurgeryInventory.length > 0" class="card">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div class="text-sm text-gray-700 text-center sm:text-left">
-            Mostrando {{ surgeryStartIndex + 1 }} a {{ surgeryEndIndex }} de {{ sortedSurgeryInventory.length }} tipos de cirugía
-          </div>
-          <div class="flex items-center gap-2">
-            <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="surgeryCurrentPage === 1"
-              @click="surgeryCurrentPage--">
-              <span class="hidden sm:inline">Anterior</span>
-              <span class="sm:hidden">Ant.</span>
-            </button>
-            <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-              Página {{ surgeryCurrentPage }} de {{ surgeryTotalPages }}
-            </span>
-            <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="surgeryCurrentPage === surgeryTotalPages"
-              @click="surgeryCurrentPage++">
-              <span class="hidden sm:inline">Siguiente</span>
-              <span class="sm:hidden">Sig.</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -359,7 +223,6 @@ import inventoryService from '@/services/inventoryService'
 
 const loading = ref(false)
 const error = ref(null)
-const summary = ref({})
 const surgeryInventory = ref([])
 const surgeryInventoryLoading = ref(false)
 
@@ -367,19 +230,11 @@ const surgeryInventoryLoading = ref(false)
 const surgerySortKey = ref('surgery_name')
 const surgerySortOrder = ref('asc')
 
-// Estado de paginación para tabla de cirugías
-const surgeryCurrentPage = ref(1)
-const surgeryItemsPerPage = 10
-
 const loadDashboard = async () => {
   loading.value = true
   error.value = null
   
   try {
-    // Cargar resumen general
-    const summaryData = await inventoryService.getInventorySummary()
-    summary.value = summaryData
-    
     // Cargar inventario por cirugía
     await loadSurgeryInventory()
   } catch (err) {
@@ -431,15 +286,6 @@ const sortedSurgeryInventory = computed(() => {
   return sorted
 })
 
-// Computed properties para paginación de cirugías
-const surgeryTotalPages = computed(() => Math.ceil(sortedSurgeryInventory.value.length / surgeryItemsPerPage))
-const surgeryStartIndex = computed(() => (surgeryCurrentPage.value - 1) * surgeryItemsPerPage)
-const surgeryEndIndex = computed(() => Math.min(surgeryStartIndex.value + surgeryItemsPerPage, sortedSurgeryInventory.value.length))
-
-const paginatedSurgeryInventory = computed(() => {
-  return sortedSurgeryInventory.value.slice(surgeryStartIndex.value, surgeryEndIndex.value)
-})
-
 // Función para ordenar por columna
 const sortSurgeryBy = (key) => {
   if (surgerySortKey.value === key) {
@@ -448,7 +294,6 @@ const sortSurgeryBy = (key) => {
     surgerySortKey.value = key
     surgerySortOrder.value = 'asc'
   }
-  surgeryCurrentPage.value = 1
 }
 
 onMounted(() => {

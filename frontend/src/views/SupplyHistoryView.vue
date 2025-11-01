@@ -405,9 +405,9 @@ const filters = ref({
   to_date: ''
 })
 
-// Estado de ordenamiento
-const sortKey = ref('id')
-const sortOrder = ref('asc')
+// Estado de ordenamiento (por defecto ordenado por fecha más reciente primero)
+const sortKey = ref('date_time')
+const sortOrder = ref('desc')
 
 // Estado de paginación
 const currentPage = ref(1)

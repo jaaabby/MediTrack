@@ -164,6 +164,17 @@ func (c *SurgeryController) UpdateSurgery(ctx *gin.Context) {
 		return
 	}
 
+	// Recargar con relaciones
+	updatedSurgery, err = c.surgeryService.GetSurgeryByID(id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Message: "Error al obtener cirugía actualizada",
+			Error:   err.Error(),
+		})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Tipo de cirugía actualizado exitosamente",

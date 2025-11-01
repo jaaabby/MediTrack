@@ -283,6 +283,11 @@ class SupplyRequestService {
       requested_by_name: authStore.getUserName || 'Usuario Sistema',
       surgery_datetime: surgeryDatetime,
       notes: formData.notes || '',
+      // Campos de médico responsable
+      surgeon_id: formData.surgeon_id || null,
+      surgeon_name: formData.surgeon_name || null,
+      surgery_id: formData.surgery_id ? parseInt(formData.surgery_id) : null,
+      specialty_id: formData.specialty_id ? parseInt(formData.specialty_id) : null,
       items: formData.items.map(item => ({
         supply_code: parseInt(item.supply_code),
         supply_name: item.supply_name,

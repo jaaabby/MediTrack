@@ -22,7 +22,7 @@ func (s *SurgeryService) CreateSurgery(surgery *models.Surgery) error {
 // GetSurgeryByID obtiene un tipo de cirugía por ID
 func (s *SurgeryService) GetSurgeryByID(id int) (*models.Surgery, error) {
 	var surgery models.Surgery
-	if err := s.DB.First(&surgery, id).Error; err != nil {
+	if err := s.DB.Preload("Specialty").Preload("TypicalSupplies").Preload("TypicalSupplies.SupplyCodeInfo").First(&surgery, id).Error; err != nil {
 		return nil, err
 	}
 	return &surgery, nil
@@ -31,7 +31,7 @@ func (s *SurgeryService) GetSurgeryByID(id int) (*models.Surgery, error) {
 // GetAllSurgeries obtiene todos los tipos de cirugía
 func (s *SurgeryService) GetAllSurgeries() ([]models.Surgery, error) {
 	var surgeries []models.Surgery
-	if err := s.DB.Order("name ASC").Find(&surgeries).Error; err != nil {
+	if err := s.DB.Preload("Specialty").Order("name ASC").Find(&surgeries).Error; err != nil {
 		return nil, err
 	}
 	return surgeries, nil
@@ -56,7 +56,8 @@ func (s *SurgeryService) GetSurgeriesPaginated(page int, pageSize int, search *s
 
 	// Aplicar paginación
 	offset := (page - 1) * pageSize
-	if err := query.Order("name ASC").
+	if err := query.Preload("Specialty").
+		Order("name ASC").
 		Limit(pageSize).
 		Offset(offset).
 		Find(&surgeries).Error; err != nil {
@@ -75,6 +76,7 @@ func (s *SurgeryService) UpdateSurgery(id int, surgery *models.Surgery) (*models
 
 	existingSurgery.Name = surgery.Name
 	existingSurgery.Duration = surgery.Duration
+	existingSurgery.SpecialtyID = surgery.SpecialtyID
 
 	if err := s.DB.Save(&existingSurgery).Error; err != nil {
 		return nil, err

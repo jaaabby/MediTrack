@@ -59,6 +59,11 @@ type CreateSupplyRequestRequest struct {
 	RequestedByName string                           `json:"requested_by_name" binding:"required"`
 	SurgeryDatetime FlexibleTime                     `json:"surgery_datetime" binding:"required"`
 	Notes           string                           `json:"notes"`
+	// Campos de médico responsable
+	SurgeonID    *string `json:"surgeon_id"`
+	SurgeonName  *string `json:"surgeon_name"`
+	SurgeryID    *int    `json:"surgery_id"`
+	SpecialtyID  *int    `json:"specialty_id"`
 	Items           []CreateSupplyRequestItemRequest `json:"items" binding:"required,dive"`
 }
 
@@ -127,6 +132,11 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 			Status:          models.RequestStatusPendingPavedad, // Estado inicial: pendiente de asignación por Pavedad
 			Notes:           notes,
 			MedicalCenterID: medicalCenterID,
+			// Campos de médico responsable
+			SurgeonID:   request.SurgeonID,
+			SurgeonName: request.SurgeonName,
+			SurgeryID:   request.SurgeryID,
+			SpecialtyID: request.SpecialtyID,
 		}
 
 		if err := tx.Create(&supplyRequest).Error; err != nil {
@@ -188,7 +198,12 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 func (s *SupplyRequestService) GetSupplyRequestByID(id int) (*models.SupplyRequest, error) {
 	var request models.SupplyRequest
 
-	if err := s.DB.First(&request, id).Error; err != nil {
+	if err := s.DB.Preload("Surgeon").
+		Preload("Surgery").
+		Preload("Surgery.Specialty").
+		Preload("Surgery.TypicalSupplies").
+		Preload("Specialty").
+		First(&request, id).Error; err != nil {
 		return nil, fmt.Errorf("solicitud no encontrada: %v", err)
 	}
 

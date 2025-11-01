@@ -4,15 +4,15 @@
     <div class="bg-white rounded-lg shadow-sm border p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 class="text-2xl font-semibold text-gray-900">Tipos de Cirugía</h2>
-          <p class="text-gray-600 mt-1">Gestiona los tipos de procedimientos quirúrgicos</p>
-          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedSurgeries.length }} tipos</p>
+          <h2 class="text-2xl font-semibold text-gray-900">Especialidades Médicas</h2>
+          <p class="text-gray-600 mt-1">Gestiona las especialidades médicas del sistema</p>
+          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedSpecialties.length }} especialidades</p>
         </div>
         <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          Nuevo Tipo
+          Nueva Especialidad
         </button>
       </div>
     </div>
@@ -21,14 +21,14 @@
     <div class="card">
       <div class="flex flex-col sm:flex-row sm:items-end gap-4">
         <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar tipo de cirugía</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar especialidad</label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <input type="text" placeholder="Buscar por nombre o descripción..." 
+            <input type="text" placeholder="Buscar por nombre o código..." 
               class="form-input pl-10 w-full" v-model="searchTerm" @input="handleSearch" />
           </div>
         </div>
@@ -42,7 +42,7 @@
     <div v-if="loading" class="card">
       <div class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        <span class="ml-3 text-gray-600">Cargando tipos de cirugía...</span>
+        <span class="ml-3 text-gray-600">Cargando especialidades...</span>
       </div>
     </div>
 
@@ -54,15 +54,15 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-800">Error al cargar tipos de cirugía</h3>
+            <h3 class="text-sm font-medium text-red-800">Error al cargar especialidades</h3>
             <div class="mt-2 text-sm text-red-700">{{ error }}</div>
-            <button @click="loadSurgeries" class="btn-secondary mt-4 text-sm">Reintentar</button>
+            <button @click="loadSpecialties" class="btn-secondary mt-4 text-sm">Reintentar</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Tabla de tipos de cirugía -->
+    <!-- Tabla de especialidades -->
     <div v-else class="card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -104,36 +104,24 @@
                   </span>
                 </div>
               </th>
-              <th scope="col" @click="sortBy('duration')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Duración (horas)</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'duration' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'duration' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Código
               </th>
-              <th scope="col" @click="sortBy('specialty')"
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Descripción
+              </th>
+              <th scope="col" @click="sortBy('is_active')"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
                 <div class="flex items-center space-x-1">
-                  <span>Especialidad</span>
+                  <span>Estado</span>
                   <span class="flex flex-col -space-y-1">
                     <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'specialty' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
+                      :class="sortKey === 'is_active' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
                       fill="currentColor" viewBox="0 0 20 20">
                       <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
                     </svg>
                     <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'specialty' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
+                      :class="sortKey === 'is_active' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
                       fill="currentColor" viewBox="0 0 20 20">
                       <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
                     </svg>
@@ -146,33 +134,38 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="surgery in paginatedSurgeries" :key="surgery.id" 
+            <tr v-for="specialty in paginatedSpecialties" :key="specialty.id" 
               class="hover:bg-gray-50 transition-colors duration-150">
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                #{{ surgery.id }}
+                #{{ specialty.id }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ surgery.name }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ specialty.name }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ surgery.duration }}h
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ specialty.code || '-' }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <span v-if="surgery.specialty" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {{ surgery.specialty.name }}
+              <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" :title="specialty.description">
+                {{ specialty.description || '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span v-if="specialty.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Activa
                 </span>
-                <span v-else class="text-gray-400 text-xs">Sin especialidad</span>
+                <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  Inactiva
+                </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex justify-end space-x-2">
-                  <button @click="openEditModal(surgery)" 
+                  <button @click="openEditModal(specialty)" 
                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                     title="Editar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
-                  <button @click="confirmDelete(surgery)" 
+                  <button @click="confirmDelete(specialty)" 
                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                     title="Eliminar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,10 +181,10 @@
     </div>
 
     <!-- Paginación -->
-    <div v-if="!loading && sortedSurgeries.length > 0" class="card">
+    <div v-if="!loading && sortedSpecialties.length > 0" class="card">
       <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedSurgeries.length }} tipos de cirugía
+          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedSpecialties.length }} especialidades
         </div>
         <div class="flex items-center gap-2">
           <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
@@ -212,18 +205,18 @@
     </div>
 
     <!-- Mensaje sin resultados -->
-    <div v-if="!loading && surgeries.length === 0" class="card text-center py-12">
+    <div v-if="!loading && specialties.length === 0" class="card text-center py-12">
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No hay tipos de cirugía</h3>
-      <p class="mt-1 text-sm text-gray-500">Comienza creando un nuevo tipo de cirugía.</p>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No hay especialidades médicas</h3>
+      <p class="mt-1 text-sm text-gray-500">Comienza creando una nueva especialidad médica.</p>
       <div class="mt-6">
         <button @click="openCreateModal" class="btn-primary">
           <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          Crear Tipo de Cirugía
+          Crear Especialidad
         </button>
       </div>
     </div>
@@ -232,59 +225,62 @@
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click.self="closeModal">
         <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
-        <div class="space-y-4">
-          <div class="flex justify-between items-center border-b pb-3">
-            <h3 class="text-xl font-semibold text-gray-900">
-              {{ isEditing ? 'Editar Tipo de Cirugía' : 'Crear Tipo de Cirugía' }}
-            </h3>
-            <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <form @submit.prevent="saveSurgery" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Nombre <span class="text-red-500">*</span>
-              </label>
-              <input v-model="surgeryForm.name" type="text" class="form-input" 
-                placeholder="Ej: Apendicectomía" required />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Duración (horas) <span class="text-red-500">*</span>
-              </label>
-              <input v-model.number="surgeryForm.duration" type="number" step="0.5" min="0.5" 
-                class="form-input" placeholder="Ej: 2.5" required />
-              <p class="mt-1 text-xs text-gray-500">Ingrese la duración estimada en horas (mínimo 0.5)</p>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Especialidad Médica
-              </label>
-              <select v-model.number="surgeryForm.specialty_id" class="form-input">
-                <option :value="null">Sin especialidad</option>
-                <option v-for="specialty in specialties" :key="specialty.id" :value="specialty.id">
-                  {{ specialty.name }}
-                </option>
-              </select>
-              <p class="mt-1 text-xs text-gray-500">Seleccione la especialidad médica asociada (opcional)</p>
-            </div>
-
-            <div class="flex justify-end space-x-3 pt-4 border-t">
-              <button type="button" @click="closeModal" class="btn-secondary">Cancelar</button>
-              <button type="submit" :disabled="saving" class="btn-primary">
-                <span v-if="saving">Guardando...</span>
-                <span v-else>{{ isEditing ? 'Actualizar' : 'Crear' }}</span>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+              <h3 class="text-xl font-semibold text-gray-900">
+                {{ isEditing ? 'Editar Especialidad Médica' : 'Crear Especialidad Médica' }}
+              </h3>
+              <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
-          </form>
+            
+            <form @submit.prevent="saveSpecialty" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre <span class="text-red-500">*</span>
+                </label>
+                <input v-model="specialtyForm.name" type="text" class="form-input" 
+                  placeholder="Ej: Traumatología" required />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Código
+                </label>
+                <input v-model="specialtyForm.code" type="text" class="form-input" 
+                  placeholder="Ej: TRAUMA" />
+                <p class="mt-1 text-xs text-gray-500">Código único para identificar la especialidad</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Descripción
+                </label>
+                <textarea v-model="specialtyForm.description" rows="3" class="form-input" 
+                  placeholder="Descripción de la especialidad médica"></textarea>
+              </div>
+
+              <div>
+                <label class="flex items-center space-x-2">
+                  <input v-model="specialtyForm.is_active" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                  <span class="text-sm font-medium text-gray-700">Especialidad activa</span>
+                </label>
+                <p class="mt-1 text-xs text-gray-500">Las especialidades inactivas no aparecerán en listas de selección</p>
+              </div>
+
+              <div class="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" @click="closeModal" class="btn-secondary">Cancelar</button>
+                <button type="submit" :disabled="saving" class="btn-primary">
+                  <span v-if="saving">Guardando...</span>
+                  <span v-else>{{ isEditing ? 'Actualizar' : 'Crear' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
       </div>
     </Teleport>
   </div>
@@ -292,14 +288,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import surgeryService from '@/services/surgeryService'
 import medicalSpecialtyService from '@/services/medicalSpecialtyService'
 import Swal from 'sweetalert2'
 
-const surgeries = ref([])
 const specialties = ref([])
 const loading = ref(false)
-const loadingSpecialties = ref(false)
 const error = ref(null)
 const searchTerm = ref('')
 const showModal = ref(false)
@@ -314,27 +307,22 @@ const sortOrder = ref('asc')
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-const surgeryForm = ref({
+const specialtyForm = ref({
   name: '',
-  duration: 1,
-  specialty_id: null
+  code: '',
+  description: '',
+  is_active: true
 })
 
 let searchTimeout = null
 
 // Computed para obtener la lista ordenada
-const sortedSurgeries = computed(() => {
-  if (!surgeries.value || surgeries.value.length === 0) return []
+const sortedSpecialties = computed(() => {
+  if (!specialties.value || specialties.value.length === 0) return []
   
-  const sorted = [...surgeries.value].sort((a, b) => {
+  const sorted = [...specialties.value].sort((a, b) => {
     let aVal = a[sortKey.value]
     let bVal = b[sortKey.value]
-    
-    // Manejo especial para ordenar por especialidad
-    if (sortKey.value === 'specialty') {
-      aVal = a.specialty?.name || ''
-      bVal = b.specialty?.name || ''
-    }
     
     // Manejo de strings (comparación case-insensitive)
     if (typeof aVal === 'string') {
@@ -348,122 +336,102 @@ const sortedSurgeries = computed(() => {
     return 0
   })
   
+  // Aplicar búsqueda si existe
+  if (searchTerm.value.trim()) {
+    const term = searchTerm.value.toLowerCase().trim()
+    return sorted.filter(s => 
+      s.name.toLowerCase().includes(term) || 
+      (s.code && s.code.toLowerCase().includes(term)) ||
+      (s.description && s.description.toLowerCase().includes(term))
+    )
+  }
+  
   return sorted
 })
 
 // Computed properties para paginación
-const totalPages = computed(() => Math.ceil(sortedSurgeries.value.length / itemsPerPage))
+const totalPages = computed(() => Math.ceil(sortedSpecialties.value.length / itemsPerPage))
 
 const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedSurgeries.value.length))
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedSpecialties.value.length))
 
-const paginatedSurgeries = computed(() => {
-  return sortedSurgeries.value.slice(startIndex.value, endIndex.value)
+const paginatedSpecialties = computed(() => {
+  return sortedSpecialties.value.slice(startIndex.value, endIndex.value)
 })
 
 // Función para ordenar por columna
 const sortBy = (key) => {
   if (sortKey.value === key) {
-    // Si ya estamos ordenando por esta columna, cambiar dirección
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
   } else {
-    // Nueva columna, ordenar ascendente por defecto
     sortKey.value = key
     sortOrder.value = 'asc'
   }
-  currentPage.value = 1 // Resetear a la primera página al ordenar
-}
-
-const loadSurgeries = async () => {
-  loading.value = true
-  error.value = null
-  try {
-    const data = await surgeryService.getAllSurgeries()
-    surgeries.value = data
-  } catch (err) {
-    error.value = err.message || 'Error al cargar tipos de cirugía'
-    console.error('Error loading surgeries:', err)
-  } finally {
-    loading.value = false
-  }
+  currentPage.value = 1
 }
 
 const loadSpecialties = async () => {
-  loadingSpecialties.value = true
+  loading.value = true
+  error.value = null
   try {
     const data = await medicalSpecialtyService.getAllSpecialties()
-    specialties.value = data.filter(s => s.is_active)
+    specialties.value = data
   } catch (err) {
+    error.value = err.message || 'Error al cargar especialidades médicas'
     console.error('Error loading specialties:', err)
   } finally {
-    loadingSpecialties.value = false
+    loading.value = false
   }
 }
 
 const handleSearch = () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   
-  searchTimeout = setTimeout(async () => {
-    currentPage.value = 1 // Resetear a la primera página al buscar
-    if (searchTerm.value.trim()) {
-      loading.value = true
-      try {
-        const data = await surgeryService.searchSurgeries(searchTerm.value)
-        surgeries.value = data
-      } catch (err) {
-        error.value = err.message
-      } finally {
-        loading.value = false
-      }
-    } else {
-      loadSurgeries()
-    }
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1
   }, 300)
 }
 
 const openCreateModal = () => {
   isEditing.value = false
-  surgeryForm.value = {
+  specialtyForm.value = {
     name: '',
-    duration: 1,
-    specialty_id: null
+    code: '',
+    description: '',
+    is_active: true
   }
   showModal.value = true
 }
 
-const openEditModal = (surgery) => {
+const openEditModal = (specialty) => {
   isEditing.value = true
-  surgeryForm.value = {
-    id: surgery.id,
-    name: surgery.name,
-    duration: surgery.duration || 1,
-    specialty_id: surgery.specialty_id || null
+  specialtyForm.value = {
+    id: specialty.id,
+    name: specialty.name || '',
+    code: specialty.code || '',
+    description: specialty.description || '',
+    is_active: specialty.is_active !== undefined ? specialty.is_active : true
   }
   showModal.value = true
 }
 
 const closeModal = () => {
   showModal.value = false
-  surgeryForm.value = {}
+  specialtyForm.value = {
+    name: '',
+    code: '',
+    description: '',
+    is_active: true
+  }
 }
 
-const saveSurgery = async () => {
+const saveSpecialty = async () => {
   // Validaciones
-  if (!surgeryForm.value.name || !surgeryForm.value.name.trim()) {
+  if (!specialtyForm.value.name || !specialtyForm.value.name.trim()) {
     await Swal.fire({
       icon: 'warning',
       title: 'Campo requerido',
-      text: 'El nombre del tipo de cirugía es obligatorio',
-      confirmButtonText: 'Aceptar'
-    })
-    return
-  }
-
-  if (!surgeryForm.value.duration || surgeryForm.value.duration < 0.5) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Duración inválida',
-      text: 'La duración debe ser al menos 0.5 horas',
+      text: 'El nombre de la especialidad es obligatorio',
       confirmButtonText: 'Aceptar'
     })
     return
@@ -471,31 +439,32 @@ const saveSurgery = async () => {
 
   saving.value = true
   try {
-    const surgeryData = {
-      name: surgeryForm.value.name.trim(),
-      duration: Number(surgeryForm.value.duration),
-      specialty_id: surgeryForm.value.specialty_id || null
+    const specialtyData = {
+      name: specialtyForm.value.name.trim(),
+      code: specialtyForm.value.code.trim() || null,
+      description: specialtyForm.value.description.trim() || null,
+      is_active: specialtyForm.value.is_active
     }
 
     if (isEditing.value) {
-      await surgeryService.updateSurgery(surgeryForm.value.id, surgeryData)
-      await loadSurgeries()
+      await medicalSpecialtyService.updateSpecialty(specialtyForm.value.id, specialtyData)
+      await loadSpecialties()
       closeModal()
       await Swal.fire({
         icon: 'success',
         title: 'Actualizado',
-        text: 'Tipo de cirugía actualizado exitosamente',
+        text: 'Especialidad médica actualizada exitosamente',
         timer: 2000,
         showConfirmButton: false
       })
     } else {
-      await surgeryService.createSurgery(surgeryData)
-      await loadSurgeries()
+      await medicalSpecialtyService.createSpecialty(specialtyData)
+      await loadSpecialties()
       closeModal()
       await Swal.fire({
         icon: 'success',
         title: 'Creado',
-        text: 'Tipo de cirugía creado exitosamente',
+        text: 'Especialidad médica creada exitosamente',
         timer: 2000,
         showConfirmButton: false
       })
@@ -523,10 +492,10 @@ const saveSurgery = async () => {
   }
 }
 
-const confirmDelete = async (surgery) => {
+const confirmDelete = async (specialty) => {
   const result = await Swal.fire({
     title: '¿Estás seguro?',
-    html: `¿Deseas eliminar el tipo de cirugía <strong>"${surgery.name}"</strong>?<br><small class="text-gray-600">Esta acción no se puede deshacer.</small>`,
+    html: `¿Deseas eliminar la especialidad <strong>"${specialty.name}"</strong>?<br><small class="text-gray-600">Esta acción no se puede deshacer.</small>`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#dc2626',
@@ -538,12 +507,12 @@ const confirmDelete = async (surgery) => {
 
   if (result.isConfirmed) {
     try {
-      await surgeryService.deleteSurgery(surgery.id)
-      await loadSurgeries()
+      await medicalSpecialtyService.deleteSpecialty(specialty.id)
+      await loadSpecialties()
       await Swal.fire({
         icon: 'success',
         title: 'Eliminado',
-        text: 'Tipo de cirugía eliminado exitosamente',
+        text: 'Especialidad médica eliminada exitosamente',
         timer: 2000,
         showConfirmButton: false
       })
@@ -562,13 +531,10 @@ const confirmDelete = async (surgery) => {
 const clearSearch = () => {
   searchTerm.value = ''
   currentPage.value = 1
-  loadSurgeries()
 }
 
-onMounted(async () => {
-  await Promise.all([
-    loadSurgeries(),
-    loadSpecialties()
-  ])
+onMounted(() => {
+  loadSpecialties()
 })
 </script>
+

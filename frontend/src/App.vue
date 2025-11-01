@@ -137,7 +137,7 @@
               <button
                 @click="managementMenuOpen = !managementMenuOpen"
                 class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
-                :class="{ 'bg-blue-700': ['/transfers', '/surgeries', '/supply-history'].some(path => $route.path.startsWith(path)) }"
+                :class="{ 'bg-blue-700': ['/transfers', '/surgeries', '/supply-history', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info'].some(path => $route.path.startsWith(path)) }"
               >
                 Gestión
                 <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': managementMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +146,7 @@
               </button>
               
               <!-- Dropdown menu -->
-              <div v-if="managementMenuOpen" class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+              <div v-if="managementMenuOpen" class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-96 overflow-y-auto">
                 <router-link
                   to="/transfers"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -184,6 +184,53 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Historial de Insumos
+                  </div>
+                </router-link>
+                
+                <!-- Separador -->
+                <div class="border-t border-gray-200 my-1"></div>
+                
+                <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Configuración Médica
+                </div>
+                
+                <router-link
+                  to="/medical-specialties"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/medical-specialties' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Especialidades Médicas
+                  </div>
+                </router-link>
+                <router-link
+                  to="/surgery-typical-supplies"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/surgery-typical-supplies' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    Insumos Típicos
+                  </div>
+                </router-link>
+                <router-link
+                  to="/doctor-info"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/doctor-info' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Información de Doctores
                   </div>
                 </router-link>
               </div>
@@ -432,6 +479,40 @@
               :class="{ 'bg-blue-800': $route.path === '/supply-history' }"
             >
               Historial de Insumos
+            </router-link>
+            
+            <!-- Separador -->
+            <div class="border-t border-blue-600 my-2"></div>
+            
+            <div class="text-blue-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+              Configuración Médica
+            </div>
+            
+            <router-link
+              to="/medical-specialties"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/medical-specialties' }"
+            >
+              Especialidades Médicas
+            </router-link>
+            
+            <router-link
+              to="/surgery-typical-supplies"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/surgery-typical-supplies' }"
+            >
+              Insumos Típicos
+            </router-link>
+            
+            <router-link
+              to="/doctor-info"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/doctor-info' }"
+            >
+              Información de Doctores
             </router-link>
           </div>
 

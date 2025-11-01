@@ -25,6 +25,9 @@ DROP TRIGGER IF EXISTS tr_supply_request_updated_at ON supply_request;
 DROP TRIGGER IF EXISTS trg_log_batch_delete ON batch;
 DROP TRIGGER IF EXISTS set_batch_number ON batch_history;
 DROP TRIGGER IF EXISTS update_user_updated_at ON "user";
+DROP TRIGGER IF EXISTS trg_update_doctor_info_updated_at ON doctor_info;
+DROP TRIGGER IF EXISTS trg_update_surgery_typical_supply_updated_at ON surgery_typical_supply;
+DROP TRIGGER IF EXISTS trg_update_medical_specialty_updated_at ON medical_specialty;
 
 -- =======================
 -- ELIMINAR FUNCIONES
@@ -44,6 +47,9 @@ DROP FUNCTION IF EXISTS update_supply_request_updated_at();
 DROP FUNCTION IF EXISTS log_batch_delete();
 DROP FUNCTION IF EXISTS trg_set_batch_number();
 DROP FUNCTION IF EXISTS update_updated_at_column();
+DROP FUNCTION IF EXISTS update_doctor_info_updated_at();
+DROP FUNCTION IF EXISTS update_surgery_typical_supply_updated_at();
+DROP FUNCTION IF EXISTS update_medical_specialty_updated_at();
 
 -- =======================
 -- ELIMINAR ÍNDICES
@@ -101,11 +107,32 @@ DROP INDEX IF EXISTS idx_supply_request_item_supply_code;
 DROP INDEX IF EXISTS idx_supply_request_item_request;
 
 -- Índices de supply_request
+DROP INDEX IF EXISTS idx_supply_request_specialty;
+DROP INDEX IF EXISTS idx_supply_request_surgery;
+DROP INDEX IF EXISTS idx_supply_request_surgeon;
 DROP INDEX IF EXISTS idx_supply_request_number;
 DROP INDEX IF EXISTS idx_supply_request_date;
 DROP INDEX IF EXISTS idx_supply_request_requested_by;
 DROP INDEX IF EXISTS idx_supply_request_pavilion;
 DROP INDEX IF EXISTS idx_supply_request_status;
+
+-- Índices de surgery
+DROP INDEX IF EXISTS idx_surgery_specialty;
+
+-- Índices de doctor_info
+DROP INDEX IF EXISTS idx_doctor_info_license;
+DROP INDEX IF EXISTS idx_doctor_info_available;
+DROP INDEX IF EXISTS idx_doctor_info_specialty;
+
+-- Índices de surgery_typical_supply
+DROP INDEX IF EXISTS idx_surgery_typical_supply_required;
+DROP INDEX IF EXISTS idx_surgery_typical_supply_code;
+DROP INDEX IF EXISTS idx_surgery_typical_supply_surgery;
+
+-- Índices de medical_specialty
+DROP INDEX IF EXISTS idx_medical_specialty_active;
+DROP INDEX IF EXISTS idx_medical_specialty_code;
+DROP INDEX IF EXISTS idx_medical_specialty_name;
 
 -- Índices de batch_history
 DROP INDEX IF EXISTS idx_batch_history_batch_number;
@@ -144,6 +171,11 @@ DROP TABLE IF EXISTS batch_history CASCADE;
 DROP TABLE IF EXISTS medical_supply CASCADE;
 DROP TABLE IF EXISTS batch CASCADE;
 DROP TABLE IF EXISTS supply_code CASCADE;
+
+-- Tablas de configuración médica
+DROP TABLE IF EXISTS doctor_info CASCADE;
+DROP TABLE IF EXISTS surgery_typical_supply CASCADE;
+DROP TABLE IF EXISTS medical_specialty CASCADE;
 
 -- Tablas de estructura organizacional
 DROP TABLE IF EXISTS "user" CASCADE;

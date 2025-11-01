@@ -23,11 +23,28 @@ CREATE TABLE store (
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id)
 );
 
+CREATE TABLE medical_specialty (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    code VARCHAR(50) UNIQUE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_medical_specialty_name ON medical_specialty(name);
+CREATE INDEX idx_medical_specialty_code ON medical_specialty(code);
+CREATE INDEX idx_medical_specialty_active ON medical_specialty(is_active);
+
 CREATE TABLE surgery (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    duration FLOAT NOT NULL
+    duration FLOAT NOT NULL,
+    specialty_id INTEGER REFERENCES medical_specialty(id)
 );
+
+CREATE INDEX idx_surgery_specialty ON surgery(specialty_id);
 
 CREATE TABLE batch (
     id SERIAL PRIMARY KEY,
@@ -215,6 +232,11 @@ CREATE TABLE IF NOT EXISTS supply_request (
     approval_date TIMESTAMP WITH TIME ZONE,
     completed_date TIMESTAMP WITH TIME ZONE,
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
+    -- Campos de médico responsable
+    surgeon_id VARCHAR(20) REFERENCES "user"(rut),
+    surgeon_name VARCHAR(255),
+    surgery_id INTEGER REFERENCES surgery(id),
+    specialty_id INTEGER REFERENCES medical_specialty(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
@@ -239,6 +261,9 @@ CREATE INDEX idx_supply_request_surgery_datetime ON supply_request(surgery_datet
 CREATE INDEX idx_supply_request_number ON supply_request(request_number);
 CREATE INDEX idx_supply_request_assigned_to ON supply_request(assigned_to);
 CREATE INDEX idx_supply_request_assigned_by_pavedad ON supply_request(assigned_by_pavedad);
+CREATE INDEX idx_supply_request_surgeon ON supply_request(surgeon_id);
+CREATE INDEX idx_supply_request_surgery ON supply_request(surgery_id);
+CREATE INDEX idx_supply_request_specialty ON supply_request(specialty_id);
 
 CREATE TABLE IF NOT EXISTS supply_request_item (
     id SERIAL PRIMARY KEY,
@@ -679,6 +704,94 @@ CREATE TRIGGER trg_update_store_inventory_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_store_inventory_updated_at();
 
+-- =======================
+-- TABLA DE INSUMOS TÍPICOS POR CIRUGÍA
+-- =======================
+CREATE TABLE IF NOT EXISTS surgery_typical_supply (
+    id SERIAL PRIMARY KEY,
+    surgery_id INTEGER NOT NULL REFERENCES surgery(id) ON DELETE CASCADE,
+    supply_code INTEGER NOT NULL REFERENCES supply_code(code) ON DELETE CASCADE,
+    typical_quantity INTEGER DEFAULT 1,
+    is_required BOOLEAN DEFAULT FALSE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    CONSTRAINT uq_surgery_supply UNIQUE (surgery_id, supply_code)
+);
+
+CREATE INDEX idx_surgery_typical_supply_surgery ON surgery_typical_supply(surgery_id);
+CREATE INDEX idx_surgery_typical_supply_code ON surgery_typical_supply(supply_code);
+CREATE INDEX idx_surgery_typical_supply_required ON surgery_typical_supply(is_required);
+
+-- =======================
+-- TABLA DE INFORMACIÓN EXTENDIDA DE DOCTORES
+-- =======================
+CREATE TABLE IF NOT EXISTS doctor_info (
+    user_rut VARCHAR(20) PRIMARY KEY REFERENCES "user"(rut) ON DELETE CASCADE,
+    medical_license VARCHAR(100),
+    license_expiration_date DATE,
+    specialization VARCHAR(255),
+    specialty_id INTEGER REFERENCES medical_specialty(id),
+    years_of_experience INTEGER,
+    phone VARCHAR(50),
+    emergency_contact VARCHAR(255),
+    emergency_phone VARCHAR(50),
+    is_available BOOLEAN DEFAULT TRUE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_doctor_info_specialty ON doctor_info(specialty_id);
+CREATE INDEX idx_doctor_info_available ON doctor_info(is_available);
+CREATE INDEX idx_doctor_info_license ON doctor_info(medical_license);
+
+-- =======================
+-- TRIGGERS PARA CONFIGURACIÓN MÉDICA
+-- =======================
+CREATE OR REPLACE FUNCTION update_medical_specialty_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_medical_specialty_updated_at
+    BEFORE UPDATE ON medical_specialty
+    FOR EACH ROW
+    EXECUTE FUNCTION update_medical_specialty_updated_at();
+
+CREATE OR REPLACE FUNCTION update_surgery_typical_supply_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_surgery_typical_supply_updated_at
+    BEFORE UPDATE ON surgery_typical_supply
+    FOR EACH ROW
+    EXECUTE FUNCTION update_surgery_typical_supply_updated_at();
+
+CREATE OR REPLACE FUNCTION update_doctor_info_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_doctor_info_updated_at
+    BEFORE UPDATE ON doctor_info
+    FOR EACH ROW
+    EXECUTE FUNCTION update_doctor_info_updated_at();
+
+-- =======================
+-- ACTUALIZACIÓN DE STATUS DE INSUMOS MÉDICOS DESDE HISTORIAL
+-- =======================
 UPDATE medical_supply 
 SET status = (
     SELECT sh.status 

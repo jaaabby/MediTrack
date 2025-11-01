@@ -41,11 +41,9 @@
             <h2 class="card-title">Inventario de Insumos Médicos</h2>
             <p class="text-sm text-gray-600">Total: {{ filteredSupplies.length }} lotes</p>
           </div>
-          <button 
-            v-if="authStore.canViewAllRequests"
-            class="btn-primary flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto" 
-            @click="openGlobalHistoryModal"
-          >
+          <button v-if="authStore.canViewAllRequests"
+            class="btn-primary flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto"
+            @click="openGlobalHistoryModal">
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -94,7 +92,7 @@
             Desliza horizontalmente para ver todas las columnas
           </div>
         </div>
-        
+
         <table class="min-w-full divide-y divide-gray-200" style="min-width: 900px;">
           <thead class="table-header">
             <tr>
@@ -217,8 +215,10 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="supply in paginatedSupplies" :key="supply.batch_id" class="hover:bg-gray-50 cursor-pointer" @click="openBatchDetailsModal(supply)">
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-mono text-gray-900">{{ supply.batch_id }}</td>
+            <tr v-for="supply in paginatedSupplies" :key="supply.batch_id" class="hover:bg-gray-50 cursor-pointer"
+              @click="openBatchDetailsModal(supply)">
+              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-mono text-gray-900">{{
+                supply.batch_id }}</td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                 <div>
                   <div class="font-medium text-gray-900 text-xs sm:text-sm">{{ supply.name }}</div>
@@ -233,7 +233,8 @@
                 </span>
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span :class="getAmountClass(supply.amount)" class="font-medium text-xs sm:text-sm">{{ supply.amount }}</span>
+                <span :class="getAmountClass(supply.amount)" class="font-medium text-xs sm:text-sm">{{ supply.amount
+                  }}</span>
                 <span :class="getAmountClass(supply.amount)" class="text-xs ml-1">unidades</span>
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
@@ -262,11 +263,14 @@
 
       <!-- Modal de edición -->
       <!-- Modal de detalles de lote con QR -->
-      <div v-if="showBatchDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-4 sm:top-20 mx-2 sm:mx-auto p-4 sm:p-8 border w-auto sm:w-full max-w-2xl shadow-lg rounded-xl bg-white">
+      <div v-if="showBatchDetailsModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div
+          class="relative top-4 sm:top-20 mx-2 sm:mx-auto p-4 sm:p-8 border w-auto sm:w-full max-w-2xl shadow-lg rounded-xl bg-white">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
             <h3 class="text-lg sm:text-2xl font-bold text-gray-900">Detalles del lote de {{ supplyName || '...' }}</h3>
-            <button @click="closeBatchDetailsModal" class="btn-secondary px-4 py-2 rounded-lg text-sm sm:text-base w-full sm:w-auto">Cerrar</button>
+            <button @click="closeBatchDetailsModal"
+              class="btn-secondary px-4 py-2 rounded-lg text-sm sm:text-base w-full sm:w-auto">Cerrar</button>
           </div>
           <div v-if="batchDetailsLoading" class="flex justify-center items-center py-8">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -282,7 +286,8 @@
             <!-- Información de paginación -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4">
               <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Mostrando {{ batchDetailsStartIndex + 1 }} a {{ batchDetailsEndIndex }} de {{ batchDetails.length }} insumos
+                Mostrando {{ batchDetailsStartIndex + 1 }} a {{ batchDetailsEndIndex }} de {{ batchDetails.length }}
+                insumos
               </div>
               <div class="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
                 Página {{ batchDetailsCurrentPage }} de {{ batchDetailsTotalPages }}
@@ -293,10 +298,14 @@
               <table class="min-w-full divide-y divide-gray-200 mb-6 rounded-lg overflow-hidden shadow">
                 <thead class="bg-gray-100">
                   <tr>
-                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">ID</th>
-                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Código</th>
-                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Estado</th>
-                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">QR</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">ID
+                    </th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">
+                      Código</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">
+                      Estado</th>
+                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">QR
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -304,15 +313,18 @@
                     <td class="px-3 sm:px-6 py-3 sm:py-4 text-gray-900 font-mono text-xs sm:text-sm">{{ item.id }}</td>
                     <td class="px-3 sm:px-6 py-3 sm:py-4 text-gray-900 text-xs sm:text-sm">{{ item.code }}</td>
                     <td class="px-3 sm:px-6 py-3 sm:py-4">
-                      <span class="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap" 
-                            :class="getStatusClass(item.status)">
+                      <span
+                        class="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                        :class="getStatusClass(item.status)">
                         {{ getStatusDescription(item.status) }}
                       </span>
                     </td>
                     <td class="px-3 sm:px-6 py-3 sm:py-4">
                       <div class="flex flex-col items-center justify-center text-center space-y-2">
                         <qrcode-vue :value="item.qr_code" :size="40" class="mx-auto" />
-                        <button @click="handleDownloadQR(item.qr_code)" class="btn-secondary text-xs px-2 sm:px-3 py-1 rounded whitespace-nowrap">Descargar QR</button>
+                        <button @click="handleDownloadQR(item.qr_code)"
+                          class="btn-secondary text-xs px-2 sm:px-3 py-1 rounded whitespace-nowrap">Descargar
+                          QR</button>
                       </div>
                     </td>
                   </tr>
@@ -321,15 +333,15 @@
             </div>
 
             <!-- Paginación -->
-            <div v-if="batchDetails.length > batchDetailsItemsPerPage" 
-                 class="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
+            <div v-if="batchDetails.length > batchDetailsItemsPerPage"
+              class="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
               <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Mostrando {{ batchDetailsStartIndex + 1 }} a {{ batchDetailsEndIndex }} de {{ batchDetails.length }} insumos
+                Mostrando {{ batchDetailsStartIndex + 1 }} a {{ batchDetailsEndIndex }} de {{ batchDetails.length }}
+                insumos
               </div>
               <div class="flex items-center gap-2">
-                <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]" 
-                        :disabled="batchDetailsCurrentPage === 1"
-                        @click="batchDetailsCurrentPage--">
+                <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]" :disabled="batchDetailsCurrentPage === 1"
+                  @click="batchDetailsCurrentPage--">
                   <span class="hidden sm:inline">Anterior</span>
                   <span class="sm:hidden">Ant.</span>
                 </button>
@@ -337,8 +349,7 @@
                   Página {{ batchDetailsCurrentPage }} de {{ batchDetailsTotalPages }}
                 </span>
                 <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]"
-                        :disabled="batchDetailsCurrentPage === batchDetailsTotalPages" 
-                        @click="batchDetailsCurrentPage++">
+                  :disabled="batchDetailsCurrentPage === batchDetailsTotalPages" @click="batchDetailsCurrentPage++">
                   <span class="hidden sm:inline">Siguiente</span>
                   <span class="sm:hidden">Sig.</span>
                 </button>
@@ -348,7 +359,8 @@
         </div>
       </div>
       <div v-if="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-4">
-        <div class="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-md shadow-lg rounded-md bg-white my-8">
+        <div
+          class="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-md shadow-lg rounded-md bg-white my-8">
           <div class="mt-2 sm:mt-3">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-base sm:text-lg font-medium text-gray-900">Editar Lote de Insumo</h3>
@@ -388,7 +400,8 @@
 
               <div>
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Cantidad</label>
-                <input type="number" v-model="editingSupply.amount" class="form-input w-full text-sm" min="0" required />
+                <input type="number" v-model="editingSupply.amount" class="form-input w-full text-sm" min="0"
+                  required />
                 <span class="text-xs text-gray-500">unidades</span>
               </div>
 
@@ -398,7 +411,8 @@
               </div>
 
               <div class="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0 pt-3 sm:pt-4">
-                <button type="button" @click="closeEditModal" class="btn-secondary flex-1 text-sm sm:text-base py-2.5 sm:py-2">
+                <button type="button" @click="closeEditModal"
+                  class="btn-secondary flex-1 text-sm sm:text-base py-2.5 sm:py-2">
                   Cancelar
                 </button>
                 <button type="submit" class="btn-primary flex-1 text-sm sm:text-base py-2.5 sm:py-2" :disabled="saving">
@@ -420,15 +434,19 @@
       </div>
 
       <!-- Modal de historial -->
-      <div v-if="showHistoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-2 sm:px-0">
-        <div class="relative top-2 sm:top-4 md:top-20 mx-auto p-3 sm:p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white mb-4">
+      <div v-if="showHistoryModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-2 sm:px-0">
+        <div
+          class="relative top-2 sm:top-4 md:top-20 mx-auto p-3 sm:p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white mb-4">
           <div class="mt-2 sm:mt-3">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
               <div class="flex-1 min-w-0">
-                <h3 class="text-base sm:text-lg md:text-xl font-medium text-gray-900 truncate">Historial de Movimientos</h3>
+                <h3 class="text-base sm:text-lg md:text-xl font-medium text-gray-900 truncate">Historial de Movimientos
+                </h3>
                 <p class="text-xs sm:text-sm text-gray-600 truncate mt-1">{{ selectedSupplyForHistory?.name }}</p>
               </div>
-              <button @click="closeHistoryModal" class="text-gray-400 hover:text-gray-600 self-end sm:self-auto p-1 flex-shrink-0">
+              <button @click="closeHistoryModal"
+                class="text-gray-400 hover:text-gray-600 self-end sm:self-auto p-1 flex-shrink-0">
                 <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -441,17 +459,20 @@
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Buscar movimiento</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
-                    <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" fill="none" stroke="currentColor"
+                      viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
                   <input type="text" placeholder="Buscar..."
-                    class="form-input pl-8 sm:pl-9 w-full text-xs sm:text-sm min-h-[40px]" v-model="historySearchTerm" />
+                    class="form-input pl-8 sm:pl-9 w-full text-xs sm:text-sm min-h-[40px]"
+                    v-model="historySearchTerm" />
                 </div>
               </div>
               <div class="w-full sm:w-auto">
-                <button class="btn-secondary px-3 sm:px-4 py-2 h-10 text-xs sm:text-sm w-full sm:w-auto" @click="clearHistorySearch" :disabled="!historySearchTerm">
+                <button class="btn-secondary px-3 sm:px-4 py-2 h-10 text-xs sm:text-sm w-full sm:w-auto"
+                  @click="clearHistorySearch" :disabled="!historySearchTerm">
                   Limpiar
                 </button>
               </div>
@@ -486,7 +507,8 @@
 
             <!-- Tabla de datos -->
             <div v-else-if="!historyData.length" class="text-center py-6 sm:py-8">
-              <svg class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -505,12 +527,16 @@
                     <div class="flex items-start justify-between mb-2 pb-2 border-b border-gray-100">
                       <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
-                          <svg class="h-3.5 w-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          <svg class="h-3.5 w-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          <span class="text-xs font-medium text-gray-900">{{ formatDate(movement.date_time || movement.date) }}</span>
+                          <span class="text-xs font-medium text-gray-900">{{ formatDate(movement.date_time ||
+                            movement.date) }}</span>
                         </div>
-                        <span :class="getStatusBadgeClass(movement.type || movement.action)" class="inline-block text-xs px-2 py-0.5 rounded-full">
+                        <span :class="getStatusBadgeClass(movement.type || movement.action)"
+                          class="inline-block text-xs px-2 py-0.5 rounded-full">
                           {{ movement.action || movement.type || 'N/A' }}
                         </span>
                       </div>
@@ -521,7 +547,8 @@
                       <!-- Cantidad -->
                       <div class="flex items-center justify-between text-xs">
                         <span class="text-gray-500 font-medium">Cantidad:</span>
-                        <span :class="getAmountClass(movement.details?.amount || movement.amount || 0)" class="font-semibold">
+                        <span :class="getAmountClass(movement.details?.amount || movement.amount || 0)"
+                          class="font-semibold">
                           {{ movement.details?.amount || movement.amount || 'N/A' }} unidades
                         </span>
                       </div>
@@ -535,7 +562,7 @@
 
                     <!-- Botón de ver detalles -->
                     <div class="mt-3 pt-2 border-t border-gray-100">
-                      <button @click="viewMovementDetails(movement)" 
+                      <button @click="viewMovementDetails(movement)"
                         class="w-full text-center text-xs font-medium text-primary-600 hover:text-primary-800 py-1.5">
                         Ver detalles completos
                       </button>
@@ -547,145 +574,164 @@
 
               <!-- Vista de tabla para desktop -->
               <div class="hidden md:block table-container">
-              <table class="min-w-full divide-y divide-gray-200" style="min-width: 700px;">
-                <thead class="table-header">
-                  <tr>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Fecha</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortHistoryBy('date', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': sortHistoryField === 'date' && sortHistoryDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortHistoryBy('date', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': sortHistoryField === 'date' && sortHistoryDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <table class="min-w-full divide-y divide-gray-200" style="min-width: 700px;">
+                  <thead class="table-header">
+                    <tr>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Fecha</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortHistoryBy('date', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': sortHistoryField === 'date' && sortHistoryDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortHistoryBy('date', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': sortHistoryField === 'date' && sortHistoryDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px] sm:min-w-[150px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Tipo</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortHistoryBy('type', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': sortHistoryField === 'type' && sortHistoryDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortHistoryBy('type', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': sortHistoryField === 'type' && sortHistoryDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Cantidad</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortHistoryBy('amount', 'asc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': sortHistoryField === 'amount' && sortHistoryDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortHistoryBy('amount', 'desc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': sortHistoryField === 'amount' && sortHistoryDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Usuario</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortHistoryBy('user', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': sortHistoryField === 'user' && sortHistoryDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortHistoryBy('user', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': sortHistoryField === 'user' && sortHistoryDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
+                        Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="movement in paginatedHistory" :key="movement.id || movement.date_time"
+                      class="hover:bg-gray-50">
+                      <td
+                        class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-mono text-gray-900">
+                        {{ formatDate(movement.date_time || movement.date) }}
+                      </td>
+                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <span :class="getStatusBadgeClass(movement.type || movement.action)" class="text-xs sm:text-sm">
+                          {{ movement.action || movement.type || 'N/A' }}
+                        </span>
+                      </td>
+                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <span :class="getAmountClass(movement.details?.amount || movement.amount || 0)"
+                          class="font-medium text-xs sm:text-sm">{{ movement.details?.amount || movement.amount || 'N/A'
+                          }}</span>
+                        <span v-if="movement.details?.amount || movement.amount"
+                          :class="getAmountClass(movement.details?.amount || movement.amount)"
+                          class="text-xs ml-1">unidades</span>
+                      </td>
+                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <span class="text-gray-700 text-xs sm:text-sm">{{ movement.user_rut || movement.user || 'N/A'
+                          }}</span>
+                      </td>
+                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div class="flex space-x-2">
+                          <button class="text-primary-600 hover:text-primary-800"
+                            @click="viewMovementDetails(movement)">
+                            <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                           </button>
                         </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px] sm:min-w-[150px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Tipo</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortHistoryBy('type', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': sortHistoryField === 'type' && sortHistoryDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortHistoryBy('type', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': sortHistoryField === 'type' && sortHistoryDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Cantidad</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortHistoryBy('amount', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': sortHistoryField === 'amount' && sortHistoryDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortHistoryBy('amount', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': sortHistoryField === 'amount' && sortHistoryDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Usuario</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortHistoryBy('user', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': sortHistoryField === 'user' && sortHistoryDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortHistoryBy('user', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': sortHistoryField === 'user' && sortHistoryDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="movement in paginatedHistory" :key="movement.id || movement.date_time"
-                    class="hover:bg-gray-50">
-                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-mono text-gray-900">
-                      {{ formatDate(movement.date_time || movement.date) }}
-                    </td>
-                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span :class="getStatusBadgeClass(movement.type || movement.action)" class="text-xs sm:text-sm">
-                        {{ movement.action || movement.type || 'N/A' }}
-                      </span>
-                    </td>
-                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span :class="getAmountClass(movement.details?.amount || movement.amount || 0)"
-                        class="font-medium text-xs sm:text-sm">{{ movement.details?.amount || movement.amount || 'N/A' }}</span>
-                      <span v-if="movement.details?.amount || movement.amount"
-                        :class="getAmountClass(movement.details?.amount || movement.amount)"
-                        class="text-xs ml-1">unidades</span>
-                    </td>
-                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span class="text-gray-700 text-xs sm:text-sm">{{ movement.user_rut || movement.user || 'N/A' }}</span>
-                    </td>
-                    <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <div class="flex space-x-2">
-                        <button class="text-primary-600 hover:text-primary-800" @click="viewMovementDetails(movement)">
-                          <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
             <!-- Paginación -->
             <div class="flex flex-col sm:flex-row items-center justify-between mt-4 sm:mt-6 gap-3 sm:gap-4">
               <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Mostrando {{ filteredHistory.length > 0 ? historyStartIndex + 1 : 0 }} a {{ historyEndIndex }} de {{ filteredHistory.length }} resultados
+                Mostrando {{ filteredHistory.length > 0 ? historyStartIndex + 1 : 0 }} a {{ historyEndIndex }} de {{
+                filteredHistory.length }} resultados
               </div>
               <div class="flex items-center gap-2 w-full sm:w-auto">
-                <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]" 
-                  :disabled="historyCurrentPage === 1"
-                  @click="historyCurrentPage--">
+                <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]"
+                  :disabled="historyCurrentPage === 1" @click="historyCurrentPage--">
                   <span class="hidden sm:inline">Anterior</span>
                   <span class="sm:hidden">Ant.</span>
                 </button>
-                <span class="px-3 py-2 text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-md text-center whitespace-nowrap">
+                <span
+                  class="px-3 py-2 text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-md text-center whitespace-nowrap">
                   <span class="hidden sm:inline">Página {{ historyCurrentPage }} de {{ historyTotalPages }}</span>
                   <span class="sm:hidden">{{ historyCurrentPage }} / {{ historyTotalPages }}</span>
                 </span>
                 <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]"
-                  :disabled="historyCurrentPage === historyTotalPages" 
-                  @click="historyCurrentPage++">
+                  :disabled="historyCurrentPage === historyTotalPages" @click="historyCurrentPage++">
                   <span class="hidden sm:inline">Siguiente</span>
                   <span class="sm:hidden">Sig.</span>
                 </button>
@@ -698,7 +744,8 @@
       <!-- Modal de historial global -->
       <div v-if="showGlobalHistoryModal"
         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-2 sm:px-0">
-        <div class="relative top-2 sm:top-4 md:top-20 mx-auto p-3 sm:p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white mb-4">
+        <div
+          class="relative top-2 sm:top-4 md:top-20 mx-auto p-3 sm:p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white mb-4">
           <div class="mt-2 sm:mt-3">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
               <div class="flex-1 min-w-0">
@@ -707,7 +754,8 @@
                   {{ filteredGlobalHistory.length }} resultado{{ filteredGlobalHistory.length !== 1 ? 's' : '' }}
                 </p>
               </div>
-              <button @click="closeGlobalHistoryModal" class="text-gray-400 hover:text-gray-600 self-end sm:self-auto p-1 flex-shrink-0">
+              <button @click="closeGlobalHistoryModal"
+                class="text-gray-400 hover:text-gray-600 self-end sm:self-auto p-1 flex-shrink-0">
                 <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -719,7 +767,8 @@
               <!-- Filtro por tipo de cambio -->
               <div>
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Tipo de Cambio</label>
-                <select v-model="globalHistoryChangeTypeFilter" class="form-select w-full text-xs sm:text-sm min-h-[40px]" @change="applyFilters">
+                <select v-model="globalHistoryChangeTypeFilter"
+                  class="form-select w-full text-xs sm:text-sm min-h-[40px]" @change="applyFilters">
                   <option value="">Todos los tipos</option>
                   <option value="cantidad">Cantidad</option>
                   <option value="proveedor">Proveedor</option>
@@ -734,12 +783,14 @@
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">N° de Lote</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
-                    <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" fill="none" stroke="currentColor"
+                      viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
-                  <input type="text" placeholder="N° de lote..." class="form-input pl-8 sm:pl-9 w-full text-xs sm:text-sm min-h-[40px]"
+                  <input type="text" placeholder="N° de lote..."
+                    class="form-input pl-8 sm:pl-9 w-full text-xs sm:text-sm min-h-[40px]"
                     v-model="globalHistoryBatchFilter" @input="applyFilters" />
                 </div>
               </div>
@@ -749,20 +800,25 @@
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Usuario</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
-                    <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" fill="none" stroke="currentColor"
+                      viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
-                  <input type="text" placeholder="RUT o nombre..." class="form-input pl-8 sm:pl-9 w-full text-xs sm:text-sm min-h-[40px]"
+                  <input type="text" placeholder="RUT o nombre..."
+                    class="form-input pl-8 sm:pl-9 w-full text-xs sm:text-sm min-h-[40px]"
                     v-model="globalHistoryUserFilter" @input="applyFilters" />
                 </div>
               </div>
 
               <!-- Botón de limpiar filtros -->
               <div class="flex justify-end items-end h-full">
-                <button class="btn-secondary flex items-center justify-center px-3 sm:px-4 py-2 h-10 w-full sm:w-auto text-xs sm:text-sm" @click="clearGlobalHistoryFilters" :disabled="!hasActiveFilters">
-                  <svg v-if="hasActiveFilters" class="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button
+                  class="btn-secondary flex items-center justify-center px-3 sm:px-4 py-2 h-10 w-full sm:w-auto text-xs sm:text-sm"
+                  @click="clearGlobalHistoryFilters" :disabled="!hasActiveFilters">
+                  <svg v-if="hasActiveFilters" class="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 flex-shrink-0"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   <span>Limpiar</span>
@@ -777,7 +833,8 @@
             </div>
 
             <!-- Mensaje de error -->
-            <div v-else-if="globalHistoryError" class="bg-red-50 border border-red-200 rounded-md p-3 sm:p-4 mb-3 sm:mb-4">
+            <div v-else-if="globalHistoryError"
+              class="bg-red-50 border border-red-200 rounded-md p-3 sm:p-4 mb-3 sm:mb-4">
               <div class="flex">
                 <div class="flex-shrink-0">
                   <svg class="h-4 w-4 sm:h-5 sm:w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -799,7 +856,8 @@
 
             <!-- Tabla de datos -->
             <div v-else-if="!globalHistoryData.length" class="text-center py-6 sm:py-8">
-              <svg class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -809,7 +867,8 @@
 
             <!-- Mensaje de búsqueda sin resultados -->
             <div v-else-if="hasActiveFilters && !filteredGlobalHistory.length" class="text-center py-6 sm:py-8">
-              <svg class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -826,296 +885,337 @@
                 <div class="space-y-3">
                   <div v-for="movement in paginatedGlobalHistory" :key="movement.id"
                     class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-                  <!-- Header: Fecha y N° Lote -->
-                  <div class="flex items-start justify-between mb-2 pb-2 border-b border-gray-100">
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 mb-1">
-                        <svg class="h-3.5 w-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <!-- Header: Fecha y N° Lote -->
+                    <div class="flex items-start justify-between mb-2 pb-2 border-b border-gray-100">
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                          <svg class="h-3.5 w-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span class="text-xs font-medium text-gray-900">{{ formatDate(movement.date_time) }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span class="text-[10px] text-gray-500 font-medium">Lote:</span>
+                          <span class="text-xs font-mono text-gray-900">{{ movement.batch_id }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Tipo de cambio -->
+                    <div class="mb-2">
+                      <div class="text-[10px] text-gray-500 font-medium mb-1">Tipo de cambio:</div>
+                      <div class="text-xs font-medium text-gray-900 bg-gray-50 rounded px-2 py-1.5">
+                        {{ movement.change_details }}
+                      </div>
+                    </div>
+
+                    <!-- Valores Anteriores y Nuevos -->
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                      <!-- Valores Anteriores -->
+                      <div class="bg-red-50 rounded p-2">
+                        <div class="text-[10px] text-red-700 font-semibold mb-1 uppercase">Anterior</div>
+                        <div v-if="movement.previous_values && Object.keys(movement.previous_values).length > 0"
+                          class="text-[10px] text-gray-700 space-y-0.5">
+                          <div v-if="movement.previous_values.amount" class="truncate">
+                            <span class="font-medium">Cant:</span> {{ movement.previous_values.amount }}
+                          </div>
+                          <div v-if="movement.previous_values.supplier" class="truncate">
+                            <span class="font-medium">Prov:</span> {{ movement.previous_values.supplier }}
+                          </div>
+                          <div v-if="movement.previous_values.expiration_date" class="truncate">
+                            <span class="font-medium">Venc:</span> {{
+                              formatDate(movement.previous_values.expiration_date) }}
+                          </div>
+                        </div>
+                        <span v-else class="text-[10px] text-gray-400">N/A</span>
+                      </div>
+
+                      <!-- Valores Nuevos -->
+                      <div class="bg-green-50 rounded p-2">
+                        <div class="text-[10px] text-green-700 font-semibold mb-1 uppercase">Nuevo</div>
+                        <div v-if="movement.new_values && Object.keys(movement.new_values).length > 0"
+                          class="text-[10px] text-gray-700 space-y-0.5">
+                          <div v-if="movement.new_values.amount" class="truncate">
+                            <span class="font-medium">Cant:</span> {{ movement.new_values.amount }}
+                          </div>
+                          <div v-if="movement.new_values.supplier" class="truncate">
+                            <span class="font-medium">Prov:</span> {{ movement.new_values.supplier }}
+                          </div>
+                          <div v-if="movement.new_values.expiration_date" class="truncate">
+                            <span class="font-medium">Venc:</span> {{ formatDate(movement.new_values.expiration_date) }}
+                          </div>
+                        </div>
+                        <span v-else class="text-[10px] text-gray-400">N/A</span>
+                      </div>
+                    </div>
+
+                    <!-- Usuario -->
+                    <div class="flex items-center justify-between text-xs pt-2 border-t border-gray-100">
+                      <div class="flex items-center gap-1.5">
+                        <svg class="h-3.5 w-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor"
+                          viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        <span class="text-xs font-medium text-gray-900">{{ formatDate(movement.date_time) }}</span>
+                        <span class="text-gray-500 text-[10px]">{{ movement.user_rut }}</span>
                       </div>
-                      <div class="flex items-center gap-2">
-                        <span class="text-[10px] text-gray-500 font-medium">Lote:</span>
-                        <span class="text-xs font-mono text-gray-900">{{ movement.batch_id }}</span>
-                      </div>
+                      <span class="text-gray-900 font-medium truncate ml-2">{{ movement.user_name || 'N/A' }}</span>
                     </div>
-                  </div>
-
-                  <!-- Tipo de cambio -->
-                  <div class="mb-2">
-                    <div class="text-[10px] text-gray-500 font-medium mb-1">Tipo de cambio:</div>
-                    <div class="text-xs font-medium text-gray-900 bg-gray-50 rounded px-2 py-1.5">
-                      {{ movement.change_details }}
-                    </div>
-                  </div>
-
-                  <!-- Valores Anteriores y Nuevos -->
-                  <div class="grid grid-cols-2 gap-2 mb-2">
-                    <!-- Valores Anteriores -->
-                    <div class="bg-red-50 rounded p-2">
-                      <div class="text-[10px] text-red-700 font-semibold mb-1 uppercase">Anterior</div>
-                      <div v-if="movement.previous_values && Object.keys(movement.previous_values).length > 0" class="text-[10px] text-gray-700 space-y-0.5">
-                        <div v-if="movement.previous_values.amount" class="truncate">
-                          <span class="font-medium">Cant:</span> {{ movement.previous_values.amount }}
-                        </div>
-                        <div v-if="movement.previous_values.supplier" class="truncate">
-                          <span class="font-medium">Prov:</span> {{ movement.previous_values.supplier }}
-                        </div>
-                        <div v-if="movement.previous_values.expiration_date" class="truncate">
-                          <span class="font-medium">Venc:</span> {{ formatDate(movement.previous_values.expiration_date) }}
-                        </div>
-                      </div>
-                      <span v-else class="text-[10px] text-gray-400">N/A</span>
-                    </div>
-
-                    <!-- Valores Nuevos -->
-                    <div class="bg-green-50 rounded p-2">
-                      <div class="text-[10px] text-green-700 font-semibold mb-1 uppercase">Nuevo</div>
-                      <div v-if="movement.new_values && Object.keys(movement.new_values).length > 0" class="text-[10px] text-gray-700 space-y-0.5">
-                        <div v-if="movement.new_values.amount" class="truncate">
-                          <span class="font-medium">Cant:</span> {{ movement.new_values.amount }}
-                        </div>
-                        <div v-if="movement.new_values.supplier" class="truncate">
-                          <span class="font-medium">Prov:</span> {{ movement.new_values.supplier }}
-                        </div>
-                        <div v-if="movement.new_values.expiration_date" class="truncate">
-                          <span class="font-medium">Venc:</span> {{ formatDate(movement.new_values.expiration_date) }}
-                        </div>
-                      </div>
-                      <span v-else class="text-[10px] text-gray-400">N/A</span>
-                    </div>
-                  </div>
-
-                  <!-- Usuario -->
-                  <div class="flex items-center justify-between text-xs pt-2 border-t border-gray-100">
-                    <div class="flex items-center gap-1.5">
-                      <svg class="h-3.5 w-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <span class="text-gray-500 text-[10px]">{{ movement.user_rut }}</span>
-                    </div>
-                    <span class="text-gray-900 font-medium truncate ml-2">{{ movement.user_name || 'N/A' }}</span>
                   </div>
                 </div>
-              </div>
 
-            </div>
+              </div>
 
               <!-- Vista de tabla para desktop -->
               <div class="hidden md:block table-container">
                 <table class="min-w-full divide-y divide-gray-200" style="min-width: 900px;">
-                <thead class="table-header">
-                  <tr>
-                    <th class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px] md:min-w-[120px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Fecha</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortGlobalHistoryBy('date', 'asc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortGlobalHistoryBy('date', 'desc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                  <thead class="table-header">
+                    <tr>
+                      <th
+                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px] md:min-w-[120px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Fecha</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortGlobalHistoryBy('date', 'asc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortGlobalHistoryBy('date', 'desc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">N° Lote</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortGlobalHistoryBy('batch_id', 'asc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortGlobalHistoryBy('batch_id', 'desc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">N° Lote</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortGlobalHistoryBy('batch_id', 'asc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortGlobalHistoryBy('batch_id', 'desc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px] sm:min-w-[150px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Detalles</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortGlobalHistoryBy('change_details', 'asc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortGlobalHistoryBy('change_details', 'desc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px] sm:min-w-[150px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Detalles</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortGlobalHistoryBy('change_details', 'asc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortGlobalHistoryBy('change_details', 'desc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Valores Ant.</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortGlobalHistoryBy('previous_values', 'asc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortGlobalHistoryBy('previous_values', 'desc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Valores Ant.</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortGlobalHistoryBy('previous_values', 'asc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortGlobalHistoryBy('previous_values', 'desc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Valores Nuevos</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortGlobalHistoryBy('new_values', 'asc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortGlobalHistoryBy('new_values', 'desc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Valores Nuevos</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortGlobalHistoryBy('new_values', 'asc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortGlobalHistoryBy('new_values', 'desc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">RUT</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortGlobalHistoryBy('user_rut', 'asc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortGlobalHistoryBy('user_rut', 'desc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">RUT</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortGlobalHistoryBy('user_rut', 'asc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortGlobalHistoryBy('user_rut', 'desc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </th>
-                    <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs sm:text-sm">Usuario</span>
-                        <div class="flex flex-col ml-1 sm:ml-2">
-                          <button @click="sortGlobalHistoryBy('user_name', 'asc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'asc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button @click="sortGlobalHistoryBy('user_name', 'desc')"
-                            class="text-gray-400 hover:text-gray-600 p-1"
-                            :class="{ 'text-primary-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'desc' }">
-                            <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                      </th>
+                      <th
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs sm:text-sm">Usuario</span>
+                          <div class="flex flex-col ml-1 sm:ml-2">
+                            <button @click="sortGlobalHistoryBy('user_name', 'asc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'asc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button @click="sortGlobalHistoryBy('user_name', 'desc')"
+                              class="text-gray-400 hover:text-gray-600 p-1"
+                              :class="{ 'text-primary-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'desc' }">
+                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="movement in paginatedGlobalHistory" :key="movement.id" class="hover:bg-gray-50">
-                    <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm font-mono text-gray-900">
-                      {{ formatDate(movement.date_time) }}
-                    </td>
-                    <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm font-mono text-gray-900">
-                      {{ movement.batch_id }}
-                    </td>
-                    <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                      <div class="font-medium text-gray-900 text-[10px] sm:text-xs md:text-sm">{{ movement.change_details }}</div>
-                    </td>
-                    <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-gray-700">
-                      <div v-if="movement.previous_values && Object.keys(movement.previous_values).length > 0" class="text-[9px] sm:text-[10px] md:text-xs space-y-0.5">
-                        <div v-if="movement.previous_values.amount" class="truncate">Cant: {{ movement.previous_values.amount }}</div>
-                        <div v-if="movement.previous_values.supplier" class="truncate">Prov: {{ movement.previous_values.supplier }}</div>
-                        <div v-if="movement.previous_values.expiration_date" class="truncate">Venc: {{ formatDate(movement.previous_values.expiration_date) }}</div>
-                      </div>
-                      <span v-else class="text-gray-400 text-[10px] sm:text-xs">N/A</span>
-                    </td>
-                    <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-gray-700">
-                      <div v-if="movement.new_values && Object.keys(movement.new_values).length > 0" class="text-[9px] sm:text-[10px] md:text-xs space-y-0.5">
-                        <div v-if="movement.new_values.amount" class="truncate">Cant: {{ movement.new_values.amount }}</div>
-                        <div v-if="movement.new_values.supplier" class="truncate">Prov: {{ movement.new_values.supplier }}</div>
-                        <div v-if="movement.new_values.expiration_date" class="truncate">Venc: {{ formatDate(movement.new_values.expiration_date) }}</div>
-                      </div>
-                      <span v-else class="text-gray-400 text-[10px] sm:text-xs">N/A</span>
-                    </td>
-                    <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm text-gray-700">
-                      {{ movement.user_rut }}
-                    </td>
-                    <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm text-gray-700">
-                      {{ movement.user_name || 'N/A' }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="movement in paginatedGlobalHistory" :key="movement.id" class="hover:bg-gray-50">
+                      <td
+                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm font-mono text-gray-900">
+                        {{ formatDate(movement.date_time) }}
+                      </td>
+                      <td
+                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm font-mono text-gray-900">
+                        {{ movement.batch_id }}
+                      </td>
+                      <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
+                        <div class="font-medium text-gray-900 text-[10px] sm:text-xs md:text-sm">{{
+                          movement.change_details }}</div>
+                      </td>
+                      <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-gray-700">
+                        <div v-if="movement.previous_values && Object.keys(movement.previous_values).length > 0"
+                          class="text-[9px] sm:text-[10px] md:text-xs space-y-0.5">
+                          <div v-if="movement.previous_values.amount" class="truncate">Cant: {{
+                            movement.previous_values.amount }}</div>
+                          <div v-if="movement.previous_values.supplier" class="truncate">Prov: {{
+                            movement.previous_values.supplier }}</div>
+                          <div v-if="movement.previous_values.expiration_date" class="truncate">Venc: {{
+                            formatDate(movement.previous_values.expiration_date) }}</div>
+                        </div>
+                        <span v-else class="text-gray-400 text-[10px] sm:text-xs">N/A</span>
+                      </td>
+                      <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-gray-700">
+                        <div v-if="movement.new_values && Object.keys(movement.new_values).length > 0"
+                          class="text-[9px] sm:text-[10px] md:text-xs space-y-0.5">
+                          <div v-if="movement.new_values.amount" class="truncate">Cant: {{ movement.new_values.amount }}
+                          </div>
+                          <div v-if="movement.new_values.supplier" class="truncate">Prov: {{
+                            movement.new_values.supplier }}</div>
+                          <div v-if="movement.new_values.expiration_date" class="truncate">Venc: {{
+                            formatDate(movement.new_values.expiration_date) }}</div>
+                        </div>
+                        <span v-else class="text-gray-400 text-[10px] sm:text-xs">N/A</span>
+                      </td>
+                      <td
+                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm text-gray-700">
+                        {{ movement.user_rut }}
+                      </td>
+                      <td
+                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm text-gray-700">
+                        {{ movement.user_name || 'N/A' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
             <!-- Paginación -->
             <div class="flex flex-col sm:flex-row items-center justify-between mt-4 sm:mt-6 gap-3 sm:gap-4">
               <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Mostrando {{ filteredGlobalHistory.length > 0 ? globalHistoryStartIndex + 1 : 0 }} a {{ globalHistoryEndIndex }} de {{
-                filteredGlobalHistory.length }} resultados
+                Mostrando {{ filteredGlobalHistory.length > 0 ? globalHistoryStartIndex + 1 : 0 }} a {{
+                globalHistoryEndIndex }} de {{
+                  filteredGlobalHistory.length }} resultados
               </div>
               <div class="flex items-center gap-2 w-full sm:w-auto">
-                <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]" 
-                  :disabled="globalHistoryCurrentPage === 1"
-                  @click="globalHistoryCurrentPage--">
+                <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]"
+                  :disabled="globalHistoryCurrentPage === 1" @click="globalHistoryCurrentPage--">
                   <span class="hidden sm:inline">Anterior</span>
                   <span class="sm:hidden">Ant.</span>
                 </button>
-                <span class="px-3 py-2 text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-md text-center whitespace-nowrap">
-                  <span class="hidden sm:inline">Página {{ globalHistoryCurrentPage }} de {{ globalHistoryTotalPages }}</span>
+                <span
+                  class="px-3 py-2 text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-md text-center whitespace-nowrap">
+                  <span class="hidden sm:inline">Página {{ globalHistoryCurrentPage }} de {{ globalHistoryTotalPages
+                    }}</span>
                   <span class="sm:hidden">{{ globalHistoryCurrentPage }} / {{ globalHistoryTotalPages }}</span>
                 </span>
                 <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]"
-                  :disabled="globalHistoryCurrentPage === globalHistoryTotalPages" 
-                  @click="globalHistoryCurrentPage++">
+                  :disabled="globalHistoryCurrentPage === globalHistoryTotalPages" @click="globalHistoryCurrentPage++">
                   <span class="hidden sm:inline">Siguiente</span>
                   <span class="sm:hidden">Sig.</span>
                 </button>
@@ -1131,11 +1231,12 @@
           :class="notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'">
           <div class="flex items-center justify-between">
             <div class="flex items-center flex-1 min-w-0">
-              <svg v-if="notification.type === 'success'" class="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
+              <svg v-if="notification.type === 'success'" class="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
-              <svg v-else class="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-else class="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
               <span class="font-medium text-sm sm:text-base truncate">{{ notification.message }}</span>
@@ -1488,7 +1589,7 @@ const formatDate = (dateString) => {
 const getExpirationClass = (expirationDate) => {
   const today = new Date()
   const expDate = new Date(expirationDate)
-  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 *  60 * 24))
+  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
 
   if (daysUntilExpiration < 0) return 'text-red-600 font-semibold'
   if (daysUntilExpiration <= 15) return 'text-red-600 font-semibold'
@@ -1505,7 +1606,7 @@ const getAmountClass = (amount) => {
 
 const getStatusBadgeClass = (status) => {
   const statusLower = (status || '').toLowerCase()
-  
+
   if (statusLower.includes('creado') || statusLower.includes('crear')) {
     return 'bg-green-100 text-green-800'
   } else if (statusLower.includes('eliminado') || statusLower.includes('eliminar')) {
@@ -1519,7 +1620,7 @@ const getStatusBadgeClass = (status) => {
   } else if (statusLower.includes('vencimiento') || statusLower.includes('expiración')) {
     return 'bg-orange-100 text-orange-800'
   }
-  
+
   return 'bg-gray-100 text-gray-800'
 }
 
@@ -1529,11 +1630,11 @@ const viewMovementDetails = (movement) => {
   detailsText += `Tipo: ${movement.action || movement.type || 'N/A'}\n`
   detailsText += `Cantidad: ${movement.details?.amount || movement.amount || 'N/A'} unidades\n`
   detailsText += `Usuario: ${movement.user_rut || movement.user || 'N/A'}\n`
-  
+
   if (movement.details) {
     detailsText += `\nDetalles adicionales:\n${JSON.stringify(movement.details, null, 2)}`
   }
-  
+
   Swal.fire({
     title: 'Detalles del Movimiento',
     html: `<pre class="text-left text-xs">${detailsText}</pre>`,
@@ -1579,11 +1680,11 @@ const editSupply = (supply) => {
     // Convertir la fecha al formato requerido por el input date (YYYY-MM-DD)
     expiration_date: supply.expiration_date ? new Date(supply.expiration_date).toISOString().split('T')[0] : ''
   }
-  
+
   // Log para debugging: verificar que el store_id se esté recibiendo correctamente
   console.log('Editando lote:', supply)
   console.log('Store ID del lote:', supply.store_id)
-  
+
   showEditModal.value = true
 }
 
@@ -1622,7 +1723,7 @@ const saveEdit = async () => {
       supplier: editingSupply.value.supplier,
       store_id: editingSupply.value.store_id || 1 // Mantener el store_id original del lote
     }
-    
+
     // Log para debugging: verificar que se esté enviando el store_id correcto
     console.log('Enviando datos del lote:', batchData)
     console.log('Store ID que se mantiene:', batchData.store_id)
@@ -1706,7 +1807,7 @@ const openBatchDetailsModal = async (batch) => {
     // Obtener insumos individuales por lote
     const supplies = await inventoryService.getAvailableSuppliesByBatch(batch.batch_id)
     batchDetails.value = supplies
-    
+
     // Solo intentar obtener el nombre si no lo tenemos y hay insumos
     if (!supplyName.value || supplyName.value === 'Insumo') {
       if (supplies.length > 0) {
@@ -1922,7 +2023,8 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  -webkit-overflow-scrolling: touch; /* Mejor scroll en iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Mejor scroll en iOS */
   position: relative;
 }
 
@@ -2012,6 +2114,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
 
 /* Responsive para móviles */
 @media (max-width: 640px) {
+
   .table-header th,
   .table-body td {
     padding: 0.5rem 0.75rem;
@@ -2047,7 +2150,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   }
 
   /* Ajustes para modales en móviles */
-  .fixed.inset-0 > div {
+  .fixed.inset-0>div {
     max-height: 95vh;
     overflow-y: auto;
   }
@@ -2064,17 +2167,18 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   .table-header th:nth-child(3) {
     min-width: 120px;
   }
-  
+
   .table-header th:nth-child(4) {
     min-width: 120px;
   }
-  
+
   .table-header th:nth-child(6) {
     min-width: 120px;
   }
 }
 
 @media (max-width: 1024px) {
+
   .table-header th:nth-child(4),
   .table-header th:nth-child(6) {
     min-width: 120px;
@@ -2129,25 +2233,25 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
     margin-right: -0.5rem;
     border-radius: 0.5rem;
   }
-  
+
   .card-header {
     padding: 0.875rem;
   }
-  
+
   .btn-primary,
   .btn-secondary {
     padding: 0.625rem 1rem;
     font-size: 0.875rem;
     min-height: 40px;
   }
-  
+
   .table-container {
     margin: 0 -0.875rem;
     border-radius: 0;
     border-left: none;
     border-right: none;
   }
-  
+
   .table-header th,
   .table-body td {
     padding: 0.5rem 0.75rem;
@@ -2159,7 +2263,8 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   input[type="date"],
   select {
     min-height: 42px;
-    font-size: 16px; /* Previene zoom en iOS */
+    font-size: 16px;
+    /* Previene zoom en iOS */
   }
 
   /* Modal ocupando casi toda la pantalla en móviles */
@@ -2173,7 +2278,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   .card {
     padding: 1.5rem;
   }
-  
+
   .btn-primary,
   .btn-secondary {
     padding: 0.625rem 1.25rem;
@@ -2195,22 +2300,22 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   .history-filters {
     grid-template-columns: 1fr;
   }
-  
+
   .history-table {
     font-size: 0.75rem;
   }
-  
+
   .history-table th,
   .history-table td {
     padding: 0.5rem 0.75rem;
   }
-  
+
   .history-pagination {
     flex-direction: column;
     gap: 1rem;
     align-items: center;
   }
-  
+
   .history-pagination .btn-secondary {
     min-width: 60px;
     padding: 0.5rem 0.75rem;
@@ -2231,7 +2336,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   }
 
   /* Espaciado optimizado */
-  .space-y-6 > * + * {
+  .space-y-6>*+* {
     margin-top: 1rem;
   }
 }
@@ -2274,6 +2379,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
 
 /* Optimización adicional para modales en móviles */
 @media (max-width: 640px) {
+
   /* Asegurar que los modales sean scrolleables */
   .fixed.inset-0 {
     padding: 0;
@@ -2286,7 +2392,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   }
 
   /* Optimizar el espaciado de los formularios */
-  form .space-y-4 > * + * {
+  form .space-y-4>*+* {
     margin-top: 0.75rem;
   }
 
@@ -2294,7 +2400,8 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   button,
   .btn-primary,
   .btn-secondary {
-    min-height: 44px; /* Tamaño recomendado por Apple para touch targets */
+    min-height: 44px;
+    /* Tamaño recomendado por Apple para touch targets */
   }
 
   /* Ajustar el tamaño de los iconos SVG para mejor visibilidad */
@@ -2320,6 +2427,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
 
 /* Animaciones suaves para mejorar la experiencia */
 @media (prefers-reduced-motion: no-preference) {
+
   button,
   .btn-primary,
   .btn-secondary {
@@ -2333,8 +2441,9 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
 
 /* Estilos para vista de tarjetas en móviles */
 @media (max-width: 768px) {
+
   /* Animación suave al aparecer las tarjetas */
-  .space-y-3 > div {
+  .space-y-3>div {
     animation: fadeInUp 0.3s ease-out;
   }
 
@@ -2343,6 +2452,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -2350,7 +2460,7 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
   }
 
   /* Efecto hover/active en las tarjetas */
-  .space-y-3 > div:active {
+  .space-y-3>div:active {
     transform: scale(0.98);
     transition: transform 0.1s ease-in-out;
   }
