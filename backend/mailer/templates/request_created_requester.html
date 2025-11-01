@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud Creada</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            margin: -20px -20px 20px -20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .info-box {
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-row {
+            display: flex;
+            margin: 10px 0;
+        }
+        .info-label {
+            font-weight: bold;
+            min-width: 150px;
+            color: #555;
+        }
+        .info-value {
+            color: #333;
+        }
+        .items-section {
+            margin: 20px 0;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .items-table th {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+        .items-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .items-table tr:hover {
+            background: #f5f5f5;
+        }
+        .notes-section {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #777;
+            font-size: 12px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            background: #ffc107;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✓ Solicitud Creada Exitosamente</h1>
+        </div>
+        
+        <div class="content">
+            <p>Estimado/a <strong>{{.RecipientName}}</strong>,</p>
+            
+            <p>Su solicitud de insumos médicos ha sido creada exitosamente y está siendo procesada.</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Número de Solicitud:</span>
+                    <span class="info-value"><strong>{{.RequestNumber}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Pabellón:</span>
+                    <span class="info-value">{{.PavilionName}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Fecha de Cirugía:</span>
+                    <span class="info-value">{{.SurgeryDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Estado:</span>
+                    <span class="info-value"><span class="status-badge">Pendiente de Asignación</span></span>
+                </div>
+            </div>
+
+            <div class="items-section">
+                <h3>Insumos Solicitados:</h3>
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Insumo</th>
+                            <th style="text-align: center;">Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Items}}
+                        <tr>
+                            <td>{{.SupplyName}}</td>
+                            <td style="text-align: center;">{{.Quantity}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+
+            {{if .Notes}}
+            <div class="notes-section">
+                <strong>Observaciones:</strong>
+                <p style="margin: 10px 0 0 0; white-space: pre-wrap;">{{.Notes}}</p>
+            </div>
+            {{end}}
+
+            <p><strong>Próximos pasos:</strong></p>
+            <ul>
+                <li>Su solicitud será revisada y asignada por el área de Pavedad</li>
+                <li>Recibirá una notificación cuando sea asignada a un encargado de bodega</li>
+                <li>El encargado revisará y aprobará los insumos solicitados</li>
+            </ul>
+
+            <p>Puede consultar el estado de su solicitud en cualquier momento desde el sistema <a href="http://localhost:3000" style="color: #4CAF50; text-decoration: none; font-weight: bold;">MediTrack</a>.</p>
+        </div>
+        
+        <div class="footer">
+            <p>Este es un correo automático del sistema <a href="http://localhost:3000" style="color: #4CAF50; text-decoration: none;">MediTrack</a> - Gestión de Insumos Médicos</p>
+            <p>Por favor no responda a este correo</p>
+        </div>
+    </div>
+</body>
+</html>

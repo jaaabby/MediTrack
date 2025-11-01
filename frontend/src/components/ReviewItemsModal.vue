@@ -306,7 +306,19 @@ const confirmAction = async () => {
 
     closeActionModal()
     await loadItems() // Recargar items
-    emit('itemsReviewed')
+    
+    // Verificar si todos los items han sido resueltos
+    const allItemsResolved = items.value.every(item => 
+      item.item_status !== 'pendiente'
+    )
+    
+    if (allItemsResolved) {
+      // Si todos los items están resueltos, recargar la página completa
+      window.location.reload()
+    } else {
+      // Si aún hay items pendientes, solo emitir el evento
+      emit('itemsReviewed')
+    }
   } catch (error) {
     console.error('Error revisando item:', error)
     Swal.fire({

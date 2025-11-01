@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS supply_request (
     requested_by_name VARCHAR(255) NOT NULL,
     request_date TIMESTAMP WITH TIME ZONE NOT NULL,
     surgery_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pendiente_pavedad',
+    status VARCHAR(50) NOT NULL DEFAULT 'pendiente_pavedad',
     notes TEXT,
     -- Campos de Pavedad
     assigned_to VARCHAR(20) REFERENCES "user"(rut),
@@ -218,7 +218,16 @@ CREATE TABLE IF NOT EXISTS supply_request (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
-    CONSTRAINT chk_supply_request_status CHECK (status IN ('pendiente_pavedad', 'asignado_bodega', 'en_proceso', 'aprobado', 'rechazado', 'completado', 'cancelado', 'parcialmente_aprobado', 'pendiente_revision', 'devuelto')),
+    -- Estados posibles:
+    -- 'pendiente_pavedad': Doctor crea solicitud
+    -- 'asignado_bodega': Pavedad asigna a encargado de bodega
+    -- 'en_proceso': Encargado está procesando
+    -- 'aprobado', 'rechazado': Decisión del encargado
+    -- 'completado', 'cancelado': Estados finales
+    -- 'parcialmente_aprobado', 'pendiente_revision': Estados intermedios
+    -- 'devuelto': Encargado devuelve items al solicitante para que los modifique
+    -- 'devuelto_al_encargado': Doctor reenvía solicitud modificada al encargado
+    CONSTRAINT chk_supply_request_status CHECK (status IN ('pendiente_pavedad', 'asignado_bodega', 'en_proceso', 'aprobado', 'rechazado', 'completado', 'cancelado', 'parcialmente_aprobado', 'pendiente_revision', 'devuelto', 'devuelto_al_encargado')),
     CONSTRAINT chk_surgery_datetime_future CHECK (surgery_datetime >= request_date)
 );
 

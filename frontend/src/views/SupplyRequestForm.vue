@@ -64,10 +64,23 @@ const goBack = () => {
 
 const handleSuccess = (requestData) => {
   // Redirigir a la página de éxito con los datos de la solicitud
-  router.push({
-    name: 'SupplyRequestSuccess',
-    params: { requestData }
-  })
+  
+  // Extraer el ID de la solicitud
+  const requestId = requestData?.id || requestData?.request?.id
+  
+  if (requestId) {
+    // Pasar el ID como parámetro de ruta
+    router.push({
+      name: 'SupplyRequestSuccess',
+      params: { 
+        id: requestId,
+        requestData 
+      }
+    })
+  } else {
+    console.error('No se pudo obtener el ID de la solicitud')
+    router.push('/supply-requests')
+  }
 }
 </script>
 

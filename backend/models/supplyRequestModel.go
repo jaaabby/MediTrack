@@ -14,14 +14,14 @@ type SupplyRequest struct {
 	RequestDate     time.Time `json:"request_date" gorm:"not null"`
 	SurgeryDatetime time.Time `json:"surgery_datetime" gorm:"not null"`
 	Status          string    `json:"status" gorm:"not null;default:pendiente_pavedad"`
-	Notes           string    `json:"notes" gorm:"type:text"`
+	Notes           string    `json:"notes" gorm:"type:text"` // Historial completo de comentarios: solicitante, pavedad, encargado, etc.
 	// Campos de asignación por Pavedad
 	AssignedTo            *string    `json:"assigned_to"`
 	AssignedToName        *string    `json:"assigned_to_name"`
 	AssignedDate          *time.Time `json:"assigned_date"`
 	AssignedByPavedad     *string    `json:"assigned_by_pavedad"`
 	AssignedByPavedadName *string    `json:"assigned_by_pavedad_name"`
-	PavedadNotes          *string    `json:"pavedad_notes" gorm:"type:text"`
+	PavedadNotes          *string    `json:"pavedad_notes,omitempty" gorm:"type:text"` // DEPRECATED: usar Notes para historial completo
 	// Campos de aprobación/rechazo
 	ApprovedBy      *string    `json:"approved_by"`
 	ApprovedByName  *string    `json:"approved_by_name"`
@@ -62,6 +62,7 @@ type SupplyRequestQRAssignment struct {
 	SupplyRequestID     int        `json:"supply_request_id" gorm:"not null"`
 	SupplyRequestItemID int        `json:"supply_request_item_id" gorm:"not null"`
 	MedicalSupplyID     int        `json:"medical_supply_id" gorm:"not null"`
+	QRCode              string     `json:"qr_code" gorm:"not null"` // Código QR del insumo asignado
 	AssignedDate        time.Time  `json:"assigned_date" gorm:"not null"`
 	AssignedBy          string     `json:"assigned_by" gorm:"not null"`
 	AssignedByName      string     `json:"assigned_by_name" gorm:"not null"`
@@ -81,13 +82,15 @@ type SupplyRequestQRAssignment struct {
 
 // Constantes para Status de SupplyRequest
 const (
-	RequestStatusPendingPavedad = "pendiente_pavedad" // Doctor crea solicitud
-	RequestStatusAssignedStore  = "asignado_bodega"   // Pavedad asigna a encargado de bodega
-	RequestStatusInProcess      = "en_proceso"        // Encargado de bodega está procesando
-	RequestStatusApproved       = "aprobado"          // Encargado de bodega aprueba
-	RequestStatusRejected       = "rechazado"         // Encargado de bodega rechaza
-	RequestStatusCompleted      = "completado"        // Solicitud completada
-	RequestStatusCancelled      = "cancelado"         // Solicitud cancelada
+	RequestStatusPendingPavedad      = "pendiente_pavedad"     // Doctor crea solicitud
+	RequestStatusAssignedStore       = "asignado_bodega"       // Pavedad asigna a encargado de bodega
+	RequestStatusInProcess           = "en_proceso"            // Encargado de bodega está procesando
+	RequestStatusApproved            = "aprobado"              // Encargado de bodega aprueba
+	RequestStatusRejected            = "rechazado"             // Encargado de bodega rechaza
+	RequestStatusCompleted           = "completado"            // Solicitud completada
+	RequestStatusCancelled           = "cancelado"             // Solicitud cancelada
+	RequestStatusReturnedToRequester = "devuelto"              // Encargado devuelve items al solicitante para modificar
+	RequestStatusReturnedToStore     = "devuelto_al_encargado" // Doctor reenvía solicitud devuelta al encargado
 
 	// Alias para compatibilidad con código existente
 	RequestStatusPending = RequestStatusPendingPavedad

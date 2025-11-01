@@ -16,13 +16,9 @@ class PavilionService {
   // Obtener todos los pabellones
   async getAllPavilions() {
     try {
-      console.log('URL usada:', API_BASE_URL + '/pavilions/');
       let response = await this.api.get('/pavilions/');
-      console.log('Respuesta Axios:', response);
-      console.log('Datos específicos:', response.data);
       
       const data = response.data.data || response.data.Data || response.data || [];
-      console.log('Datos finales procesados:', data);
       
       return data;
     } catch (error) {

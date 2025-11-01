@@ -133,139 +133,6 @@
                 <p class="text-sm text-gray-900 mt-1">{{ formatDate(request.completed_date) }}</p>
               </div>
             </div>
-            
-          </div>
-
-          <!-- Cronología de la solicitud -->
-          <div class="bg-white rounded-lg shadow border p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Cronología del Proceso</h3>
-            <div class="flow-root">
-              <ul class="-mb-8">
-                <!-- Solicitud creada -->
-                <li>
-                  <div class="relative pb-8">
-                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Solicitud creada</p>
-                        <p class="text-sm text-gray-500">{{ formatDate(request.request_date) }}</p>
-                        <p class="text-xs text-gray-400">por {{ request.requested_by_name }}</p>
-                        <p v-if="request.notes" class="text-xs text-gray-600 mt-1 italic">"{{ request.notes }}"</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
-                <!-- Asignación por Pavedad (si existe) -->
-                <li v-if="request.assigned_date">
-                  <div class="relative pb-8">
-                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Asignada a bodega</p>
-                        <p class="text-sm text-gray-500">{{ formatDate(request.assigned_date) }}</p>
-                        <p class="text-xs text-gray-400">por {{ request.assigned_by_pavedad_name }}</p>
-                        <p class="text-xs text-gray-600 mt-1">Asignada a: {{ request.assigned_to_name }}</p>
-                        <p v-if="request.pavedad_notes" class="text-xs text-gray-600 mt-1 italic">"{{ request.pavedad_notes }}"</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
-                <!-- Aprobación (si existe) -->
-                <li v-if="request.approval_date">
-                  <div class="relative pb-8">
-                    <span v-if="!request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Solicitud aprobada</p>
-                        <p class="text-sm text-gray-500">{{ formatDate(request.approval_date) }}</p>
-                        <p class="text-xs text-gray-400">por {{ request.approved_by_name }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
-                <!-- Rechazada (si existe) -->
-                <li v-if="request.status === 'rechazado'">
-                  <div class="relative pb-8">
-                    <span v-if="!request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-red-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Solicitud rechazada</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
-                <!-- Devuelta (si existe) -->
-                <li v-if="request.status === 'devuelto'">
-                  <div class="relative pb-8">
-                    <span v-if="!request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Items devueltos</p>
-                        <p class="text-xs text-gray-600 mt-1">Algunos items requieren revisión del solicitante</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
-                <!-- Completado (si existe) -->
-                <li v-if="request.completed_date">
-                  <div class="relative">
-                    <div class="relative flex space-x-3">
-                      <div>
-                        <span class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center ring-8 ring-white">
-                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </span>
-                      </div>
-                      <div class="min-w-0 flex-1 pt-1.5">
-                        <p class="text-sm font-medium text-gray-900">Solicitud completada</p>
-                        <p class="text-sm text-gray-500">{{ formatDate(request.completed_date) }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              </ul>
-            </div>
           </div>
 
           <!-- Items solicitados -->
@@ -277,7 +144,13 @@
               <div v-for="(item, index) in items" :key="item.id" class="p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
                   <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-medium text-gray-900 truncate">{{ item.supply_name }}</h4>
+                    <div class="flex items-center gap-2 mb-1">
+                      <h4 class="text-sm font-medium text-gray-900 truncate">{{ item.supply_name }}</h4>
+                      <!-- Badge de estado del item -->
+                      <span v-if="item.item_status && item.item_status !== 'pendiente'" :class="getItemStatusBadgeClass(item.item_status)" class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap">
+                        {{ getItemStatusLabel(item.item_status) }}
+                      </span>
+                    </div>
                     <p class="text-xs sm:text-sm text-gray-500">Código: {{ item.supply_code }}</p>
                   </div>
                   <div class="text-left sm:text-right flex-shrink-0">
@@ -322,6 +195,53 @@
                   <p class="text-xs sm:text-sm text-gray-900 mt-1 bg-yellow-50 p-2 rounded">{{ item.special_requests }}</p>
                 </div>
 
+                <!-- Estado y comentarios del encargado de bodega -->
+                <!-- Item Rechazado -->
+                <div v-if="item.item_status === 'rechazado' && item.item_notes" class="mt-3 sm:mt-4">
+                  <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div class="flex items-start">
+                      <svg class="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div class="flex-1">
+                        <label class="block text-xs sm:text-sm font-medium text-red-800 mb-1">
+                          Motivo del rechazo
+                          <span v-if="item.reviewed_by_name" class="text-xs font-normal text-red-600">
+                            (por {{ item.reviewed_by_name }})
+                          </span>
+                        </label>
+                        <p class="text-xs sm:text-sm text-red-900">{{ item.item_notes }}</p>
+                        <p v-if="item.reviewed_at" class="text-xs text-red-600 mt-1">
+                          {{ formatDate(item.reviewed_at) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Item Devuelto -->
+                <div v-if="item.item_status === 'devuelto' && item.item_notes" class="mt-3 sm:mt-4">
+                  <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <div class="flex items-start">
+                      <svg class="h-5 w-5 text-orange-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div class="flex-1">
+                        <label class="block text-xs sm:text-sm font-medium text-orange-800 mb-1">
+                          Motivo de devolución
+                          <span v-if="item.reviewed_by_name" class="text-xs font-normal text-orange-600">
+                            (por {{ item.reviewed_by_name }})
+                          </span>
+                        </label>
+                        <p class="text-xs sm:text-sm text-orange-900">{{ item.item_notes }}</p>
+                        <p v-if="item.reviewed_at" class="text-xs text-orange-600 mt-1">
+                          {{ formatDate(item.reviewed_at) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- QRs asignados a este item -->
                 <div v-if="getItemAssignments(item.id).length > 0" class="mt-3 sm:mt-4">
                   <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">QRs Asignados</label>
@@ -331,21 +251,39 @@
                       :key="assignment.id"
                       class="bg-blue-50 p-2 sm:p-3 rounded border"
                     >
-                      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                        <code class="text-xs font-mono break-all">{{ assignment.qr_code }}</code>
-                        <span :class="getAssignmentStatusBadgeClass(assignment.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap self-start sm:self-auto">
+                      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                        <!-- Imagen del QR Code -->
+                        <div class="flex items-center gap-3 flex-1">
+                          <div class="flex-shrink-0 bg-white p-2 rounded border border-gray-200 shadow-sm">
+                            <QrcodeVue 
+                              :value="assignment.qr_code" 
+                              :size="80" 
+                              level="M"
+                              render-as="canvas"
+                            />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <code class="text-xs font-mono break-all block mb-1 font-semibold text-gray-700">{{ assignment.qr_code }}</code>
+                            <div v-if="assignment.assigned_date" class="text-xs text-gray-500 mb-2">
+                              Asignado: {{ formatDate(assignment.assigned_date) }}
+                            </div>
+                            <!-- Botones de acción -->
+                            <div class="flex flex-wrap gap-2 mt-2">
+                              <button
+                                v-if="authStore.user?.role === 'encargado de bodega'"
+                                @click="goToScannerWithQR(assignment.qr_code)"
+                                class="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                              >
+                                Ver trazabilidad →
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <!-- Badge de estado -->
+                        <span :class="getAssignmentStatusBadgeClass(assignment.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap self-start">
                           {{ getAssignmentStatusLabel(assignment.status) }}
                         </span>
                       </div>
-                      <div v-if="assignment.assigned_date" class="text-xs text-gray-500 mt-1">
-                        Asignado: {{ formatDate(assignment.assigned_date) }}
-                      </div>
-                      <button
-                        @click="viewQRTraceability(assignment.qr_code)"
-                        class="text-xs text-blue-600 hover:text-blue-800 mt-2 block"
-                      >
-                        Ver trazabilidad →
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -365,6 +303,179 @@
               </div>
             </div>
           </div>
+
+          <!-- Cronología de la solicitud -->
+          <div class="bg-white rounded-lg shadow border p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Cronología del Proceso</h3>
+            <div class="flow-root">
+              <ul class="-mb-8">
+                <!-- Solicitud creada -->
+                <li>
+                  <div class="relative pb-8">
+                    <span 
+                      v-if="request.assigned_date || request.approval_date || request.status === 'rechazado' || request.status === 'devuelto' || request.status === 'devuelto_al_encargado' || request.completed_date || parseAllComments().some(c => c.type === 'devolución' || c.type === 'reenvío')" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Solicitud creada</p>
+                        <p class="text-sm text-gray-500">{{ formatDate(request.request_date) }}</p>
+                        <p class="text-xs text-gray-400">por {{ request.requested_by_name }}</p>
+                        <p class="text-xs mt-1 italic" :class="getOriginalNotes() && getOriginalNotes().trim() === '' ? 'text-gray-400' : 'text-gray-600'">
+                          "{{ getOriginalNotes() && getOriginalNotes().trim() === '' ? 'No hay observaciones' : getOriginalNotes() }}"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Asignación por Pavedad (si existe) -->
+                <li v-if="request.assigned_date">
+                  <div class="relative pb-8">
+                    <span 
+                      v-if="request.approval_date || request.status === 'rechazado' || request.status === 'devuelto' || request.status === 'devuelto_al_encargado' || request.status === 'cancelado' || request.completed_date || parseAllComments().some(c => c.type === 'devolución' || c.type === 'reenvío')" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Asignada</p>
+                        <p class="text-sm text-gray-500">{{ formatDate(request.assigned_date) }}</p>
+                        <p class="text-xs text-gray-400">por {{ request.assigned_by_pavedad_name }}</p>
+                        <p class="text-xs text-gray-600 mt-1">Asignada a: {{ request.assigned_to_name }}</p>
+                        <template v-for="comment in parseAllComments().filter(c => c.type === 'asignación')" :key="comment.date">
+                          <p class="text-xs mt-1 italic" :class="comment.content.trim() === '' ? 'text-gray-400' : 'text-gray-600'">
+                            "{{ comment.content.trim() === '' ? 'No hay observaciones' : comment.content }}"
+                          </p>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Rechazada (si existe) -->
+                <li v-if="request.status === 'rechazado'">
+                  <div class="relative pb-8">
+                    <span v-if="request.completed_date" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-red-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Solicitud rechazada</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Items devueltos (si existe) -->
+                <li v-if="request.status === 'devuelto' || request.status === 'devuelto_al_encargado' || parseAllComments().some(c => c.type === 'devolución')">
+                  <div class="relative pb-8">
+                    <span 
+                      v-if="request.status === 'devuelto_al_encargado' || request.status === 'cancelado' || request.completed_date || parseAllComments().some(c => c.type === 'reenvío') || (request.approval_date && !['rechazado', 'devuelto', 'devuelto_al_encargado'].includes(request.status))" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Items devueltos</p>
+                        <template v-for="comment in parseAllComments().filter(c => c.type === 'devolución')" :key="comment.date">
+                          <div class="mt-2">
+                            <p class="text-sm text-gray-500">{{ comment.date }}</p>
+                            <p class="text-xs text-gray-400">por {{ comment.author }}</p>
+                            <p class="text-xs mt-1 italic text-gray-600 whitespace-pre-wrap">"{{ comment.content }}"</p>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Reenviado al encargado (si existe) -->
+                <li v-if="request.status === 'devuelto_al_encargado' || parseAllComments().some(c => c.type === 'reenvío')">
+                  <div class="relative pb-8">
+                    <span 
+                      v-if="request.status === 'cancelado' || request.completed_date || (request.approval_date && !['rechazado', 'devuelto', 'devuelto_al_encargado'].includes(request.status))" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">Reenviado al encargado</p>
+                        <template v-for="comment in parseAllComments().filter(c => c.type === 'reenvío')" :key="comment.date">
+                          <div class="mt-2">
+                            <p class="text-sm text-gray-500">{{ comment.date }}</p>
+                            <p class="text-xs text-gray-400">por {{ comment.author }}</p>
+                            <p class="text-xs mt-1 italic text-gray-600 whitespace-pre-wrap">"{{ comment.content }}"</p>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+
+                <!-- Aprobada (si existe) - AHORA AL FINAL -->
+                <li v-if="request.approval_date && !['rechazado', 'devuelto', 'devuelto_al_encargado'].includes(request.status)">
+                  <div class="relative pb-8">
+                    <span 
+                      v-if="request.completed_date" 
+                      class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" 
+                      aria-hidden="true"
+                    ></span>
+                    <div class="relative flex space-x-3">
+                      <div>
+                        <span class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white">
+                          <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div class="min-w-0 flex-1 pt-1.5">
+                        <p class="text-sm font-medium text-gray-900">
+                          {{ request.status === 'parcialmente_aprobado' ? 'Solicitud parcialmente aprobada' : 'Solicitud aprobada' }}
+                        </p>
+                        <p class="text-sm text-gray-500">{{ formatDate(request.approval_date) }}</p>
+                        <p class="text-xs text-gray-400">por {{ request.approved_by_name }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <!-- Panel lateral -->
@@ -374,16 +485,12 @@
             <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Resumen</h3>
             <div class="space-y-2 sm:space-y-3">
               <div class="flex justify-between">
-                <span class="text-xs sm:text-sm text-gray-600">Total Items:</span>
-                <span class="text-xs sm:text-sm font-medium text-gray-900">{{ items.length }}</span>
-              </div>
-              <div class="flex justify-between">
                 <span class="text-sm text-gray-600">Items Solicitados:</span>
-                <span class="text-sm font-medium text-gray-900">{{ getTotalRequestedQuantity() }}</span>
+                <span class="text-sm font-medium text-gray-900">{{ items.length }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-sm text-gray-600">Items Aprobados:</span>
-                <span class="text-sm font-medium text-green-600">{{ getTotalApprovedQuantity() }}</span>
+                <span class="text-sm font-medium text-green-600">{{ getApprovedItemsCount() }}</span>
               </div>
               <!--<div class="flex justify-between">
                 <span class="text-sm text-gray-600">QRs Asignados:</span>
@@ -430,12 +537,12 @@
                   <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                   </svg>
-                  Asignar a Bodega
+                  Asignar
                 </button>
 
                 <!-- Encargado de bodega puede revisar items -->
                 <button
-                  v-if="(request.status === 'asignado_bodega' || request.status === 'en_proceso') && authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
+                  v-if="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') && authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
                   @click="openReviewItemsModal"
                   class="w-full inline-flex items-center justify-center px-3 py-2 border border-blue-300 rounded-md text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
                 >
@@ -471,95 +578,77 @@
               <h4 class="text-sm font-semibold text-gray-900 mb-3">Comentarios y Observaciones</h4>
               
               <div class="space-y-3">
-                <!-- Notas del solicitante -->
-                <div v-if="getOriginalNotes()" class="p-2 bg-blue-50 rounded-lg">
+                <!-- Renderizar todos los comentarios parseados -->
+                <div 
+                  v-for="(comment, index) in parseAllComments()" 
+                  :key="index"
+                  :class="[
+                    'p-2 rounded-lg',
+                    comment.type === 'solicitante' ? 'bg-blue-50' : 
+                    comment.type === 'asignación' ? 'bg-purple-50' : 
+                    comment.type === 'reenvío' ? 'bg-green-50' : 'bg-orange-50'
+                  ]"
+                >
                   <div class="flex items-start">
-                    <svg class="h-4 w-4 text-blue-600 mt-0.5 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <!-- Icono según tipo -->
+                    <svg 
+                      :class="[
+                        'h-4 w-4 mt-0.5 mr-1.5 flex-shrink-0',
+                        comment.type === 'solicitante' ? 'text-blue-600' :
+                        comment.type === 'asignación' ? 'text-purple-600' :
+                        comment.type === 'reenvío' ? 'text-green-600' : 'text-orange-600'
+                      ]"
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        v-if="comment.type === 'solicitante'"
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        stroke-width="2" 
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
+                      />
+                      <path 
+                        v-else-if="comment.type === 'asignación'"
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        stroke-width="2" 
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                      />
+                      <path 
+                        v-else-if="comment.type === 'reenvío'"
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        stroke-width="2" 
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                      />
+                      <path 
+                        v-else
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        stroke-width="2" 
+                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" 
+                      />
                     </svg>
                     <div class="flex-1">
-                      <p class="text-xs font-medium text-gray-700 mb-0.5">Solicitante</p>
-                      <p class="text-xs text-gray-900 whitespace-pre-wrap">{{ getOriginalNotes() }}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Notas de Pavedad -->
-                <div v-if="request.pavedad_notes" class="p-2 bg-purple-50 rounded-lg">
-                  <div class="flex items-start">
-                    <svg class="h-4 w-4 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <div class="flex-1">
-                      <p class="text-xs font-medium text-gray-700 mb-0.5">Pavedad</p>
-                      <p class="text-xs text-gray-900">{{ request.pavedad_notes }}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Comentarios de devolución del Encargado de Bodega -->
-                <div v-if="getReturnComments()" class="p-2 bg-orange-50 rounded-lg">
-                  <div class="flex items-start">
-                    <svg class="h-4 w-4 text-orange-600 mt-0.5 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                    </svg>
-                    <div class="flex-1">
-                      <p class="text-xs font-medium text-gray-700 mb-0.5">{{ getReturnCommentsAuthor() }}</p>
-                      <p class="text-xs text-gray-900 whitespace-pre-wrap">{{ getReturnComments() }}</p>
+                      <div class="flex items-baseline justify-between">
+                        <p class="text-xs font-medium text-gray-700">{{ comment.author }}</p>
+                        <p v-if="comment.date" class="text-xs text-gray-500 ml-2">{{ comment.date }}</p>
+                      </div>
+                      <p class="text-xs whitespace-pre-wrap mt-0.5" :class="comment.content.trim() === '' ? 'text-gray-400 italic' : 'text-gray-900'">
+                        {{ comment.content.trim() === '' ? 'No hay observaciones' : comment.content }}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 <!-- Si no hay comentarios -->
-                <div v-if="!request.notes && !request.pavedad_notes" class="p-3 text-center text-gray-400 text-xs">
+                <div v-if="parseAllComments().length === 0" class="p-3 text-center text-gray-400 text-xs">
                   <svg class="h-6 w-6 mx-auto mb-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                   <p>No hay comentarios u observaciones para esta solicitud</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Trazabilidad QR -->
-          <div v-if="selectedQRTraceability" class="bg-white rounded-lg shadow border p-4 sm:p-6">
-            <div class="flex justify-between items-center mb-3 sm:mb-4">
-              <h3 class="text-base sm:text-lg font-semibold text-gray-900">Trazabilidad QR</h3>
-              <button
-                @click="selectedQRTraceability = null"
-                class="text-gray-400 hover:text-gray-600"
-              >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div class="space-y-2 sm:space-y-3">
-              <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700">Código QR</label>
-                <code class="text-xs sm:text-sm bg-gray-100 px-2 py-1 rounded break-all">{{ selectedQRTraceability.qr_code }}</code>
-              </div>
-              <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700">Estado Actual</label>
-                <span :class="getAssignmentStatusBadgeClass(selectedQRTraceability.current_status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1">
-                  {{ getAssignmentStatusLabel(selectedQRTraceability.current_status) }}
-                </span>
-              </div>
-              
-              <!-- Historial de movimientos -->
-              <div v-if="selectedQRTraceability.assignments && selectedQRTraceability.assignments.length > 0">
-                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Historial</label>
-                <div class="space-y-2">
-                  <div
-                    v-for="assignment in selectedQRTraceability.assignments"
-                    :key="assignment.id"
-                    class="border-l-2 border-blue-200 pl-2 sm:pl-3 pb-2"
-                  >
-                    <div class="text-xs sm:text-sm font-medium text-gray-900">{{ assignment.status }}</div>
-                    <div class="text-xs text-gray-500">{{ formatDate(assignment.assigned_date) }}</div>
-                    <div v-if="assignment.notes" class="text-xs text-gray-600 mt-1">{{ assignment.notes }}</div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -667,6 +756,7 @@ import { es } from 'date-fns/locale'
 import Swal from 'sweetalert2'
 import AssignRequestModal from '@/components/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/ReviewItemsModal.vue'
+import QrcodeVue from 'qrcode.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -711,6 +801,9 @@ const loadSupplyRequest = async () => {
       items.value = result.data.items || []
       assignments.value = result.data.assignments || []
       console.log('Solicitud cargada:', result.data)
+      console.log('Estado:', request.value.status)
+      console.log('Fecha de aprobación:', request.value.approval_date)
+      console.log('Aprobado por:', request.value.approved_by_name)
     } else {
       error.value = result.error || 'Solicitud no encontrada'
     }
@@ -850,6 +943,16 @@ const goToEditRequest = async () => {
   }
 }
 
+const goToScannerWithQR = (qrCode) => {
+  // Navegar al escáner QR con el código pre-escaneado
+  router.push({
+    name: 'QRScanner',
+    query: { 
+      qr: qrCode // El componente QRScanner espera el parámetro 'qr'
+    }
+  })
+}
+
 const viewQRTraceability = async (qrCode) => {
   try {
     const result = await supplyRequestService.getQRTraceability(qrCode)
@@ -927,7 +1030,25 @@ const getTotalRequestedQuantity = () => {
 }
 
 const getTotalApprovedQuantity = () => {
-  return items.value.reduce((sum, item) => sum + (item.quantity_approved || 0), 0)
+  return items.value.reduce((sum, item) => {
+    // Si el item está aceptado y tiene quantity_approved, usar ese valor
+    if (item.quantity_approved && item.quantity_approved > 0) {
+      return sum + item.quantity_approved
+    }
+    // Si el item está aceptado pero no tiene quantity_approved, usar quantity_requested
+    if (item.item_status === 'aceptado') {
+      return sum + item.quantity_requested
+    }
+    return sum
+  }, 0)
+}
+
+const getApprovedItemsCount = () => {
+  // Contar cuántos items (tipos diferentes) están aprobados/aceptados
+  return items.value.filter(item => 
+    item.item_status === 'aceptado' || 
+    (item.quantity_approved && item.quantity_approved > 0)
+  ).length
 }
 
 const getSurgeryUrgencyClass = (surgeryDatetime) => {
@@ -991,50 +1112,139 @@ const isSurgeryUrgent = (surgeryDatetime) => {
 const getStatusLabel = (status) => supplyRequestService.getStatusLabel(status)
 const getPriorityLabel = (priority) => supplyRequestService.getPriorityLabel(priority)
 
-// Parsear comentarios del campo notes
-const getOriginalNotes = () => {
-  if (!request.value?.notes) return ''
+// Parsear comentarios del campo notes y separarlos por tipo usando los campos de la BD
+const parseAllComments = () => {
+  const comments = []
   
-  const notes = request.value.notes
-  // Buscar el marcador de devolución
-  const devolucionMatch = notes.match(/\n\n\[Devolución por .+\]:\n/)
+  if (!request.value) return comments
   
-  if (devolucionMatch) {
-    // Extraer solo la parte antes del marcador de devolución
-    return notes.substring(0, devolucionMatch.index).trim()
+  // Dividir el campo notes por doble salto de línea - NO FILTRAR espacios para mantener posiciones
+  const notesArray = request.value.notes ? request.value.notes.split('\n\n') : []
+  
+  if (notesArray.length === 0) return comments
+  
+  // Construir una línea de tiempo con todos los eventos que pueden tener comentarios
+  const timeline = []
+  
+  // 1. Comentario original del solicitante (request_date) - SIEMPRE existe
+  timeline.push({
+    type: 'solicitante',
+    author: request.value.requested_by_name || 'Solicitante',
+    date: request.value.request_date ? new Date(request.value.request_date) : null,
+    hasComment: true
+  })
+  
+  // 2. Comentario de asignación por Pavedad (assigned_date)
+  if (request.value.assigned_date && request.value.assigned_by_pavedad_name) {
+    timeline.push({
+      type: 'asignación',
+      author: request.value.assigned_by_pavedad_name,
+      date: new Date(request.value.assigned_date),
+      hasComment: true
+    })
   }
   
-  return notes
+  // 3. Comentarios de devolución (cuando hay items que fueron devueltos)
+  // Verificar si hay algún item que tenga notas de revisión
+  const itemsWithNotes = items.value?.filter(item => 
+    item.item_notes && item.item_notes.trim() !== ''
+  ) || []
+  
+  // Si hay items con notas de revisión, significa que hubo una devolución
+  if (itemsWithNotes.length > 0) {
+    // Buscar el item con la fecha de revisión más antigua para la devolución
+    const firstReviewedItem = itemsWithNotes.reduce((earliest, item) => {
+      if (!earliest || !earliest.reviewed_at) return item
+      if (!item.reviewed_at) return earliest
+      return new Date(item.reviewed_at) < new Date(earliest.reviewed_at) ? item : earliest
+    }, null)
+    
+    if (firstReviewedItem && firstReviewedItem.reviewed_at) {
+      timeline.push({
+        type: 'devolución',
+        author: firstReviewedItem.reviewed_by_name || 'Encargado de Bodega',
+        date: new Date(firstReviewedItem.reviewed_at),
+        hasComment: true
+      })
+    }
+  }
+  
+  // 4. Comentario de reenvío (cuando hubo items devueltos y luego reenviados)
+  // Si hay items con notas Y el número de comentarios en notes sugiere que hay un reenvío
+  // O si el status actual es devuelto_al_encargado o aprobado (después de devolución)
+  const hasDevolucion = itemsWithNotes.length > 0
+  const probablyHasReenvio = notesArray.length > timeline.length // Hay más comentarios de los que hemos procesado
+  
+  if (hasDevolucion && probablyHasReenvio) {
+    // Calcular la fecha del reenvío basándose en el contexto
+    let reenvioDate = new Date()
+    let reenvioAuthor = request.value.requested_by_name || 'Solicitante'
+    
+    // Si el status es devuelto_al_encargado, usar updated_at
+    if (request.value.status === 'devuelto_al_encargado' && request.value.updated_at) {
+      reenvioDate = new Date(request.value.updated_at)
+    } 
+    // Si hay items que fueron devueltos pero ahora están en otro estado, usar la fecha más reciente
+    else if (itemsWithNotes.length > 0) {
+      const lastReviewedItem = itemsWithNotes.reduce((latest, item) => {
+        if (!latest || !latest.reviewed_at) return item
+        if (!item.reviewed_at) return latest
+        return new Date(item.reviewed_at) > new Date(latest.reviewed_at) ? item : latest
+      }, null)
+      if (lastReviewedItem && lastReviewedItem.reviewed_at) {
+        reenvioDate = new Date(lastReviewedItem.reviewed_at)
+      }
+    }
+    
+    timeline.push({
+      type: 'reenvío',
+      author: reenvioAuthor,
+      date: reenvioDate,
+      hasComment: true
+    })
+  }
+  
+  // Ordenar la línea de tiempo por fecha
+  timeline.sort((a, b) => {
+    if (!a.date) return -1
+    if (!b.date) return 1
+    return a.date - b.date
+  })
+  
+  // Asignar los comentarios del array notesArray a la línea de tiempo
+  // IMPORTANTE: No filtrar, respetar el orden y las posiciones
+  timeline.forEach((event, index) => {
+    if (index < notesArray.length) {
+      const content = notesArray[index]
+      comments.push({
+        type: event.type,
+        author: event.author,
+        content: content, // Mantener el contenido tal cual (puede ser espacio)
+        date: formatDate(event.date)
+      })
+    }
+  })
+  
+  return comments
+}
+
+// Funciones de compatibilidad (mantener para no romper el código existente)
+const getOriginalNotes = () => {
+  const comments = parseAllComments()
+  const solicitanteComment = comments.find(c => c.type === 'solicitante')
+  return solicitanteComment ? solicitanteComment.content : ''
 }
 
 const getReturnComments = () => {
-  if (!request.value?.notes) return ''
-  
-  const notes = request.value.notes
-  // Buscar el marcador de devolución
-  const devolucionMatch = notes.match(/\n\n\[Devolución por .+\]:\n/)
-  
-  if (devolucionMatch) {
-    // Extraer todo después del marcador (incluyendo el contenido)
-    const startIndex = devolucionMatch.index + devolucionMatch[0].length
-    return notes.substring(startIndex).trim()
-  }
-  
-  return ''
+  const comments = parseAllComments()
+  const devolucionComments = comments.filter(c => c.type === 'devolución')
+  return devolucionComments.length > 0 ? devolucionComments[devolucionComments.length - 1].content : ''
 }
 
 const getReturnCommentsAuthor = () => {
-  if (!request.value?.notes) return ''
-  
-  const notes = request.value.notes
-  // Buscar el nombre del autor en el marcador
-  const authorMatch = notes.match(/\[Devolución por (.+)\]:/)
-  
-  if (authorMatch && authorMatch[1]) {
-    return authorMatch[1]
-  }
-  
-  return 'Encargado de Bodega'
+  const comments = parseAllComments()
+  const devolucionComments = comments.filter(c => c.type === 'devolución')
+  return devolucionComments.length > 0 ? devolucionComments[devolucionComments.length - 1].author : 'Encargado de Bodega'
 }
 
 const getStatusBadgeClass = (status) => {
@@ -1047,6 +1257,26 @@ const getStatusBadgeClass = (status) => {
     'gray': 'bg-gray-100 text-gray-800'
   }
   return classes[color] || classes.gray
+}
+
+const getItemStatusBadgeClass = (status) => {
+  const classes = {
+    'pendiente': 'bg-yellow-100 text-yellow-800',
+    'aceptado': 'bg-green-100 text-green-800',
+    'rechazado': 'bg-red-100 text-red-800',
+    'devuelto': 'bg-orange-100 text-orange-800'
+  }
+  return classes[status] || 'bg-gray-100 text-gray-800'
+}
+
+const getItemStatusLabel = (status) => {
+  const labels = {
+    'pendiente': 'Pendiente',
+    'aceptado': 'Aceptado',
+    'rechazado': 'Rechazado',
+    'devuelto': 'Devuelto'
+  }
+  return labels[status] || status
 }
 
 const getUrgencyBadgeClass = (urgency) => {

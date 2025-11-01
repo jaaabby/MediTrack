@@ -22,6 +22,19 @@
 
     <!-- Filtros y búsqueda -->
     <div class="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <!-- Badge de filtro activo -->
+      <div v-if="filters.statusCategory" class="mb-3 flex items-center gap-2">
+        <span class="text-xs font-medium text-gray-600">Filtro activo:</span>
+        <span :class="getFilterBadgeClass(filters.statusCategory)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+          {{ getFilterLabel(filters.statusCategory) }}
+          <button @click="filterByStatCategory('')" class="ml-1.5 hover:bg-white hover:bg-opacity-20 rounded-full">
+            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </span>
+      </div>
+      
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <!-- Filtro por estado -->
         <div>
@@ -35,13 +48,27 @@
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Todos los estados</option>
-            <option value="pending">Pendiente</option>
-            <option value="approved">Aprobada</option>
-            <option value="rejected">Rechazada</option>
-            <option value="in_process">En Proceso</option>
-            <option value="completed">Completada</option>
-            <option value="cancelled">Cancelada</option>
+            <option value="pendiente_pavedad">Pendiente Pavedad</option>
+            <option value="asignado_bodega">Asignado a Bodega</option>
+            <option value="devuelto">Devuelto al Solicitante</option>
+            <option value="devuelto_al_encargado">Devuelto al Encargado</option>
+            <option value="aprobado">Aprobado</option>
+            <option value="parcialmente_aprobado">Parcialmente Aprobado</option>
+            <option value="rechazado">Rechazado</option>
           </select>
+        </div>
+
+        <!-- Filtro por fecha de cirugía -->
+        <div>
+          <label for="surgeryDateFilter" class="block text-sm font-medium text-gray-700 mb-1">
+            Fecha de Cirugía
+          </label>
+          <input
+            type="date"
+            id="surgeryDateFilter"
+            v-model="filters.surgeryDate"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
         </div>
 
         <!-- Búsqueda por número de solicitud -->
@@ -62,7 +89,7 @@
         <!-- Botón refrescar -->
         <div class="flex items-end">
           <button
-            @click="loadSupplyRequests"
+            @click="refreshRequests"
             :disabled="loading"
             class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
@@ -77,7 +104,7 @@
 
     <!-- Estadísticas rápidas -->
     <div v-if="stats" class="mb-4 sm:mb-6 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div @click="filterByStatCategory('pending')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -93,7 +120,7 @@
         </div>
       </div>
 
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div @click="filterByStatCategory('approved')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="w-7 h-7 sm:w-8 sm:h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -109,7 +136,7 @@
         </div>
       </div>
 
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div @click="filterByStatCategory('rejected')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="w-7 h-7 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center">
@@ -125,7 +152,7 @@
         </div>
       </div>
 
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div @click="filterByStatCategory('all')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 rounded-full flex items-center justify-center">
@@ -172,10 +199,10 @@
         </svg>
         <h3 class="text-lg font-medium text-gray-900 mb-2">No hay solicitudes</h3>
         <p class="text-gray-600 mb-4">
-          {{ requests.length === 0 ? 'No se han creado solicitudes aún' : 'No se encontraron solicitudes con los filtros aplicados' }}
+          {{ (requests.length === 0 && !filters.status && !filters.statusCategory && !filters.urgency && !filters.search && !filters.surgeryDate) ? 'No se han creado solicitudes aún' : 'No se encontraron solicitudes con los filtros aplicados' }}
         </p>
         <router-link
-          v-if="requests.length === 0 && authStore.canCreateRequests"
+          v-if="requests.length === 0 && authStore.canCreateRequests && !filters.status && !filters.statusCategory"
           to="/supply-requests/new"
           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
         >
@@ -281,20 +308,20 @@
                 <!-- Botón Revisar Items para Encargado de Bodega -->
                 <button
                   v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
-                  @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? openReviewItemsModal(request) : null"
-                  :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'"
+                  @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
+                  :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'"
                   :class="[
                     'flex-1 inline-flex items-center justify-center px-3 py-2 border rounded-md text-xs font-medium',
-                    (request.status === 'asignado_bodega' || request.status === 'en_proceso')
+                    (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
                       ? 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer'
                       : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
                   ]"
-                  :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar Insumos' : 'Ya revisada'"
+                  :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar Insumos' : 'Ya revisada'"
                 >
                   <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
-                  {{ (request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar Items' : 'Revisado ✓' }}
+                  {{ (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar Items' : 'Revisado ✓' }}
                 </button>
               </div>
             </div>
@@ -320,9 +347,6 @@
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Fecha de Cirugía
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fecha
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Items
@@ -380,11 +404,6 @@
                 </span>
               </td>
 
-              <!-- Fecha -->
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ formatDate(request.request_date) }}
-              </td>
-
               <!-- Número de items -->
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {{ request.total_items || 'N/A' }} items
@@ -426,20 +445,20 @@
                   <!-- Botón Revisar Items para Encargado de Bodega -->
                   <button
                     v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
-                    @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? openReviewItemsModal(request) : null"
-                    :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'"
+                    @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
+                    :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'"
                     :class="[
                       'p-1',
-                      (request.status === 'asignado_bodega' || request.status === 'en_proceso')
+                      (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
                         ? 'text-blue-600 hover:text-blue-900 cursor-pointer'
                         : 'text-gray-400 cursor-not-allowed opacity-60'
                     ]"
-                    :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso') ? 'Revisar insumos' : 'Ya revisada'"
+                    :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar insumos' : 'Ya revisada'"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    <span v-if="request.status !== 'asignado_bodega' && request.status !== 'en_proceso'" class="text-xs">✓</span>
+                    <span v-if="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'" class="text-xs">✓</span>
                   </button>
                 </div>
               </td>
@@ -533,16 +552,52 @@ const pageSize = ref(10)
 const filters = ref({
   status: '',
   urgency: '',
-  search: ''
+  search: '',
+  statusCategory: '', // pending, approved, rejected, o '' para todos
+  surgeryDate: '' // fecha de cirugía en formato YYYY-MM-DD
 })
 
 // Computed properties
 const filteredRequests = computed(() => {
   let filtered = requests.value
 
+  // Filtrar por estado específico (del select)
+  if (filters.value.status) {
+    filtered = filtered.filter(r => r.status === filters.value.status)
+  }
+
+  // Filtrar por categoría de estadística (si está activo)
+  if (filters.value.statusCategory) {
+    if (filters.value.statusCategory === 'pending') {
+      // Pendientes: todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
+      filtered = filtered.filter(r => 
+        !['aprobado', 'parcialmente_aprobado', 'rechazado'].includes(r.status)
+      )
+    } else if (filters.value.statusCategory === 'approved') {
+      // Aprobadas: aprobadas + parcialmente aprobadas
+      filtered = filtered.filter(r => 
+        r.status === 'aprobado' || r.status === 'parcialmente_aprobado'
+      )
+    } else if (filters.value.statusCategory === 'rejected') {
+      // Rechazadas: solo rechazadas
+      filtered = filtered.filter(r => 
+        r.status === 'rechazado'
+      )
+    }
+  }
+
   if (filters.value.urgency) {
     filtered = filtered.filter(request => 
       supplyRequestService.calculateUrgencyFromSurgeryDate(request.surgery_datetime) === filters.value.urgency)
+  }
+
+  if (filters.value.surgeryDate) {
+    filtered = filtered.filter(request => {
+      if (!request.surgery_datetime) return false
+      // Extraer solo la fecha sin considerar hora ni zona horaria
+      const requestDate = request.surgery_datetime.split('T')[0]
+      return requestDate === filters.value.surgeryDate
+    })
   }
 
   if (filters.value.search) {
@@ -569,13 +624,28 @@ const endIndex = computed(() => Math.min(startIndex.value + pageSize.value, tota
 
 // Calcular estadísticas localmente basándose en las solicitudes filtradas
 const stats = computed(() => {
-  const requests = filteredRequests.value
+  const allRequests = requests.value
+  
+  // Pendientes: todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
+  const pending = allRequests.filter(r => 
+    !['aprobado', 'parcialmente_aprobado', 'rechazado'].includes(r.status)
+  ).length
+  
+  // Aprobadas: aprobadas + parcialmente aprobadas
+  const approved = allRequests.filter(r => 
+    r.status === 'aprobado' || r.status === 'parcialmente_aprobado'
+  ).length
+  
+  // Rechazadas: solo rechazadas
+  const rejected = allRequests.filter(r => 
+    r.status === 'rechazado'
+  ).length
   
   return {
-    pending: requests.filter(r => r.status === 'pending').length,
-    approved: requests.filter(r => r.status === 'approved').length,
-    rejected: requests.filter(r => r.status === 'rejected').length,
-    total: requests.length
+    pending,
+    approved,
+    rejected,
+    total: allRequests.length
   }
 })
 
@@ -611,6 +681,11 @@ const loadSupplyRequests = async () => {
     if (result.success && result.data) {
       let allRequests = result.data.requests || result.data || []
       
+      // Asegurar que allRequests sea un array
+      if (!Array.isArray(allRequests)) {
+        allRequests = []
+      }
+      
       // Filtrar por doctor si corresponde
       if (authStore.canCreateRequests && !authStore.isAdmin && !authStore.isPavedad && !authStore.isWarehouseManager) {
         const userRut = authStore.getUserRut
@@ -618,6 +693,9 @@ const loadSupplyRequests = async () => {
       } else {
         requests.value = allRequests
       }
+      
+      // Limpiar error si la carga fue exitosa
+      error.value = null
       
       console.log('Solicitudes cargadas:', requests.value)
     } else {
@@ -646,8 +724,43 @@ const loadStats = async () => {
   // No necesitamos cargar estadísticas del backend
 }
 
+const filterByStatCategory = (category) => {
+  // Limpiar búsqueda
+  filters.value.search = ''
+  
+  // Aplicar filtro según la categoría
+  if (category === 'pending') {
+    // Mostrar todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
+    filters.value.statusCategory = 'pending'
+  } else if (category === 'approved') {
+    // Mostrar aprobadas + parcialmente aprobadas
+    filters.value.statusCategory = 'approved'
+  } else if (category === 'rejected') {
+    // Mostrar solo rechazadas
+    filters.value.statusCategory = 'rejected'
+  } else {
+    // Mostrar todas
+    filters.value.statusCategory = ''
+  }
+  
+  currentPage.value = 1
+}
+
 const filterRequests = () => {
   currentPage.value = 1
+}
+
+const refreshRequests = () => {
+  // Limpiar todos los filtros
+  filters.value = {
+    status: '',
+    urgency: '',
+    search: '',
+    statusCategory: '',
+    surgeryDate: ''
+  }
+  // Recargar solicitudes
+  loadSupplyRequests()
 }
 
 const viewRequest = (id) => {
@@ -815,6 +928,24 @@ const getPavilionName = (pavilionId) => {
 
 const getStatusLabel = (status) => {
   return supplyRequestService.getStatusLabel(status)
+}
+
+const getFilterBadgeClass = (category) => {
+  const classes = {
+    'pending': 'bg-yellow-100 text-yellow-800',
+    'approved': 'bg-green-100 text-green-800',
+    'rejected': 'bg-red-100 text-red-800'
+  }
+  return classes[category] || 'bg-gray-100 text-gray-800'
+}
+
+const getFilterLabel = (category) => {
+  const labels = {
+    'pending': 'Pendientes',
+    'approved': 'Aprobadas',
+    'rejected': 'Rechazadas'
+  }
+  return labels[category] || category
 }
 
 const getStatusBadgeClass = (status) => {
