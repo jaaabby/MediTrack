@@ -38,6 +38,11 @@
           <div class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
             <div class="font-medium">{{ authStore.getUserName || 'Usuario' }}</div>
             <div class="text-sm text-gray-500">{{ authStore.getUserRut || 'RUT no disponible' }}</div>
+            <div v-if="authStore.getUserSpecialty" class="font-medium">
+              <span class="inline-flex items-center">
+                {{ authStore.getUserSpecialty }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -98,6 +103,32 @@
               {{ props.editMode ? 'Pabellón donde se realizará la cirugía' : 'Selecciona el pabellón donde se realizará la cirugía' }}
             </p>
           </div>
+
+          <!-- Tipo de Cirugía -->
+          <div>
+            <label for="surgery_id" class="block text-sm font-medium text-gray-700 mb-1">
+              Tipo de Cirugía <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="surgery_id"
+              v-model="requestForm.surgery_id"
+              required
+              class="form-select text-sm"
+              :disabled="loadingSurgeries"
+            >
+              <option :value="null">Seleccionar cirugía</option>
+              <option v-for="surgery in filteredSurgeries" :key="surgery.id" :value="surgery.id">
+                {{ surgery.name }}
+              </option>
+            </select>
+            <p v-if="loadingSurgeries" class="text-xs text-gray-500 mt-1">Cargando cirugías...</p>
+            <p v-else-if="filteredSurgeries.length === 0" class="text-xs text-yellow-600 mt-1">
+              No hay cirugías disponibles para tu especialidad
+            </p>
+            <p v-else class="text-xs text-gray-500 mt-1">
+              Cirugías de {{ authStore.getUserSpecialty || 'tu especialidad' }}
+            </p>
+          </div>
         </div>
 
         <!-- Observaciones generales -->
@@ -112,89 +143,6 @@
             :placeholder="props.editMode ? 'Observaciones sobre los cambios realizados en esta solicitud...' : 'Observaciones adicionales sobre la solicitud...'"
                   class="form-input text-sm"
           ></textarea>
-        </div>
-      </div>
-
-      <!-- Información del Médico Responsable -->
-      <div class="bg-purple-50 p-3 sm:p-4 rounded-lg">
-        <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Médico Responsable</h3>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Especialidad Médica -->
-          <div>
-            <label for="specialty_id" class="block text-sm font-medium text-gray-700 mb-1">
-              Especialidad Médica
-            </label>
-            <select
-              id="specialty_id"
-              v-model="requestForm.specialty_id"
-              @change="onSpecialtyChange"
-              class="form-select text-sm"
-              :disabled="loadingSpecialties"
-            >
-              <option :value="null">Seleccionar especialidad</option>
-              <option v-for="specialty in specialties" :key="specialty.id" :value="specialty.id">
-                {{ specialty.name }}
-              </option>
-            </select>
-            <p v-if="loadingSpecialties" class="text-xs text-gray-500 mt-1">Cargando especialidades...</p>
-          </div>
-
-          <!-- Tipo de Cirugía -->
-          <div>
-            <label for="surgery_id" class="block text-sm font-medium text-gray-700 mb-1">
-              Tipo de Cirugía
-            </label>
-            <select
-              id="surgery_id"
-              v-model="requestForm.surgery_id"
-              @change="onSurgeryChange"
-              class="form-select text-sm"
-              :disabled="loadingSurgeries || !requestForm.specialty_id"
-            >
-              <option :value="null">Seleccionar cirugía</option>
-              <option v-for="surgery in filteredSurgeries" :key="surgery.id" :value="surgery.id">
-                {{ surgery.name }}
-              </option>
-            </select>
-            <p v-if="loadingSurgeries" class="text-xs text-gray-500 mt-1">Cargando cirugías...</p>
-            <p v-else-if="!requestForm.specialty_id" class="text-xs text-gray-500 mt-1">Selecciona primero una especialidad</p>
-          </div>
-
-          <!-- Cirujano -->
-          <div>
-            <label for="surgeon_id" class="block text-sm font-medium text-gray-700 mb-1">
-              Cirujano Responsable
-            </label>
-            <select
-              id="surgeon_id"
-              v-model="requestForm.surgeon_id"
-              @change="onSurgeonChange"
-              class="form-select text-sm"
-              :disabled="loadingDoctors"
-            >
-              <option :value="null">Seleccionar cirujano</option>
-              <option v-for="doctor in filteredDoctors" :key="doctor.user_rut" :value="doctor.user_rut">
-                {{ doctor.user?.name || doctor.user_rut }} - {{ getSpecialtyName(doctor.specialty_id) }}
-              </option>
-            </select>
-            <p v-if="loadingDoctors" class="text-xs text-gray-500 mt-1">Cargando doctores...</p>
-          </div>
-
-          <!-- Nombre del Cirujano (auto-completado) -->
-          <div>
-            <label for="surgeon_name" class="block text-sm font-medium text-gray-700 mb-1">
-              Nombre del Cirujano
-            </label>
-            <input
-              id="surgeon_name"
-              v-model="requestForm.surgeon_name"
-              type="text"
-              placeholder="Se completa automáticamente"
-              readonly
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-700"
-            />
-          </div>
         </div>
       </div>
 
@@ -474,9 +422,7 @@ import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
 import inventoryService from '../services/inventoryService'
-import medicalSpecialtyService from '../services/medicalSpecialtyService'
 import surgeryService from '../services/surgeryService'
-import doctorInfoService from '../services/doctorInfoService'
 import Swal from 'sweetalert2'
 
 // Props
@@ -506,12 +452,8 @@ const medicalSupplies = ref([])
 const loadingSupplies = ref(false)
 const supplySearchTerms = ref([])
 const showSupplyDropdowns = ref([])
-const specialties = ref([])
-const loadingSpecialties = ref(false)
 const surgeries = ref([])
 const loadingSurgeries = ref(false)
-const doctors = ref([])
-const loadingDoctors = ref(false)
 
 // Fecha mínima para la cirugía (hoy)
 const minDateTime = computed(() => {
@@ -553,11 +495,7 @@ const requestForm = reactive({
   surgery_datetime: '',
   notes: '',
   items: [],
-  // Campos de médico responsable
-  specialty_id: null,
-  surgery_id: null,
-  surgeon_id: null,
-  surgeon_name: ''
+  surgery_id: null
 })
 
 // Datos originales para mostrar en modo edición (solo lectura)
@@ -566,6 +504,19 @@ const originalRequestData = ref({
   surgery_datetime_display: '',
   requester_name: '',
   requester_rut: ''
+})
+
+// Computed: Filtrar cirugías según la especialidad del doctor logueado
+const filteredSurgeries = computed(() => {
+  const userSpecialtyId = authStore.getUserSpecialtyId
+  
+  // Si el usuario no tiene especialidad, mostrar todas las cirugías
+  if (!userSpecialtyId) {
+    return surgeries.value
+  }
+  
+  // Filtrar cirugías que coincidan con la especialidad del usuario
+  return surgeries.value.filter(surgery => surgery.specialty_id === userSpecialtyId)
 })
 
 // Template para nuevo item
@@ -596,18 +547,6 @@ const loadPavilions = async () => {
   }
 }
 
-const loadSpecialties = async () => {
-  loadingSpecialties.value = true
-  try {
-    const result = await medicalSpecialtyService.getAllSpecialties()
-    specialties.value = result.filter(s => s.is_active)
-  } catch (error) {
-    console.error('Error cargando especialidades:', error)
-  } finally {
-    loadingSpecialties.value = false
-  }
-}
-
 const loadSurgeries = async () => {
   loadingSurgeries.value = true
   try {
@@ -617,65 +556,6 @@ const loadSurgeries = async () => {
     console.error('Error cargando cirugías:', error)
   } finally {
     loadingSurgeries.value = false
-  }
-}
-
-const loadDoctors = async () => {
-  loadingDoctors.value = true
-  try {
-    const result = await doctorInfoService.getAllDoctors()
-    doctors.value = result.filter(d => d.is_available)
-  } catch (error) {
-    console.error('Error cargando doctores:', error)
-  } finally {
-    loadingDoctors.value = false
-  }
-}
-
-// Computed para filtrar cirugías por especialidad
-const filteredSurgeries = computed(() => {
-  if (!requestForm.specialty_id) return []
-  return surgeries.value.filter(s => s.specialty_id === requestForm.specialty_id)
-})
-
-// Computed para filtrar doctores por especialidad
-const filteredDoctors = computed(() => {
-  if (!requestForm.specialty_id) return doctors.value
-  return doctors.value.filter(d => d.specialty_id === requestForm.specialty_id)
-})
-
-// Función auxiliar para obtener nombre de especialidad
-const getSpecialtyName = (specialtyId) => {
-  if (!specialtyId) return '-'
-  const specialty = specialties.value.find(s => s.id === specialtyId)
-  return specialty ? specialty.name : '-'
-}
-
-// Handlers para cambios en selects
-const onSpecialtyChange = () => {
-  // Resetear cirugía y cirujano cuando cambia la especialidad
-  requestForm.surgery_id = null
-  requestForm.surgeon_id = null
-  requestForm.surgeon_name = ''
-}
-
-const onSurgeryChange = () => {
-  // Puedes agregar lógica adicional aquí si es necesario
-}
-
-const onSurgeonChange = () => {
-  // Auto-completar nombre del cirujano
-  if (requestForm.surgeon_id) {
-    const doctor = doctors.value.find(d => d.user_rut === requestForm.surgeon_id)
-    if (doctor) {
-      requestForm.surgeon_name = doctor.user?.name || ''
-      // Auto-completar especialidad si no está seleccionada
-      if (!requestForm.specialty_id && doctor.specialty_id) {
-        requestForm.specialty_id = doctor.specialty_id
-      }
-    }
-  } else {
-    requestForm.surgeon_name = ''
   }
 }
 
@@ -758,10 +638,7 @@ const resetForm = () => {
     surgery_datetime: '',
     notes: '',
     items: [],
-    specialty_id: null,
-    surgery_id: null,
-    surgeon_id: null,
-    surgeon_name: ''
+    surgery_id: null
   })
   errors.value = []
 }
@@ -861,9 +738,7 @@ onMounted(async () => {
   await Promise.all([
     loadPavilions(),
     loadMedicalSupplies(),
-    loadSpecialties(),
-    loadSurgeries(),
-    loadDoctors()
+    loadSurgeries()
   ])
   
   // Si está en modo edición, cargar la solicitud DESPUÉS de que las listas estén listas
@@ -916,11 +791,8 @@ const loadRequestForEdit = async () => {
       // En modo edición, dejar las observaciones vacías para que el usuario ingrese nuevas
       requestForm.notes = ''
       
-      // Cargar campos de médico responsable
-      requestForm.specialty_id = request.specialty_id || null
+      // Cargar tipo de cirugía
       requestForm.surgery_id = request.surgery_id || null
-      requestForm.surgeon_id = request.surgeon_id || null
-      requestForm.surgeon_name = request.surgeon_name || ''
       
       // Guardar datos originales para mostrar en modo solo lectura
       // Buscar el pabellón por ID - probar con conversión de tipos

@@ -74,6 +74,12 @@ export const useAuthStore = defineStore('auth', {
     // Obtener el RUT del usuario
     getUserRut: (state) => state.user?.rut,
 
+    // Obtener la especialidad del usuario (para doctores)
+    getUserSpecialty: (state) => state.user?.specialty?.name,
+    
+    // Obtener el ID de especialidad del usuario (para doctores)
+    getUserSpecialtyId: (state) => state.user?.specialty_id,
+
     // Obtener fecha de creación del usuario
     getUserCreatedAt: (state) => state.user?.created_at,
     

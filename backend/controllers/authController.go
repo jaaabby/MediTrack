@@ -129,7 +129,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 		return
 	}
 
-	user, err := c.userService.GetUserByID(userID.(string))
+	user, err := c.userService.GetUserByRut(userID.(string))
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{
 			Success: false,
@@ -160,7 +160,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	}
 
 	userID, _ := ctx.Get("user_id")
-	user, err := c.userService.GetUserByID(userID.(string))
+	user, err := c.userService.GetUserByRut(userID.(string))
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{
 			Success: false,
@@ -216,7 +216,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	}
 
 	// Verificar si el usuario ya existe por RUT
-	existingUserByRUT, _ := c.userService.GetUserByID(registerReq.RUT)
+	existingUserByRUT, _ := c.userService.GetUserByRut(registerReq.RUT)
 	if existingUserByRUT != nil {
 		ctx.JSON(http.StatusConflict, Response{
 			Success: false,

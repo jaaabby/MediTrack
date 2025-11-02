@@ -420,6 +420,7 @@ INSERT INTO "user" (
     password, 
     role, 
     medical_center_id, 
+    specialty_id,
     is_active, 
     created_at, 
     updated_at
@@ -430,6 +431,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
+    1, -- Traumatología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -474,6 +476,118 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- Reemplazar con contraseña hasheada real
     'pavedad',
     1,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+)
+ON CONFLICT (rut) DO NOTHING;
+
+-- Agregar más doctores con diferentes especialidades
+-- IDs de especialidades: 1=Traumatología, 2=Cardiología, 3=Cirugía General, 4=Neurocirugía, 5=Oftalmología, 6=Otorrinolaringología, 7=Urología, 8=Ginecología, 9=Anestesiología, 10=Plástica y Reconstructiva
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id, 
+    specialty_id,
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES 
+(
+    '55555555-5',
+    'Dr. Ana Martínez',
+    'ana.martinez@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'doctor',
+    1,
+    2, -- Cardiología
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    '66666666-6',
+    'Dr. Roberto Silva',
+    'roberto.silva@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'doctor',
+    1,
+    4, -- Neurocirugía
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    '77777777-7',
+    'Dra. Laura Torres',
+    'laura.torres@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'doctor',
+    1,
+    8, -- Ginecología
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    '88888888-8',
+    'Dr. Pedro Ramírez',
+    'pedro.ramirez@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'doctor',
+    1,
+    3, -- Cirugía General
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    '99999999-9',
+    'Dra. Carmen López',
+    'carmen.lopez@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'doctor',
+    1,
+    5, -- Oftalmología
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    '10101010-1',
+    'Dr. Miguel Ángel Rojas',
+    'miguel.rojas@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'doctor',
+    1,
+    7, -- Urología
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    '20202020-2',
+    'Dra. Patricia Vega',
+    'patricia.vega@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'doctor',
+    2,
+    10, -- Plástica y Reconstructiva
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    '30303030-3',
+    'Dr. Fernando Castro',
+    'fernando.castro@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'doctor',
+    2,
+    6, -- Otorrinolaringología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())

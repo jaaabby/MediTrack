@@ -123,6 +123,13 @@
                   Cirugía próxima
                 </p>
               </div>
+              <div v-if="request.surgery">
+                <label class="block text-sm font-medium text-gray-700">Tipo de Cirugía</label>
+                <p class="text-sm text-gray-900 mt-1">{{ request.surgery.name }}</p>
+                <p v-if="request.surgery.specialty" class="text-xs text-gray-500">
+                  {{ request.surgery.specialty.name }}
+                </p>
+              </div>
               <div v-if="request.approval_date">
                 <label class="block text-xs sm:text-sm font-medium text-gray-700">Fecha de Aprobación</label>
                 <p class="text-sm text-gray-900 mt-1">{{ formatDate(request.approval_date) }}</p>
