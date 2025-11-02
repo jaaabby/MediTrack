@@ -31,7 +31,7 @@
     <!-- Loading -->
     <div v-if="loading" class="card">
       <div class="flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <span class="ml-3">Cargando historial...</span>
       </div>
     </div>
@@ -198,7 +198,7 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDateTime(item.date_time) }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button @click="viewDetails(item)" 
-                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  class="btn-primary text-xs px-3 py-1.5"
                   title="Ver detalles">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -405,9 +405,9 @@ const filters = ref({
   to_date: ''
 })
 
-// Estado de ordenamiento
-const sortKey = ref('id')
-const sortOrder = ref('asc')
+// Estado de ordenamiento (por defecto ordenado por fecha más reciente primero)
+const sortKey = ref('date_time')
+const sortOrder = ref('desc')
 
 // Estado de paginación
 const currentPage = ref(1)

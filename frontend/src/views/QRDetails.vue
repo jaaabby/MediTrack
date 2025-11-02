@@ -743,13 +743,7 @@ onMounted(() => {
   opacity: 0;
 }
 
-.btn-primary {
-  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
-}
-
-.btn-secondary {
-  @apply bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
-}
+/* Usar clases de botones de style.css global */
 
 /* Estilos de impresión */
 @media print {

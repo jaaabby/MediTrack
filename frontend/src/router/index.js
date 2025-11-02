@@ -265,6 +265,55 @@ const routes = [
     }
   },
 
+  // Configuración Médica - Especialidades Médicas
+  {
+    path: '/medical-specialties',
+    name: 'MedicalSpecialtyManagement',
+    component: () => import('@/views/MedicalSpecialtyManagement.vue'),
+    meta: {
+      title: 'Especialidades Médicas - MediTrack',
+      description: 'Administración de especialidades médicas',
+      requiresAuth: true
+    }
+  },
+
+  // Configuración Médica - Insumos Típicos por Cirugía
+  {
+    path: '/surgery-typical-supplies',
+    name: 'SurgeryTypicalSupplyManagement',
+    component: () => import('@/views/SurgeryTypicalSupplyManagement.vue'),
+    meta: {
+      title: 'Insumos Típicos por Cirugía - MediTrack',
+      description: 'Gestión de insumos típicos asociados a cirugías',
+      requiresAuth: true
+    }
+  },
+
+  // Configuración Médica - Información de Doctores
+  {
+    path: '/doctor-info',
+    name: 'DoctorInfoManagement',
+    component: () => import('@/views/DoctorInfoManagement.vue'),
+    meta: {
+      title: 'Información de Doctores - MediTrack',
+      description: 'Gestión de información extendida de doctores',
+      requiresAuth: true
+    }
+  },
+
+  // Configuración - Configuración de Proveedores
+  {
+    path: '/supplier-configs',
+    name: 'SupplierConfigManagement',
+    component: () => import('@/views/SupplierConfigManagement.vue'),
+    meta: {
+      title: 'Configuración de Proveedores - MediTrack',
+      description: 'Gestión de alertas de vencimiento por proveedor',
+      requiresAuth: true,
+      requiredRoles: ['admin', 'encargado de bodega']
+    }
+  },
+
   // Historial de Insumos
   {
     path: '/supply-history',

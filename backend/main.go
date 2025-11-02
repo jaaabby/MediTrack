@@ -62,6 +62,11 @@ func main() {
 	inventoryService := services.NewInventoryService(db)
 	surgeryService := services.NewSurgeryService(db)
 
+	// Crear servicios de configuración médica
+	specialtyService := services.NewMedicalSpecialtyService(db)
+	typicalSupplyService := services.NewSurgeryTypicalSupplyService(db)
+	doctorInfoService := services.NewDoctorInfoService(db)
+
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -74,6 +79,7 @@ func main() {
 	// Configurar rutas principales
 	routes.SetupRoutes(
 		router,
+		db,
 		*userService,
 		*medicalSupplyService,
 		*medicalCenterService,
@@ -87,6 +93,9 @@ func main() {
 		transferService,
 		inventoryService,
 		surgeryService,
+		specialtyService,
+		typicalSupplyService,
+		doctorInfoService,
 		secretKey,
 	)
 

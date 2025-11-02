@@ -41,5 +41,9 @@ func SetupMedicalSupplyRoutes(router *gin.RouterGroup, medicalSupplyService serv
 		// ===== RUTAS DE ALERTA PARA INSUMOS NO CONSUMIDOS =====
 		medicalSupplies.GET("/unconsumed", medicalSupplyController.GetUnconsumedSupplies)
 		medicalSupplies.POST("/check-unconsumed", medicalSupplyController.CheckUnconsumedSupplies)
+
+		// ===== RUTAS DE ALERTA DE STOCK BAJO PARA INSUMOS INDIVIDUALES =====
+		medicalSupplies.POST("/:code/check-low-stock", medicalSupplyController.CheckLowStockForIndividualSupply)
+		medicalSupplies.POST("/check-all-low-stock", medicalSupplyController.CheckAllIndividualSuppliesLowStock)
 	}
 }

@@ -70,10 +70,11 @@ func (c *BatchController) CreateBatch(ctx *gin.Context) {
 func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 	var request struct {
 		Batch struct {
-			ExpirationDate string `json:"expiration_date" binding:"required"`
-			Amount         int    `json:"amount" binding:"required,min=1"`
-			Supplier       string `json:"supplier" binding:"required"`
-			StoreID        int    `json:"store_id" binding:"required"`
+			ExpirationDate     string `json:"expiration_date" binding:"required"`
+			Amount             int    `json:"amount" binding:"required,min=1"`
+			Supplier           string `json:"supplier" binding:"required"`
+			StoreID            int    `json:"store_id" binding:"required"`
+			ExpirationAlertDays *int   `json:"expiration_alert_days,omitempty"` // Opcional: días de alerta para el proveedor
 		} `json:"batch" binding:"required"`
 		SupplyCode struct {
 			Code         int    `json:"code" binding:"required"`
@@ -116,11 +117,18 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 		CodeSupplier: request.SupplyCode.CodeSupplier,
 	}
 
+	// Obtener días de alerta del request (si se proporciona, usar ese valor, sino usar 90 por defecto)
+	expirationAlertDays := 90 // Valor por defecto
+	if request.Batch.ExpirationAlertDays != nil && *request.Batch.ExpirationAlertDays > 0 {
+		expirationAlertDays = *request.Batch.ExpirationAlertDays
+	}
+
 	// Crear lote con insumos individuales
 	createdBatch, individualSupplies, err := c.batchService.CreateBatchWithIndividualSupplies(
 		batch,
 		supplyCode,
 		request.IndividualCount,
+		expirationAlertDays, // Pasar días de alerta para configuración del proveedor
 	)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{

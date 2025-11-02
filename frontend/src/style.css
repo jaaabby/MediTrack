@@ -20,7 +20,7 @@
 @layer components {
   /* Botones */
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
   }
   
   .btn-secondary {
@@ -28,28 +28,28 @@
   }
   
   .btn-success {
-    @apply bg-success-600 hover:bg-success-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-success-500 focus:ring-offset-2;
+    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
   }
   
   .btn-danger {
-    @apply bg-danger-600 hover:bg-danger-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-offset-2;
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
   }
   
   /* Campos de formulario */
   .form-input {
-    @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
-  }
-  /* Variante para QRConsumer.vue */
-  .form-input.blue {
-    @apply focus:border-blue-500 focus:ring-blue-500;
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-colors duration-200;
   }
   
   .form-select {
-    @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-colors duration-200;
   }
-  /* Variante para QRConsumer.vue */
-  .form-select.blue {
-    @apply focus:border-blue-500 focus:ring-blue-500;
+  
+  .form-checkbox {
+    @apply h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-colors duration-200;
+  }
+  
+  .form-radio {
+    @apply h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 transition-colors duration-200;
   }
   
   /* Tarjetas */
@@ -67,11 +67,11 @@
   
   /* Navegación */
   .nav-link {
-    @apply text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
+    @apply text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
   }
   
   .nav-link-active {
-    @apply text-primary-600 bg-primary-50 px-3 py-2 rounded-md text-sm font-medium;
+    @apply text-blue-600 bg-blue-50 px-3 py-2 rounded-md text-sm font-medium;
   }
   
   /* Tabla */
@@ -117,12 +117,12 @@
   }
   
   .badge-info {
-    @apply bg-primary-100 text-primary-800;
+    @apply bg-blue-100 text-blue-800;
   }
   
   /* Loading spinner */
   .spinner {
-    @apply animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600;
+    @apply animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600;
   }
   
   /* Transiciones */

@@ -28,8 +28,18 @@ type SupplyRequest struct {
 	ApprovalDate    *time.Time `json:"approval_date"`
 	CompletedDate   *time.Time `json:"completed_date"`
 	MedicalCenterID int        `json:"medical_center_id" gorm:"not null"`
-	CreatedAt       time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt       time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// Campos de médico responsable
+	SurgeonID    *string    `json:"surgeon_id"`
+	SurgeonName  *string    `json:"surgeon_name"`
+	SurgeryID    *int       `json:"surgery_id"`
+	SpecialtyID  *int       `json:"specialty_id"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+
+	// Relaciones
+	Surgeon      *User             `json:"surgeon,omitempty" gorm:"foreignKey:SurgeonID;references:RUT"`
+	Surgery      *Surgery          `json:"surgery,omitempty" gorm:"foreignKey:SurgeryID"`
+	Specialty    *MedicalSpecialty `json:"specialty,omitempty" gorm:"foreignKey:SpecialtyID"`
 }
 
 // SupplyRequestItem representa un item individual dentro de una solicitud

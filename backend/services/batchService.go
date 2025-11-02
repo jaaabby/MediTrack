@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"meditrack/mailer"
@@ -56,11 +57,56 @@ func (s *BatchService) CreateBatch(batch *models.Batch) error {
 		log.Printf("Warning: Could not update QR code for batch %d: %v", batch.ID, err)
 	}
 
+	// Crear configuración de proveedor si no existe (con valor por defecto de 90 días)
+	if batch.Supplier != "" {
+		s.ensureSupplierConfig(batch.Supplier, batch.ID)
+	}
+
 	return nil
 }
 
+// ensureSupplierConfig verifica y crea configuración de proveedor si no existe (con valor por defecto de 90 días)
+func (s *BatchService) ensureSupplierConfig(supplierName string, batchID int) {
+	s.ensureSupplierConfigWithDays(supplierName, batchID, 90)
+}
+
+// ensureSupplierConfigWithDays verifica y crea configuración de proveedor si no existe con días de alerta específicos
+func (s *BatchService) ensureSupplierConfigWithDays(supplierName string, batchID int, expirationAlertDays int) {
+	if supplierName == "" {
+		return
+	}
+
+	// Si expirationAlertDays es 0 o menor, usar 90 por defecto
+	if expirationAlertDays <= 0 {
+		expirationAlertDays = 90
+	}
+
+	var existingSupplierConfig models.SupplierConfig
+	if err := s.DB.Where("supplier_name = ?", supplierName).First(&existingSupplierConfig).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// No existe configuración para este proveedor, crear una con el valor proporcionado
+			supplierConfig := models.SupplierConfig{
+				SupplierName:       supplierName,
+				ExpirationAlertDays: expirationAlertDays,
+				Notes:              fmt.Sprintf("Configuración creada automáticamente al crear lote %d", batchID),
+			}
+			if err := s.DB.Create(&supplierConfig).Error; err != nil {
+				// No fallar si no se puede crear la configuración, solo log
+				log.Printf("Advertencia: No se pudo crear configuración de proveedor para '%s': %v", supplierName, err)
+			} else {
+				log.Printf("✅ Configuración de proveedor creada automáticamente para '%s' con %d días de alerta", supplierName, supplierConfig.ExpirationAlertDays)
+			}
+		} else {
+			// Error diferente, solo log
+			log.Printf("Advertencia: Error verificando configuración de proveedor para '%s': %v", supplierName, err)
+		}
+	}
+	// Si ya existe, no hacer nada (mantener configuración existente)
+}
+
 // CreateBatchWithIndividualSupplies crea un lote junto con sus insumos individuales
-func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, supplyCode *models.SupplyCode, individualCount int) (*models.Batch, []models.MedicalSupply, error) {
+// expirationAlertDays: días de alerta para crear configuración del proveedor (si no existe). Si es 0, usa 90 por defecto.
+func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, supplyCode *models.SupplyCode, individualCount int, expirationAlertDays int) (*models.Batch, []models.MedicalSupply, error) {
 	var individualSupplies []models.MedicalSupply
 
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
@@ -106,6 +152,34 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 			}
 		}
 
+		// 4.5. Crear configuración de proveedor si no existe
+		var existingSupplierConfig models.SupplierConfig
+		if err := tx.Where("supplier_name = ?", batch.Supplier).First(&existingSupplierConfig).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				// No existe configuración para este proveedor, crear una con el valor proporcionado
+				// Si expirationAlertDays es 0 o menor, usar 90 por defecto
+				alertDays := expirationAlertDays
+				if alertDays <= 0 {
+					alertDays = 90 // Valor por defecto: 90 días (3 meses)
+				}
+				supplierConfig := models.SupplierConfig{
+					SupplierName:       batch.Supplier,
+					ExpirationAlertDays: alertDays,
+					Notes:              fmt.Sprintf("Configuración creada automáticamente al crear lote %d", batch.ID),
+				}
+				if err := tx.Create(&supplierConfig).Error; err != nil {
+					// No fallar si no se puede crear la configuración, solo log
+					log.Printf("Advertencia: No se pudo crear configuración de proveedor para '%s': %v", batch.Supplier, err)
+				} else {
+					log.Printf("✅ Configuración de proveedor creada automáticamente para '%s' con %d días de alerta", batch.Supplier, supplierConfig.ExpirationAlertDays)
+				}
+			} else {
+				// Error diferente, solo log
+				log.Printf("Advertencia: Error verificando configuración de proveedor para '%s': %v", batch.Supplier, err)
+			}
+		}
+		// Si ya existe, no hacer nada (mantener configuración existente)
+
 		// 5. Crear insumos individuales
 		if s.MedicalSupplyService != nil {
 			supplies, err := s.MedicalSupplyService.CreateMultipleIndividualSuppliesTx(
@@ -140,6 +214,41 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 			}
 		}
 
+		// 5.5. Crear entrada en store_inventory_summary para el nuevo lote
+		var existingStoreSummary models.StoreInventorySummary
+		if err := tx.Where("store_id = ? AND batch_id = ?", batch.StoreID, batch.ID).First(&existingStoreSummary).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Crear resumen de inventario de bodega para el nuevo lote
+				storeSummary := models.StoreInventorySummary{
+					StoreID:            batch.StoreID,
+					BatchID:            batch.ID,
+					SupplyCode:         supplyCode.Code,
+					SurgeryID:          batch.SurgeryID,
+					OriginalAmount:     batch.Amount,
+					CurrentInStore:     batch.Amount, // Todos los insumos están inicialmente en bodega
+					TotalTransferredOut: 0,
+					TotalReturnedIn:     0,
+					TotalConsumedInStore: 0,
+				}
+				if err := tx.Create(&storeSummary).Error; err != nil {
+					return fmt.Errorf("error creando resumen de inventario de bodega: %v", err)
+				}
+				log.Printf("✅ Resumen de inventario de bodega creado: StoreID=%d, BatchID=%d, CurrentInStore=%d", 
+					batch.StoreID, batch.ID, batch.Amount)
+			} else {
+				return fmt.Errorf("error verificando resumen de inventario de bodega: %v", err)
+			}
+		} else {
+			// Ya existe, actualizar los valores iniciales
+			existingStoreSummary.CurrentInStore = batch.Amount
+			existingStoreSummary.OriginalAmount = batch.Amount
+			if err := tx.Save(&existingStoreSummary).Error; err != nil {
+				return fmt.Errorf("error actualizando resumen de inventario de bodega: %v", err)
+			}
+			log.Printf("✅ Resumen de inventario de bodega actualizado: StoreID=%d, BatchID=%d, CurrentInStore=%d", 
+				batch.StoreID, batch.ID, batch.Amount)
+		}
+
 		return nil
 	})
 
@@ -156,6 +265,17 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 				fmt.Printf("Advertencia: Error creando historial de lote %d: %v\n", batch.ID, err)
 			}
 		}()
+	}
+
+	// 5.5. Asegurar que existe configuración del proveedor (después de la transacción exitosa)
+	// Nota: Esto ya se hizo dentro de la transacción, pero lo mantenemos aquí por si acaso
+	// Si expirationAlertDays es 0 o menor, usar 90 por defecto
+	alertDays := expirationAlertDays
+	if alertDays <= 0 {
+		alertDays = 90
+	}
+	if batch.Supplier != "" {
+		s.ensureSupplierConfigWithDays(batch.Supplier, batch.ID, alertDays)
 	}
 
 	// 6. CREAR HISTORIAL INICIAL PARA CADA INSUMO (opcional)
@@ -308,8 +428,9 @@ func (s *BatchService) UpdateBatch(id int, newBatch *models.Batch) (*models.Batc
 		fmt.Printf("Error obteniendo información del código de insumo para verificar stock crítico: %v\n", err)
 	}
 
-	// Verificar si se debe enviar correo por vencimiento próximo (90 días)
-	expirationThreshold := time.Now().AddDate(0, 0, 90)
+	// Verificar si se debe enviar correo por vencimiento próximo (usando configuración del proveedor)
+	alertDays := s.getExpirationAlertDays(batch.Supplier)
+	expirationThreshold := time.Now().AddDate(0, 0, alertDays)
 	if batch.ExpirationDate.Before(expirationThreshold) && batch.ExpirationDate.After(time.Now()) {
 		if err := s.sendExpirationAlert(batch); err != nil {
 			// Solo log del error, no fallar la actualización
@@ -349,14 +470,16 @@ func (s *BatchService) CheckLowStockAlert(batchID int, threshold int) error {
 }
 
 // CheckExpirationAlert verifica y envía alertas de vencimiento próximo
+// Si daysThreshold es 0, usa la configuración del proveedor
 func (s *BatchService) CheckExpirationAlert(batchID int, daysThreshold int) error {
-	if daysThreshold <= 0 {
-		daysThreshold = 30 // 30 días por defecto
-	}
-
 	var batch models.Batch
 	if err := s.DB.First(&batch, batchID).Error; err != nil {
 		return fmt.Errorf("lote no encontrado: %v", err)
+	}
+
+	// Si no se especifica threshold, usar configuración del proveedor
+	if daysThreshold <= 0 {
+		daysThreshold = s.getExpirationAlertDays(batch.Supplier)
 	}
 
 	daysUntilExpiration := int(time.Until(batch.ExpirationDate).Hours() / 24)
@@ -645,8 +768,8 @@ func (s *BatchService) CheckAllBatchesExpiration() error {
 
 	// Verificar lotes activos
 	for _, batch := range activeBatches {
-		// Verificar si está próximo a vencer (30 días por defecto)
-		if err := s.CheckExpirationAlert(batch.ID, 30); err != nil {
+		// Verificar si está próximo a vencer usando configuración del proveedor (0 = usar configuración)
+		if err := s.CheckExpirationAlert(batch.ID, 0); err != nil {
 			log.Printf("Error verificando alerta de vencimiento para lote %d: %v", batch.ID, err)
 			errors++
 			continue
@@ -683,6 +806,17 @@ func (s *BatchService) sendLowStockAlert(batch models.Batch) error {
 	// Enviar correo usando la plantilla de stock bajo
 	templatePath := "mailer/templates/low_stock.html"
 	return req.SendMailSkipTLS(templatePath, data)
+}
+
+// getExpirationAlertDays obtiene los días de alerta de vencimiento para un proveedor
+// Si no existe configuración, retorna 90 días (3 meses) por defecto
+func (s *BatchService) getExpirationAlertDays(supplierName string) int {
+	var config models.SupplierConfig
+	if err := s.DB.Where("supplier_name = ?", supplierName).First(&config).Error; err != nil {
+		// Si no existe configuración, usar default de 90 días (3 meses)
+		return 90
+	}
+	return config.ExpirationAlertDays
 }
 
 // sendExpirationAlert envía correo de alerta de vencimiento próximo

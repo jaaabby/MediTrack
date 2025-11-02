@@ -20,11 +20,11 @@
 
     <!-- Barra de búsqueda principal - Solo para roles que pueden ver inventario -->
     <div v-if="!authStore.isDoctor && !authStore.isPavedad" class="card">
-      <div class="flex items-center gap-4">
+      <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
+        Buscar insumo médico
+      </label>
+      <div class="flex items-end gap-4">
         <div class="flex-1">
-          <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
-            Buscar insumo médico
-          </label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

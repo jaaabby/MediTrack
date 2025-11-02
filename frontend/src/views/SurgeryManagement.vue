@@ -41,7 +41,7 @@
     <!-- Loading -->
     <div v-if="loading" class="card">
       <div class="flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <span class="ml-3 text-gray-600">Cargando tipos de cirugía...</span>
       </div>
     </div>
@@ -122,6 +122,24 @@
                   </span>
                 </div>
               </th>
+              <th scope="col" @click="sortBy('specialty')"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
+                <div class="flex items-center space-x-1">
+                  <span>Especialidad</span>
+                  <span class="flex flex-col -space-y-1">
+                    <svg class="h-3 w-3 transition-colors" 
+                      :class="sortKey === 'specialty' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
+                      fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
+                    </svg>
+                    <svg class="h-3 w-3 transition-colors" 
+                      :class="sortKey === 'specialty' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
+                      fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
+                    </svg>
+                  </span>
+                </div>
+              </th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Acciones
               </th>
@@ -139,17 +157,23 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {{ surgery.duration }}h
               </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <span v-if="surgery.specialty" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {{ surgery.specialty.name }}
+                </span>
+                <span v-else class="text-gray-400 text-xs">Sin especialidad</span>
+              </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex justify-end space-x-2">
                   <button @click="openEditModal(surgery)" 
-                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    class="btn-primary text-xs px-3 py-1.5"
                     title="Editar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
                   <button @click="confirmDelete(surgery)" 
-                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                    class="btn-danger text-xs px-3 py-1.5"
                     title="Eliminar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -238,6 +262,19 @@
               <p class="mt-1 text-xs text-gray-500">Ingrese la duración estimada en horas (mínimo 0.5)</p>
             </div>
 
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Especialidad Médica
+              </label>
+              <select v-model.number="surgeryForm.specialty_id" class="form-input">
+                <option :value="null">Sin especialidad</option>
+                <option v-for="specialty in specialties" :key="specialty.id" :value="specialty.id">
+                  {{ specialty.name }}
+                </option>
+              </select>
+              <p class="mt-1 text-xs text-gray-500">Seleccione la especialidad médica asociada (opcional)</p>
+            </div>
+
             <div class="flex justify-end space-x-3 pt-4 border-t">
               <button type="button" @click="closeModal" class="btn-secondary">Cancelar</button>
               <button type="submit" :disabled="saving" class="btn-primary">
@@ -256,10 +293,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import surgeryService from '@/services/surgeryService'
+import medicalSpecialtyService from '@/services/medicalSpecialtyService'
 import Swal from 'sweetalert2'
 
 const surgeries = ref([])
+const specialties = ref([])
 const loading = ref(false)
+const loadingSpecialties = ref(false)
 const error = ref(null)
 const searchTerm = ref('')
 const showModal = ref(false)
@@ -276,7 +316,8 @@ const itemsPerPage = 10
 
 const surgeryForm = ref({
   name: '',
-  duration: 1
+  duration: 1,
+  specialty_id: null
 })
 
 let searchTimeout = null
@@ -288,6 +329,12 @@ const sortedSurgeries = computed(() => {
   const sorted = [...surgeries.value].sort((a, b) => {
     let aVal = a[sortKey.value]
     let bVal = b[sortKey.value]
+    
+    // Manejo especial para ordenar por especialidad
+    if (sortKey.value === 'specialty') {
+      aVal = a.specialty?.name || ''
+      bVal = b.specialty?.name || ''
+    }
     
     // Manejo de strings (comparación case-insensitive)
     if (typeof aVal === 'string') {
@@ -341,6 +388,18 @@ const loadSurgeries = async () => {
   }
 }
 
+const loadSpecialties = async () => {
+  loadingSpecialties.value = true
+  try {
+    const data = await medicalSpecialtyService.getAllSpecialties()
+    specialties.value = data.filter(s => s.is_active)
+  } catch (err) {
+    console.error('Error loading specialties:', err)
+  } finally {
+    loadingSpecialties.value = false
+  }
+}
+
 const handleSearch = () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   
@@ -366,7 +425,8 @@ const openCreateModal = () => {
   isEditing.value = false
   surgeryForm.value = {
     name: '',
-    duration: 1
+    duration: 1,
+    specialty_id: null
   }
   showModal.value = true
 }
@@ -376,7 +436,8 @@ const openEditModal = (surgery) => {
   surgeryForm.value = {
     id: surgery.id,
     name: surgery.name,
-    duration: surgery.duration || 1
+    duration: surgery.duration || 1,
+    specialty_id: surgery.specialty_id || null
   }
   showModal.value = true
 }
@@ -412,7 +473,8 @@ const saveSurgery = async () => {
   try {
     const surgeryData = {
       name: surgeryForm.value.name.trim(),
-      duration: Number(surgeryForm.value.duration)
+      duration: Number(surgeryForm.value.duration),
+      specialty_id: surgeryForm.value.specialty_id || null
     }
 
     if (isEditing.value) {
@@ -503,7 +565,10 @@ const clearSearch = () => {
   loadSurgeries()
 }
 
-onMounted(() => {
-  loadSurgeries()
+onMounted(async () => {
+  await Promise.all([
+    loadSurgeries(),
+    loadSpecialties()
+  ])
 })
 </script>

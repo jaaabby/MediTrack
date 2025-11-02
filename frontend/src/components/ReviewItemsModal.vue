@@ -169,7 +169,7 @@
               @click="confirmAction"
               :disabled="loading"
               :class="getActionButtonClass()"
-              class="px-4 py-2 rounded-md text-sm font-medium text-white disabled:opacity-50"
+              class="disabled:opacity-50"
             >
               {{ loading ? 'Procesando...' : 'Confirmar' }}
             </button>
@@ -264,7 +264,11 @@ const getActionButtonClass = () => {
     'rechazado': 'bg-red-600 hover:bg-red-700',
     'devuelto': 'bg-yellow-600 hover:bg-yellow-700'
   }
-  return classes[selectedAction.value] || 'bg-blue-600 hover:bg-blue-700'
+  // Usar clases de botones estándar
+  if (selectedAction.value === 'aceptado') return 'btn-success'
+  if (selectedAction.value === 'rechazado') return 'btn-danger'
+  if (selectedAction.value === 'devuelto') return 'bg-yellow-600 hover:bg-yellow-700 text-white'
+  return 'btn-primary'
 }
 
 const getItemNotesClass = (status) => {

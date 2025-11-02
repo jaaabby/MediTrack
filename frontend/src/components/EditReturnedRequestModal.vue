@@ -97,7 +97,7 @@
         <button
           @click="resubmitRequest"
           :disabled="loading || !hasReturnedItems"
-          class="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          class="btn-primary disabled:opacity-50"
         >
           {{ loading ? 'Reenviando...' : 'Reenviar Solicitud' }}
         </button>
