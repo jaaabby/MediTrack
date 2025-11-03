@@ -1,0 +1,40 @@
+# Binarios compilados
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+meditrack
+
+# Archivos de test
+*_test.go
+*.test
+
+# Archivos de desarrollo
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentación
+*.md
+README.md
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
