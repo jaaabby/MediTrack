@@ -23,11 +23,28 @@ CREATE TABLE store (
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id)
 );
 
+CREATE TABLE medical_specialty (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    code VARCHAR(50) UNIQUE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_medical_specialty_name ON medical_specialty(name);
+CREATE INDEX idx_medical_specialty_code ON medical_specialty(code);
+CREATE INDEX idx_medical_specialty_active ON medical_specialty(is_active);
+
 CREATE TABLE surgery (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    duration FLOAT NOT NULL
+    duration FLOAT NOT NULL,
+    specialty_id INTEGER REFERENCES medical_specialty(id)
 );
+
+CREATE INDEX idx_surgery_specialty ON surgery(specialty_id);
 
 CREATE TABLE batch (
     id SERIAL PRIMARY KEY,
@@ -53,14 +70,16 @@ CREATE TABLE "user" (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')),
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
+    specialty_id INTEGER REFERENCES medical_specialty(id),
     is_active BOOLEAN DEFAULT TRUE,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
     updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 );
 
 CREATE INDEX idx_user_email ON "user"(email);
+CREATE INDEX idx_user_specialty ON "user"(specialty_id);
 
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,
@@ -199,26 +218,54 @@ CREATE TABLE IF NOT EXISTS supply_request (
     requested_by VARCHAR(20) NOT NULL REFERENCES "user"(rut),
     requested_by_name VARCHAR(255) NOT NULL,
     request_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending',
-    priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+    surgery_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pendiente_pavedad',
     notes TEXT,
+    -- Campos de Pavedad
+    assigned_to VARCHAR(20) REFERENCES "user"(rut),
+    assigned_to_name VARCHAR(255),
+    assigned_date TIMESTAMP WITH TIME ZONE,
+    assigned_by_pavedad VARCHAR(20) REFERENCES "user"(rut),
+    assigned_by_pavedad_name VARCHAR(255),
+    pavedad_notes TEXT,
+    -- Campos de aprobación/rechazo
     approved_by VARCHAR(20) REFERENCES "user"(rut),
     approved_by_name VARCHAR(255),
     approval_date TIMESTAMP WITH TIME ZONE,
     completed_date TIMESTAMP WITH TIME ZONE,
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
+    -- Campos de médico responsable
+    surgeon_id VARCHAR(20) REFERENCES "user"(rut),
+    surgeon_name VARCHAR(255),
+    surgery_id INTEGER REFERENCES surgery(id),
+    specialty_id INTEGER REFERENCES medical_specialty(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
-    CONSTRAINT chk_supply_request_status CHECK (status IN ('pending', 'approved', 'rejected', 'in_process', 'completed', 'cancelled')),
-    CONSTRAINT chk_supply_request_priority CHECK (priority IN ('low', 'normal', 'high', 'critical'))
+    -- Estados posibles:
+    -- 'pendiente_pavedad': Doctor crea solicitud
+    -- 'asignado_bodega': Pavedad asigna a encargado de bodega
+    -- 'en_proceso': Encargado está procesando
+    -- 'aprobado', 'rechazado': Decisión del encargado
+    -- 'completado', 'cancelado': Estados finales
+    -- 'parcialmente_aprobado', 'pendiente_revision': Estados intermedios
+    -- 'devuelto': Encargado devuelve items al solicitante para que los modifique
+    -- 'devuelto_al_encargado': Doctor reenvía solicitud modificada al encargado
+    CONSTRAINT chk_supply_request_status CHECK (status IN ('pendiente_pavedad', 'asignado_bodega', 'en_proceso', 'aprobado', 'rechazado', 'completado', 'cancelado', 'parcialmente_aprobado', 'pendiente_revision', 'devuelto', 'devuelto_al_encargado')),
+    CONSTRAINT chk_surgery_datetime_future CHECK (surgery_datetime >= request_date)
 );
 
 CREATE INDEX idx_supply_request_status ON supply_request(status);
 CREATE INDEX idx_supply_request_pavilion ON supply_request(pavilion_id);
 CREATE INDEX idx_supply_request_requested_by ON supply_request(requested_by);
 CREATE INDEX idx_supply_request_date ON supply_request(request_date);
+CREATE INDEX idx_supply_request_surgery_datetime ON supply_request(surgery_datetime);
 CREATE INDEX idx_supply_request_number ON supply_request(request_number);
+CREATE INDEX idx_supply_request_assigned_to ON supply_request(assigned_to);
+CREATE INDEX idx_supply_request_assigned_by_pavedad ON supply_request(assigned_by_pavedad);
+CREATE INDEX idx_supply_request_surgeon ON supply_request(surgeon_id);
+CREATE INDEX idx_supply_request_surgery ON supply_request(surgery_id);
+CREATE INDEX idx_supply_request_specialty ON supply_request(specialty_id);
 
 CREATE TABLE IF NOT EXISTS supply_request_item (
     id SERIAL PRIMARY KEY,
@@ -228,16 +275,19 @@ CREATE TABLE IF NOT EXISTS supply_request_item (
     quantity_requested INTEGER NOT NULL CHECK (quantity_requested > 0),
     quantity_approved INTEGER CHECK (quantity_approved >= 0),
     quantity_delivered INTEGER NOT NULL DEFAULT 0 CHECK (quantity_delivered >= 0),
-    specifications TEXT,
     is_pediatric BOOLEAN NOT NULL DEFAULT FALSE,
-    size VARCHAR(50),
-    brand VARCHAR(100),
-    special_requests TEXT,
-    urgency_level VARCHAR(20) NOT NULL DEFAULT 'normal',
+    
+    -- Campos para revisión individual por encargado de bodega
+    item_status VARCHAR(50) DEFAULT 'pendiente',
+    item_notes TEXT,
+    reviewed_by VARCHAR(20) REFERENCES "user"(rut),
+    reviewed_by_name VARCHAR(255),
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
-    CONSTRAINT chk_supply_request_item_urgency CHECK (urgency_level IN ('low', 'normal', 'high', 'critical')),
+    -- Constraints
     CONSTRAINT chk_quantities_logical CHECK (
         quantity_approved IS NULL OR quantity_approved <= quantity_requested
     ),
@@ -248,8 +298,9 @@ CREATE TABLE IF NOT EXISTS supply_request_item (
 
 CREATE INDEX idx_supply_request_item_request ON supply_request_item(supply_request_id);
 CREATE INDEX idx_supply_request_item_supply_code ON supply_request_item(supply_code);
-CREATE INDEX idx_supply_request_item_urgency ON supply_request_item(urgency_level);
 CREATE INDEX idx_supply_request_item_pediatric ON supply_request_item(is_pediatric);
+CREATE INDEX idx_supply_request_item_status ON supply_request_item(item_status);
+CREATE INDEX idx_supply_request_item_request_status ON supply_request_item(supply_request_id, item_status);
 
 CREATE TABLE IF NOT EXISTS supply_request_qr_assignment (
     id SERIAL PRIMARY KEY,
@@ -367,85 +418,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE VIEW v_supply_requests_detail AS
-SELECT 
-    sr.id,
-    sr.request_number,
-    sr.status,
-    sr.priority,
-    sr.request_date,
-    sr.requested_by,
-    sr.requested_by_name,
-    sr.approved_by,
-    sr.approved_by_name,
-    sr.approval_date,
-    sr.completed_date,
-    sr.notes,
-    p.name AS pavilion_name,
-    mc.name AS medical_center_name,
-    COUNT(sri.id) AS total_items,
-    SUM(sri.quantity_requested) AS total_quantity_requested,
-    SUM(COALESCE(sri.quantity_approved, 0)) AS total_quantity_approved,
-    SUM(sri.quantity_delivered) AS total_quantity_delivered,
-    COUNT(srqa.id) AS total_qr_assignments,
-    sr.created_at,
-    sr.updated_at
-FROM supply_request sr
-JOIN pavilion p ON sr.pavilion_id = p.id
-JOIN medical_center mc ON sr.medical_center_id = mc.id
-LEFT JOIN supply_request_item sri ON sr.id = sri.supply_request_id
-LEFT JOIN supply_request_qr_assignment srqa ON sr.id = srqa.supply_request_id
-GROUP BY sr.id, p.name, mc.name;
+-- =======================
+-- MIGRACIÓN: EVENTOS DE ESCANEO QR CON TRAZABILIDAD COMPLETA
+-- Fecha: 2025-01-21
+-- Descripción: Registrar automáticamente cada escaneo de QR para trazabilidad completa
+-- =======================
 
-CREATE OR REPLACE VIEW v_qr_traceability AS
-SELECT 
-    ms.qr_code,
-    ms.id AS medical_supply_id,
-    ms.code AS supply_code,
-    sc.name AS supply_name,
-    b.id AS batch_id,
-    b.supplier,
-    b.expiration_date,
-    b.amount AS batch_amount,
-    
-    srqa.id AS assignment_id,
-    srqa.status AS assignment_status,
-    srqa.assigned_date,
-    srqa.delivered_date,
-    sr.id AS request_id,
-    sr.request_number,
-    sr.status AS request_status,
-    p.name AS pavilion_name,
-    
-    sh.status AS last_movement_status,
-    sh.date_time AS last_movement_date,
-    sh.destination_type AS last_destination_type,
-    sh.destination_id AS last_destination_id,
-    
-    CASE 
-        WHEN sh.status = 'consumido' THEN 'consumed'
-        WHEN srqa.status IS NOT NULL THEN srqa.status
-        WHEN sh.status IS NOT NULL THEN sh.status
-        ELSE 'available'
-    END AS current_status,
-    
-    b.expiration_date < NOW() AS is_expired,
-    b.expiration_date < (NOW() + INTERVAL '30 days') AS expires_soon
-    
-FROM medical_supply ms
-JOIN supply_code sc ON ms.code = sc.code
-JOIN batch b ON ms.batch_id = b.id
-LEFT JOIN supply_request_qr_assignment srqa ON ms.qr_code = srqa.qr_code 
-    AND srqa.status NOT IN ('consumed', 'returned')
-LEFT JOIN supply_request sr ON srqa.supply_request_id = sr.id
-LEFT JOIN pavilion p ON sr.pavilion_id = p.id
-LEFT JOIN LATERAL (
-    SELECT status, date_time, destination_type, destination_id
-    FROM supply_history sh2 
-    WHERE sh2.medical_supply_id = ms.id 
-    ORDER BY date_time DESC 
-    LIMIT 1
-) sh ON TRUE;
+-- =======================
+-- TABLA DE EVENTOS DE ESCANEO QR
+-- =======================
 
 CREATE TABLE IF NOT EXISTS qr_scan_event (
     id SERIAL PRIMARY KEY,
@@ -725,6 +706,124 @@ CREATE TRIGGER trg_update_store_inventory_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_store_inventory_updated_at();
 
+-- =======================
+-- TABLA DE INSUMOS TÍPICOS POR CIRUGÍA
+-- =======================
+CREATE TABLE IF NOT EXISTS surgery_typical_supply (
+    id SERIAL PRIMARY KEY,
+    surgery_id INTEGER NOT NULL REFERENCES surgery(id) ON DELETE CASCADE,
+    supply_code INTEGER NOT NULL REFERENCES supply_code(code) ON DELETE CASCADE,
+    typical_quantity INTEGER DEFAULT 1,
+    is_required BOOLEAN DEFAULT FALSE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    CONSTRAINT uq_surgery_supply UNIQUE (surgery_id, supply_code)
+);
+
+CREATE INDEX idx_surgery_typical_supply_surgery ON surgery_typical_supply(surgery_id);
+CREATE INDEX idx_surgery_typical_supply_code ON surgery_typical_supply(supply_code);
+CREATE INDEX idx_surgery_typical_supply_required ON surgery_typical_supply(is_required);
+
+-- =======================
+-- TABLA DE INFORMACIÓN EXTENDIDA DE DOCTORES
+-- =======================
+CREATE TABLE IF NOT EXISTS doctor_info (
+    user_rut VARCHAR(20) PRIMARY KEY REFERENCES "user"(rut) ON DELETE CASCADE,
+    medical_license VARCHAR(100),
+    license_expiration_date DATE,
+    specialization VARCHAR(255),
+    specialty_id INTEGER REFERENCES medical_specialty(id),
+    years_of_experience INTEGER,
+    phone VARCHAR(50),
+    emergency_contact VARCHAR(255),
+    emergency_phone VARCHAR(50),
+    is_available BOOLEAN DEFAULT TRUE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_doctor_info_specialty ON doctor_info(specialty_id);
+CREATE INDEX idx_doctor_info_available ON doctor_info(is_available);
+CREATE INDEX idx_doctor_info_license ON doctor_info(medical_license);
+
+-- =======================
+-- TRIGGERS PARA CONFIGURACIÓN MÉDICA
+-- =======================
+CREATE OR REPLACE FUNCTION update_medical_specialty_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_medical_specialty_updated_at
+    BEFORE UPDATE ON medical_specialty
+    FOR EACH ROW
+    EXECUTE FUNCTION update_medical_specialty_updated_at();
+
+CREATE OR REPLACE FUNCTION update_surgery_typical_supply_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_surgery_typical_supply_updated_at
+    BEFORE UPDATE ON surgery_typical_supply
+    FOR EACH ROW
+    EXECUTE FUNCTION update_surgery_typical_supply_updated_at();
+
+CREATE OR REPLACE FUNCTION update_doctor_info_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_doctor_info_updated_at
+    BEFORE UPDATE ON doctor_info
+    FOR EACH ROW
+    EXECUTE FUNCTION update_doctor_info_updated_at();
+
+-- =======================
+-- TABLA DE CONFIGURACIÓN DE PROVEEDORES PARA ALERTAS DE VENCIMIENTO
+-- =======================
+CREATE TABLE IF NOT EXISTS supplier_config (
+    supplier_name VARCHAR(255) PRIMARY KEY,
+    expiration_alert_days INTEGER NOT NULL DEFAULT 90 CHECK (expiration_alert_days > 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    notes TEXT
+);
+
+CREATE INDEX idx_supplier_config_alert_days ON supplier_config(expiration_alert_days);
+
+COMMENT ON TABLE supplier_config IS 'Configuración de alertas de vencimiento por proveedor';
+COMMENT ON COLUMN supplier_config.supplier_name IS 'Nombre del proveedor (debe coincidir con batch.supplier)';
+COMMENT ON COLUMN supplier_config.expiration_alert_days IS 'Días de anticipación para alerta de vencimiento (default: 90 días = 3 meses)';
+
+CREATE OR REPLACE FUNCTION update_supplier_config_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_supplier_config_updated_at
+    BEFORE UPDATE ON supplier_config
+    FOR EACH ROW
+    EXECUTE FUNCTION update_supplier_config_updated_at();
+
+-- =======================
+-- ACTUALIZACIÓN DE STATUS DE INSUMOS MÉDICOS DESDE HISTORIAL
+-- =======================
 UPDATE medical_supply 
 SET status = (
     SELECT sh.status 

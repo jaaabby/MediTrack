@@ -10,7 +10,7 @@
               <h4 class="font-semibold mb-1">Información básica:</h4>
               <ul class="list-disc list-inside space-y-1">
                 <li>Selecciona el pabellón que solicita</li>
-                <li>Define la prioridad según urgencia</li>
+                <li>Indica la fecha y hora de la cirugía</li>
                 <li>Agrega observaciones si es necesario</li>
               </ul>
             </div>
@@ -64,50 +64,26 @@ const goBack = () => {
 
 const handleSuccess = (requestData) => {
   // Redirigir a la página de éxito con los datos de la solicitud
-  router.push({
-    name: 'SupplyRequestSuccess',
-    params: { requestData }
-  })
+  
+  // Extraer el ID de la solicitud
+  const requestId = requestData?.id || requestData?.request?.id
+  
+  if (requestId) {
+    // Pasar el ID como parámetro de ruta
+    router.push({
+      name: 'SupplyRequestSuccess',
+      params: { 
+        id: requestId,
+        requestData 
+      }
+    })
+  } else {
+    console.error('No se pudo obtener el ID de la solicitud')
+    router.push('/supply-requests')
+  }
 }
 </script>
 
 <style scoped>
-/* Animaciones y transiciones */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-
-/* Mejoras de UI */
-.bg-gray-50 {
-  background-color: #f9fafb;
-}
-
-.shadow-lg {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Hover effects */
-.hover\:text-blue-600:hover {
-  color: #2563eb;
-}
-
-.hover\:text-gray-600:hover {
-  color: #4b5563;
-}
-
-.hover\:text-gray-900:hover {
-  color: #111827;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .max-w-7xl {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
+/* Los estilos globales están en style.css */
 </style>

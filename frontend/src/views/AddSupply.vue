@@ -74,66 +74,128 @@
           </h3>
           
           <div class="grid md:grid-cols-2 gap-6">
-            <div class="space-y-6">
-              <div>
-                <label for="expiration-date" class="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha de Vencimiento <span class="text-red-500">*</span>
-                </label>
-                <input
-                  id="expiration-date"
-                  v-model="batchForm.expirationDate"
-                  type="date"
-                  class="form-input"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label for="supplier" class="block text-sm font-medium text-gray-700 mb-2">
-                  Proveedor <span class="text-red-500">*</span>
-                </label>
-                <input
-                  id="supplier"
-                  v-model="batchForm.supplier"
-                  type="text"
-                  placeholder="Nombre del proveedor"
-                  class="form-input"
-                  required
-                />
-              </div>
+            <div>
+              <label for="expiration-date" class="block text-sm font-medium text-gray-700 mb-2">
+                Fecha de Vencimiento <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="expiration-date"
+                v-model="batchForm.expirationDate"
+                type="date"
+                class="form-input"
+                required
+              />
             </div>
             
-            <div class="space-y-6">
-              <div>
-                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
-                  Cantidad de Productos <span class="text-red-500">*</span>
-                </label>
+            <div>
+              <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
+                Cantidad de Productos <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="amount"
+                v-model="batchForm.amount"
+                type="number"
+                min="1"
+                max="1000"
+                placeholder="50"
+                class="form-input"
+                required
+              />
+              <p class="text-sm text-gray-500 mt-1">Se generará un QR único para cada producto individual</p>
+            </div>
+            
+            <div>
+              <label for="supplier" class="block text-sm font-medium text-gray-700 mb-2">
+                Proveedor <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="supplier"
+                v-model="batchForm.supplier"
+                type="text"
+                placeholder="Nombre del proveedor"
+                class="form-input"
+                required
+              />
+            </div>
+            
+            <div class="relative">
+              <label for="store-search" class="block text-sm font-medium text-gray-700 mb-2">
+                Almacén <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
                 <input
-                  id="amount"
-                  v-model="batchForm.amount"
-                  type="number"
-                  min="1"
-                  max="1000"
-                  placeholder="50"
-                  class="form-input"
+                  id="store-search"
+                  v-model="storeSearch"
+                  @input="onStoreSearch"
+                  @focus="showStoreOptions = true"
+                  @blur="hideStoreOptions"
+                  type="text"
+                  :placeholder="loadingStores ? 'Cargando almacenes...' : 'Escribir o seleccionar almacén...'"
+                  class="form-input w-full pr-10"
+                  :disabled="loadingStores"
+                  autocomplete="off"
                   required
                 />
-                <p class="text-sm text-gray-500 mt-1">Se generará un QR único para cada producto individual</p>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
               </div>
               
-              <div>
-                <label for="store-id" class="block text-sm font-medium text-gray-700 mb-2">
-                  ID del Almacén <span class="text-red-500">*</span>
-                </label>
-                <input
-                  id="store-id"
-                  v-model="batchForm.storeId"
-                  type="number"
-                  placeholder="1"
-                  class="form-input"
-                  required
-                />
+              <!-- Dropdown de opciones -->
+              <div
+                v-show="showStoreOptions && filteredStores.length > 0"
+                class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200"
+              >
+                <div
+                  v-for="store in filteredStores"
+                  :key="store.id"
+                  @mousedown="selectStore(store)"
+                  class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50"
+                >
+                  <div class="flex items-center">
+                    <span class="font-medium text-gray-900 block truncate">
+                      {{ store.name }}
+                    </span>
+                    <span v-if="store.type" class="ml-2 text-sm text-gray-500">
+                      ({{ store.type }})
+                    </span>
+                  </div>
+                </div>
               </div>
+              
+              <!-- Mensaje cuando no hay resultados -->
+              <div
+                v-show="showStoreOptions && storeSearch && filteredStores.length === 0 && !loadingStores"
+                class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-2 px-3 text-sm text-gray-500 border border-gray-200"
+              >
+                No se encontraron almacenes que coincidan con "{{ storeSearch }}"
+              </div>
+              
+              <!-- Mensaje cuando no hay almacenes -->
+              <p v-if="stores.length === 0 && !loadingStores" class="text-sm text-red-500 mt-1">
+                No hay almacenes disponibles
+              </p>
+            </div>
+            
+            <div class="md:col-span-2">
+              <label for="expiration-alert-days" class="block text-sm font-medium text-gray-700 mb-2">
+                Días de Alerta de Vencimiento <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="expiration-alert-days"
+                v-model.number="batchForm.expirationAlertDays"
+                type="number"
+                min="1"
+                max="365"
+                placeholder="90"
+                class="form-input"
+                required
+              />
+              <p class="text-sm text-gray-500 mt-1">
+                Días de anticipación para alertas de vencimiento (mínimo 90 días recomendado)
+              </p>
             </div>
           </div>
         </div>
@@ -324,7 +386,7 @@
                 </button>
                 <button 
                   @click="downloadSupplyQR(supply.qr_code, 'high')"
-                  class="flex-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
+                  class="btn-primary text-xs px-2 py-1"
                 >
                   HD
                 </button>
@@ -385,9 +447,10 @@
 
 <script setup>
 
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import qrService from '@/services/qrService'
 import inventoryService from '@/services/inventoryService'
+import storeService from '@/services/storeService'
 
 // Validación de formularios
 const validateForm = () => {
@@ -417,10 +480,22 @@ const validateForm = () => {
     error.value = 'El proveedor es obligatorio.'
     return false
   }
-  if (!batchForm.value.storeId || isNaN(parseInt(batchForm.value.storeId))) {
-    error.value = 'El ID de almacén es obligatorio y debe ser numérico.'
+  if (!batchForm.value.expirationAlertDays || isNaN(parseInt(batchForm.value.expirationAlertDays)) || parseInt(batchForm.value.expirationAlertDays) < 1) {
+    error.value = 'Los días de alerta deben ser un número mayor a 0.'
     return false
   }
+  if (!batchForm.value.storeId || batchForm.value.storeId === '') {
+    error.value = 'Debe seleccionar un almacén.'
+    return false
+  }
+  
+  // Verificar que el almacén seleccionado exista en la lista
+  const selectedStore = stores.value.find(s => s.id === parseInt(batchForm.value.storeId))
+  if (!selectedStore) {
+    error.value = 'Debe seleccionar un almacén válido.'
+    return false
+  }
+  
   error.value = null
   return true
 }
@@ -432,6 +507,10 @@ const generatedBatch = ref(null)
 const generatedSupplies = ref(null)
 const batchQRImage = ref(null)
 const showAllQRs = ref(false)
+const stores = ref([])
+const loadingStores = ref(false)
+const storeSearch = ref('')
+const showStoreOptions = ref(false)
 
 // Formularios
 const supplyForm = ref({
@@ -444,7 +523,8 @@ const batchForm = ref({
   expirationDate: '',
   amount: '',
   supplier: '',
-  storeId: ''
+  storeId: '', // Ahora será el ID del almacén seleccionado
+  expirationAlertDays: 90 // Valor por defecto: 90 días (3 meses)
 })
 
 // Métodos principales
@@ -461,7 +541,8 @@ const createSupply = async () => {
         expiration_date: batchForm.value.expirationDate,
         amount: parseInt(batchForm.value.amount),
         supplier: batchForm.value.supplier,
-        store_id: parseInt(batchForm.value.storeId)
+        store_id: parseInt(batchForm.value.storeId), // Ya viene como número del select
+        expiration_alert_days: parseInt(batchForm.value.expirationAlertDays)
       },
       supply_code: {
         code: parseInt(supplyForm.value.code),
@@ -555,7 +636,11 @@ const handleSupplyQRError = (event) => {
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy', { locale: es })
+    const date = new Date(dateString)
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
   } catch (error) {
     return dateString
   }
@@ -579,25 +664,96 @@ const createAnother = () => {
     expirationDate: '',
     amount: '',
     supplier: '',
-    storeId: ''
+    storeId: '',
+    expirationAlertDays: 90 // Resetear al valor por defecto
   }
+  storeSearch.value = ''
+  showStoreOptions.value = false
 }
 
 const clearError = () => {
   error.value = null
 }
+
+// Computed para almacenes filtrados
+const filteredStores = computed(() => {
+  if (!storeSearch.value.trim()) {
+    // Si no hay búsqueda, mostrar todos (limitado a 10 para no ser invasivo)
+    return stores.value.slice(0, 10)
+  }
+  const search = storeSearch.value.toLowerCase().trim()
+  return stores.value.filter(store => 
+    store.name?.toLowerCase().includes(search) ||
+    store.type?.toLowerCase().includes(search) ||
+    store.id?.toString().includes(search)
+  ).slice(0, 10) // Limitar a 10 resultados para no ser invasivo
+})
+
+// Cargar almacenes al montar el componente
+const loadStores = async () => {
+  loadingStores.value = true
+  try {
+    const storesList = await storeService.getAllStores()
+    stores.value = storesList || []
+  } catch (err) {
+    console.error('Error al cargar almacenes:', err)
+    error.value = 'Error al cargar la lista de almacenes. Por favor, recarga la página.'
+  } finally {
+    loadingStores.value = false
+  }
+}
+
+// Funciones para manejar la búsqueda y selección de almacenes
+const onStoreSearch = () => {
+  showStoreOptions.value = true
+  // Si el texto coincide exactamente con un almacén, seleccionarlo automáticamente
+  const exactMatch = stores.value.find(store => 
+    store.name.toLowerCase() === storeSearch.value.toLowerCase() ||
+    `${store.name} ${store.type ? `(${store.type})` : ''}`.toLowerCase() === storeSearch.value.toLowerCase()
+  )
+  if (exactMatch) {
+    batchForm.value.storeId = exactMatch.id.toString()
+  } else if (storeSearch.value.trim() === '') {
+    batchForm.value.storeId = ''
+  }
+}
+
+const selectStore = (store) => {
+  batchForm.value.storeId = store.id.toString()
+  storeSearch.value = store.type ? `${store.name} (${store.type})` : store.name
+  showStoreOptions.value = false
+}
+
+const hideStoreOptions = () => {
+  // Delay para permitir que el click en una opción se registre antes de ocultar
+  setTimeout(() => {
+    showStoreOptions.value = false
+    // Si hay un almacén seleccionado, mostrar su nombre completo
+    if (batchForm.value.storeId) {
+      const selectedStore = stores.value.find(s => s.id === parseInt(batchForm.value.storeId))
+      if (selectedStore) {
+        storeSearch.value = selectedStore.type ? `${selectedStore.name} (${selectedStore.type})` : selectedStore.name
+      }
+    } else if (!storeSearch.value.trim()) {
+      storeSearch.value = ''
+    }
+  }, 200)
+}
+
+// Cargar almacenes al montar el componente
+onMounted(() => {
+  loadStores()
+})
 </script>
 
 <style scoped>
 .form-input {
-  @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm;
+  @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border;
 }
 
-.btn-primary {
-  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 inline-flex items-center justify-center;
+.form-input:disabled {
+  @apply bg-gray-100 cursor-not-allowed;
 }
 
-.btn-secondary {
-  @apply bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 inline-flex items-center justify-center;
-}
+/* Usar clases de botones de style.css global */
 </style>

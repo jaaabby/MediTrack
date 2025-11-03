@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud Devuelta</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-row {
+            margin: 10px 0;
+        }
+        .label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .value {
+            color: #212529;
+        }
+        .items-list {
+            margin: 15px 0;
+        }
+        .item {
+            padding: 10px;
+            background-color: #fff3cd;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Solicitud Devuelta para Revisión</h1>
+        </div>
+        <div class="content">
+            <p>Estimado/a <strong>{{.RecipientName}}</strong>,</p>
+            
+            <p>Tu solicitud de insumos médicos ha sido <strong>devuelta</strong> por el encargado de bodega y requiere modificaciones.</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">Número de Solicitud:</span>
+                    <span class="value">{{.RequestNumber}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Pabellón:</span>
+                    <span class="value">{{.PavilionName}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Fecha de Cirugía:</span>
+                    <span class="value">{{.SurgeryDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Devuelto por:</span>
+                    <span class="value">{{.ReturnedByName}}</span>
+                </div>
+            </div>
+
+            {{if .ReturnedItems}}
+            <h3>Insumos Devueltos:</h3>
+            <div class="items-list">
+                {{range .ReturnedItems}}
+                <div class="item">
+                    <strong>{{.SupplyName}}</strong>
+                    <p><em>Motivo:</em> {{.Comments}}</p>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+
+            <div class="warning-box">
+                <p><strong>Acción requerida:</strong></p>
+                <p>Por favor, revisa los comentarios y modifica tu solicitud según las indicaciones del encargado de bodega. Luego, puedes reenviar la solicitud corregida.</p>
+            </div>
+
+            {{if .Notes}}
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">Comentarios Generales:</span>
+                    <p class="value">{{.Notes}}</p>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        <div class="footer">
+            <p>Este es un correo automático de <a href="http://localhost:3000" style="color: #ff9800; text-decoration: none;">MediTrack</a>. Por favor, no responder a este mensaje.</p>
+            <p>&copy; 2025 <a href="http://localhost:3000" style="color: #ff9800; text-decoration: none;">MediTrack</a> - Sistema de Gestión de Insumos Médicos</p>
+        </div>
+    </div>
+</body>
+</html>

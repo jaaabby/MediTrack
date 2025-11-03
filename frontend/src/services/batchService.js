@@ -162,12 +162,43 @@ class BatchService {
     }
   }
 
-  async checkExpirationAlert(id) {
+  async checkExpirationAlert(id, days = null) {
     try {
-      const response = await this.api.post(`/batches/${id}/check-expiration/`)
+      const params = days ? { days } : {}
+      const response = await this.api.post(`/batches/${id}/check-expiration/`, null, { params })
       return response.data
     } catch (error) {
       console.error('Error al verificar alerta de expiración:', error)
+      throw error
+    }
+  }
+
+  async checkAllBatchesExpiration() {
+    try {
+      const response = await this.api.post('/batches/check-all-expiration/')
+      return response.data
+    } catch (error) {
+      console.error('Error al verificar alertas de vencimiento para todos los lotes:', error)
+      throw error
+    }
+  }
+
+  async checkAllBatchesLowStock() {
+    try {
+      const response = await this.api.post('/batches/check-all-low-stock/')
+      return response.data
+    } catch (error) {
+      console.error('Error al verificar alertas de stock bajo para todos los lotes:', error)
+      throw error
+    }
+  }
+
+  async getLowStockSummary() {
+    try {
+      const response = await this.api.get('/batches/low-stock-summary/')
+      return response.data.data || response.data || []
+    } catch (error) {
+      console.error('Error al obtener resumen de stock bajo:', error)
       throw error
     }
   }

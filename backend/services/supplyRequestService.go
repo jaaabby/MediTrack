@@ -2,7 +2,10 @@ package services
 
 import (
 	"fmt"
+	"meditrack/mailer"
 	"meditrack/models"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -16,13 +19,51 @@ func NewSupplyRequestService(db *gorm.DB) *SupplyRequestService {
 	return &SupplyRequestService{DB: db}
 }
 
+// FlexibleTime es un tipo personalizado que acepta múltiples formatos de fecha
+type FlexibleTime struct {
+	time.Time
+}
+
+// UnmarshalJSON implementa el unmarshaler personalizado para aceptar múltiples formatos
+func (ft *FlexibleTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" || s == "" {
+		ft.Time = time.Time{}
+		return nil
+	}
+
+	// Intentar diferentes formatos
+	formats := []string{
+		time.RFC3339,          // 2006-01-02T15:04:05Z07:00
+		"2006-01-02T15:04:05", // 2006-01-02T15:04:05
+		"2006-01-02T15:04",    // 2006-01-02T15:04 (datetime-local)
+		"2006-01-02 15:04:05", // 2006-01-02 15:04:05
+		"2006-01-02 15:04",    // 2006-01-02 15:04
+	}
+
+	var err error
+	for _, format := range formats {
+		ft.Time, err = time.Parse(format, s)
+		if err == nil {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("no se pudo parsear la fecha: %s", s)
+}
+
 // CreateSupplyRequestRequest representa la estructura para crear una solicitud
 type CreateSupplyRequestRequest struct {
 	PavilionID      int                              `json:"pavilion_id" binding:"required"`
 	RequestedBy     string                           `json:"requested_by" binding:"required"`
 	RequestedByName string                           `json:"requested_by_name" binding:"required"`
-	Priority        string                           `json:"priority"`
+	SurgeryDatetime FlexibleTime                     `json:"surgery_datetime" binding:"required"`
 	Notes           string                           `json:"notes"`
+	// Campos de médico responsable
+	SurgeonID    *string `json:"surgeon_id"`
+	SurgeonName  *string `json:"surgeon_name"`
+	SurgeryID    *int    `json:"surgery_id"`
+	SpecialtyID  *int    `json:"specialty_id"`
 	Items           []CreateSupplyRequestItemRequest `json:"items" binding:"required,dive"`
 }
 
@@ -74,6 +115,12 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 		}
 		medicalCenterID = pavilion.MedicalCenterID
 
+		// Si no hay notas iniciales, guardar un espacio para mantener el orden
+		notes := request.Notes
+		if notes == "" {
+			notes = " " // Espacio en blanco para indicar "sin observaciones"
+		}
+
 		// Crear la solicitud principal
 		supplyRequest = models.SupplyRequest{
 			RequestNumber:   models.GenerateRequestNumber(),
@@ -81,15 +128,15 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 			RequestedBy:     request.RequestedBy,
 			RequestedByName: request.RequestedByName,
 			RequestDate:     time.Now(),
-			Status:          models.RequestStatusPending,
-			Priority:        request.Priority,
-			Notes:           request.Notes,
+			SurgeryDatetime: request.SurgeryDatetime.Time,
+			Status:          models.RequestStatusPendingPavedad, // Estado inicial: pendiente de asignación por Pavedad
+			Notes:           notes,
 			MedicalCenterID: medicalCenterID,
-		}
-
-		// Validar y establecer prioridad por defecto
-		if supplyRequest.Priority == "" {
-			supplyRequest.Priority = models.RequestPriorityNormal
+			// Campos de médico responsable
+			SurgeonID:   request.SurgeonID,
+			SurgeonName: request.SurgeonName,
+			SurgeryID:   request.SurgeryID,
+			SpecialtyID: request.SpecialtyID,
 		}
 
 		if err := tx.Create(&supplyRequest).Error; err != nil {
@@ -109,21 +156,7 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 				SupplyCode:        itemReq.SupplyCode,
 				SupplyName:        itemReq.SupplyName,
 				QuantityRequested: itemReq.QuantityRequested,
-				Specifications:    itemReq.Specifications,
 				IsPediatric:       itemReq.IsPediatric,
-				SpecialRequests:   itemReq.SpecialRequests,
-				UrgencyLevel:      itemReq.UrgencyLevel,
-			}
-
-			// Establecer valores opcionales
-			if itemReq.Size != "" {
-				item.Size = &itemReq.Size
-			}
-			if itemReq.Brand != "" {
-				item.Brand = &itemReq.Brand
-			}
-			if item.UrgencyLevel == "" {
-				item.UrgencyLevel = models.UrgencyLevelNormal
 			}
 
 			if err := tx.Create(&item).Error; err != nil {
@@ -138,15 +171,39 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 		return nil, err
 	}
 
+	// Obtener la solicitud completa con items
+	fullRequest, err := s.GetSupplyRequestByID(supplyRequest.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Enviar correos de notificación
+	go func() {
+		// Correo al solicitante
+		if err := s.sendRequestCreatedEmailToRequester(fullRequest); err != nil {
+			fmt.Printf("Error enviando correo al solicitante: %v\n", err)
+		}
+
+		// Correo a todos los usuarios Pavedad
+		if err := s.sendRequestCreatedEmailToPavedad(fullRequest); err != nil {
+			fmt.Printf("Error enviando correo a Pavedad: %v\n", err)
+		}
+	}()
+
 	// Retornar la solicitud completa con items
-	return s.GetSupplyRequestByID(supplyRequest.ID)
+	return fullRequest, nil
 }
 
 // GetSupplyRequestByID obtiene una solicitud por ID con todos sus items y relaciones
 func (s *SupplyRequestService) GetSupplyRequestByID(id int) (*models.SupplyRequest, error) {
 	var request models.SupplyRequest
 
-	if err := s.DB.First(&request, id).Error; err != nil {
+	if err := s.DB.Preload("Surgeon").
+		Preload("Surgery").
+		Preload("Surgery.Specialty").
+		Preload("Surgery.TypicalSupplies").
+		Preload("Specialty").
+		First(&request, id).Error; err != nil {
 		return nil, fmt.Errorf("solicitud no encontrada: %v", err)
 	}
 
@@ -335,37 +392,18 @@ func (s *SupplyRequestService) AssignQRToRequest(assignment AssignQRToRequestReq
 			return fmt.Errorf("item de solicitud no encontrado: %v", err)
 		}
 
-		// Verificar que el código QR existe y está disponible
+		// Buscar el insumo médico por código QR
 		var medicalSupply models.MedicalSupply
 		if err := tx.Where("qr_code = ?", assignment.QRCode).First(&medicalSupply).Error; err != nil {
-			return fmt.Errorf("código QR no encontrado: %v", err)
-		}
-
-		// Verificar que el QR no esté ya asignado a otra solicitud
-		var existingAssignment models.SupplyRequestQRAssignment
-		if err := tx.Where("qr_code = ? AND status != ?",
-			assignment.QRCode, models.AssignmentStatusConsumed).
-			First(&existingAssignment).Error; err == nil {
-			return fmt.Errorf("el código QR ya está asignado a otra solicitud")
-		}
-
-		// Verificar que el insumo corresponda al código solicitado
-		var batch models.Batch
-		if err := tx.First(&batch, medicalSupply.BatchID).Error; err != nil {
-			return fmt.Errorf("lote no encontrado: %v", err)
-		}
-
-		// Verificar compatibilidad del código de insumo
-		if medicalSupply.Code != item.SupplyCode {
-			return fmt.Errorf("el código QR no corresponde al insumo solicitado")
+			return fmt.Errorf("insumo médico con QR %s no encontrado: %v", assignment.QRCode, err)
 		}
 
 		// Crear la asignación
 		qrAssignment := models.SupplyRequestQRAssignment{
 			SupplyRequestID:     assignment.SupplyRequestID,
 			SupplyRequestItemID: assignment.SupplyRequestItemID,
-			QRCode:              assignment.QRCode,
 			MedicalSupplyID:     medicalSupply.ID,
+			QRCode:              assignment.QRCode,
 			AssignedDate:        time.Now(),
 			AssignedBy:          assignment.AssignedBy,
 			AssignedByName:      assignment.AssignedByName,
@@ -595,4 +633,709 @@ func (s *SupplyRequestService) GetSupplyRequestStats() (map[string]interface{}, 
 	stats["generated_at"] = time.Now()
 
 	return stats, nil
+}
+
+// AssignRequestToWarehouseManager asigna una solicitud a un encargado de bodega (usado por Pavedad)
+type AssignRequestToWarehouseManagerRequest struct {
+	AssignedTo            string `json:"assigned_to" binding:"required"`              // RUT del encargado de bodega
+	AssignedToName        string `json:"assigned_to_name" binding:"required"`         // Nombre del encargado
+	AssignedByPavedad     string `json:"assigned_by_pavedad" binding:"required"`      // RUT del usuario Pavedad
+	AssignedByPavedadName string `json:"assigned_by_pavedad_name" binding:"required"` // Nombre del usuario Pavedad
+	PavedadNotes          string `json:"pavedad_notes"`                               // Notas opcionales - se agregan al historial de notes
+}
+
+func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, req AssignRequestToWarehouseManagerRequest) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		// Obtener la solicitud
+		var supplyRequest models.SupplyRequest
+		if err := tx.First(&supplyRequest, requestID).Error; err != nil {
+			return fmt.Errorf("solicitud no encontrada: %v", err)
+		}
+
+		// Validar que la solicitud está en estado pendiente_pavedad
+		if supplyRequest.Status != "pendiente_pavedad" {
+			return fmt.Errorf("la solicitud debe estar en estado 'pendiente_pavedad' para ser asignada. Estado actual: %s", supplyRequest.Status)
+		}
+
+		// Validar que el usuario asignado existe y es encargado de bodega
+		var assignedUser models.User
+		if err := tx.Where("rut = ?", req.AssignedTo).First(&assignedUser).Error; err != nil {
+			return fmt.Errorf("usuario a asignar no encontrado: %v", err)
+		}
+		if assignedUser.Role != "encargado de bodega" {
+			return fmt.Errorf("el usuario debe tener el rol 'encargado de bodega'. Rol actual: %s", assignedUser.Role)
+		}
+
+		// Validar que el usuario que asigna es Pavedad
+		var pavedadUser models.User
+		if err := tx.Where("rut = ?", req.AssignedByPavedad).First(&pavedadUser).Error; err != nil {
+			return fmt.Errorf("usuario Pavedad no encontrado: %v", err)
+		}
+		if pavedadUser.Role != "pavedad" {
+			return fmt.Errorf("solo usuarios con rol 'pavedad' pueden asignar solicitudes. Rol actual: %s", pavedadUser.Role)
+		}
+
+		// Actualizar la solicitud
+		now := time.Now()
+		supplyRequest.AssignedTo = &req.AssignedTo
+		supplyRequest.AssignedToName = &req.AssignedToName
+		supplyRequest.AssignedDate = &now
+		supplyRequest.AssignedByPavedad = &req.AssignedByPavedad
+		supplyRequest.AssignedByPavedadName = &req.AssignedByPavedadName
+
+		// Agregar notas de Pavedad al historial de notes (solo el comentario)
+		// Si no hay notas de Pavedad, agregar un espacio para mantener el orden
+		pavedadComment := req.PavedadNotes
+		if pavedadComment == "" {
+			pavedadComment = " " // Espacio en blanco para indicar "sin observaciones"
+		}
+
+		if supplyRequest.Notes == "" {
+			supplyRequest.Notes = pavedadComment
+		} else {
+			supplyRequest.Notes = supplyRequest.Notes + "\n\n" + pavedadComment
+		}
+
+		supplyRequest.Status = "asignado_bodega"
+
+		if err := tx.Save(&supplyRequest).Error; err != nil {
+			return fmt.Errorf("error asignando solicitud: %v", err)
+		}
+
+		// Enviar correo al solicitante notificando la asignación
+		go func() {
+			if err := s.sendRequestAssignedEmail(&supplyRequest); err != nil {
+				fmt.Printf("Error enviando correo de asignación: %v\n", err)
+			}
+		}()
+
+		return nil
+	})
+}
+
+// GetPendingRequestsForPavedad obtiene todas las solicitudes para Pavedad (pendientes y asignadas)
+func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]SupplyRequestWithItems, error) {
+	var requests []models.SupplyRequest
+	// Pavedad ve tanto las pendientes como las ya asignadas
+	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "parcialmente_aprobado", "pendiente_revision", "devuelto"}).
+		Order("request_date DESC").
+		Find(&requests).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo solicitudes para Pavedad: %v", err)
+	}
+
+	// Convertir a SupplyRequestWithItems y calcular total_items
+	var requestsWithItems []SupplyRequestWithItems
+	for _, request := range requests {
+		var itemCount int64
+		s.DB.Model(&models.SupplyRequestItem{}).
+			Where("supply_request_id = ?", request.ID).
+			Count(&itemCount)
+
+		requestsWithItems = append(requestsWithItems, SupplyRequestWithItems{
+			SupplyRequest: request,
+			TotalItems:    itemCount,
+		})
+	}
+
+	return requestsWithItems, nil
+}
+
+// GetAssignedRequestsForWarehouseManager obtiene las solicitudes asignadas a un encargado de bodega específico
+func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseManagerRut string) ([]SupplyRequestWithItems, error) {
+	var requests []models.SupplyRequest
+	// Incluir todos los estados relevantes para el encargado de bodega
+	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "devuelto_al_encargado", "completado"}).
+		Order("assigned_date DESC").
+		Find(&requests).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo solicitudes asignadas: %v", err)
+	}
+
+	// Convertir a SupplyRequestWithItems y calcular total_items
+	var requestsWithItems []SupplyRequestWithItems
+	for _, request := range requests {
+		var itemCount int64
+		s.DB.Model(&models.SupplyRequestItem{}).
+			Where("supply_request_id = ?", request.ID).
+			Count(&itemCount)
+
+		requestsWithItems = append(requestsWithItems, SupplyRequestWithItems{
+			SupplyRequest: request,
+			TotalItems:    itemCount,
+		})
+	}
+
+	return requestsWithItems, nil
+}
+
+// ReviewItemRequest representa la estructura para revisar un item individual
+type ReviewItemRequest struct {
+	ItemStatus     string  `json:"item_status" binding:"required,oneof=aceptado rechazado devuelto"`
+	ReviewedBy     string  `json:"reviewed_by" binding:"required"`
+	ReviewedByName string  `json:"reviewed_by_name" binding:"required"`
+	Comment        *string `json:"comment"` // Observaciones o comentarios sobre el item
+}
+
+// ReviewSupplyRequestItem permite al encargado de bodega revisar un item individual
+func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewItemRequest) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		var item models.SupplyRequestItem
+		if err := tx.First(&item, itemID).Error; err != nil {
+			return fmt.Errorf("item no encontrado: %v", err)
+		}
+
+		// Actualizar estado del item
+		now := time.Now()
+		item.ItemStatus = req.ItemStatus
+		item.ReviewedBy = &req.ReviewedBy
+		item.ReviewedByName = &req.ReviewedByName
+		item.ReviewedAt = &now
+
+		// Asignar comentario
+		if req.Comment != nil && *req.Comment != "" {
+			item.ItemNotes = req.Comment
+		}
+
+		// Si el item fue ACEPTADO, asignar automáticamente insumos del inventario
+		if req.ItemStatus == "aceptado" {
+			// Buscar insumos disponibles con el mismo código (supply_code)
+			var availableSupplies []models.MedicalSupply
+			if err := tx.Where("code = ? AND status = ? AND location_type = ?",
+				item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
+				Order("updated_at ASC"). // FIFO: primero el más antiguo
+				Limit(item.QuantityRequested).
+				Find(&availableSupplies).Error; err != nil {
+				return fmt.Errorf("error buscando insumos disponibles: %v", err)
+			}
+
+			// Verificar que hay suficientes insumos disponibles
+			if len(availableSupplies) < item.QuantityRequested {
+				return fmt.Errorf("no hay suficientes insumos disponibles. Requeridos: %d, Disponibles: %d",
+					item.QuantityRequested, len(availableSupplies))
+			}
+
+			// Crear asignaciones QR automáticas para cada insumo
+			for i := 0; i < item.QuantityRequested; i++ {
+				supply := availableSupplies[i]
+
+				// Obtener el insumo completo con su QR code
+				var fullSupply models.MedicalSupply
+				if err := tx.First(&fullSupply, supply.ID).Error; err != nil {
+					return fmt.Errorf("error obteniendo insumo: %v", err)
+				}
+
+				// Crear la asignación QR (insertando directamente con SQL para incluir qr_code)
+				qrAssignment := map[string]interface{}{
+					"supply_request_id":      item.SupplyRequestID,
+					"supply_request_item_id": item.ID,
+					"medical_supply_id":      fullSupply.ID,
+					"qr_code":                fullSupply.QRCode,
+					"assigned_date":          now,
+					"assigned_by":            req.ReviewedBy,
+					"assigned_by_name":       req.ReviewedByName,
+					"status":                 models.AssignmentStatusAssigned,
+					"notes":                  "Asignado automáticamente al aprobar el item",
+					"created_at":             now,
+					"updated_at":             now,
+				}
+
+				if err := tx.Table("supply_request_qr_assignment").Create(qrAssignment).Error; err != nil {
+					return fmt.Errorf("error creando asignación QR: %v", err)
+				}
+
+				// Registrar historial del insumo
+				history := models.SupplyHistory{
+					MedicalSupplyID: supply.ID,
+					DateTime:        now,
+					Status:          "reservado",
+					DestinationType: models.DestinationTypeStore,
+					DestinationID:   supply.LocationID,
+					UserRUT:         req.ReviewedBy,
+					Notes:           fmt.Sprintf("Reservado automáticamente para solicitud. Item: %s", item.SupplyName),
+				}
+
+				if err := tx.Create(&history).Error; err != nil {
+					return fmt.Errorf("error registrando historial: %v", err)
+				}
+			}
+
+			// Actualizar quantity_approved del item con la cantidad asignada
+			item.QuantityApproved = &item.QuantityRequested
+		}
+
+		if err := tx.Save(&item).Error; err != nil {
+			return fmt.Errorf("error actualizando item: %v", err)
+		}
+
+		// Verificar si todos los items han sido revisados
+		var totalItems, reviewedItems int64
+		tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ?", item.SupplyRequestID).Count(&totalItems)
+		tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status != ?", item.SupplyRequestID, "pendiente").Count(&reviewedItems)
+
+		// Si todos los items fueron revisados, actualizar el estado de la solicitud
+		if totalItems == reviewedItems {
+			var allAccepted, hasReturned int64
+			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "aceptado").Count(&allAccepted)
+			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Count(&hasReturned)
+
+			var request models.SupplyRequest
+			if err := tx.First(&request, item.SupplyRequestID).Error; err != nil {
+				return fmt.Errorf("error obteniendo solicitud: %v", err)
+			}
+
+			// Determinar nuevo estado de la solicitud
+			if hasReturned > 0 {
+				request.Status = "devuelto" // Al menos un item devuelto
+
+				// Agregar comentarios de items devueltos al historial de notes
+				var returnedItems []models.SupplyRequestItem
+				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Find(&returnedItems)
+
+				var returnComments string
+				for _, ri := range returnedItems {
+					if ri.ItemNotes != nil && *ri.ItemNotes != "" {
+						if returnComments != "" {
+							returnComments += "\n"
+						}
+						// Usar formato: Item "NombreItem": observación
+						returnComments += fmt.Sprintf("Item \"%s\": %s", ri.SupplyName, *ri.ItemNotes)
+					}
+				}
+
+				// Agregar comentarios de devolución a notes (solo los comentarios)
+				// Si no hay comentarios de devolución, agregar un espacio para mantener el orden
+				if returnComments == "" {
+					returnComments = " " // Espacio en blanco para indicar "sin observaciones"
+				}
+
+				if request.Notes == "" {
+					request.Notes = returnComments
+				} else {
+					request.Notes = request.Notes + "\n\n" + returnComments
+				}
+
+				// Enviar correo de devolución
+				go func() {
+					if err := s.sendRequestReturnedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de devolución: %v\n", err)
+					}
+				}()
+
+			} else if allAccepted == totalItems {
+				request.Status = "aprobado" // Todos aceptados
+				request.ApprovalDate = &now
+				request.ApprovedBy = &req.ReviewedBy
+				request.ApprovedByName = &req.ReviewedByName
+
+				// Enviar correo de aprobación
+				go func() {
+					if err := s.sendRequestApprovedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de aprobación: %v\n", err)
+					}
+				}()
+
+			} else {
+				request.Status = "parcialmente_aprobado" // Algunos rechazados
+				request.ApprovalDate = &now
+				request.ApprovedBy = &req.ReviewedBy
+				request.ApprovedByName = &req.ReviewedByName
+
+				// Enviar correo de aprobación parcial (usar template de aprobado)
+				go func() {
+					if err := s.sendRequestApprovedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de aprobación parcial: %v\n", err)
+					}
+				}()
+			}
+
+			if err := tx.Save(&request).Error; err != nil {
+				return fmt.Errorf("error actualizando estado de solicitud: %v", err)
+			}
+		}
+
+		return nil
+	})
+}
+
+// UpdatedItemRequest representa la actualización de un item devuelto
+type UpdatedItemRequest struct {
+	ItemID   int    `json:"item_id"`
+	Quantity int    `json:"quantity"`
+	Notes    string `json:"notes"` // Nuevas observaciones del doctor sobre este item
+}
+
+// ResubmitReturnedRequestData representa los datos para reenviar una solicitud
+type ResubmitReturnedRequestData struct {
+	UpdatedItems []UpdatedItemRequest `json:"updated_items"`
+	Notes        string               `json:"notes"` // Nuevas observaciones del solicitante
+}
+
+// ResubmitReturnedRequest permite al doctor reenviar una solicitud devuelta
+// Solo resetea los items devueltos a pendiente, manteniendo los aceptados
+func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data ResubmitReturnedRequestData) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		var request models.SupplyRequest
+		if err := tx.First(&request, requestID).Error; err != nil {
+			return fmt.Errorf("solicitud no encontrada: %v", err)
+		}
+
+		// Verificar que la solicitud esté en estado devuelto
+		if request.Status != "devuelto" {
+			return fmt.Errorf("solo se pueden reenviar solicitudes devueltas")
+		}
+
+		// Recopilar observaciones de items para agregar a notes
+		var itemComments string
+
+		// Actualizar los items según los cambios del doctor
+		for _, updatedItem := range data.UpdatedItems {
+			var item models.SupplyRequestItem
+			if err := tx.First(&item, updatedItem.ItemID).Error; err != nil {
+				continue // Si no se encuentra el item, continuar
+			}
+
+			// Solo actualizar items que fueron devueltos
+			if item.ItemStatus == "devuelto" {
+				// Actualizar cantidad si se modificó
+				if updatedItem.Quantity > 0 {
+					item.QuantityRequested = updatedItem.Quantity
+				}
+
+				// Si hay nuevas notas del doctor, agregarlas a item_notes (sin borrar las anteriores)
+				if updatedItem.Notes != "" {
+					if item.ItemNotes != nil && *item.ItemNotes != "" {
+						// Agregar las nuevas notas con salto de línea doble
+						newNotes := *item.ItemNotes + "\n\n" + updatedItem.Notes
+						item.ItemNotes = &newNotes
+					} else {
+						item.ItemNotes = &updatedItem.Notes
+					}
+
+					// Agregar al comentario de items para notes usando formato: Item "NombreItem": observación
+					if itemComments != "" {
+						itemComments += "\n"
+					}
+					itemComments += fmt.Sprintf("Item \"%s\": %s", item.SupplyName, updatedItem.Notes)
+				}
+
+				// Resetear el estado a pendiente para que sea revisado nuevamente
+				item.ItemStatus = "pendiente"
+
+				if err := tx.Save(&item).Error; err != nil {
+					return fmt.Errorf("error actualizando item: %v", err)
+				}
+			}
+			// Los items aceptados no se tocan, se mantienen como están
+		}
+
+		// Agregar las nuevas observaciones del solicitante al historial
+		// Primero los comentarios de items, luego el comentario general
+		var resubmitComment string
+		if itemComments != "" {
+			resubmitComment = itemComments
+		}
+
+		// Si hay comentario general del doctor, agregarlo
+		if data.Notes != "" {
+			if resubmitComment != "" {
+				resubmitComment += "\n" + data.Notes
+			} else {
+				resubmitComment = data.Notes
+			}
+		}
+
+		// Si no hay ningún comentario, agregar un espacio para mantener el orden
+		if resubmitComment == "" {
+			resubmitComment = " "
+		}
+
+		if request.Notes == "" {
+			request.Notes = resubmitComment
+		} else {
+			request.Notes = request.Notes + "\n\n" + resubmitComment
+		}
+
+		// Cambiar el estado de la solicitud a "devuelto_al_encargado" para que el encargado revise nuevamente
+		request.Status = models.RequestStatusReturnedToStore
+
+		if err := tx.Save(&request).Error; err != nil {
+			return fmt.Errorf("error actualizando solicitud: %v", err)
+		}
+
+		return nil
+	})
+}
+
+// Helper functions para envío de correos
+
+func (s *SupplyRequestService) sendRequestAssignedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	templatePath := filepath.Join("mailer", "templates", "request_assigned.html")
+
+	data := map[string]interface{}{
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"AssignedByName": *request.AssignedByPavedadName,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Asignada a Bodega - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestApprovedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items aprobados
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "aceptado").Find(&items)
+
+	itemsData := []map[string]interface{}{}
+	for _, item := range items {
+		itemsData = append(itemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_approved.html")
+
+	data := map[string]interface{}{
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ApprovedByName": *request.AssignedToName,
+		"Items":          itemsData,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Aprobada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestReturnedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items devueltos con sus comentarios
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "devuelto").Find(&items)
+
+	returnedItems := []map[string]interface{}{}
+	for _, item := range items {
+		comments := "Sin comentarios"
+		if item.ItemNotes != nil {
+			comments = *item.ItemNotes
+		}
+		returnedItems = append(returnedItems, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Comments":   comments,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_returned.html")
+
+	data := map[string]interface{}{
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ReturnedByName": *request.AssignedToName,
+		"ReturnedItems":  returnedItems,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Devuelta para Revisión - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestRejectedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	templatePath := filepath.Join("mailer", "templates", "request_rejected.html")
+
+	data := map[string]interface{}{
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"RejectedByName": *request.AssignedToName,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Rechazada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestCreatedEmailToRequester(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items de la solicitud
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ?", request.ID).Find(&items)
+
+	itemsData := []map[string]interface{}{}
+	for _, item := range items {
+		itemsData = append(itemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_created_requester.html")
+
+	notes := request.Notes
+	if notes == " " {
+		notes = ""
+	}
+
+	data := map[string]interface{}{
+		"RecipientName": request.RequestedByName,
+		"RequestNumber": request.RequestNumber,
+		"PavilionName":  pavilion.Name,
+		"SurgeryDate":   request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"Items":         itemsData,
+		"Notes":         notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Creada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestCreatedEmailToPavedad(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Pavedad
+	var pavedadUsers []models.User
+	if err := s.DB.Where("role = ?", "pavedad").Find(&pavedadUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Pavedad: %v", err)
+	}
+
+	if len(pavedadUsers) == 0 {
+		return fmt.Errorf("no hay usuarios Pavedad registrados")
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range pavedadUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		return fmt.Errorf("ningún usuario Pavedad tiene email registrado")
+	}
+
+	// Obtener información del pabellón y centro médico
+	var pavilion models.Pavilion
+	s.DB.Preload("MedicalCenter").First(&pavilion, request.PavilionID)
+
+	// Obtener items de la solicitud
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ?", request.ID).Find(&items)
+
+	itemsData := []map[string]interface{}{}
+	for _, item := range items {
+		itemsData = append(itemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	// Verificar si la cirugía es urgente (menos de 48 horas)
+	hoursUntilSurgery := time.Until(request.SurgeryDatetime).Hours()
+	isUrgent := hoursUntilSurgery < 48 && hoursUntilSurgery > 0
+
+	templatePath := filepath.Join("mailer", "templates", "request_created_pavedad.html")
+
+	notes := request.Notes
+	if notes == " " {
+		notes = ""
+	}
+
+	medicalCenterName := "N/A"
+	if pavilion.MedicalCenter.Name != "" {
+		medicalCenterName = pavilion.MedicalCenter.Name
+	}
+
+	data := map[string]interface{}{
+		"RequestNumber":     request.RequestNumber,
+		"RequestedByName":   request.RequestedByName,
+		"PavilionName":      pavilion.Name,
+		"MedicalCenterName": medicalCenterName,
+		"SurgeryDate":       request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"RequestDate":       request.RequestDate.Format("02/01/2006 15:04"),
+		"Items":             itemsData,
+		"TotalItems":        len(items),
+		"Notes":             notes,
+		"IsUrgent":          isUrgent,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Nueva Solicitud Pendiente - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
 }

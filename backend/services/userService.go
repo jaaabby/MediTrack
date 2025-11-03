@@ -18,9 +18,9 @@ func (s *UserService) CreateUser(user *models.User) error {
 	return s.DB.Create(user).Error
 }
 
-func (s *UserService) GetUserByID(rut string) (*models.User, error) {
+func (s *UserService) GetUserByRut(rut string) (*models.User, error) {
 	var user models.User
-	if err := s.DB.Preload("MedicalCenter").First(&user, "rut = ?", rut).Error; err != nil {
+	if err := s.DB.Preload("MedicalCenter").Preload("Specialty").First(&user, "rut = ?", rut).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -60,7 +60,7 @@ func (s *UserService) GetAllUsers() ([]models.User, error) {
 
 func (s *UserService) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
-	if err := s.DB.Preload("MedicalCenter").First(&user, "email = ?", email).Error; err != nil {
+	if err := s.DB.Preload("MedicalCenter").Preload("Specialty").First(&user, "email = ?", email).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -90,7 +90,7 @@ func (s *UserService) ActivateUser(rut string) error {
 
 func (s *UserService) GetUserProfileByEmail(email string) (*models.User, error) {
 	var user models.User
-	if err := s.DB.Preload("MedicalCenter").First(&user, "email = ?", email).Error; err != nil {
+	if err := s.DB.Preload("MedicalCenter").Preload("Specialty").First(&user, "email = ?", email).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil

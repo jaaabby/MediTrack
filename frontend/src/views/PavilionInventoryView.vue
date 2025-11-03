@@ -38,7 +38,7 @@
               v-model="includeInTransit"
               @change="loadInventory"
               :disabled="!selectedPavilionId"
-              class="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+              class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
             />
             <span class="text-sm text-gray-700">Incluir en tránsito</span>
           </label>
@@ -60,7 +60,7 @@
     <!-- Loading -->
     <div v-else-if="loading" class="card">
       <div class="flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <span class="ml-3 text-gray-600">Cargando inventario del pabellón...</span>
       </div>
     </div>

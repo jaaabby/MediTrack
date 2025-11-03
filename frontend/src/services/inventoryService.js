@@ -183,12 +183,13 @@ class InventoryService {
       console.log('Creando lote con insumos individuales:', batchData)
 
       // Usar el endpoint correcto que ya existe en el backend
-      const response = await this.api.post('/batches/create-with-supplies/', {
+      const response = await this.api.post('/batches/create-with-supplies', {
         batch: {
           expiration_date: batchData.batch.expiration_date,
           amount: parseInt(batchData.batch.amount),
           supplier: batchData.batch.supplier,
-          store_id: parseInt(batchData.batch.store_id)
+          store_id: parseInt(batchData.batch.store_id),
+          expiration_alert_days: batchData.batch.expiration_alert_days ? parseInt(batchData.batch.expiration_alert_days) : undefined
         },
         supply_code: {
           code: parseInt(batchData.supply_code.code),
@@ -584,7 +585,7 @@ class InventoryService {
       params.append('end_date', endDate)
       params.append('group_by', groupBy)
 
-      const response = await this.api.get(`/inventory/transfer-report?${params.toString()}`)
+      const response = await this.api.get(`/inventory/reports/transfers?${params.toString()}`)
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener reporte de transferencias:', error)

@@ -45,7 +45,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	if !tempUser.IsValidRole() {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
-			Error:   "Rol inválido. Roles permitidos: admin, pabellón, encargado de bodega",
+			Error:   "Rol inválido. Roles permitidos: admin, pabellón, encargado de bodega, enfermera, doctor, pavedad",
 		})
 		return
 	}
@@ -87,7 +87,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 		return
 	}
 
-	user, err := c.userService.GetUserByID(rut)
+	user, err := c.userService.GetUserByRut(rut)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{
 			Success: false,

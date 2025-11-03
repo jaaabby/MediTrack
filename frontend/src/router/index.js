@@ -188,10 +188,27 @@ const routes = [
     }
   },
   {
-    path: '/supply-requests/success',
+    path: '/supply-requests/:id/edit',
+    name: 'EditSupplyRequest',
+    component: () => import('@/views/SupplyRequestForm.vue'),
+    props: route => ({ 
+      id: parseInt(route.params.id),
+      editMode: true 
+    }),
+    meta: {
+      title: 'Editar Solicitud - MediTrack',
+      description: 'Editar solicitud de insumos médicos devuelta',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/supply-requests/success/:id?',
     name: 'SupplyRequestSuccess',
     component: () => import('@/views/SupplyRequestSuccess.vue'),
-    props: route => ({ requestData: route.params.requestData }),
+    props: route => ({ 
+      requestId: route.params.id ? parseInt(route.params.id) : null,
+      requestData: route.params.requestData 
+    }),
     meta: {
       title: 'Solicitud Creada - MediTrack',
       description: 'Confirmación de solicitud creada exitosamente',
@@ -245,6 +262,55 @@ const routes = [
       title: 'Tipos de Cirugía - MediTrack',
       description: 'Administración de tipos de procedimientos quirúrgicos',
       requiresAuth: true
+    }
+  },
+
+  // Configuración Médica - Especialidades Médicas
+  {
+    path: '/medical-specialties',
+    name: 'MedicalSpecialtyManagement',
+    component: () => import('@/views/MedicalSpecialtyManagement.vue'),
+    meta: {
+      title: 'Especialidades Médicas - MediTrack',
+      description: 'Administración de especialidades médicas',
+      requiresAuth: true
+    }
+  },
+
+  // Configuración Médica - Insumos Típicos por Cirugía
+  {
+    path: '/surgery-typical-supplies',
+    name: 'SurgeryTypicalSupplyManagement',
+    component: () => import('@/views/SurgeryTypicalSupplyManagement.vue'),
+    meta: {
+      title: 'Insumos Típicos por Cirugía - MediTrack',
+      description: 'Gestión de insumos típicos asociados a cirugías',
+      requiresAuth: true
+    }
+  },
+
+  // Configuración Médica - Información de Doctores
+  {
+    path: '/doctor-info',
+    name: 'DoctorInfoManagement',
+    component: () => import('@/views/DoctorInfoManagement.vue'),
+    meta: {
+      title: 'Información de Doctores - MediTrack',
+      description: 'Gestión de información extendida de doctores',
+      requiresAuth: true
+    }
+  },
+
+  // Configuración - Configuración de Proveedores
+  {
+    path: '/supplier-configs',
+    name: 'SupplierConfigManagement',
+    component: () => import('@/views/SupplierConfigManagement.vue'),
+    meta: {
+      title: 'Configuración de Proveedores - MediTrack',
+      description: 'Gestión de alertas de vencimiento por proveedor',
+      requiresAuth: true,
+      requiredRoles: ['admin', 'encargado de bodega']
     }
   },
 
@@ -345,27 +411,67 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Verificación de autenticación
+  // Si está autenticado y trata de acceder al login, redirigir al home
+  if (to.name === 'Login' && authStore.isAuthenticated) {
+    console.log('✓ Usuario autenticado intentando acceder a login, redirigiendo a home')
+    next({ name: 'Home', replace: true })
+    return
+  }
+
+  // Verificación de autenticación para rutas protegidas
   if (to.meta.requiresAuth !== false) {
     // Verificar si el usuario está autenticado
     if (!authStore.isAuthenticated) {
-      // Intentar restaurar sesión desde localStorage
-      await authStore.initializeAuth()
+      console.log('✗ Usuario no autenticado para ruta protegida')
+      // Intentar restaurar sesión desde localStorage solo si no está autenticado
+      authStore.initializeAuth()
       
       if (!authStore.isAuthenticated) {
+        console.log('✗ No se pudo restaurar sesión, redirigiendo a login')
         next({
           name: 'Login',
-          query: { redirect: to.fullPath }
+          query: { redirect: to.fullPath },
+          replace: true
         })
         return
       }
+      console.log('✓ Sesión restaurada exitosamente')
     }
   }
 
-  // Si está autenticado y trata de acceder al login, redirigir al home
-  if (to.name === 'Login' && authStore.isAuthenticated) {
-    next({ name: 'Home' })
-    return
+  // Protección específica para doctores - solo pueden acceder a rutas de solicitudes, home y perfil
+  if (authStore.isAuthenticated && authStore.isDoctor) {
+    const allowedRoutesForDoctor = [
+      'Home',
+      'SupplyRequestList', 
+      'SupplyRequestForm',
+      'EditSupplyRequest',
+      'SupplyRequestDetails', 
+      'SupplyRequestSuccess',
+      'Profile'
+    ]
+    
+    if (!allowedRoutesForDoctor.includes(to.name)) {
+      console.log('✗ Doctor intentando acceder a ruta no permitida:', to.name)
+      next({ name: 'Home', replace: true })
+      return
+    }
+  }
+
+  // Protección específica para pavedad - solo pueden acceder a home, solicitudes (sin crear) y perfil
+  if (authStore.isAuthenticated && authStore.isPavedad) {
+    const allowedRoutesForPavedad = [
+      'Home',
+      'SupplyRequestList', 
+      'SupplyRequestDetails',
+      'Profile'
+    ]
+    
+    if (!allowedRoutesForPavedad.includes(to.name)) {
+      console.log('✗ Pavedad intentando acceder a ruta no permitida:', to.name)
+      next({ name: 'Home', replace: true })
+      return
+    }
   }
 
   next()

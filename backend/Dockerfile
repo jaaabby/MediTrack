@@ -1,5 +1,5 @@
-# Etapa de construcción
-FROM golang:1.21-alpine AS builder
+# Etapa 1: Build
+FROM golang:1.23-alpine AS builder
 
 # Instalar dependencias del sistema
 RUN apk add --no-cache git ca-certificates tzdata
@@ -16,33 +16,30 @@ RUN go mod download
 # Copiar código fuente
 COPY . .
 
-# Construir la aplicación
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
+# Compilar la aplicación
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o meditrack ./main.go
 
-# Etapa final
+# Etapa 2: Runtime
 FROM alpine:latest
 
-# Instalar dependencias del sistema
-RUN apk --no-cache add ca-certificates tzdata
+# Instalar certificados CA, timezone data y wget para health checks
+RUN apk --no-cache add ca-certificates tzdata wget
 
-# Crear usuario no-root
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+# Establecer zona horaria
+ENV TZ=America/Santiago
 
-# Establecer directorio de trabajo
 WORKDIR /root/
 
-# Copiar binario desde la etapa de construcción
-COPY --from=builder /app/main .
+# Copiar el binario compilado desde la etapa de build
+COPY --from=builder /app/meditrack .
 
-# Cambiar propietario del binario
-RUN chown appuser:appgroup main
-
-# Cambiar a usuario no-root
-USER appuser
+# Copiar certificados y plantillas de email si existen
+COPY --from=builder /app/certs ./certs
+COPY --from=builder /app/mailer/templates ./mailer/templates
 
 # Exponer puerto
 EXPOSE 8080
 
-# Comando por defecto
-CMD ["./main"] 
+# Comando para ejecutar la aplicación
+CMD ["./meditrack"]
+

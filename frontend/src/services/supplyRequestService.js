@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
 
@@ -112,6 +113,17 @@ class SupplyRequestService {
     }
   }
 
+  // Actualizar estado de solicitud
+  async updateSupplyRequestStatus(id, statusData) {
+    try {
+      const response = await this.api.put(`/supply-requests/${id}/status`, statusData)
+      return response.data
+    } catch (error) {
+      console.error('Error al actualizar estado:', error)
+      throw error
+    }
+  }
+
   // Eliminar solicitud
   async deleteSupplyRequest(id) {
     try {
@@ -212,13 +224,7 @@ class SupplyRequestService {
       errors.push('El pabellón es obligatorio')
     }
 
-    if (!requestData.requested_by) {
-      errors.push('El solicitante es obligatorio')
-    }
-
-    if (!requestData.requested_by_name) {
-      errors.push('El nombre del solicitante es obligatorio')
-    }
+    // Los datos del solicitante se obtienen automáticamente de la sesión
 
     if (!requestData.items || requestData.items.length === 0) {
       errors.push('Debe agregar al menos un insumo')
@@ -238,8 +244,15 @@ class SupplyRequestService {
       })
     }
 
-    if (!['low', 'normal', 'high', 'critical'].includes(requestData.priority)) {
-      errors.push('La prioridad debe ser: low, normal, high o critical')
+    if (!requestData.surgery_datetime) {
+      errors.push('La fecha y hora de cirugía es obligatoria')
+    } else {
+      // Validar que la fecha no sea en el pasado
+      const surgeryDate = new Date(requestData.surgery_datetime)
+      const now = new Date()
+      if (surgeryDate < now) {
+        errors.push('La fecha y hora de cirugía no puede ser en el pasado')
+      }
     }
 
     return {
@@ -250,12 +263,31 @@ class SupplyRequestService {
 
   // Formatear datos para envío
   formatSupplyRequestForAPI(formData) {
+    const authStore = useAuthStore()
+    
+    // Validar y formatear surgery_datetime
+    let surgeryDatetime = formData.surgery_datetime
+    if (!surgeryDatetime || surgeryDatetime === '' || surgeryDatetime === '0000-00-00 00:00:00') {
+      // Si no hay fecha, usar la fecha actual + 24 horas como mínimo
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      surgeryDatetime = tomorrow.toISOString()
+    } else if (typeof surgeryDatetime === 'string' && !surgeryDatetime.includes('T')) {
+      // Si es un datetime-local format (YYYY-MM-DDTHH:mm), convertir a ISO
+      surgeryDatetime = new Date(surgeryDatetime).toISOString()
+    }
+    
     return {
       pavilion_id: parseInt(formData.pavilion_id),
-      requested_by: formData.requested_by || 'SYSTEM',
-      requested_by_name: formData.requested_by_name || 'Sistema MediTrack',
-      priority: formData.priority || 'normal',
+      requested_by: authStore.getUserRut || 'SYSTEM',
+      requested_by_name: authStore.getUserName || 'Usuario Sistema',
+      surgery_datetime: surgeryDatetime,
       notes: formData.notes || '',
+      // Campos de médico responsable
+      surgeon_id: formData.surgeon_id || null,
+      surgeon_name: formData.surgeon_name || null,
+      surgery_id: formData.surgery_id ? parseInt(formData.surgery_id) : null,
+      specialty_id: formData.specialty_id ? parseInt(formData.specialty_id) : null,
       items: formData.items.map(item => ({
         supply_code: parseInt(item.supply_code),
         supply_name: item.supply_name,
@@ -274,11 +306,22 @@ class SupplyRequestService {
   getStatusLabel(status) {
     const labels = {
       'pending': 'Pendiente',
+      'pendiente_pavedad': 'Pendiente Pavedad',
+      'asignado_bodega': 'Asignado a Bodega',
+      'en_proceso': 'En Proceso',
       'approved': 'Aprobada',
+      'aprobado': 'Aprobado',
       'rejected': 'Rechazada',
+      'rechazado': 'Rechazado',
       'in_process': 'En Proceso',
       'completed': 'Completada',
-      'cancelled': 'Cancelada'
+      'completado': 'Completado',
+      'cancelled': 'Cancelada',
+      'cancelado': 'Cancelado',
+      'parcialmente_aprobado': 'Parcialmente Aprobado',
+      'pendiente_revision': 'Pendiente de Revisión',
+      'devuelto': 'Devuelto al Solicitante',
+      'devuelto_al_encargado': 'Devuelto al Encargado'
     }
     return labels[status] || status
   }
@@ -287,13 +330,65 @@ class SupplyRequestService {
   getStatusColor(status) {
     const colors = {
       'pending': 'yellow',
+      'pendiente_pavedad': 'purple',
+      'asignado_bodega': 'blue',
+      'en_proceso': 'blue',
       'approved': 'green',
+      'aprobado': 'green',
       'rejected': 'red',
+      'rechazado': 'red',
       'in_process': 'blue',
       'completed': 'green',
-      'cancelled': 'gray'
+      'completado': 'green',
+      'cancelled': 'gray',
+      'cancelado': 'gray',
+      'parcialmente_aprobado': 'yellow',
+      'pendiente_revision': 'orange',
+      'devuelto': 'orange',
+      'devuelto_al_encargado': 'blue'
     }
     return colors[status] || 'gray'
+  }
+
+  // Formatear fecha de cirugía para mostrar
+  formatSurgeryDateTime(surgeryDateTime) {
+    if (!surgeryDateTime) return 'No programada'
+    
+    const date = new Date(surgeryDateTime)
+    return date.toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+  }
+
+  // Calcular urgencia basada en la fecha de cirugía
+  calculateUrgencyFromSurgeryDate(surgeryDateTime) {
+    if (!surgeryDateTime) return 'normal'
+    
+    const surgeryDate = new Date(surgeryDateTime)
+    const now = new Date()
+    const diffHours = (surgeryDate - now) / (1000 * 60 * 60)
+    
+    if (diffHours < 6) return 'critical'
+    if (diffHours < 24) return 'high'
+    if (diffHours < 72) return 'normal'
+    return 'low'
+  }
+
+  // Obtener color basado en urgencia de fecha de cirugía
+  getUrgencyColor(surgeryDateTime) {
+    const urgency = this.calculateUrgencyFromSurgeryDate(surgeryDateTime)
+    const colors = {
+      'critical': 'red',
+      'high': 'orange', 
+      'normal': 'blue',
+      'low': 'gray'
+    }
+    return colors[urgency] || 'blue'
   }
 
   // Obtener etiquetas de prioridad
@@ -316,6 +411,89 @@ class SupplyRequestService {
       'critical': 'red'
     }
     return colors[priority] || 'blue'
+  }
+
+  // ========================
+  // WORKFLOW DE APROBACIÓN (PAVEDAD)
+  // ========================
+
+  // Asignar solicitud a encargado de bodega (solo Pavedad)
+  async assignRequestToWarehouseManager(requestId, assignmentData) {
+    try {
+      const response = await this.api.put(`/supply-requests/${requestId}/assign`, assignmentData)
+      return response.data
+    } catch (error) {
+      console.error('Error al asignar solicitud:', error)
+      throw error
+    }
+  }
+
+  // Obtener solicitudes pendientes de asignación por Pavedad
+  async getPendingRequestsForPavedad() {
+    try {
+      const response = await this.api.get('/supply-requests/pending-pavedad')
+      return response.data
+    } catch (error) {
+      console.error('Error al obtener solicitudes pendientes para Pavedad:', error)
+      throw error
+    }
+  }
+
+  // Obtener solicitudes asignadas a un encargado de bodega
+  async getAssignedRequestsForWarehouseManager(warehouseManagerRut) {
+    try {
+      const response = await this.api.get(`/supply-requests/assigned/${warehouseManagerRut}`)
+      return response.data
+    } catch (error) {
+      console.error('Error al obtener solicitudes asignadas:', error)
+      throw error
+    }
+  }
+
+  // ========================
+  // REVISIÓN INDIVIDUAL DE ITEMS
+  // ========================
+
+  // Obtener items de una solicitud
+  async getSupplyRequestItems(requestId) {
+    try {
+      const response = await this.api.get(`/supply-requests/${requestId}/items`)
+      return {
+        success: true,
+        data: response.data.data || response.data
+      }
+    } catch (error) {
+      console.error('Error al obtener items:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      }
+    }
+  }
+
+  // Revisar un item individual (aceptar, rechazar o devolver)
+  async reviewSupplyRequestItem(itemId, reviewData) {
+    try {
+      const response = await this.api.put(`/supply-requests/items/${itemId}/review`, reviewData)
+      return response.data
+    } catch (error) {
+      console.error('Error al revisar item:', error)
+      throw error
+    }
+  }
+
+  // Reenviar una solicitud devuelta
+  async resubmitReturnedRequest(requestId, updatedItems, notes = '') {
+    try {
+      const response = await this.api.put(`/supply-requests/${requestId}/resubmit`, {
+        updated_items: updatedItems,
+        notes: notes
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error al reenviar solicitud:', error)
+      throw error
+    }
   }
 }
 

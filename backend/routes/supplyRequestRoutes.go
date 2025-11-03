@@ -15,10 +15,22 @@ func SetupSupplyRequestRoutes(router *gin.Engine, supplyRequestController *contr
 		supplyRequestGroup.POST("", supplyRequestController.CreateSupplyRequest)
 		supplyRequestGroup.GET("", supplyRequestController.GetAllSupplyRequests)
 		supplyRequestGroup.GET("/:id", supplyRequestController.GetSupplyRequestByID)
+		supplyRequestGroup.GET("/:id/items", supplyRequestController.GetSupplyRequestItemsController)
 		supplyRequestGroup.PUT("/:id/approve", supplyRequestController.ApproveSupplyRequest)
 		supplyRequestGroup.PUT("/:id/reject", supplyRequestController.RejectSupplyRequest)
 		supplyRequestGroup.PUT("/:id/complete", supplyRequestController.CompleteSupplyRequest)
 		supplyRequestGroup.DELETE("/:id", supplyRequestController.DeleteSupplyRequest)
+
+		// Rutas para flujo de aprobación con Pavedad
+		supplyRequestGroup.GET("/pending-pavedad", supplyRequestController.GetPendingRequestsForPavedad)
+		supplyRequestGroup.PUT("/:id/assign", supplyRequestController.AssignRequestToWarehouseManager)
+		supplyRequestGroup.GET("/assigned/:rut", supplyRequestController.GetAssignedRequestsForWarehouseManager)
+
+		// Rutas para revisión individual de items
+		supplyRequestGroup.PUT("/items/:itemId/review", supplyRequestController.ReviewSupplyRequestItem)
+
+		// Ruta para reenviar solicitudes devueltas
+		supplyRequestGroup.PUT("/:id/resubmit", supplyRequestController.ResubmitReturnedRequest)
 
 		// Rutas por pabellón
 		supplyRequestGroup.GET("/pavilion/:pavilion_id", supplyRequestController.GetSupplyRequestsByPavilion)

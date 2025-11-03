@@ -46,23 +46,6 @@ func (c *SupplyRequestController) CreateSupplyRequest(ctx *gin.Context) {
 		return
 	}
 
-	// Validar prioridad
-	validPriorities := []string{"low", "normal", "high", "critical", ""}
-	validPriority := false
-	for _, p := range validPriorities {
-		if request.Priority == p {
-			validPriority = true
-			break
-		}
-	}
-	if !validPriority {
-		ctx.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "Prioridad inválida. Debe ser: low, normal, high o critical",
-		})
-		return
-	}
-
 	supplyRequest, err := c.supplyRequestService.CreateSupplyRequest(request)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
@@ -227,6 +210,34 @@ func (c *SupplyRequestController) GetSupplyRequestsByPavilion(ctx *gin.Context) 
 
 // ApproveSupplyRequest aprueba una solicitud
 func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
+	// Verificar permisos - solo encargado de bodega puede aprobar
+	user, exists := ctx.Get("user")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, Response{
+			Success: false,
+			Error:   "Usuario no autenticado",
+		})
+		return
+	}
+
+	userClaims, ok := user.(map[string]interface{})
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error procesando información del usuario",
+		})
+		return
+	}
+
+	userRole, exists := userClaims["role"].(string)
+	if !exists || userRole != "encargado de bodega" {
+		ctx.JSON(http.StatusForbidden, Response{
+			Success: false,
+			Error:   "No tiene permisos para aprobar solicitudes. Solo encargados de bodega pueden realizar esta acción",
+		})
+		return
+	}
+
 	id := ctx.Param("id")
 	if id == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
@@ -278,6 +289,34 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 
 // RejectSupplyRequest rechaza una solicitud
 func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
+	// Verificar permisos - solo encargado de bodega puede rechazar
+	user, exists := ctx.Get("user")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, Response{
+			Success: false,
+			Error:   "Usuario no autenticado",
+		})
+		return
+	}
+
+	userClaims, ok := user.(map[string]interface{})
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error procesando información del usuario",
+		})
+		return
+	}
+
+	userRole, exists := userClaims["role"].(string)
+	if !exists || userRole != "encargado de bodega" {
+		ctx.JSON(http.StatusForbidden, Response{
+			Success: false,
+			Error:   "No tiene permisos para rechazar solicitudes. Solo encargados de bodega pueden realizar esta acción",
+		})
+		return
+	}
+
 	id := ctx.Param("id")
 	if id == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
@@ -579,4 +618,172 @@ func (c *SupplyRequestController) BulkAssignQRs(ctx *gin.Context) {
 			Data:    response,
 		})
 	}
+}
+
+// AssignRequestToWarehouseManager asigna una solicitud a un encargado de bodega (usado por Pavedad)
+func (c *SupplyRequestController) AssignRequestToWarehouseManager(ctx *gin.Context) {
+	requestID, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de solicitud inválido",
+		})
+		return
+	}
+
+	var request services.AssignRequestToWarehouseManagerRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	if err := c.supplyRequestService.AssignRequestToWarehouseManager(requestID, request); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Solicitud asignada exitosamente a encargado de bodega",
+	})
+}
+
+// GetPendingRequestsForPavedad obtiene todas las solicitudes pendientes de asignación por Pavedad
+func (c *SupplyRequestController) GetPendingRequestsForPavedad(ctx *gin.Context) {
+	requests, err := c.supplyRequestService.GetPendingRequestsForPavedad()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    requests,
+	})
+}
+
+// GetAssignedRequestsForWarehouseManager obtiene las solicitudes asignadas a un encargado de bodega
+func (c *SupplyRequestController) GetAssignedRequestsForWarehouseManager(ctx *gin.Context) {
+	warehouseManagerRut := ctx.Param("rut")
+
+	requests, err := c.supplyRequestService.GetAssignedRequestsForWarehouseManager(warehouseManagerRut)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    requests,
+	})
+}
+
+// ReviewSupplyRequestItem permite revisar un item individual (aceptar/rechazar/devolver)
+func (c *SupplyRequestController) ReviewSupplyRequestItem(ctx *gin.Context) {
+	itemIDStr := ctx.Param("itemId")
+	itemID, err := strconv.Atoi(itemIDStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de item inválido",
+		})
+		return
+	}
+
+	var req services.ReviewItemRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	if err := c.supplyRequestService.ReviewSupplyRequestItem(itemID, req); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Item revisado exitosamente",
+	})
+}
+
+// GetSupplyRequestItemsController obtiene todos los items de una solicitud
+func (c *SupplyRequestController) GetSupplyRequestItemsController(ctx *gin.Context) {
+	requestIDStr := ctx.Param("id")
+	requestID, err := strconv.Atoi(requestIDStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de solicitud inválido",
+		})
+		return
+	}
+
+	items, err := c.supplyRequestService.GetSupplyRequestItems(requestID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    items,
+	})
+}
+
+// ResubmitReturnedRequest permite al doctor reenviar una solicitud devuelta
+func (c *SupplyRequestController) ResubmitReturnedRequest(ctx *gin.Context) {
+	requestIDStr := ctx.Param("id")
+	requestID, err := strconv.Atoi(requestIDStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de solicitud inválido",
+		})
+		return
+	}
+
+	var req services.ResubmitReturnedRequestData
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	if err := c.supplyRequestService.ResubmitReturnedRequest(requestID, req); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Solicitud reenviada exitosamente",
+	})
 }

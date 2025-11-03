@@ -1,9 +1,13 @@
 <template>
   <div class="max-w-4xl mx-auto p-3 sm:p-6 bg-white rounded-lg shadow-lg">
     <!-- Título principal -->
-    <div class="mb-4 sm:mb-6">
-      <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Nueva Solicitud de Insumo</h2>
-      <p class="text-sm sm:text-base text-gray-600">Crear solicitud con trazabilidad QR completa</p>
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 mb-2">
+        {{ props.editMode ? 'Editar Solicitud de Insumo' : 'Nueva Solicitud de Insumo' }}
+      </h2>
+      <p class="text-gray-600">
+        {{ props.editMode ? 'Modificar y reenviar solicitud devuelta' : 'Crear solicitud con trazabilidad completa' }}
+      </p>
     </div>
 
     <!-- Mostrar errores generales -->
@@ -26,17 +30,63 @@
       <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
         <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Información Básica</h3>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <!-- Información del solicitante (automática) -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Solicitante
+          </label>
+          <div class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
+            <div class="font-medium">{{ authStore.getUserName || 'Usuario' }}</div>
+            <div class="text-sm text-gray-500">{{ authStore.getUserRut || 'RUT no disponible' }}</div>
+            <div v-if="authStore.getUserSpecialty" class="font-medium">
+              <span class="inline-flex items-center">
+                {{ authStore.getUserSpecialty }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Fecha y hora de cirugía -->
+          <div>
+            <label for="surgery_datetime" class="block text-sm font-medium text-gray-700 mb-1">
+              Fecha y Hora de Cirugía <span class="text-red-500">*</span>
+            </label>
+            <!-- Modo edición: mostrar como solo lectura -->
+            <div v-if="props.editMode" class="w-full px-3 py-2 bg-gray-200 border border-gray-400 rounded-md text-gray-600 font-medium cursor-not-allowed">
+              {{ originalRequestData.surgery_datetime_display }}
+            </div>
+            <!-- Modo creación: campo editable -->
+            <input
+              v-else
+              type="datetime-local"
+              id="surgery_datetime"
+              v-model="requestForm.surgery_datetime"
+              required
+              :min="minDateTime"
+              class="form-input"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              {{ props.editMode ? 'Fecha y hora programada para la cirugía' : 'Selecciona la fecha y hora programada para la cirugía' }}
+            </p>
+          </div>
+
           <!-- Selección de Pabellón -->
           <div>
             <label for="pavilion" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Pabellón <span class="text-red-500">*</span>
             </label>
+            <!-- Modo edición: mostrar como solo lectura -->
+            <div v-if="props.editMode" class="w-full px-3 py-2 bg-gray-200 border border-gray-400 rounded-md text-gray-600 font-medium cursor-not-allowed">
+              {{ originalRequestData.pavilion_name }}
+            </div>
+            <!-- Modo creación: campo editable -->
             <select
+              v-else
               id="pavilion"
               v-model="requestForm.pavilion_id"
               required
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="form-select text-sm"
               :disabled="loadingPavilions"
             >
               <option value="">Seleccionar pabellón</option>
@@ -48,55 +98,36 @@
                 {{ pavilion.name }}
               </option>
             </select>
-            <p v-if="loadingPavilions" class="text-xs text-gray-500 mt-1">Cargando pabellones...</p>
+            <p v-if="loadingPavilions && !props.editMode" class="text-xs text-gray-500 mt-1">Cargando pabellones...</p>
+            <p v-else class="text-xs text-gray-500 mt-1">
+              {{ props.editMode ? 'Pabellón donde se realizará la cirugía' : 'Selecciona el pabellón donde se realizará la cirugía' }}
+            </p>
           </div>
 
-          <!-- Prioridad -->
+          <!-- Tipo de Cirugía -->
           <div>
-            <label for="priority" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Prioridad <span class="text-red-500">*</span>
+            <label for="surgery_id" class="block text-sm font-medium text-gray-700 mb-1">
+              Tipo de Cirugía <span class="text-red-500">*</span>
             </label>
             <select
-              id="priority"
-              v-model="requestForm.priority"
+              id="surgery_id"
+              v-model="requestForm.surgery_id"
               required
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="form-select text-sm"
+              :disabled="loadingSurgeries"
             >
-              <option value="low">Baja</option>
-              <option value="normal">Normal</option>
-              <option value="high">Alta</option>
-              <option value="critical">Crítica</option>
+              <option :value="null">Seleccionar cirugía</option>
+              <option v-for="surgery in filteredSurgeries" :key="surgery.id" :value="surgery.id">
+                {{ surgery.name }}
+              </option>
             </select>
-          </div>
-
-          <!-- Solicitante -->
-          <div>
-            <label for="requestedBy" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Solicitante (RUT) <span class="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="requestedBy"
-              v-model="requestForm.requested_by"
-              required
-              placeholder="12.345.678-9"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <!-- Nombre del solicitante -->
-          <div>
-            <label for="requestedByName" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Nombre Completo <span class="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="requestedByName"
-              v-model="requestForm.requested_by_name"
-              required
-              placeholder="Nombre y apellidos"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            <p v-if="loadingSurgeries" class="text-xs text-gray-500 mt-1">Cargando cirugías...</p>
+            <p v-else-if="filteredSurgeries.length === 0" class="text-xs text-yellow-600 mt-1">
+              No hay cirugías disponibles para tu especialidad
+            </p>
+            <p v-else class="text-xs text-gray-500 mt-1">
+              Cirugías de {{ authStore.getUserSpecialty || 'tu especialidad' }}
+            </p>
           </div>
         </div>
 
@@ -109,8 +140,8 @@
             id="notes"
             v-model="requestForm.notes"
             rows="3"
-            placeholder="Observaciones adicionales sobre la solicitud..."
-            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            :placeholder="props.editMode ? 'Observaciones sobre los cambios realizados en esta solicitud...' : 'Observaciones adicionales sobre la solicitud...'"
+                  class="form-input text-sm"
           ></textarea>
         </div>
       </div>
@@ -122,7 +153,7 @@
           <button
             type="button"
             @click="addSupplyItem"
-            class="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+            class="btn-primary w-full sm:w-auto"
           >
             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -169,22 +200,54 @@
                   v-model.number="item.supply_code"
                   required
                   placeholder="1234"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select text-sm"
                 />
               </div>
 
-              <!-- Nombre del insumo -->
-              <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              <!-- Nombre del insumo con autocompletado -->
+              <div class="relative">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
                   Nombre Insumo <span class="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  v-model="item.supply_name"
+                  :value="supplySearchTerms[index] || item.supply_name"
+                  @input="onSupplyInputChange(index, $event.target.value)"
+                  @focus="onSupplyInputFocus(index)"
+                  @blur="onSupplyInputBlur(index)"
                   required
-                  placeholder="Nombre del insumo"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Buscar insumo..."
+                  class="form-input"
+                  autocomplete="off"
                 />
+                
+                <!-- Dropdown de sugerencias -->
+                <div 
+                  v-if="showSupplyDropdowns[index] && medicalSupplies.length > 0"
+                  class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                >
+                  <div 
+                    v-for="supply in getFilteredSupplies(index)" 
+                    :key="supply.id"
+                    @click="selectSupply(index, supply)"
+                    class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div class="font-medium text-gray-900">{{ supply.name }}</div>
+                    <div class="text-sm text-gray-500">Código: {{ supply.code }}</div>
+                  </div>
+                  
+                  <div v-if="getFilteredSupplies(index).length === 0" class="px-3 py-2 text-gray-500 text-center">
+                    No se encontraron insumos
+                  </div>
+                </div>
+                
+                <!-- Indicador de carga -->
+                <div v-if="loadingSupplies" class="absolute right-3 top-9 text-gray-400">
+                  <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
               </div>
 
               <!-- Cantidad solicitada -->
@@ -198,14 +261,41 @@
                   required
                   min="1"
                   placeholder="1"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select text-sm"
                 />
               </div>
             </div>
 
+            <!-- Observaciones del item devuelto (solo en modo edición cuando item fue devuelto) -->
+            <div v-if="props.editMode && item.item_status === 'devuelto'" class="mt-4 space-y-3">
+              <!-- Mostrar observaciones anteriores del encargado -->
+              <div v-if="item.item_notes" class="bg-orange-50 border border-orange-200 rounded-md p-3">
+                <label class="block text-xs font-semibold text-orange-800 mb-1">
+                  Motivo de devolución del encargado:
+                </label>
+                <p class="text-xs text-orange-900 whitespace-pre-wrap">{{ item.item_notes }}</p>
+              </div>
+              
+              <!-- Campo para nuevas observaciones del doctor -->
+              <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Observaciones Insumo
+                </label>
+                <textarea
+                  v-model="item.resubmit_notes"
+                  rows="2"
+                  placeholder="Agregue sus observaciones..."
+                  class="w-full px-3 py-2 text-sm border border-orange-300 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                ></textarea>
+                <p class="mt-1 text-xs text-orange-600">
+                  Opcional: Agregue observaciones si modificó la cantidad o desea aclarar algo sobre este insumo.
+                </p>
+              </div>
+            </div>
+
             <!-- Especificaciones técnicas -->
-            <div class="mt-3 sm:mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <!-- Medidas/Tamaño -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Medidas/Tamaño 
               <div>
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Medidas/Tamaño
@@ -214,11 +304,11 @@
                   type="text"
                   v-model="item.size"
                   placeholder="Ej: Grande, Mediano, 20cm, etc."
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select text-sm"
                 />
-              </div>
+              </div>-->
 
-              <!-- Marca -->
+              <!-- Marca 
               <div>
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Marca
@@ -227,13 +317,13 @@
                   type="text"
                   v-model="item.brand"
                   placeholder="Marca preferida"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select text-sm"
                 />
               </div>
-            </div>
+            </div>-->
 
-            <!-- Características especiales -->
-            <div class="mt-3 sm:mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <!-- Características especiales
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">-->
               <!-- Es pediátrico -->
               <div class="flex items-center">
                 <input
@@ -246,49 +336,33 @@
                   Es insumo pediátrico
                 </label>
               </div>
-
-              <!-- Nivel de urgencia -->
-              <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  Urgencia del Item
-                </label>
-                <select
-                  v-model="item.urgency_level"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="low">Baja</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">Alta</option>
-                  <option value="critical">Crítica</option>
-                </select>
-              </div>
             </div>
 
-            <!-- Especificaciones y observaciones del insumo -->
-            <div class="mt-3 sm:mt-4">
-              <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+            <!-- Especificaciones y observaciones del insumo 
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">
                 Especificaciones Técnicas
               </label>
               <textarea
                 v-model="item.specifications"
                 rows="2"
                 placeholder="Especificaciones técnicas del insumo (material, dimensiones exactas, características especiales, etc.)"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="form-select text-sm"
               ></textarea>
-            </div>
+            </div>-->
 
-            <!-- Solicitudes especiales -->
-            <div class="mt-3 sm:mt-4">
-              <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+            <!-- Solicitudes especiales
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">
                 Solicitudes Especiales
               </label>
               <textarea
                 v-model="item.special_requests"
                 rows="2"
                 placeholder="Solicitudes especiales para este insumo (entrega urgente, manipulación especial, etc.)"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                class="form-select text-sm"
               ></textarea>
-            </div>
+            </div>-->
           </div>
         </div>
       </div>
@@ -319,7 +393,7 @@
           
           <button
             type="submit"
-            class="inline-flex items-center justify-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto order-1"
+            class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto order-1"
             :disabled="submitting"
           >
             <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -329,7 +403,12 @@
             <svg v-if="!submitting" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            {{ submitting ? 'Creando Solicitud...' : 'Crear Solicitud' }}
+            <span v-if="props.editMode">
+              {{ submitting ? 'Reenviando Solicitud...' : 'Reenviar Solicitud' }}
+            </span>
+            <span v-else>
+              {{ submitting ? 'Creando Solicitud...' : 'Crear Solicitud' }}
+            </span>
           </button>
         </div>
       </div>
@@ -338,9 +417,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
+import inventoryService from '../services/inventoryService'
+import surgeryService from '../services/surgeryService'
+import Swal from 'sweetalert2'
 
 // Props
 const props = defineProps({
@@ -357,20 +440,83 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['success', 'cancel', 'error'])
 
+// Stores
+const authStore = useAuthStore()
+
 // Estado reactivo
 const submitting = ref(false)
 const errors = ref([])
 const pavilions = ref([])
 const loadingPavilions = ref(false)
+const medicalSupplies = ref([])
+const loadingSupplies = ref(false)
+const supplySearchTerms = ref([])
+const showSupplyDropdowns = ref([])
+const surgeries = ref([])
+const loadingSurgeries = ref(false)
+
+// Fecha mínima para la cirugía (hoy)
+const minDateTime = computed(() => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+})
+
+// Formatear fecha para mostrar (en modo edición)
+const formatDateTimeForDisplay = (dateString) => {
+  if (!dateString) return 'No especificada'
+  
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Fecha inválida'
+    
+    const options = {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }
+    return date.toLocaleDateString('es-CL', options)
+  } catch (error) {
+    console.error('Error formateando fecha:', error)
+    return dateString
+  }
+}
 
 // Formulario de solicitud
 const requestForm = reactive({
   pavilion_id: '',
-  requested_by: '',
-  requested_by_name: '',
-  priority: 'normal',
+  surgery_datetime: '',
   notes: '',
-  items: []
+  items: [],
+  surgery_id: null
+})
+
+// Datos originales para mostrar en modo edición (solo lectura)
+const originalRequestData = ref({
+  pavilion_name: '',
+  surgery_datetime_display: '',
+  requester_name: '',
+  requester_rut: ''
+})
+
+// Computed: Filtrar cirugías según la especialidad del doctor logueado
+const filteredSurgeries = computed(() => {
+  const userSpecialtyId = authStore.getUserSpecialtyId
+  
+  // Si el usuario no tiene especialidad, mostrar todas las cirugías
+  if (!userSpecialtyId) {
+    return surgeries.value
+  }
+  
+  // Filtrar cirugías que coincidan con la especialidad del usuario
+  return surgeries.value.filter(surgery => surgery.specialty_id === userSpecialtyId)
 })
 
 // Template para nuevo item
@@ -392,7 +538,6 @@ const loadPavilions = async () => {
   try {
     const result = await pavilionService.getAllPavilions()
     pavilions.value = result
-    console.log('Pabellones cargados:', pavilions.value)
   } catch (error) {
     console.error('Error cargando pabellones:', error)
     errors.value.push('Error al cargar la lista de pabellones')
@@ -402,12 +547,83 @@ const loadPavilions = async () => {
   }
 }
 
+const loadSurgeries = async () => {
+  loadingSurgeries.value = true
+  try {
+    const result = await surgeryService.getAllSurgeries()
+    surgeries.value = result
+  } catch (error) {
+    console.error('Error cargando cirugías:', error)
+  } finally {
+    loadingSurgeries.value = false
+  }
+}
+
+const loadMedicalSupplies = async () => {
+  loadingSupplies.value = true
+  try {
+    const result = await inventoryService.getAllSupplyCodes()
+    medicalSupplies.value = result
+  } catch (error) {
+    console.error('Error cargando códigos de insumo:', error)
+    errors.value.push('Error al cargar la lista de códigos de insumo')
+    emit('error', error)
+  } finally {
+    loadingSupplies.value = false
+  }
+}
+
 const addSupplyItem = () => {
-  requestForm.items.push(newSupplyItem())
+  requestForm.items.unshift(newSupplyItem())
+  // Inicializar estados de búsqueda para el nuevo item al principio
+  supplySearchTerms.value.unshift('')
+  showSupplyDropdowns.value.unshift(false)
 }
 
 const removeSupplyItem = (index) => {
   requestForm.items.splice(index, 1)
+  // También remover los estados de búsqueda correspondientes
+  supplySearchTerms.value.splice(index, 1)
+  showSupplyDropdowns.value.splice(index, 1)
+}
+
+// Funciones para autocompletado de insumos
+const getFilteredSupplies = (index) => {
+  const searchTerm = supplySearchTerms.value[index] || ''
+  if (!searchTerm) return medicalSupplies.value.slice(0, 10) // Mostrar primeros 10 si no hay búsqueda
+  
+  return medicalSupplies.value.filter(supply => 
+    supply.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    supply.code?.toString().includes(searchTerm)
+  ).slice(0, 10) // Limitar a 10 resultados
+}
+
+const selectSupply = (index, supply) => {
+  requestForm.items[index].supply_name = supply.name
+  requestForm.items[index].supply_code = supply.code
+  supplySearchTerms.value[index] = supply.name
+  showSupplyDropdowns.value[index] = false
+}
+
+const onSupplyInputFocus = (index) => {
+  showSupplyDropdowns.value[index] = true
+  // Inicializar el término de búsqueda si no existe
+  if (!supplySearchTerms.value[index]) {
+    supplySearchTerms.value[index] = requestForm.items[index].supply_name || ''
+  }
+}
+
+const onSupplyInputBlur = (index) => {
+  // Delay para permitir clicks en el dropdown
+  setTimeout(() => {
+    showSupplyDropdowns.value[index] = false
+  }, 200)
+}
+
+const onSupplyInputChange = (index, value) => {
+  supplySearchTerms.value[index] = value
+  requestForm.items[index].supply_name = value
+  showSupplyDropdowns.value[index] = true
 }
 
 const validateForm = () => {
@@ -419,11 +635,10 @@ const validateForm = () => {
 const resetForm = () => {
   Object.assign(requestForm, {
     pavilion_id: '',
-    requested_by: '',
-    requested_by_name: '',
-    priority: 'normal',
+    surgery_datetime: '',
     notes: '',
-    items: []
+    items: [],
+    surgery_id: null
   })
   errors.value = []
 }
@@ -441,25 +656,17 @@ const submitRequest = async () => {
   errors.value = []
 
   try {
-    const formattedData = supplyRequestService.formatSupplyRequestForAPI(requestForm)
-    console.log('Enviando solicitud:', formattedData)
-    
-    const result = await supplyRequestService.createSupplyRequest(formattedData)
-    
-    if (result.success) {
-      console.log('Solicitud creada exitosamente:', result)
-      
-      // Emitir evento de éxito con los datos de la solicitud
-      emit('success', result.data?.request || result.data)
+    // Si está en modo edición, reenviar la solicitud devuelta
+    if (props.editMode && props.id) {
+      await resubmitRequest()
     } else {
-      const errorMessage = 'Error al crear la solicitud: ' + (result.error || 'Error desconocido')
-      errors.value.push(errorMessage)
-      emit('error', new Error(errorMessage))
+      // Crear nueva solicitud
+      await createNewRequest()
     }
   } catch (error) {
     console.error('Error al enviar solicitud:', error)
     
-    let errorMessage = 'Error desconocido al crear la solicitud'
+    let errorMessage = 'Error desconocido al procesar la solicitud'
     if (error.response?.data?.error) {
       errorMessage = 'Error del servidor: ' + error.response.data.error
     } else if (error.message) {
@@ -473,12 +680,209 @@ const submitRequest = async () => {
   }
 }
 
+// Crear nueva solicitud
+const createNewRequest = async () => {
+  const formattedData = supplyRequestService.formatSupplyRequestForAPI(requestForm)
+  console.log('Enviando solicitud:', formattedData)
+  
+  const result = await supplyRequestService.createSupplyRequest(formattedData)
+  
+  if (result.success) {
+    console.log('Solicitud creada exitosamente:', result)
+    emit('success', result.data?.request || result.data)
+  } else {
+    const errorMessage = 'Error al crear la solicitud: ' + (result.error || 'Error desconocido')
+    errors.value.push(errorMessage)
+    emit('error', new Error(errorMessage))
+  }
+}
+
+// Reenviar solicitud devuelta
+const resubmitRequest = async () => {
+  // Preparar solo los items que fueron devueltos con sus nuevas cantidades y observaciones
+  const updatedItems = requestForm.items
+    .filter(item => item.item_status === 'devuelto')
+    .map(item => ({
+      item_id: item.id,
+      quantity: item.quantity_requested,
+      notes: item.resubmit_notes || '' // Nuevas observaciones del doctor sobre este item
+    }))
+  
+  console.log('Reenviando solicitud con items:', updatedItems)
+  console.log('Notas del solicitante:', requestForm.notes)
+  
+  const result = await supplyRequestService.resubmitReturnedRequest(props.id, updatedItems, requestForm.notes)
+  
+  if (result.success) {
+    console.log('Solicitud reenviada exitosamente')
+    
+    await Swal.fire({
+      icon: 'success',
+      title: 'Solicitud Reenviada',
+      text: 'La solicitud ha sido reenviada al encargado de bodega',
+      timer: 2000,
+      showConfirmButton: false
+    })
+    
+    emit('success', { id: props.id })
+  } else {
+    const errorMessage = 'Error al reenviar la solicitud: ' + (result.error || 'Error desconocido')
+    errors.value.push(errorMessage)
+    emit('error', new Error(errorMessage))
+  }
+}
+
 // Lifecycle
-onMounted(() => {
-  loadPavilions()
-  // Agregar un insumo por defecto
-  addSupplyItem()
+onMounted(async () => {
+  // Cargar listas primero
+  await Promise.all([
+    loadPavilions(),
+    loadMedicalSupplies(),
+    loadSurgeries()
+  ])
+  
+  // Si está en modo edición, cargar la solicitud DESPUÉS de que las listas estén listas
+  if (props.editMode && props.id) {
+    await loadRequestForEdit()
+  } else {
+    // Agregar un insumo por defecto solo si no está en modo edición
+    addSupplyItem()
+  }
 })
+
+// Función auxiliar para extraer solo las notas originales del solicitante
+const extractOriginalNotes = (fullNotes) => {
+  if (!fullNotes) return ''
+  
+  // Buscar el marcador de devolución
+  const devolucionIndex = fullNotes.indexOf('[Devolución por')
+  
+  // Si no hay marcador, devolver todas las notas
+  if (devolucionIndex === -1) {
+    return fullNotes.trim()
+  }
+  
+  // Extraer solo la parte antes del marcador
+  return fullNotes.substring(0, devolucionIndex).trim()
+}
+
+// Cargar solicitud para editar
+const loadRequestForEdit = async () => {
+  try {
+    console.log('🔄 Cargando solicitud para editar, ID:', props.id)
+    const response = await supplyRequestService.getSupplyRequestById(props.id)
+    console.log('📦 Respuesta de la solicitud:', response)
+    
+    if (response.success && response.data) {
+      // El backend devuelve data.request, data.items, data.assignments
+      const request = response.data.request || response.data
+      console.log('✅ Datos de la solicitud completa:', JSON.stringify(request, null, 2))
+      console.log('🏥 Pabellones disponibles:', JSON.stringify(pavilions.value, null, 2))
+      console.log('🔍 Datos directos - pavilion_id:', request.pavilion_id, 'surgery_datetime:', request.surgery_datetime)
+      
+      const pavilionId = request.pavilion_id
+      const surgeryDatetime = request.surgery_datetime
+      
+      console.log('📊 Valores finales - pavilionId:', pavilionId, 'surgeryDatetime:', surgeryDatetime)
+      
+      // Cargar datos básicos
+      requestForm.pavilion_id = pavilionId ? pavilionId.toString() : ''
+      requestForm.surgery_datetime = surgeryDatetime ? formatDateTimeForInput(surgeryDatetime) : ''
+      // En modo edición, dejar las observaciones vacías para que el usuario ingrese nuevas
+      requestForm.notes = ''
+      
+      // Cargar tipo de cirugía
+      requestForm.surgery_id = request.surgery_id || null
+      
+      // Guardar datos originales para mostrar en modo solo lectura
+      // Buscar el pabellón por ID - probar con conversión de tipos
+      const pavilionIdToFind = parseInt(pavilionId || 0)
+      let pavilionName = 'No especificado'
+      
+      console.log('🔍 Buscando pabellón con ID:', pavilionIdToFind)
+      console.log('📋 Pabellones disponibles:', pavilions.value)
+      
+      if (pavilionIdToFind > 0) {
+        const foundPavilion = pavilions.value.find(p => {
+          const pId = parseInt(p.id)
+          console.log(`  Comparando: ${pId} === ${pavilionIdToFind}?`, pId === pavilionIdToFind)
+          return pId === pavilionIdToFind
+        })
+        
+        if (foundPavilion) {
+          pavilionName = foundPavilion.name
+          console.log('✅ Pabellón encontrado:', pavilionName)
+        } else {
+          console.warn('⚠️ Pabellón no encontrado para ID:', pavilionIdToFind)
+          pavilionName = `Pabellón ID: ${pavilionIdToFind}`
+        }
+      }
+      
+      originalRequestData.value = {
+        pavilion_name: pavilionName,
+        surgery_datetime_display: surgeryDatetime ? formatDateTimeForDisplay(surgeryDatetime) : 'No especificada',
+        requester_name: request.requested_by_name || 'No disponible',
+        requester_rut: request.requested_by || 'No disponible'
+      }
+      
+      console.log('📝 Datos originales asignados:', originalRequestData.value)
+      
+      console.log('📝 Datos originales guardados:', originalRequestData.value)
+      
+      // Forzar actualización del DOM
+      await nextTick()
+      
+      console.log('📝 Formulario actualizado:', {
+        pavilion_id: requestForm.pavilion_id,
+        surgery_datetime: requestForm.surgery_datetime,
+        notes: requestForm.notes
+      })
+      
+      // Cargar items
+      const itemsResponse = await supplyRequestService.getSupplyRequestItems(props.id)
+      if (itemsResponse.success && itemsResponse.data) {
+        requestForm.items = itemsResponse.data.map(item => ({
+          id: item.id, // Incluir ID para tracking
+          supply_code: item.supply_code,
+          supply_name: item.supply_name,
+          quantity_requested: item.quantity_requested,
+          is_pediatric: item.is_pediatric,
+          item_status: item.item_status, // Para saber cuáles son editables
+          item_notes: item.item_notes, // Observaciones anteriores del encargado (solo lectura)
+          resubmit_notes: '', // Nuevas observaciones del doctor (editable)
+          specifications: '',
+          special_requests: '',
+          urgency_level: 'normal',
+          size: '',
+          brand: ''
+        }))
+        
+        // Inicializar arrays de búsqueda
+        supplySearchTerms.value = requestForm.items.map(() => '')
+        showSupplyDropdowns.value = requestForm.items.map(() => false)
+      }
+    }
+  } catch (error) {
+    console.error('Error cargando solicitud:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'No se pudo cargar la solicitud para editar'
+    })
+  }
+}
+
+// Función auxiliar para formatear fecha para input datetime-local
+const formatDateTimeForInput = (dateString) => {
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
 </script>
 
 <style scoped>

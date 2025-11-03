@@ -35,17 +35,35 @@ export const useAuthStore = defineStore('auth', {
     // Verificar si es doctor
     isDoctor: (state) => state.user?.role === 'doctor',
     
-    // Verificar si puede crear solicitudes (enfermera o doctor)
+    // Verificar si es pavedad
+    isPavedad: (state) => state.user?.role === 'pavedad',
+    
+    // Verificar si puede crear solicitudes (enfermera o doctor, pero NO pavedad)
     canCreateRequests: (state) => ['enfermera', 'doctor'].includes(state.user?.role),
     
     // Verificar si puede ver todas las solicitudes (admin o encargado de bodega)
-    canViewAllRequests: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
+    canViewAllRequests: (state) => ['admin', 'pavedad'].includes(state.user?.role),
     
-    // Verificar si puede ver solicitudes (todos excepto pabellón)
+    // Verificar si puede aprobar/rechazar solicitudes (solo encargado de bodega)
+    canApproveRequests: (state) => state.user?.role === 'encargado de bodega',
+    
+    // Verificar si puede gestionar inventario y QRs (admin o encargado de bodega)
+    canManageInventory: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
+    
+    // Verificar si puede ver solicitudes (todos excepto pabellón, pavedad puede ver)
     canViewRequests: (state) => state.user?.role !== 'pabellón',
     
-    // Verificar si puede ver inventario (todos excepto pabellón)
-    canViewInventory: (state) => state.user?.role !== 'pabellón',
+    // Verificar si puede ver inventario (todos excepto pabellón, doctor y pavedad)
+    canViewInventory: (state) => !['pabellón', 'doctor', 'pavedad'].includes(state.user?.role),
+    
+    // Verificar si puede ver estadísticas (todos excepto pabellón, doctor y pavedad)
+    canViewStatistics: (state) => !['pabellón', 'doctor', 'pavedad'].includes(state.user?.role),
+    
+    // Verificar si puede ver inicio/dashboard (todos pueden ver home)
+    canViewHome: (state) => true,
+    
+    // Verificar si puede ver QR scanner (todos excepto doctor y pavedad)
+    canViewQR: (state) => !['doctor', 'pavedad'].includes(state.user?.role),
     
     // Obtener el nombre del usuario
     getUserName: (state) => state.user?.name,
@@ -55,6 +73,12 @@ export const useAuthStore = defineStore('auth', {
     
     // Obtener el RUT del usuario
     getUserRut: (state) => state.user?.rut,
+
+    // Obtener la especialidad del usuario (para doctores)
+    getUserSpecialty: (state) => state.user?.specialty?.name,
+    
+    // Obtener el ID de especialidad del usuario (para doctores)
+    getUserSpecialtyId: (state) => state.user?.specialty_id,
 
     // Obtener fecha de creación del usuario
     getUserCreatedAt: (state) => state.user?.created_at,

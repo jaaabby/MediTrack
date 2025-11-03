@@ -523,3 +523,58 @@ func (c *MedicalSupplyController) CheckUnconsumedSupplies(ctx *gin.Context) {
 		Message: "Verificación de insumos no consumidos completada",
 	})
 }
+
+// ===== ALERTAS DE STOCK BAJO PARA INSUMOS INDIVIDUALES =====
+
+// CheckLowStockForIndividualSupply verifica y envía alerta de stock bajo para un insumo individual específico
+func (c *MedicalSupplyController) CheckLowStockForIndividualSupply(ctx *gin.Context) {
+	codeStr := ctx.Param("code")
+	if codeStr == "" {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Código de insumo requerido",
+		})
+		return
+	}
+
+	code, err := strconv.Atoi(codeStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Código inválido: debe ser un número entero",
+		})
+		return
+	}
+
+	if err := c.medicalSupplyService.CheckLowStockForIndividualSupplies(code); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error al verificar alerta de stock bajo: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Verificación de alerta de stock bajo completada",
+		Data: map[string]interface{}{
+			"supply_code": code,
+		},
+	})
+}
+
+// CheckAllIndividualSuppliesLowStock verifica todos los insumos individuales para alertas de stock bajo
+func (c *MedicalSupplyController) CheckAllIndividualSuppliesLowStock(ctx *gin.Context) {
+	if err := c.medicalSupplyService.CheckAllIndividualSuppliesLowStock(); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error verificando alertas de stock bajo: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Verificación de alertas de stock bajo para insumos individuales completada",
+	})
+}

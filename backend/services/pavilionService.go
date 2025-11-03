@@ -31,7 +31,7 @@ func (s *PavilionService) GetPavilionByID(id int) (*models.Pavilion, error) {
 
 func (s *PavilionService) GetAllPavilions() ([]models.Pavilion, error) {
 	var pavilions []models.Pavilion
-	if err := s.DB.Find(&pavilions).Error; err != nil {
+	if err := s.DB.Preload("MedicalCenter").Find(&pavilions).Error; err != nil {
 		return nil, err
 	}
 	return pavilions, nil

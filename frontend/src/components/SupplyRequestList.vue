@@ -10,7 +10,7 @@
         <router-link
           v-if="authStore.canCreateRequests"
           to="/supply-requests/new"
-          class="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+          class="btn-primary w-full sm:w-auto"
         >
           <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -21,7 +21,20 @@
     </div>
 
     <!-- Filtros y búsqueda -->
-    <div class="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow border">
+    <div class="mb-4 sm:mb-6 card p-3 sm:p-4">
+      <!-- Badge de filtro activo -->
+      <div v-if="filters.statusCategory" class="mb-3 flex items-center gap-2">
+        <span class="text-xs font-medium text-gray-600">Filtro activo:</span>
+        <span :class="getFilterBadgeClass(filters.statusCategory)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+          {{ getFilterLabel(filters.statusCategory) }}
+          <button @click="filterByStatCategory('')" class="ml-1.5 hover:bg-white hover:bg-opacity-20 rounded-full">
+            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </span>
+      </div>
+      
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <!-- Filtro por estado -->
         <div>
@@ -35,32 +48,27 @@
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Todos los estados</option>
-            <option value="pending">Pendiente</option>
-            <option value="approved">Aprobada</option>
-            <option value="rejected">Rechazada</option>
-            <option value="in_process">En Proceso</option>
-            <option value="completed">Completada</option>
-            <option value="cancelled">Cancelada</option>
+            <option value="pendiente_pavedad">Pendiente Pavedad</option>
+            <option value="asignado_bodega">Asignado a Bodega</option>
+            <option value="devuelto">Devuelto al Solicitante</option>
+            <option value="devuelto_al_encargado">Devuelto al Encargado</option>
+            <option value="aprobado">Aprobado</option>
+            <option value="parcialmente_aprobado">Parcialmente Aprobado</option>
+            <option value="rechazado">Rechazado</option>
           </select>
         </div>
 
-        <!-- Filtro por prioridad -->
+        <!-- Filtro por fecha de cirugía -->
         <div>
-          <label for="priorityFilter" class="block text-sm font-medium text-gray-700 mb-1">
-            Prioridad
+          <label for="surgeryDateFilter" class="block text-sm font-medium text-gray-700 mb-1">
+            Fecha de Cirugía
           </label>
-          <select
-            id="priorityFilter"
-            v-model="filters.priority"
-            @change="filterRequests"
+          <input
+            type="date"
+            id="surgeryDateFilter"
+            v-model="filters.surgeryDate"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Todas las prioridades</option>
-            <option value="low">Baja</option>
-            <option value="normal">Normal</option>
-            <option value="high">Alta</option>
-            <option value="critical">Crítica</option>
-          </select>
+          />
         </div>
 
         <!-- Búsqueda por número de solicitud -->
@@ -81,7 +89,7 @@
         <!-- Botón refrescar -->
         <div class="flex items-end">
           <button
-            @click="loadSupplyRequests"
+            @click="refreshRequests"
             :disabled="loading"
             class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
@@ -96,7 +104,7 @@
 
     <!-- Estadísticas rápidas -->
     <div v-if="stats" class="mb-4 sm:mb-6 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div @click="filterByStatCategory('pending')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -112,7 +120,7 @@
         </div>
       </div>
 
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div @click="filterByStatCategory('approved')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="w-7 h-7 sm:w-8 sm:h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -128,7 +136,7 @@
         </div>
       </div>
 
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div @click="filterByStatCategory('rejected')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="w-7 h-7 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center">
@@ -144,7 +152,7 @@
         </div>
       </div>
 
-      <div class="bg-white p-3 sm:p-4 rounded-lg shadow border">
+      <div @click="filterByStatCategory('all')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
         <div class="flex items-center">
           <div class="flex-shrink-0">
             <div class="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 rounded-full flex items-center justify-center">
@@ -178,7 +186,7 @@
         <p class="text-gray-600 mb-4">{{ error }}</p>
         <button
           @click="loadSupplyRequests"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          class="btn-primary"
         >
           Reintentar
         </button>
@@ -191,12 +199,12 @@
         </svg>
         <h3 class="text-lg font-medium text-gray-900 mb-2">No hay solicitudes</h3>
         <p class="text-gray-600 mb-4">
-          {{ requests.length === 0 ? 'No se han creado solicitudes aún' : 'No se encontraron solicitudes con los filtros aplicados' }}
+          {{ (requests.length === 0 && !filters.status && !filters.statusCategory && !filters.urgency && !filters.search && !filters.surgeryDate) ? 'No se han creado solicitudes aún' : 'No se encontraron solicitudes con los filtros aplicados' }}
         </p>
         <router-link
-          v-if="requests.length === 0 && authStore.canCreateRequests"
+          v-if="requests.length === 0 && authStore.canCreateRequests && !filters.status && !filters.statusCategory"
           to="/supply-requests/new"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          class="btn-primary"
         >
           <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -262,9 +270,6 @@
                   <span :class="getStatusBadgeClass(request.status)" class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full">
                     {{ getStatusLabel(request.status) }}
                   </span>
-                  <span :class="getPriorityBadgeClass(request.priority)" class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full">
-                    {{ getPriorityLabel(request.priority) }}
-                  </span>
                 </div>
               </div>
 
@@ -281,24 +286,42 @@
                   Ver
                 </button>
                 
+                <!-- Botón de Asignar para Pavedad -->
                 <button
-                  v-if="request.status === 'pending' && authStore.canViewAllRequests"
-                  @click.stop="approveRequest(request.id)"
-                  class="inline-flex items-center justify-center px-3 py-2 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                  v-if="authStore.isPavedad"
+                  @click.stop="request.status === 'pendiente_pavedad' ? openAssignModal(request) : null"
+                  :disabled="request.status !== 'pendiente_pavedad'"
+                  :class="[
+                    'inline-flex items-center justify-center px-3 py-2 border rounded-md text-xs font-medium',
+                    request.status === 'pendiente_pavedad' 
+                      ? 'border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 cursor-pointer'
+                      : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
+                  ]"
+                  :title="request.status === 'pendiente_pavedad' ? 'Asignar' : 'Ya asignada'"
                 >
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                   </svg>
+                  <span v-if="request.status !== 'pendiente_pavedad'" class="ml-1">✓</span>
                 </button>
-
+                
+                <!-- Botón Revisar Items para Encargado de Bodega -->
                 <button
-                  v-if="request.status === 'pending' && authStore.canViewAllRequests"
-                  @click.stop="rejectRequest(request.id)"
-                  class="inline-flex items-center justify-center px-3 py-2 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+                  v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
+                  @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
+                  :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'"
+                  :class="[
+                    'flex-1 inline-flex items-center justify-center px-3 py-2 border rounded-md text-xs font-medium',
+                    (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
+                      ? 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer'
+                      : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
+                  ]"
+                  :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar Insumos' : 'Ya revisada'"
                 >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
+                  {{ (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar Items' : 'Revisado ✓' }}
                 </button>
               </div>
             </div>
@@ -323,10 +346,7 @@
                 Estado
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Prioridad
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fecha
+                Fecha de Cirugía
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Items
@@ -374,16 +394,14 @@
                 </span>
               </td>
 
-              <!-- Prioridad -->
+              <!-- Fecha de Cirugía -->
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getPriorityBadgeClass(request.priority)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                  {{ getPriorityLabel(request.priority) }}
+                <div class="text-sm text-gray-900">
+                  {{ formatSurgeryDateTime(request.surgery_datetime) }}
+                </div>
+                <span :class="getUrgencyBadgeClass(request.surgery_datetime)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1">
+                  {{ getUrgencyLabel(request.surgery_datetime) }}
                 </span>
-              </td>
-
-              <!-- Fecha -->
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ formatDate(request.request_date) }}
               </td>
 
               <!-- Número de items -->
@@ -405,26 +423,42 @@
                     </svg>
                   </button>
 
+                  <!-- Botón de Asignar para Pavedad -->
                   <button
-                    v-if="request.status === 'pending' && authStore.canViewAllRequests"
-                    @click.stop="approveRequest(request.id)"
-                    class="text-green-600 hover:text-green-900 p-1"
-                    title="Aprobar solicitud"
+                    v-if="authStore.isPavedad"
+                    @click.stop="request.status === 'pendiente_pavedad' ? openAssignModal(request) : null"
+                    :disabled="request.status !== 'pendiente_pavedad'"
+                    :class="[
+                      'p-1',
+                      request.status === 'pendiente_pavedad'
+                        ? 'text-purple-600 hover:text-purple-900 cursor-pointer'
+                        : 'text-gray-400 cursor-not-allowed opacity-60'
+                    ]"
+                    :title="request.status === 'pendiente_pavedad' ? 'Asignar' : 'Ya asignada'"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                     </svg>
+                    <span v-if="request.status !== 'pendiente_pavedad'" class="text-xs">✓</span>
                   </button>
 
+                  <!-- Botón Revisar Items para Encargado de Bodega -->
                   <button
-                    v-if="request.status === 'pending' && authStore.canViewAllRequests"
-                    @click.stop="rejectRequest(request.id)"
-                    class="text-red-600 hover:text-red-900 p-1"
-                    title="Rechazar solicitud"
+                    v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
+                    @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
+                    :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'"
+                    :class="[
+                      'p-1',
+                      (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
+                        ? 'text-blue-600 hover:text-blue-900 cursor-pointer'
+                        : 'text-gray-400 cursor-not-allowed opacity-60'
+                    ]"
+                    :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar insumos' : 'Ya revisada'"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
+                    <span v-if="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'" class="text-xs">✓</span>
                   </button>
                 </div>
               </td>
@@ -464,6 +498,22 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de Asignación -->
+    <AssignRequestModal
+      :show="showAssignModal"
+      :request="selectedRequestForAssignment"
+      @close="showAssignModal = false"
+      @assigned="handleRequestAssigned"
+    />
+
+    <!-- Modal de Revisión de Items -->
+    <ReviewItemsModal
+      :show="showReviewItemsModal"
+      :request="selectedRequestForReview"
+      @close="showReviewItemsModal = false"
+      @itemsReviewed="handleItemsReviewed"
+    />
   </div>
 </template>
 
@@ -473,12 +523,22 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
+import AssignRequestModal from '@/components/AssignRequestModal.vue'
+import ReviewItemsModal from '@/components/ReviewItemsModal.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Swal from 'sweetalert2'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+// Estado del modal de asignación
+const showAssignModal = ref(false)
+const selectedRequestForAssignment = ref(null)
+
+// Estado del modal de revisión de items
+const showReviewItemsModal = ref(false)
+const selectedRequestForReview = ref(null)
 
 // Estado reactivo
 const loading = ref(false)
@@ -491,16 +551,53 @@ const pageSize = ref(10)
 // Filtros
 const filters = ref({
   status: '',
-  priority: '',
-  search: ''
+  urgency: '',
+  search: '',
+  statusCategory: '', // pending, approved, rejected, o '' para todos
+  surgeryDate: '' // fecha de cirugía en formato YYYY-MM-DD
 })
 
 // Computed properties
 const filteredRequests = computed(() => {
   let filtered = requests.value
 
-  if (filters.value.priority) {
-    filtered = filtered.filter(request => request.priority === filters.value.priority)
+  // Filtrar por estado específico (del select)
+  if (filters.value.status) {
+    filtered = filtered.filter(r => r.status === filters.value.status)
+  }
+
+  // Filtrar por categoría de estadística (si está activo)
+  if (filters.value.statusCategory) {
+    if (filters.value.statusCategory === 'pending') {
+      // Pendientes: todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
+      filtered = filtered.filter(r => 
+        !['aprobado', 'parcialmente_aprobado', 'rechazado'].includes(r.status)
+      )
+    } else if (filters.value.statusCategory === 'approved') {
+      // Aprobadas: aprobadas + parcialmente aprobadas
+      filtered = filtered.filter(r => 
+        r.status === 'aprobado' || r.status === 'parcialmente_aprobado'
+      )
+    } else if (filters.value.statusCategory === 'rejected') {
+      // Rechazadas: solo rechazadas
+      filtered = filtered.filter(r => 
+        r.status === 'rechazado'
+      )
+    }
+  }
+
+  if (filters.value.urgency) {
+    filtered = filtered.filter(request => 
+      supplyRequestService.calculateUrgencyFromSurgeryDate(request.surgery_datetime) === filters.value.urgency)
+  }
+
+  if (filters.value.surgeryDate) {
+    filtered = filtered.filter(request => {
+      if (!request.surgery_datetime) return false
+      // Extraer solo la fecha sin considerar hora ni zona horaria
+      const requestDate = request.surgery_datetime.split('T')[0]
+      return requestDate === filters.value.surgeryDate
+    })
   }
 
   if (filters.value.search) {
@@ -527,13 +624,28 @@ const endIndex = computed(() => Math.min(startIndex.value + pageSize.value, tota
 
 // Calcular estadísticas localmente basándose en las solicitudes filtradas
 const stats = computed(() => {
-  const requests = filteredRequests.value
+  const allRequests = requests.value
+  
+  // Pendientes: todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
+  const pending = allRequests.filter(r => 
+    !['aprobado', 'parcialmente_aprobado', 'rechazado'].includes(r.status)
+  ).length
+  
+  // Aprobadas: aprobadas + parcialmente aprobadas
+  const approved = allRequests.filter(r => 
+    r.status === 'aprobado' || r.status === 'parcialmente_aprobado'
+  ).length
+  
+  // Rechazadas: solo rechazadas
+  const rejected = allRequests.filter(r => 
+    r.status === 'rechazado'
+  ).length
   
   return {
-    pending: requests.filter(r => r.status === 'pending').length,
-    approved: requests.filter(r => r.status === 'approved').length,
-    rejected: requests.filter(r => r.status === 'rejected').length,
-    total: requests.length
+    pending,
+    approved,
+    rejected,
+    total: allRequests.length
   }
 })
 
@@ -543,23 +655,47 @@ const loadSupplyRequests = async () => {
   error.value = null
 
   try {
-    const result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+    let result
+    
+    // Si es encargado de bodega, obtener solo sus solicitudes asignadas
+    if (authStore.isWarehouseManager) {
+      const userRut = authStore.getUserRut
+      result = await supplyRequestService.getAssignedRequestsForWarehouseManager(userRut)
+    } 
+    // Si es Pavedad, obtener solicitudes pendientes para asignar
+    else if (authStore.isPavedad) {
+      result = await supplyRequestService.getPendingRequestsForPavedad()
+    }
+    // Admin ve todas las solicitudes
+    else if (authStore.isAdmin) {
+      result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+    }
+    // Doctor ve solo sus solicitudes
+    else if (authStore.canCreateRequests) {
+      result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+    }
+    else {
+      result = { success: true, data: { requests: [] } }
+    }
     
     if (result.success && result.data) {
-      let allRequests = result.data.requests || []
+      let allRequests = result.data.requests || result.data || []
       
-      // Filtrar solicitudes según el rol del usuario
-      if (authStore.canViewAllRequests) {
-        // Admin y encargado de bodega ven todas las solicitudes
-        requests.value = allRequests
-      } else if (authStore.canCreateRequests) {
-        // Enfermera y doctor solo ven sus propias solicitudes
+      // Asegurar que allRequests sea un array
+      if (!Array.isArray(allRequests)) {
+        allRequests = []
+      }
+      
+      // Filtrar por doctor si corresponde
+      if (authStore.canCreateRequests && !authStore.isAdmin && !authStore.isPavedad && !authStore.isWarehouseManager) {
         const userRut = authStore.getUserRut
         requests.value = allRequests.filter(request => request.requested_by === userRut)
       } else {
-        // Otros roles no deberían ver solicitudes (esto no debería pasar por la navegación)
-        requests.value = []
+        requests.value = allRequests
       }
+      
+      // Limpiar error si la carga fue exitosa
+      error.value = null
       
       console.log('Solicitudes cargadas:', requests.value)
     } else {
@@ -588,8 +724,43 @@ const loadStats = async () => {
   // No necesitamos cargar estadísticas del backend
 }
 
+const filterByStatCategory = (category) => {
+  // Limpiar búsqueda
+  filters.value.search = ''
+  
+  // Aplicar filtro según la categoría
+  if (category === 'pending') {
+    // Mostrar todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
+    filters.value.statusCategory = 'pending'
+  } else if (category === 'approved') {
+    // Mostrar aprobadas + parcialmente aprobadas
+    filters.value.statusCategory = 'approved'
+  } else if (category === 'rejected') {
+    // Mostrar solo rechazadas
+    filters.value.statusCategory = 'rejected'
+  } else {
+    // Mostrar todas
+    filters.value.statusCategory = ''
+  }
+  
+  currentPage.value = 1
+}
+
 const filterRequests = () => {
   currentPage.value = 1
+}
+
+const refreshRequests = () => {
+  // Limpiar todos los filtros
+  filters.value = {
+    status: '',
+    urgency: '',
+    search: '',
+    statusCategory: '',
+    surgeryDate: ''
+  }
+  // Recargar solicitudes
+  loadSupplyRequests()
 }
 
 const viewRequest = (id) => {
@@ -599,12 +770,21 @@ const viewRequest = (id) => {
 const approveRequest = async (id) => {
   try {
     const approvalData = {
-      approved_by: 'ADMIN',
-      approved_by_name: 'Sistema Admin',
+      approved_by: authStore.getUserRut || 'ADMIN',
+      approved_by_name: authStore.getUserName || 'Sistema Admin',
       approval_notes: 'Aprobada desde interfaz web'
     }
     
     await supplyRequestService.approveSupplyRequest(id, approvalData)
+    
+    await Swal.fire({
+      icon: 'success',
+      title: 'Solicitud Aprobada',
+      text: 'La solicitud ha sido aprobada exitosamente',
+      timer: 2000,
+      showConfirmButton: false
+    })
+    
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error aprobando solicitud:', err)
@@ -633,12 +813,21 @@ const rejectRequest = async (id) => {
 
   try {
     const rejectionData = {
-      rejected_by: 'ADMIN',
-      rejected_by_name: 'Sistema Admin',
-      rejection_reason: reason
+      rejected_by: authStore.getUserRut || 'ADMIN',
+      rejected_by_name: authStore.getUserName || 'Sistema Admin',
+      notes: reason
     }
     
     await supplyRequestService.rejectSupplyRequest(id, rejectionData)
+    
+    await Swal.fire({
+      icon: 'success',
+      title: 'Solicitud Rechazada',
+      text: 'La solicitud ha sido rechazada',
+      timer: 2000,
+      showConfirmButton: false
+    })
+    
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error rechazando solicitud:', err)
@@ -646,6 +835,66 @@ const rejectRequest = async (id) => {
       icon: 'error',
       title: 'Error al rechazar la solicitud',
       text: err.response?.data?.error || err.message
+    })
+  }
+}
+
+const openAssignModal = (request) => {
+  selectedRequestForAssignment.value = request
+  showAssignModal.value = true
+}
+
+const handleRequestAssigned = () => {
+  showAssignModal.value = false
+  selectedRequestForAssignment.value = null
+  loadSupplyRequests()
+}
+
+const openReviewItemsModal = (request) => {
+  selectedRequestForReview.value = request
+  showReviewItemsModal.value = true
+}
+
+const handleItemsReviewed = () => {
+  loadSupplyRequests()
+}
+
+const startProcessing = async (id) => {
+  try {
+    const result = await Swal.fire({
+      title: '¿Iniciar procesamiento?',
+      text: 'La solicitud pasará a estado "En Proceso"',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, iniciar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#3B82F6'
+    })
+
+    if (result.isConfirmed) {
+      // Cambiar estado a "en_proceso"
+      const updateData = {
+        status: 'en_proceso'
+      }
+      
+      await supplyRequestService.updateSupplyRequestStatus(id, updateData)
+      
+      await Swal.fire({
+        icon: 'success',
+        title: 'Proceso Iniciado',
+        text: 'La solicitud ahora está en proceso',
+        timer: 2000,
+        showConfirmButton: false
+      })
+      
+      await loadSupplyRequests()
+    }
+  } catch (err) {
+    console.error('Error iniciando proceso:', err)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: err.response?.data?.error || err.message || 'Error al iniciar el proceso'
     })
   }
 }
@@ -681,6 +930,24 @@ const getStatusLabel = (status) => {
   return supplyRequestService.getStatusLabel(status)
 }
 
+const getFilterBadgeClass = (category) => {
+  const classes = {
+    'pending': 'bg-yellow-100 text-yellow-800',
+    'approved': 'bg-green-100 text-green-800',
+    'rejected': 'bg-red-100 text-red-800'
+  }
+  return classes[category] || 'bg-gray-100 text-gray-800'
+}
+
+const getFilterLabel = (category) => {
+  const labels = {
+    'pending': 'Pendientes',
+    'approved': 'Aprobadas',
+    'rejected': 'Rechazadas'
+  }
+  return labels[category] || category
+}
+
 const getStatusBadgeClass = (status) => {
   const color = supplyRequestService.getStatusColor(status)
   const classes = {
@@ -688,22 +955,35 @@ const getStatusBadgeClass = (status) => {
     'green': 'bg-green-100 text-green-800',
     'red': 'bg-red-100 text-red-800',
     'blue': 'bg-blue-100 text-blue-800',
+    'purple': 'bg-purple-100 text-purple-800',
+    'orange': 'bg-orange-100 text-orange-800',
     'gray': 'bg-gray-100 text-gray-800'
   }
   return classes[color] || classes.gray
 }
 
-const getPriorityLabel = (priority) => {
-  return supplyRequestService.getPriorityLabel(priority)
+const formatSurgeryDateTime = (surgeryDateTime) => {
+  return supplyRequestService.formatSurgeryDateTime(surgeryDateTime)
 }
 
-const getPriorityBadgeClass = (priority) => {
-  const color = supplyRequestService.getPriorityColor(priority)
+const getUrgencyLabel = (surgeryDateTime) => {
+  const urgency = supplyRequestService.calculateUrgencyFromSurgeryDate(surgeryDateTime)
+  const labels = {
+    'critical': 'Crítica',
+    'high': 'Alta',
+    'normal': 'Normal',
+    'low': 'Baja'
+  }
+  return labels[urgency] || 'Normal'
+}
+
+const getUrgencyBadgeClass = (surgeryDateTime) => {
+  const color = supplyRequestService.getUrgencyColor(surgeryDateTime)
   const classes = {
-    'gray': 'bg-gray-100 text-gray-800',
-    'blue': 'bg-blue-100 text-blue-800',
+    'red': 'bg-red-100 text-red-800',
     'orange': 'bg-orange-100 text-orange-800',
-    'red': 'bg-red-100 text-red-800'
+    'blue': 'bg-blue-100 text-blue-800',
+    'gray': 'bg-gray-100 text-gray-800'
   }
   return classes[color] || classes.blue
 }
@@ -724,27 +1004,7 @@ onMounted(async () => {
 }
 
 /* Estilos para botones secundarios */
-.btn-secondary {
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  color: #374151;
-  background-color: white;
-  transition: all 0.15s ease-in-out;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: #f9fafb;
-}
-
-.btn-secondary:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Usar .btn-secondary de style.css global */
 
 /* Mejoras para dispositivos móviles */
 @media (max-width: 640px) {

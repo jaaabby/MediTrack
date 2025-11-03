@@ -28,7 +28,7 @@
               name="rut"
               type="text"
               required
-              class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+              class="form-input"
               :class="{ 'border-red-500': errors.rut }"
               placeholder="12345678-9"
             />
@@ -44,7 +44,7 @@
               name="name"
               type="text"
               required
-              class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+              class="form-input"
               :class="{ 'border-red-500': errors.name }"
               placeholder="Juan Pérez"
             />
@@ -61,7 +61,7 @@
               type="email"
               autocomplete="email"
               required
-              class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+              class="form-input"
               :class="{ 'border-red-500': errors.email }"
               placeholder="juan@example.com"
             />
@@ -78,7 +78,7 @@
               type="password"
               autocomplete="new-password"
               required
-              class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+              class="form-input"
               :class="{ 'border-red-500': errors.password }"
               placeholder="Mínimo 6 caracteres"
             />
@@ -95,7 +95,7 @@
               type="password"
               autocomplete="new-password"
               required
-              class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+              class="form-input"
               :class="{ 'border-red-500': errors.confirmPassword }"
               placeholder="Repetir contraseña"
             />
@@ -110,7 +110,7 @@
               v-model="registerForm.role"
               name="role"
               required
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+              class="form-select"
               :class="{ 'border-red-500': errors.role }"
             >
               <option value="">Seleccionar rol</option>
@@ -129,7 +129,7 @@
               v-model="registerForm.medicalCenterId"
               name="medicalCenterId"
               required
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+              class="form-select"
               :class="{ 'border-red-500': errors.medicalCenterId }"
             >
               <option value="">Seleccionar centro médico</option>

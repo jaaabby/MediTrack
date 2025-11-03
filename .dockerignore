@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker files
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Documentation
+*.md
+README.md
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node modules (si hay en la raíz)
+node_modules
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+

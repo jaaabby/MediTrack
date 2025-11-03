@@ -23,11 +23,13 @@ func SetupUserRoutes(router *gin.RouterGroup, userService services.UserService, 
 		{
 			adminRoutes.POST("/", userController.CreateUser)
 			adminRoutes.GET("/", userController.GetAllUsers)
-			adminRoutes.GET("/by-role", userController.GetUsersByRole)
 			adminRoutes.DELETE("/:id", userController.DeleteUser)
 			adminRoutes.PUT("/:id/deactivate", userController.DeactivateUser)
 			adminRoutes.PUT("/:id/activate", userController.ActivateUser)
 		}
+
+		// Ruta accesible para Admin y Pavedad (para obtener usuarios por rol)
+		users.GET("/by-role", userController.GetUsersByRole)
 
 		// Rutas para administradores y encargados de bodega
 		adminStoreRoutes := users.Group("/")

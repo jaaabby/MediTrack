@@ -205,6 +205,44 @@ class MedicalSupplyService {
       throw error
     }
   }
+
+  // ========================
+  // ALERTAS DE STOCK BAJO PARA INSUMOS INDIVIDUALES
+  // ========================
+
+  async checkLowStockForIndividualSupply(supplyCode) {
+    try {
+      const response = await this.api.post(`/medical-supplies/${supplyCode}/check-low-stock/`)
+      return response.data
+    } catch (error) {
+      console.error('Error al verificar alerta de stock bajo para insumo individual:', error)
+      throw error
+    }
+  }
+
+  async checkAllIndividualSuppliesLowStock() {
+    try {
+      const response = await this.api.post('/medical-supplies/check-all-low-stock/')
+      return response.data
+    } catch (error) {
+      console.error('Error al verificar alertas de stock bajo para todos los insumos individuales:', error)
+      throw error
+    }
+  }
+
+  // ========================
+  // RETORNOS A BODEGA
+  // ========================
+
+  async getSuppliesForReturn() {
+    try {
+      const response = await this.api.get('/qr/supplies-for-return')
+      return response.data.data || response.data || []
+    } catch (error) {
+      console.error('Error al obtener insumos para retorno:', error)
+      throw error
+    }
+  }
 }
 
 export default new MedicalSupplyService()
