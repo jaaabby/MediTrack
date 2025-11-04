@@ -497,7 +497,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import inventoryService from '@/services/inventoryService'
 import supplyRequestService from '@/services/supplyRequestService'
@@ -510,6 +510,9 @@ const router = useRouter()
 
 const loading = ref(false)
 const error = ref('')
+const autoRefreshInterval = ref(null)
+const autoRefreshEnabled = ref(true)
+const refreshIntervalSeconds = 60 // Actualizar cada 60 segundos
 
 const tooltipVisible = ref(false)
 const tooltipText = ref('')
@@ -842,12 +845,37 @@ async function loadData() {
   }
 }
 
+// Funciones para actualización automática
+const startAutoRefresh = () => {
+  if (autoRefreshInterval.value) {
+    clearInterval(autoRefreshInterval.value)
+  }
+  
+  autoRefreshInterval.value = setInterval(() => {
+    if (autoRefreshEnabled.value && !loading.value) {
+      loadData()
+    }
+  }, refreshIntervalSeconds * 1000)
+}
+
+const stopAutoRefresh = () => {
+  if (autoRefreshInterval.value) {
+    clearInterval(autoRefreshInterval.value)
+    autoRefreshInterval.value = null
+  }
+}
+
 watch(transferRange, () => {
   loadTrend()
 })
 
 onMounted(() => {
   loadData()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 

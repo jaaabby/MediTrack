@@ -137,7 +137,7 @@
               <button
                 @click="managementMenuOpen = !managementMenuOpen"
                 class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
-                :class="{ 'bg-blue-700': ['/transfers', '/surgeries', '/supply-history', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info', '/supplier-configs'].some(path => $route.path.startsWith(path)) }"
+                :class="{ 'bg-blue-700': ['/transfers', '/surgeries', '/supply-history', '/return-management', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info', '/supplier-configs'].some(path => $route.path.startsWith(path)) }"
               >
                 Gestión
                 <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': managementMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,6 +184,20 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Historial de Insumos
+                  </div>
+                </router-link>
+                <router-link
+                  v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+                  to="/return-management"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/return-management' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                    Retornos a Bodega
                   </div>
                 </router-link>
                 
@@ -502,6 +516,16 @@
               :class="{ 'bg-blue-800': $route.path === '/supply-history' }"
             >
               Historial de Insumos
+            </router-link>
+            
+            <router-link
+              v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+              to="/return-management"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-blue-800': $route.path === '/return-management' }"
+            >
+              Retornos a Bodega
             </router-link>
             
             <!-- Separador -->
