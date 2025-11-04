@@ -1,7 +1,8 @@
 // services/storeService.js
 import axios from 'axios'
+import { getApiBaseUrl } from '@/config/api.js'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+const API_BASE_URL = getApiBaseUrl()
 
 class StoreService {
   constructor() {

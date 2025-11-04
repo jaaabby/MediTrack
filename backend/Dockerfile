@@ -37,8 +37,8 @@ COPY --from=builder /app/meditrack .
 COPY --from=builder /app/certs ./certs
 COPY --from=builder /app/mailer/templates ./mailer/templates
 
-# Exponer puerto
-EXPOSE 8080
+# Exponer puertos HTTP y HTTPS
+EXPOSE 8080 8443
 
 # Comando para ejecutar la aplicación
 CMD ["./meditrack"]

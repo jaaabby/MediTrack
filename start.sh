@@ -32,6 +32,23 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
+# Generar certificados SSL si no existen
+echo ""
+echo "🔐 Verificando certificados SSL..."
+if [ ! -f "backend/certs/server.crt" ]; then
+    echo "⚠️  Certificados SSL no encontrados. Generando..."
+    if [ -f "scripts/generate-certs.sh" ]; then
+        chmod +x scripts/generate-certs.sh
+        ./scripts/generate-certs.sh
+    else
+        echo "⚠️  Script de generación de certificados no encontrado."
+        echo "   Continuando sin HTTPS (solo HTTP disponible)."
+    fi
+else
+    echo "✅ Certificados SSL encontrados."
+fi
+
+echo ""
 echo "📦 Construyendo imágenes Docker..."
 docker compose build
 
@@ -50,9 +67,17 @@ docker compose ps
 echo ""
 echo "✅ MediTrack está corriendo!"
 echo ""
-echo "🌐 Frontend: http://localhost:3000"
-echo "🔌 Backend API: http://localhost:8080"
+echo "🌐 Frontend HTTP:  http://localhost:3000"
+echo "🔒 Frontend HTTPS: https://localhost:3443  (para acceso desde celular con cámara)"
+echo "🔌 Backend API HTTP:  http://localhost:8080"
+echo "🔒 Backend API HTTPS:  https://localhost:8443"
 echo "❤️  Health Check: http://localhost:8080/health"
+echo ""
+echo "📱 Para acceder desde tu celular:"
+echo "   1. Asegúrate de que tu celular esté en la misma red WiFi"
+echo "   2. Obtén tu IP local (ver mensaje de generación de certificados)"
+echo "   3. Accede desde el celular: https://TU_IP:3443"
+echo "   4. Acepta el certificado autofirmado cuando se solicite"
 echo ""
 echo "📝 Para ver los logs:"
 echo "   docker compose logs -f"

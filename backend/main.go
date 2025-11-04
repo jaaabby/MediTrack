@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	"meditrack/config"
@@ -110,24 +111,70 @@ func main() {
 	go medicalSupplyService.StartAutomaticReturnChecker()
 	log.Println("✅ Iniciado verificador automático de retornos a bodega")
 
-	// Iniciar servidor con HTTPS
-	log.Printf("Servidor iniciando en puerto %d con HTTPS", cfg.Server.Port)
+	// Iniciar servidores HTTP y HTTPS
+	log.Printf("Servidor iniciando en puerto %d (HTTP)", cfg.Server.Port)
 
 	// Verificar si existen los certificados SSL
 	certFile := "certs/server.crt"
 	keyFile := "certs/server.key"
+	httpsPort := 8443
 
-	if _, err := os.Stat(certFile); err == nil {
-		// Certificados existen, usar HTTPS
-		log.Println("✅ Certificados SSL encontrados, usando HTTPS")
-		if err := router.RunTLS(fmt.Sprintf(":%d", cfg.Server.Port), certFile, keyFile); err != nil {
-			log.Fatalf("Error al iniciar servidor HTTPS: %v", err)
+	// Verificar certificados y rutas en diferentes ubicaciones (Docker vs local)
+	certPaths := []string{
+		certFile,
+		"/root/certs/server.crt",
+		"./certs/server.crt",
+	}
+	keyPaths := []string{
+		keyFile,
+		"/root/certs/server.key",
+		"./certs/server.key",
+	}
+
+	var foundCert, foundKey string
+	for _, path := range certPaths {
+		if _, err := os.Stat(path); err == nil {
+			foundCert = path
+			break
 		}
-	} else {
-		// Sin certificados, usar HTTP (desarrollo)
-		log.Println("⚠️  Certificados SSL no encontrados, usando HTTP")
+	}
+	for _, path := range keyPaths {
+		if _, err := os.Stat(path); err == nil {
+			foundKey = path
+			break
+		}
+	}
+
+	// Iniciar servidor HTTP siempre
+	go func() {
+		log.Println("🌐 Iniciando servidor HTTP en puerto", cfg.Server.Port)
 		if err := router.Run(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {
 			log.Fatalf("Error al iniciar servidor HTTP: %v", err)
 		}
+	}()
+
+	// Iniciar servidor HTTPS si hay certificados
+	if foundCert != "" && foundKey != "" {
+		log.Println("✅ Certificados SSL encontrados")
+		log.Printf("🔒 Iniciando servidor HTTPS en puerto %d", httpsPort)
+		log.Printf("   Certificado: %s", foundCert)
+		log.Printf("   Clave: %s", foundKey)
+		
+		// Usar http.ListenAndServeTLS para HTTPS en puerto separado
+		go func() {
+			httpsServer := &http.Server{
+				Addr:    fmt.Sprintf(":%d", httpsPort),
+				Handler: router,
+			}
+			if err := httpsServer.ListenAndServeTLS(foundCert, foundKey); err != nil {
+				log.Printf("⚠️  Error al iniciar servidor HTTPS: %v (continuando solo con HTTP)", err)
+			}
+		}()
+	} else {
+		log.Println("⚠️  Certificados SSL no encontrados, solo usando HTTP")
+		log.Println("   Para habilitar HTTPS, ejecuta: scripts/generate-certs.sh (o .bat)")
 	}
+
+	// Mantener el proceso corriendo
+	select {}
 }

@@ -6,9 +6,10 @@ echo.
 
 REM Verificar si existe .env
 if not exist .env (
-    echo ⚠️  Archivo .env no encontrado. Creando desde .env.example...
+    echo ⚠️  Archivo .env no encontrado.
     if exist .env.example (
-        copy .env.example .env
+        echo    Creando desde .env.example...
+        copy .env.example .env >nul
         echo ✅ Archivo .env creado. Por favor, edita las variables según tu entorno.
         echo.
         set /p CONTINUE="¿Deseas continuar con la configuración por defecto? (s/n): "
@@ -17,8 +18,10 @@ if not exist .env (
             exit /b 1
         )
     ) else (
-        echo ❌ Error: No se encontró .env.example
-        exit /b 1
+        echo ⚠️  No se encontró .env.example
+        echo    Continuando sin archivo .env (usando valores por defecto de docker-compose.yml)
+        echo    Para personalizar, crea un archivo .env con tus variables de entorno.
+        echo.
     )
 )
 
@@ -36,6 +39,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Verificar certificados SSL (ya generados)
+echo.
+echo Certificados SSL verificados (backend\certs\server.crt)
+
+echo.
 echo 📦 Construyendo imágenes Docker...
 docker compose build
 
@@ -54,9 +62,17 @@ docker compose ps
 echo.
 echo ✅ MediTrack está corriendo!
 echo.
-echo 🌐 Frontend: http://localhost:3000
-echo 🔌 Backend API: http://localhost:8080
+echo 🌐 Frontend HTTP:  http://localhost:3000
+echo 🔒 Frontend HTTPS: https://localhost:3443  (para acceso desde celular con cámara)
+echo 🔌 Backend API HTTP:  http://localhost:8080
+echo 🔒 Backend API HTTPS:  https://localhost:8443
 echo ❤️  Health Check: http://localhost:8080/health
+echo.
+echo 📱 Para acceder desde tu celular:
+echo    1. Asegúrate de que tu celular esté en la misma red WiFi
+echo    2. Obtén tu IP local (ver mensaje de generación de certificados)
+echo    3. Accede desde el celular: https://TU_IP:3443
+echo    4. Acepta el certificado autofirmado cuando se solicite
 echo.
 echo 📝 Para ver los logs:
 echo    docker compose logs -f

@@ -24,8 +24,8 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Copiar archivos construidos desde la etapa de build
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Exponer puerto
-EXPOSE 3000
+# Exponer puertos HTTP y HTTPS
+EXPOSE 3000 3443
 
 # Iniciar Nginx
 CMD ["nginx", "-g", "daemon off;"]

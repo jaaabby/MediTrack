@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { getApiBaseUrl } from '@/config/api.js'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+const API_BASE_URL = getApiBaseUrl().replace('/api/v1', '/api')
 
 // Crear instancia de axios con configuración base
 const apiClient = axios.create({

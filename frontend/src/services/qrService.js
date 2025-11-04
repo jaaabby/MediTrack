@@ -1,8 +1,9 @@
 import axios from 'axios'
 import inventoryService from './inventoryService.js'
 import { useAuthStore } from '@/stores/auth.js'
+import { getApiBaseUrl } from '@/config/api.js'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+const API_BASE_URL = getApiBaseUrl()
 
 class QRService {
   constructor() {
