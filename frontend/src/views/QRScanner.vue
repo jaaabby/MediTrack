@@ -158,6 +158,69 @@
         @consume-supply="consumeSupply"
       />
       
+      <!-- Gestión del Carrito -->
+      <div v-if="canAddToCart(scannedInfo)" class="p-3 sm:p-4 border-t border-gray-200 bg-blue-50">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-sm font-medium text-blue-900">Agregar a Carrito</h3>
+            <p class="text-sm text-blue-700 mt-1">
+              Este insumo está disponible. Puedes agregarlo a un carrito activo.
+            </p>
+            <div class="mt-3">
+              <label class="block text-sm font-medium text-blue-900 mb-2">Seleccionar Carrito:</label>
+              <select 
+                v-model="selectedCartForAdd" 
+                class="form-select w-full mb-3"
+              >
+                <option value="">-- Seleccione un carrito --</option>
+                <option 
+                  v-for="cart in availableCarts" 
+                  :key="cart.id" 
+                  :value="cart.id"
+                >
+                  {{ cart.cart_number }} - {{ cart.supply_request?.request_number }}
+                </option>
+              </select>
+              <button
+                @click="addScannedSupplyToCart"
+                :disabled="!selectedCartForAdd || addingToCart"
+                class="btn-primary w-full"
+              >
+                <svg v-if="addingToCart" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ addingToCart ? 'Agregando...' : 'Agregar al Carrito' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información si el insumo ya está en un carrito -->
+      <div v-else-if="isInCart(scannedInfo)" class="p-3 sm:p-4 border-t border-gray-200 bg-yellow-50">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-sm font-medium text-yellow-900">Insumo Ya Asignado</h3>
+            <p class="text-sm text-yellow-700 mt-1">
+              Este insumo ya está asignado a la solicitud <strong>{{ scannedInfo.request_assignment?.supply_request?.request_number }}</strong>
+              <span v-if="scannedInfo.request_assignment?.cart"> y al carrito <strong>{{ scannedInfo.request_assignment.cart.cart_number }}</strong></span>.
+              Escanea otro código QR disponible para agregarlo a un carrito.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- NUEVA LÓGICA: State-specific recommendations -->
       <div v-if="getStateRecommendation(scannedInfo)" class="p-3 sm:p-4 border-t border-gray-200">
         <div :class="getRecommendationClass(scannedInfo)" class="rounded-md p-3 sm:p-4">
@@ -396,6 +459,11 @@ const detecting = ref(false)
 // Estado del retorno a bodega
 const returningToStore = ref(false)
 const confirmingArrival = ref(false)
+
+// Estado del carrito
+const availableCarts = ref([])
+const selectedCartForAdd = ref('')
+const addingToCart = ref(false)
 
 // Variables para manejo de cámara
 let mediaStream = null
@@ -931,6 +999,95 @@ const confirmArrivalToStore = async (qrCode) => {
   }
 }
 
+// ===== GESTIÓN DE CARRITOS =====
+const canAddToCart = (info) => {
+  if (!info || info.type !== 'medical_supply') return false
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+  // Solo puede agregar si está disponible y no está ya asignado a un carrito
+  return status === 'disponible' && !info.request_assignment
+}
+
+const isInCart = (info) => {
+  if (!info || info.type !== 'medical_supply') return false
+  // Está en un carrito si tiene una asignación de request
+  return !!info.request_assignment
+}
+
+const loadAvailableCarts = async () => {
+  try {
+    const cartService = (await import('@/services/cartService')).default
+    const response = await cartService.getAllCarts(1, 100, 'active')
+    if (response.success) {
+      availableCarts.value = response.data || []
+    }
+  } catch (err) {
+    console.error('Error cargando carritos:', err)
+  }
+}
+
+const addScannedSupplyToCart = async () => {
+  if (!selectedCartForAdd.value || !scannedInfo.value || addingToCart.value) return
+  
+  addingToCart.value = true
+  error.value = null
+  
+  try {
+    const cartService = (await import('@/services/cartService')).default
+    const supplyRequestService = (await import('@/services/supplyRequestService')).default
+    
+    // Primero, obtener el carrito para saber su supply_request_id
+    const cart = availableCarts.value.find(c => c.id === parseInt(selectedCartForAdd.value))
+    if (!cart) {
+      throw new Error('Carrito no encontrado')
+    }
+    
+    // Necesitamos crear una asignación QR primero
+    // Para esto, necesitamos el supply_request_id y un supply_request_item_id
+    // Vamos a obtener los items de la solicitud
+    const itemsResponse = await supplyRequestService.getSupplyRequestItems(cart.supply_request_id)
+    if (!itemsResponse.success || !itemsResponse.data || itemsResponse.data.length === 0) {
+      throw new Error('No se encontraron items en la solicitud')
+    }
+    
+    // Buscar un item que coincida con el supply_code del insumo escaneado
+    const supplyCode = scannedInfo.value.supply_info?.supply_code || scannedInfo.value.supply_info?.code
+    let targetItem = itemsResponse.data.find(item => item.supply_code === supplyCode)
+    
+    // Si no hay un item específico para este código, usar el primero disponible
+    if (!targetItem) {
+      targetItem = itemsResponse.data[0]
+    }
+    
+    // Asignar el QR a la solicitud
+    const assignmentData = {
+      supply_request_id: cart.supply_request_id,
+      supply_request_item_id: targetItem.id,
+      qr_code: scannedInfo.value.qr_code,
+      notes: 'Agregado mediante escáner QR'
+    }
+    
+    await supplyRequestService.assignQRToRequest(assignmentData)
+    
+    // Mostrar notificación de éxito
+    showSuccessNotification(`Insumo agregado al carrito ${cart.cart_number} exitosamente`)
+    
+    // Limpiar selección y reescanear
+    selectedCartForAdd.value = ''
+    await scanQRCode()
+    
+  } catch (err) {
+    console.error('Error agregando al carrito:', err)
+    const errorMsg = err.response?.data?.error || err.message || 'Error al agregar el insumo al carrito'
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: errorMsg
+    })
+  } finally {
+    addingToCart.value = false
+  }
+}
+
 // ===== SISTEMA DE NOTIFICACIONES =====
 const notification = ref(null)
 
@@ -984,6 +1141,7 @@ const clearAll = () => {
 // ===== LIFECYCLE =====
 onMounted(() => {
   loadHistory()
+  loadAvailableCarts()
   
   // Auto-escanear si viene QR en query params
   if (route.query.qr || route.query.test) {

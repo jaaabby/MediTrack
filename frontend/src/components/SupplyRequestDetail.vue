@@ -311,6 +311,18 @@
             </div>
           </div>
 
+          <!-- Carrito de Insumos (solo para solicitudes aprobadas) -->
+          <div v-if="['aprobado', 'en_proceso', 'completado'].includes(request.status)">
+            <SupplyCart 
+              :request-id="request.id"
+              :can-close="authStore.canApproveRequests"
+              :can-remove-items="authStore.canApproveRequests"
+              @cart-loaded="onCartLoaded"
+              @cart-closed="onCartClosed"
+              @item-removed="onItemRemoved"
+            />
+          </div>
+
           <!-- Cronología de la solicitud -->
           <div class="bg-white rounded-lg shadow border p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Cronología del Proceso</h3>
@@ -764,6 +776,7 @@ import Swal from 'sweetalert2'
 import AssignRequestModal from '@/components/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/ReviewItemsModal.vue'
 import QrcodeVue from 'qrcode.vue'
+import SupplyCart from '@/components/SupplyCart.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -1315,6 +1328,32 @@ const getAssignmentStatusLabel = (status) => {
     'returned': 'Devuelto'
   }
   return labels[status] || status
+}
+
+// Métodos para el carrito
+const onCartLoaded = (cart) => {
+  console.log('Carrito cargado:', cart)
+}
+
+const onCartClosed = (cart) => {
+  Swal.fire({
+    icon: 'success',
+    title: 'Carrito cerrado',
+    text: 'El carrito ha sido cerrado exitosamente',
+    timer: 2000,
+    showConfirmButton: false
+  })
+}
+
+const onItemRemoved = (itemId) => {
+  console.log('Item removido del carrito:', itemId)
+  Swal.fire({
+    icon: 'info',
+    title: 'Item removido',
+    text: 'El item ha sido removido del carrito',
+    timer: 2000,
+    showConfirmButton: false
+  })
 }
 
 // Lifecycle

@@ -65,7 +65,6 @@ func (c *PavilionController) GetAllPavilions(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener pavilions: " + err.Error()})
 		return
 	}
-	fmt.Println("[LOG] Respuesta pavilions:", pavilions)
 	ctx.JSON(http.StatusOK, Response{Success: true, Data: pavilions})
 }
 

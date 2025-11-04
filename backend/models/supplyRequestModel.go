@@ -29,17 +29,17 @@ type SupplyRequest struct {
 	CompletedDate   *time.Time `json:"completed_date"`
 	MedicalCenterID int        `json:"medical_center_id" gorm:"not null"`
 	// Campos de médico responsable
-	SurgeonID    *string    `json:"surgeon_id"`
-	SurgeonName  *string    `json:"surgeon_name"`
-	SurgeryID    *int       `json:"surgery_id"`
-	SpecialtyID  *int       `json:"specialty_id"`
-	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	SurgeonID   *string   `json:"surgeon_id"`
+	SurgeonName *string   `json:"surgeon_name"`
+	SurgeryID   *int      `json:"surgery_id"`
+	SpecialtyID *int      `json:"specialty_id"`
+	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relaciones
-	Surgeon      *User             `json:"surgeon,omitempty" gorm:"foreignKey:SurgeonID;references:RUT"`
-	Surgery      *Surgery          `json:"surgery,omitempty" gorm:"foreignKey:SurgeryID"`
-	Specialty    *MedicalSpecialty `json:"specialty,omitempty" gorm:"foreignKey:SpecialtyID"`
+	Surgeon   *User             `json:"surgeon,omitempty" gorm:"foreignKey:SurgeonID;references:RUT"`
+	Surgery   *Surgery          `json:"surgery,omitempty" gorm:"foreignKey:SurgeryID"`
+	Specialty *MedicalSpecialty `json:"specialty,omitempty" gorm:"foreignKey:SpecialtyID"`
 }
 
 // SupplyRequestItem representa un item individual dentro de una solicitud
@@ -88,6 +88,7 @@ type SupplyRequestQRAssignment struct {
 	SupplyRequest     SupplyRequest     `json:"supply_request,omitempty" gorm:"foreignKey:SupplyRequestID"`
 	SupplyRequestItem SupplyRequestItem `json:"supply_request_item,omitempty" gorm:"foreignKey:SupplyRequestItemID"`
 	MedicalSupply     MedicalSupply     `json:"medical_supply,omitempty" gorm:"foreignKey:MedicalSupplyID"`
+	Cart              *SupplyCart       `json:"cart,omitempty" gorm:"-"` // Carrito asociado (no es un campo de BD, se carga manualmente)
 }
 
 // Constantes para Status de SupplyRequest
@@ -167,7 +168,7 @@ func (s *SupplyRequest) CanBeProcessed() bool {
 
 // GetHoursUntilSurgery retorna las horas restantes hasta la cirugía
 func (s *SupplyRequest) GetHoursUntilSurgery() float64 {
-	return s.SurgeryDatetime.Sub(time.Now()).Hours()
+	return time.Until(s.SurgeryDatetime).Hours()
 }
 
 // IsSurgeryOverdue verifica si la cirugía ya pasó

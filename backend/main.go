@@ -103,8 +103,15 @@ func main() {
 	supplyRequestService := services.NewSupplyRequestService(db)
 	supplyRequestController := controllers.NewSupplyRequestController(supplyRequestService, qrService)
 
+	// Inicializar servicio y controlador de Cart
+	cartService := services.NewCartService(db)
+	cartController := controllers.NewCartController(cartService)
+
 	// Registrar rutas de supply requests y trazabilidad QR
 	routes.SetupSupplyRequestRoutes(router, supplyRequestController)
+
+	// Registrar rutas de carritos
+	routes.SetupCartRoutes(router, cartController)
 
 	// Iniciar el verificador automático de retornos a bodega en una goroutine
 	go medicalSupplyService.StartAutomaticReturnChecker()
