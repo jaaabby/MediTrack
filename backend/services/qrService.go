@@ -479,6 +479,17 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 			First(&assignment).Error; err == nil {
 			result.RequestAssignment = &assignment
 			result.SupplyRequest = &assignment.SupplyRequest
+
+			// Cargar información del carrito si esta asignación está en un carrito
+			var cartItem models.SupplyCartItem
+			if err := s.DB.Where("supply_request_qr_assignment_id = ? AND is_active = ?",
+				assignment.ID, true).
+				Preload("SupplyCart").
+				First(&cartItem).Error; err == nil {
+				// Agregar la información del carrito al assignment
+				assignment.Cart = &cartItem.SupplyCart
+				result.RequestAssignment = &assignment
+			}
 		}
 
 	} else if qrType == "batch" {
@@ -1055,12 +1066,12 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					// Crear resumen si no existe
 					storeSummary = models.StoreInventorySummary{
-						StoreID:            storeID,
-						BatchID:            supply.BatchID,
-						SupplyCode:         supply.Code,
-						SurgeryID:          batch.SurgeryID,
-						OriginalAmount:     batch.Amount,
-						CurrentInStore:     batch.Amount - 1,
+						StoreID:             storeID,
+						BatchID:             supply.BatchID,
+						SupplyCode:          supply.Code,
+						SurgeryID:           batch.SurgeryID,
+						OriginalAmount:      batch.Amount,
+						CurrentInStore:      batch.Amount - 1,
 						TotalTransferredOut: 1,
 					}
 					now := time.Now()
@@ -1403,17 +1414,17 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 						Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
 							supply.BatchID, models.SupplyLocationStore, supply.LocationID, models.StatusConsumed).
 						Count(&realCount)
-					
+
 					// Crear resumen con valores calculados
 					storeSummary = models.StoreInventorySummary{
-						StoreID:            supply.LocationID,
-						BatchID:            supply.BatchID,
-						SupplyCode:         supply.Code,
-						SurgeryID:          batch.SurgeryID, // Obtener del batch
-						OriginalAmount:     int(realCount) + 1, // Cantidad antes del consumo (real + 1 consumido)
-						CurrentInStore:     int(realCount),     // Stock actual en bodega (sin el que se consumió)
+						StoreID:              supply.LocationID,
+						BatchID:              supply.BatchID,
+						SupplyCode:           supply.Code,
+						SurgeryID:            batch.SurgeryID,    // Obtener del batch
+						OriginalAmount:       int(realCount) + 1, // Cantidad antes del consumo (real + 1 consumido)
+						CurrentInStore:       int(realCount),     // Stock actual en bodega (sin el que se consumió)
 						TotalConsumedInStore: 1,
-						LastConsumedDate:   &now,
+						LastConsumedDate:     &now,
 					}
 					if err := tx.Create(&storeSummary).Error; err != nil {
 						return fmt.Errorf("error creando resumen de bodega: %v", err)
@@ -1442,9 +1453,9 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					// Si no existe el resumen, crearlo
 					pavilionSummary = models.PavilionInventorySummary{
-						PavilionID:      supply.LocationID,
-						BatchID:         supply.BatchID,
-						SupplyCode:      supply.Code,
+						PavilionID:       supply.LocationID,
+						BatchID:          supply.BatchID,
+						SupplyCode:       supply.Code,
 						TotalReceived:    1,
 						CurrentAvailable: 0, // Ya no hay disponible
 						TotalConsumed:    1,

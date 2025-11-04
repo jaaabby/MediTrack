@@ -323,8 +323,7 @@ CREATE TABLE IF NOT EXISTS supply_request_qr_assignment (
     CONSTRAINT chk_delivered_fields_consistency CHECK (
         (delivered_date IS NULL AND delivered_by IS NULL AND delivered_by_name IS NULL) OR
         (delivered_date IS NOT NULL AND delivered_by IS NOT NULL AND delivered_by_name IS NOT NULL)
-    ),
-    CONSTRAINT uq_active_qr_assignment UNIQUE (qr_code, status) DEFERRABLE INITIALLY DEFERRED
+    )
 );
 
 CREATE INDEX idx_qr_assignment_request ON supply_request_qr_assignment(supply_request_id);
@@ -820,6 +819,118 @@ CREATE TRIGGER trg_update_supplier_config_updated_at
     BEFORE UPDATE ON supplier_config
     FOR EACH ROW
     EXECUTE FUNCTION update_supplier_config_updated_at();
+
+-- =======================
+-- SISTEMA DE CARRITOS DE INSUMOS
+-- =======================
+
+-- Tabla principal de carritos
+CREATE TABLE IF NOT EXISTS supply_cart (
+    id SERIAL PRIMARY KEY,
+    supply_request_id INTEGER NOT NULL REFERENCES supply_request(id) ON DELETE CASCADE,
+    cart_number VARCHAR(50) NOT NULL UNIQUE,
+    status VARCHAR(50) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by VARCHAR(20) NOT NULL REFERENCES "user"(rut),
+    created_by_name VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    closed_at TIMESTAMP WITH TIME ZONE,
+    closed_by VARCHAR(20) REFERENCES "user"(rut),
+    closed_by_name VARCHAR(255),
+    notes TEXT,
+    
+    CONSTRAINT chk_supply_cart_status CHECK (status IN ('active', 'closed', 'cancelled')),
+    CONSTRAINT uq_supply_cart_request UNIQUE (supply_request_id)
+);
+
+CREATE INDEX idx_supply_cart_request ON supply_cart(supply_request_id);
+CREATE INDEX idx_supply_cart_status ON supply_cart(status);
+CREATE INDEX idx_supply_cart_number ON supply_cart(cart_number);
+CREATE INDEX idx_supply_cart_created_at ON supply_cart(created_at DESC);
+
+COMMENT ON TABLE supply_cart IS 'Carritos de insumos generados automáticamente al aprobar solicitudes';
+COMMENT ON COLUMN supply_cart.cart_number IS 'Número único del carrito generado automáticamente';
+COMMENT ON COLUMN supply_cart.status IS 'Estado del carrito: active, closed, cancelled';
+
+-- Tabla de items del carrito
+CREATE TABLE IF NOT EXISTS supply_cart_item (
+    id SERIAL PRIMARY KEY,
+    supply_cart_id INTEGER NOT NULL REFERENCES supply_cart(id) ON DELETE CASCADE,
+    supply_request_qr_assignment_id INTEGER NOT NULL REFERENCES supply_request_qr_assignment(id) ON DELETE CASCADE,
+    added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    added_by VARCHAR(20) NOT NULL REFERENCES "user"(rut),
+    added_by_name VARCHAR(255) NOT NULL,
+    removed_at TIMESTAMP WITH TIME ZONE,
+    removed_by VARCHAR(20) REFERENCES "user"(rut),
+    removed_by_name VARCHAR(255),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    notes TEXT,
+    
+    CONSTRAINT uq_cart_qr_assignment UNIQUE (supply_cart_id, supply_request_qr_assignment_id)
+);
+
+CREATE INDEX idx_supply_cart_item_cart ON supply_cart_item(supply_cart_id);
+CREATE INDEX idx_supply_cart_item_assignment ON supply_cart_item(supply_request_qr_assignment_id);
+CREATE INDEX idx_supply_cart_item_active ON supply_cart_item(supply_cart_id, is_active);
+CREATE INDEX idx_supply_cart_item_added_at ON supply_cart_item(added_at DESC);
+
+COMMENT ON TABLE supply_cart_item IS 'Items individuales del carrito vinculados a asignaciones QR';
+COMMENT ON COLUMN supply_cart_item.is_active IS 'Indica si el item está activo en el carrito';
+
+-- Función para generar número de carrito
+CREATE OR REPLACE FUNCTION generate_cart_number()
+RETURNS VARCHAR(50) AS $$
+BEGIN
+    RETURN 'CART-' || TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') || '-' || LPAD(nextval('supply_cart_id_seq')::TEXT, 3, '0');
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para actualizar updated_at en supply_cart
+CREATE OR REPLACE FUNCTION update_supply_cart_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tr_supply_cart_updated_at
+    BEFORE UPDATE ON supply_cart
+    FOR EACH ROW
+    EXECUTE FUNCTION update_supply_cart_updated_at();
+
+-- Vista para obtener carritos con detalles
+CREATE OR REPLACE VIEW v_supply_cart_details AS
+SELECT 
+    sc.id AS cart_id,
+    sc.cart_number,
+    sc.supply_request_id,
+    sr.request_number,
+    sc.status AS cart_status,
+    sc.created_at AS cart_created_at,
+    sc.created_by,
+    sc.created_by_name,
+    sc.updated_at AS cart_updated_at,
+    sc.closed_at,
+    sc.closed_by,
+    sc.closed_by_name,
+    sc.notes AS cart_notes,
+    COUNT(sci.id) FILTER (WHERE sci.is_active = TRUE) AS active_items_count,
+    COUNT(sci.id) AS total_items_count,
+    sr.status AS request_status,
+    sr.requested_by_name,
+    sr.surgery_datetime,
+    sr.pavilion_id
+FROM supply_cart sc
+JOIN supply_request sr ON sr.id = sc.supply_request_id
+LEFT JOIN supply_cart_item sci ON sci.supply_cart_id = sc.id
+GROUP BY 
+    sc.id, sc.cart_number, sc.supply_request_id, sr.request_number,
+    sc.status, sc.created_at, sc.created_by, sc.created_by_name,
+    sc.updated_at, sc.closed_at, sc.closed_by, sc.closed_by_name,
+    sc.notes, sr.status, sr.requested_by_name, sr.surgery_datetime, sr.pavilion_id;
+
+COMMENT ON VIEW v_supply_cart_details IS 'Vista con detalles completos de carritos incluyendo contadores de items';
 
 -- =======================
 -- ACTUALIZACIÓN DE STATUS DE INSUMOS MÉDICOS DESDE HISTORIAL

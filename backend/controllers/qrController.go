@@ -958,7 +958,6 @@ func (c *QRController) GetQRStats(ctx *gin.Context) {
 		Success: false,
 		Error:   "Funcionalidad de estadísticas QR no implementada en QRService",
 	})
-	return
 }
 
 // VerifySupplyAvailability verifica si un insumo está disponible para consumo
