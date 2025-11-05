@@ -117,6 +117,8 @@
               <option value="admin">Administrador</option>
               <option value="pabellón">Pabellón</option>
               <option value="encargado de bodega">Encargado de Bodega</option>
+              <option value="enfermera">Enfermera</option>
+              <option value="doctor">Doctor</option>
             </select>
             <p v-if="errors.role" class="mt-1 text-sm text-red-600">{{ errors.role }}</p>
           </div>
@@ -129,15 +131,17 @@
               v-model="registerForm.medicalCenterId"
               name="medicalCenterId"
               required
+              :disabled="loadingCenters"
               class="form-select"
-              :class="{ 'border-red-500': errors.medicalCenterId }"
+              :class="{ 'border-red-500': errors.medicalCenterId, 'opacity-50 cursor-not-allowed': loadingCenters }"
             >
-              <option value="">Seleccionar centro médico</option>
+              <option value="">{{ loadingCenters ? 'Cargando centros médicos...' : 'Seleccionar centro médico' }}</option>
               <option v-for="center in medicalCenters" :key="center.id" :value="center.id">
                 {{ center.name }}
               </option>
             </select>
             <p v-if="errors.medicalCenterId" class="mt-1 text-sm text-red-600">{{ errors.medicalCenterId }}</p>
+            <p v-if="loadingCenters" class="mt-1 text-sm text-gray-500">Cargando centros médicos...</p>
           </div>
         </div>
 
@@ -213,6 +217,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import authService from '@/services/authService'
+import medicalCenterService from '@/services/medicalCenterService'
 
 const router = useRouter()
 
@@ -232,6 +237,7 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 const medicalCenters = ref([])
+const loadingCenters = ref(false)
 
 // Errores de validación
 const errors = reactive({
@@ -249,17 +255,34 @@ onMounted(async () => {
   await loadMedicalCenters()
 })
 
-// Cargar lista de centros médicos
+// Cargar lista de centros médicos desde el backend
 const loadMedicalCenters = async () => {
+  loadingCenters.value = true
+  errorMessage.value = ''
   try {
-    // Por ahora usamos datos mock, pero esto debería venir del backend
-    medicalCenters.value = [
-      { id: 1, name: 'Hospital Central' },
-      { id: 2, name: 'Clínica San José' },
-      { id: 3, name: 'Centro Médico Norte' }
-    ]
+    const response = await medicalCenterService.getAll()
+    // Manejar diferentes formatos de respuesta
+    medicalCenters.value = response.data || response || []
+    console.log('Centros médicos cargados:', medicalCenters.value)
+    
+    if (medicalCenters.value.length === 0) {
+      errorMessage.value = 'No hay centros médicos disponibles. Contacta al administrador.'
+    }
   } catch (error) {
     console.error('Error al cargar centros médicos:', error)
+    
+    // Mensajes de error más específicos
+    if (error.code === 'ERR_NETWORK' || error.message?.includes('ERR_CONNECTION_REFUSED')) {
+      errorMessage.value = 'No se puede conectar al servidor. Verifica que el backend esté corriendo en http://localhost:8080'
+    } else if (error.response?.status === 401) {
+      errorMessage.value = 'Error de autenticación. Por favor, recarga la página.'
+    } else if (error.response?.status === 404) {
+      errorMessage.value = 'Endpoint no encontrado. Verifica la configuración del servidor.'
+    } else {
+      errorMessage.value = 'Error al cargar los centros médicos. Por favor, recarga la página o verifica que el servidor esté corriendo.'
+    }
+  } finally {
+    loadingCenters.value = false
   }
 }
 
@@ -352,7 +375,7 @@ const handleRegister = async () => {
       medical_center_id: parseInt(registerForm.medicalCenterId)
     })
     
-    successMessage.value = 'Usuario registrado exitosamente. Puedes iniciar sesión ahora.'
+    successMessage.value = 'Usuario registrado exitosamente. Serás redirigido al inicio de sesión.'
     
     // Limpiar formulario
     Object.keys(registerForm).forEach(key => {
@@ -366,7 +389,14 @@ const handleRegister = async () => {
     
   } catch (error) {
     console.error('Error en registro:', error)
-    errorMessage.value = error.message || 'Error al registrar usuario. Intenta nuevamente.'
+    // Manejar diferentes tipos de errores
+    if (error.message) {
+      errorMessage.value = error.message
+    } else if (error.error) {
+      errorMessage.value = error.error
+    } else {
+      errorMessage.value = 'Error al registrar usuario. Por favor, verifica los datos e intenta nuevamente.'
+    }
   } finally {
     isLoading.value = false
   }

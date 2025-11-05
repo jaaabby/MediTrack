@@ -13,6 +13,16 @@ const routes = [
       requiresAuth: false
     }
   },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/Register.vue'),
+    meta: {
+      title: 'Registro de Usuario - MediTrack',
+      description: 'Crear nueva cuenta en el sistema de gestión de insumos médicos',
+      requiresAuth: false
+    }
+  },
 
   // Ruta raíz
   {
@@ -420,9 +430,9 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Si está autenticado y trata de acceder al login, redirigir al home
-  if (to.name === 'Login' && authStore.isAuthenticated) {
-    console.log('✓ Usuario autenticado intentando acceder a login, redirigiendo a home')
+  // Si está autenticado y trata de acceder al login o registro, redirigir al home
+  if ((to.name === 'Login' || to.name === 'Register') && authStore.isAuthenticated) {
+    console.log('✓ Usuario autenticado intentando acceder a login/registro, redirigiendo a home')
     next({ name: 'Home', replace: true })
     return
   }
