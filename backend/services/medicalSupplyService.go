@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"meditrack/mailer"
@@ -19,12 +20,15 @@ type MedicalSupplyService struct {
 }
 
 // CreateMultipleIndividualSuppliesTx crea múltiples insumos individuales usando una transacción existente
-func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, batchID int, code int, quantity int) ([]models.MedicalSupply, error) {
+func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, batchID int, code int, quantity int, storeID int) ([]models.MedicalSupply, error) {
 	var supplies []models.MedicalSupply
 	for i := 0; i < quantity; i++ {
 		supply := models.MedicalSupply{
-			Code:    code,
-			BatchID: batchID,
+			Code:         code,
+			BatchID:      batchID,
+			LocationType: models.SupplyLocationStore,
+			LocationID:   storeID,
+			Status:       models.StatusAvailable,
 			// QRCode se generará después de crear el insumo para tener el ID
 		}
 
@@ -139,16 +143,23 @@ func (s *MedicalSupplyService) DeleteMedicalSupply(id int) error {
 // ===== INVENTARIO BÁSICO (de la versión anterior - RESTAURADO) =====
 
 // GetInventoryList obtiene el inventario básico combinando datos de batch y supplyCode
-// VERSIÓN ANTERIOR RESTAURADA - funcionalidad simple y confiable
+// GetInventoryList obtiene el inventario basado en store_inventory_summary para consistencia
+// Esto asegura que los cambios en cantidad y estado se reflejen correctamente en todas las vistas
 func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, error) {
 	var result []map[string]interface{}
 
-	// Query simple de la versión anterior que funcionaba
+	// Query que usa store_inventory_summary como fuente de verdad para consistencia
+	// Si no hay resumen, usa batch.amount como fallback
 	query := `
 		SELECT DISTINCT ON (b.id)
 			b.id as batch_id,
 			b.expiration_date,
-			b.amount,
+			COALESCE(
+				(SELECT SUM(sis2.current_in_store) 
+				 FROM store_inventory_summary sis2 
+				 WHERE sis2.batch_id = b.id), 
+				b.amount
+			) as amount,
 			b.supplier,
 			b.store_id,
 			sc.code as supply_code,
@@ -311,7 +322,7 @@ func (s *MedicalSupplyService) CreateMultipleIndividualSupplies(batchID int, cod
 	return supplies, nil
 }
 
-// ConsumeSupplyByQR marca un insumo como consumido y actualiza la cantidad del lote
+// ConsumeSupplyByQR marca un insumo como consumido y actualiza la cantidad del lote y los resúmenes de inventario
 func (s *MedicalSupplyService) ConsumeSupplyByQR(qrCode string, userRUT string, destinationType string, destinationID int) (*models.MedicalSupply, error) {
 	var supply models.MedicalSupply
 
@@ -326,6 +337,17 @@ func (s *MedicalSupplyService) ConsumeSupplyByQR(qrCode string, userRUT string, 
 			return fmt.Errorf("el insumo con QR %s ya ha sido consumido", qrCode)
 		}
 
+		// Obtener información del lote antes de la actualización
+		var batch models.Batch
+		if err := tx.Where("id = ?", supply.BatchID).First(&batch).Error; err != nil {
+			return fmt.Errorf("error obteniendo lote: %v", err)
+		}
+
+		// Verificar que hay stock disponible
+		if batch.Amount <= 0 {
+			return fmt.Errorf("no hay stock disponible en el lote %d", batch.ID)
+		}
+
 		// Actualizar el estado del insumo a consumido
 		// El trigger automáticamente creará el registro en supply_history
 		if err := tx.Model(&supply).Update("status", models.StatusConsumed).Error; err != nil {
@@ -333,18 +355,83 @@ func (s *MedicalSupplyService) ConsumeSupplyByQR(qrCode string, userRUT string, 
 		}
 
 		// Actualizar cantidad del lote (restar 1)
-		if err := tx.Model(&models.Batch{}).Where("id = ?", supply.BatchID).Update("amount", gorm.Expr("amount - 1")).Error; err != nil {
+		newAmount := batch.Amount - 1
+		if err := tx.Model(&batch).Update("amount", newAmount).Error; err != nil {
 			return fmt.Errorf("error actualizando cantidad del lote: %v", err)
 		}
 
-		// Verificar que la cantidad del lote no sea negativa
-		var batch models.Batch
-		if err := tx.Where("id = ?", supply.BatchID).First(&batch).Error; err != nil {
-			return fmt.Errorf("error obteniendo lote: %v", err)
-		}
+		// Actualizar resúmenes de inventario según la ubicación del insumo
+		now := time.Now()
+		if supply.LocationType == models.SupplyLocationStore {
+			// Insumo consumido desde bodega - actualizar store_inventory_summary
+			var storeSummary models.StoreInventorySummary
+			if err := tx.Where("store_id = ? AND batch_id = ?", supply.LocationID, supply.BatchID).
+				First(&storeSummary).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Si no existe el resumen, calcular el stock real en bodega
+					var realCount int64
+					tx.Model(&models.MedicalSupply{}).
+						Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
+							supply.BatchID, models.SupplyLocationStore, supply.LocationID, models.StatusConsumed).
+						Count(&realCount)
 
-		if batch.Amount < 0 {
-			return fmt.Errorf("no hay suficiente stock en el lote para consumir este insumo")
+					// Crear resumen con valores calculados
+					storeSummary = models.StoreInventorySummary{
+						StoreID:              supply.LocationID,
+						BatchID:              supply.BatchID,
+						SupplyCode:           supply.Code,
+						SurgeryID:            batch.SurgeryID,
+						OriginalAmount:       int(realCount) + 1, // Cantidad antes del consumo
+						CurrentInStore:       int(realCount),     // Stock actual en bodega
+						TotalConsumedInStore: 1,
+						LastConsumedDate:     &now,
+					}
+					if err := tx.Create(&storeSummary).Error; err != nil {
+						return fmt.Errorf("error creando resumen de bodega: %v", err)
+					}
+				} else {
+					return fmt.Errorf("error obteniendo resumen de bodega: %v", err)
+				}
+			} else {
+				// Actualizar resumen existente
+				storeSummary.CurrentInStore--
+				storeSummary.TotalConsumedInStore++
+				storeSummary.LastConsumedDate = &now
+				if err := tx.Save(&storeSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de bodega: %v", err)
+				}
+			}
+		} else if supply.LocationType == models.SupplyLocationPavilion {
+			// Insumo consumido desde pabellón - actualizar pavilion_inventory_summary
+			var pavilionSummary models.PavilionInventorySummary
+			if err := tx.Where("pavilion_id = ? AND batch_id = ?", supply.LocationID, supply.BatchID).
+				First(&pavilionSummary).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Si no existe el resumen, crearlo
+					pavilionSummary = models.PavilionInventorySummary{
+						PavilionID:       supply.LocationID,
+						BatchID:          supply.BatchID,
+						SupplyCode:       supply.Code,
+						TotalReceived:    1,
+						CurrentAvailable: 0, // Ya no hay disponible
+						TotalConsumed:    1,
+						LastConsumedDate: &now,
+					}
+					if err := tx.Create(&pavilionSummary).Error; err != nil {
+						return fmt.Errorf("error creando resumen de pabellón: %v", err)
+					}
+				} else {
+					return fmt.Errorf("error obteniendo resumen de pabellón: %v", err)
+				}
+			} else {
+				// Actualizar resumen existente
+				pavilionSummary.CurrentAvailable--
+				pavilionSummary.TotalConsumed++
+				pavilionSummary.LastConsumedDate = &now
+				if err := tx.Save(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de pabellón: %v", err)
+				}
+			}
 		}
 
 		return nil
@@ -652,8 +739,8 @@ func (s *MedicalSupplyService) GetUnconsumedSupplies() ([]map[string]interface{}
 func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
 
-	// Buscar insumos recepcionados que no han sido consumidos
-	// Verificaremos las horas laborales después
+	// Buscar insumos recepcionados que están en un pabellón
+	// Usar ms.updated_at como fecha de recepción (más confiable que el historial que puede tener problemas de zona horaria)
 	query := `
 		SELECT 
 			ms.id,
@@ -666,24 +753,19 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			b.expiration_date,
 			s.name as store_name,
 			s.id as store_id,
-			sh.date_time as received_at
+			ms.updated_at as received_at
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
 		JOIN store s ON b.store_id = s.id
-		JOIN supply_history sh ON ms.id = sh.medical_supply_id
 		WHERE ms.status = ? 
-		AND sh.status = ? 
-		AND sh.destination_type = ?
-		AND NOT EXISTS (
-			SELECT 1 FROM supply_history sh2 
-			WHERE sh2.medical_supply_id = ms.id 
-			AND sh2.date_time > sh.date_time
-		)
-		ORDER BY sh.date_time ASC
+		AND ms.location_type = ?
+		AND ms.location_id > 0
+		ORDER BY ms.updated_at ASC
 	`
 
-	rows, err := s.DB.Raw(query, models.StatusReceived, models.StatusReceived, models.DestinationTypePavilion).Rows()
+	fmt.Printf("🔍 Buscando insumos recepcionados en pabellones...\n")
+	rows, err := s.DB.Raw(query, models.StatusReceived, models.SupplyLocationPavilion).Rows()
 	if err != nil {
 		return nil, fmt.Errorf("error consultando insumos para retorno: %v", err)
 	}
@@ -692,8 +774,10 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 	// Importar el paquete de horas laborales
 	// Calcular horas laborales para cada insumo
 	config := pkg.DefaultBusinessHoursConfig()
+	count := 0
 
 	for rows.Next() {
+		count++
 		var (
 			id             int
 			qrCode         string
@@ -709,36 +793,74 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 		)
 
 		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt); err != nil {
+			fmt.Printf("⚠️ Error escaneando fila %d: %v\n", count, err)
 			continue
 		}
 
+		fmt.Printf("📦 Insumo encontrado: ID=%d, QR=%s, Status=%s, LocationType=%s, LocationID=%d, ReceivedAt=%s\n",
+			id, qrCode, status, "pavilion", 0, receivedAt.Format("2006-01-02 15:04:05"))
+
 		// Calcular horas laborales transcurridas desde la recepción
 		now := time.Now()
-		businessHoursElapsed := pkg.CalculateBusinessHours(receivedAt, now, config)
+		
+		// Verificar si la recepción fue fuera del horario laboral (después de las 17:00 o antes de las 8:00)
+		receivedHour := receivedAt.Hour()
+		isOutsideBusinessHours := receivedHour >= config.EndHour || receivedHour < config.StartHour
+		
+		var businessHoursElapsed float64
+		if isOutsideBusinessHours {
+			// Si la recepción fue fuera del horario laboral, calcular horas laborales desde el próximo día
+			// Si fue después de las 17:00, empezar a contar desde las 8:00 del día siguiente
+			// Si fue antes de las 8:00, empezar desde las 8:00 del mismo día
+			nextBusinessDayStart := receivedAt
+			if receivedHour >= config.EndHour {
+				// Si fue después de las 17:00, empezar desde las 8:00 del día siguiente
+				nextBusinessDayStart = time.Date(receivedAt.Year(), receivedAt.Month(), receivedAt.Day(), config.StartHour, 0, 0, 0, receivedAt.Location()).AddDate(0, 0, 1)
+			} else if receivedHour < config.StartHour {
+				// Si fue antes de las 8:00, empezar desde las 8:00 del mismo día
+				nextBusinessDayStart = time.Date(receivedAt.Year(), receivedAt.Month(), receivedAt.Day(), config.StartHour, 0, 0, 0, receivedAt.Location())
+			}
+			businessHoursElapsed = pkg.CalculateBusinessHours(nextBusinessDayStart, now, config)
+			fmt.Printf("  ℹ️ Recepción fuera del horario laboral (hora: %d), calculando desde próximo horario laboral: %.4f horas laborales\n",
+				receivedHour, businessHoursElapsed)
+		} else {
+			// Si fue dentro del horario laboral, calcular horas laborales normalmente
+			businessHoursElapsed = pkg.CalculateBusinessHours(receivedAt, now, config)
+		}
+		
+		// Usar 8 horas laborales como umbral
 		shouldReturn := businessHoursElapsed >= 8.0
 
+		fmt.Printf("  ⏱️ Horas laborales transcurridas: %.4f (umbral: %.2f), Debe retornar: %v\n",
+			businessHoursElapsed, 8.0, shouldReturn)
+
 		item := map[string]interface{}{
-			"supply_id":           id,
-			"qr_code":             qrCode,
-			"status":              status,
-			"supply_name":         supplyName,
-			"supply_code":         supplyCode,
-			"batch_id":            batchID,
-			"supplier":            supplier,
-			"expiration_date":     expirationDate.Format("2006-01-02"),
-			"store_name":          storeName,
-			"store_id":            storeID,
-			"received_at":         receivedAt.Format("2006-01-02 15:04:05"),
+			"supply_id":              id,
+			"qr_code":                qrCode,
+			"status":                 status,
+			"supply_name":            supplyName,
+			"supply_code":            supplyCode,
+			"batch_id":               batchID,
+			"supplier":               supplier,
+			"expiration_date":        expirationDate.Format("2006-01-02"),
+			"store_name":             storeName,
+			"store_id":               storeID,
+			"received_at":            receivedAt.Format("2006-01-02 15:04:05"),
 			"business_hours_elapsed": businessHoursElapsed,
-			"should_return":       shouldReturn,
+			"should_return":          shouldReturn,
 		}
 
-		// Solo agregar si debe retornarse (8 horas o más)
+		// Solo agregar si debe retornarse (8 horas laborales o más)
 		if shouldReturn {
 			results = append(results, item)
+			fmt.Printf("✅ Insumo agregado para retorno: QR=%s\n", qrCode)
+		} else {
+			fmt.Printf("⏳ Insumo aún no debe retornar: QR=%s (%.4f < %.2f horas laborales)\n",
+				qrCode, businessHoursElapsed, 8.0)
 		}
 	}
 
+	fmt.Printf("📊 Total filas encontradas: %d, Total insumos para retorno: %d\n", count, len(results))
 	return results, nil
 }
 
@@ -767,11 +889,74 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 			return fmt.Errorf("error obteniendo información de la bodega: %v", err)
 		}
 
-		// Cambiar estado del insumo
+		now := time.Now()
 		oldStatus := supply.Status
-		supply.Status = models.StatusEnRouteToStore
+		oldLocationType := supply.LocationType
+		oldLocationID := supply.LocationID
+
+		// Cambiar estado y ubicación del insumo
+		supply.Status = models.StatusAvailable
+		supply.LocationType = models.SupplyLocationStore
+		supply.LocationID = store.ID
+		supply.InTransit = false
 		if err := tx.Save(&supply).Error; err != nil {
 			return fmt.Errorf("error actualizando estado del insumo: %v", err)
+		}
+
+		// Si el insumo estaba en un pabellón, decrementar el resumen del pabellón
+		if oldLocationType == models.SupplyLocationPavilion && oldLocationID > 0 {
+			var pavilionSummary models.PavilionInventorySummary
+			if err := tx.Where("pavilion_id = ? AND batch_id = ?", oldLocationID, batch.ID).
+				First(&pavilionSummary).Error; err == nil {
+				pavilionSummary.CurrentAvailable--
+				if pavilionSummary.CurrentAvailable < 0 {
+					pavilionSummary.CurrentAvailable = 0
+				}
+				pavilionSummary.TotalReturned++
+				pavilionSummary.LastReturnedDate = &now
+				if err := tx.Save(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de pabellón: %v", err)
+				}
+				fmt.Printf("✅ Resumen de pabellón actualizado: PavilionID=%d, CurrentAvailable=%d\n",
+					oldLocationID, pavilionSummary.CurrentAvailable)
+			}
+		}
+
+		// Incrementar el resumen de bodega
+		var storeSummary models.StoreInventorySummary
+		if err := tx.Where("store_id = ? AND batch_id = ?", store.ID, batch.ID).
+			First(&storeSummary).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Crear resumen si no existe
+				storeSummary = models.StoreInventorySummary{
+					StoreID:          store.ID,
+					BatchID:          batch.ID,
+					SupplyCode:       supply.Code,
+					OriginalAmount:   batch.Amount,
+					CurrentInStore:   1,
+					TotalReturnedIn:  1,
+					LastReturnInDate: &now,
+				}
+				if err := tx.Create(&storeSummary).Error; err != nil {
+					return fmt.Errorf("error creando resumen de bodega: %v", err)
+				}
+			} else {
+				return fmt.Errorf("error obteniendo resumen de bodega: %v", err)
+			}
+		} else {
+			// Actualizar resumen existente
+			storeSummary.CurrentInStore++
+			storeSummary.TotalReturnedIn++
+			storeSummary.LastReturnInDate = &now
+			if err := tx.Save(&storeSummary).Error; err != nil {
+				return fmt.Errorf("error actualizando resumen de bodega: %v", err)
+			}
+		}
+
+		// Incrementar cantidad del lote
+		batch.Amount++
+		if err := tx.Save(&batch).Error; err != nil {
+			return fmt.Errorf("error actualizando lote: %v", err)
 		}
 
 		// Crear registro en supply_history
@@ -780,19 +965,19 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 			returnType = "automatico"
 		}
 
+		// Usar el mensaje que viene en notes (ya contiene las horas laborales correctas)
 		finalNotes := fmt.Sprintf("Retorno a bodega (%s): %s", returnType, notes)
-		if isAutomatic {
-			finalNotes = fmt.Sprintf("Retorno automático a bodega después de 15 días sin consumo. %s", notes)
-		}
 
 		historyEntry := models.SupplyHistory{
-			DateTime:        time.Now(),
-			Status:          models.StatusEnRouteToStore,
-			DestinationType: models.DestinationTypeStore,
-			DestinationID:   store.ID,
-			MedicalSupplyID: supply.ID,
-			UserRUT:         userRUT,
-			Notes:           finalNotes,
+			DateTime:         now,
+			Status:           models.StatusAvailable,
+			DestinationType:  models.DestinationTypeStore,
+			DestinationID:    store.ID,
+			MedicalSupplyID:  supply.ID,
+			UserRUT:          userRUT,
+			Notes:            finalNotes,
+			OriginType:       &oldLocationType,
+			OriginID:         &oldLocationID,
 		}
 
 		if err := tx.Create(&historyEntry).Error; err != nil {
@@ -825,20 +1010,26 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 	}
 
 	returnedCount := 0
+	errorCount := 0
+	var errors []string
+
 	for _, supply := range supplies {
 		supplyID := supply["supply_id"].(int)
 		qrCode := supply["qr_code"].(string)
 		businessHoursElapsed := supply["business_hours_elapsed"].(float64)
 
-		// Ya están filtrados por GetSuppliesForReturn, pero verificamos por seguridad
+		// Ya están filtrados por GetSuppliesForReturn (8 horas laborales), pero verificamos por seguridad
 		if businessHoursElapsed >= 8.0 {
-			// Usuario del sistema para operaciones automáticas
-			systemUserRUT := "SYSTEM-AUTO"
+			// Usuario del sistema para operaciones automáticas (usar SYSTEM-INIT que existe en la BD)
+			systemUserRUT := "SYSTEM-INIT"
 			notes := fmt.Sprintf("Retorno automático después de %.1f horas laborales sin consumo", businessHoursElapsed)
 
 			err := s.ReturnSupplyToStore(supplyID, systemUserRUT, notes, true)
 			if err != nil {
-				fmt.Printf("❌ Error retornando insumo %s: %v\n", qrCode, err)
+				errorMsg := fmt.Sprintf("Error retornando insumo %s: %v", qrCode, err)
+				fmt.Printf("❌ %s\n", errorMsg)
+				errors = append(errors, errorMsg)
+				errorCount++
 				continue
 			}
 
@@ -849,6 +1040,15 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 
 	if returnedCount > 0 {
 		fmt.Printf("📦 Procesamiento automático completado: %d insumos retornados a bodega\n", returnedCount)
+	}
+
+	if errorCount > 0 {
+		if returnedCount == 0 {
+			// Si todos fallaron, retornar error
+			return fmt.Errorf("todos los insumos fallaron al procesarse: %v", errors)
+		}
+		// Si algunos fallaron, solo loguear pero no retornar error
+		fmt.Printf("⚠️ Advertencia: %d insumos fallaron al procesarse\n", errorCount)
 	}
 
 	return nil
@@ -990,9 +1190,108 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			return fmt.Errorf("error obteniendo información de la bodega: %v", err)
 		}
 
+		// Buscar y actualizar la transferencia de devolución (si existe)
+		// Buscar por QR code y estado en tránsito, o por medical_supply_id si el QR no funciona
+		var transfer models.SupplyTransfer
+		if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.TransferStatusInTransit).
+			First(&transfer).Error; err != nil {
+			// Si no se encuentra por QR code, intentar por medical_supply_id
+			if err := tx.Where("medical_supply_id = ? AND status = ? AND destination_type = ?", 
+				supply.ID, models.TransferStatusInTransit, models.TransferLocationStore).
+				Order("send_date DESC").First(&transfer).Error; err != nil {
+				fmt.Printf("⚠️ No se encontró transferencia en tránsito para QR %s (puede que ya haya sido recibida)\n", qrCode)
+			} else {
+				// Transferencia encontrada por medical_supply_id - actualizar a recibida
+				now := time.Now()
+				transfer.Status = models.TransferStatusReceived
+				transfer.ReceiveDate = &now
+				transfer.ReceivedBy = &userRUT
+				// Obtener nombre del usuario
+				var user models.User
+				if err := tx.Where("rut = ?", userRUT).First(&user).Error; err == nil {
+					transfer.ReceivedByName = &user.Name
+				}
+				if notes != "" {
+					if transfer.Notes != "" {
+						transfer.Notes = transfer.Notes + "\n" + notes
+					} else {
+						transfer.Notes = notes
+					}
+				}
+				if err := tx.Save(&transfer).Error; err != nil {
+					return fmt.Errorf("error actualizando transferencia: %v", err)
+				}
+				fmt.Printf("✅ Transferencia de devolución actualizada (por medical_supply_id): Code=%s, Status=%s\n",
+					transfer.TransferCode, transfer.Status)
+			}
+		} else {
+			// Transferencia encontrada por QR code - actualizar a recibida
+			now := time.Now()
+			transfer.Status = models.TransferStatusReceived
+			transfer.ReceiveDate = &now
+			transfer.ReceivedBy = &userRUT
+			// Obtener nombre del usuario
+			var user models.User
+			if err := tx.Where("rut = ?", userRUT).First(&user).Error; err == nil {
+				transfer.ReceivedByName = &user.Name
+			}
+			if notes != "" {
+				if transfer.Notes != "" {
+					transfer.Notes = transfer.Notes + "\n" + notes
+				} else {
+					transfer.Notes = notes
+				}
+			}
+			if err := tx.Save(&transfer).Error; err != nil {
+				return fmt.Errorf("error actualizando transferencia: %v", err)
+			}
+			fmt.Printf("✅ Transferencia de devolución actualizada (por QR code): Code=%s, Status=%s\n",
+				transfer.TransferCode, transfer.Status)
+		}
+
+		// Actualizar inventario de bodega
+		var storeSummary models.StoreInventorySummary
+		if err := tx.Where("store_id = ? AND batch_id = ?", store.ID, batch.ID).
+			First(&storeSummary).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Crear resumen si no existe
+				now := time.Now()
+				storeSummary = models.StoreInventorySummary{
+					StoreID:          store.ID,
+					BatchID:          batch.ID,
+					SupplyCode:       supply.Code,
+					OriginalAmount:   batch.Amount,
+					CurrentInStore:   1,
+					TotalReturnedIn:  1,
+					LastReturnInDate: &now,
+				}
+				if err := tx.Create(&storeSummary).Error; err != nil {
+					return fmt.Errorf("error creando resumen de bodega: %v", err)
+				}
+			} else {
+				return fmt.Errorf("error obteniendo resumen de bodega: %v", err)
+			}
+		} else {
+			// Actualizar resumen existente
+			now := time.Now()
+			storeSummary.CurrentInStore++
+			storeSummary.TotalReturnedIn++
+			storeSummary.LastReturnInDate = &now
+			if err := tx.Save(&storeSummary).Error; err != nil {
+				return fmt.Errorf("error actualizando resumen de bodega: %v", err)
+			}
+		}
+
+		// Incrementar cantidad del lote
+		batch.Amount++
+		if err := tx.Save(&batch).Error; err != nil {
+			return fmt.Errorf("error actualizando lote: %v", err)
+		}
+
 		// Cambiar estado del insumo a disponible
 		oldStatus := supply.Status
 		supply.Status = models.StatusAvailable
+		supply.InTransit = false
 		if err := tx.Save(&supply).Error; err != nil {
 			return fmt.Errorf("error actualizando estado del insumo: %v", err)
 		}

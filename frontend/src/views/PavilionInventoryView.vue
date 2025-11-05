@@ -19,10 +19,10 @@
       </div>
     </div>
 
-    <!-- Selector de Pabellón -->
+    <!-- Selector de Pabellón y Filtros -->
     <div class="card">
-      <div class="flex flex-col md:flex-row md:items-center gap-4">
-        <div class="flex-1">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Seleccionar Pabellón</label>
           <select v-model="selectedPavilionId" class="form-input" @change="loadInventory">
             <option value="">Seleccione un pabellón...</option>
@@ -30,6 +30,17 @@
               {{ pavilion.name }}
             </option>
           </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Proveedor</label>
+          <input
+            type="text"
+            v-model="filterSupplier"
+            placeholder="Buscar proveedor..."
+            class="form-input"
+            @input="debouncedApplyFilters"
+            :disabled="!selectedPavilionId"
+          />
         </div>
         <div class="flex items-end">
           <label class="flex items-center space-x-2">
@@ -43,6 +54,10 @@
             <span class="text-sm text-gray-700">Incluir en tránsito</span>
           </label>
         </div>
+      </div>
+      <div class="flex justify-end space-x-2">
+        <button @click="clearFilters" class="btn-secondary" :disabled="!selectedPavilionId">Limpiar Filtros</button>
+        <button @click="applyFilters" class="btn-primary" :disabled="!selectedPavilionId">Aplicar Filtros</button>
       </div>
     </div>
 
@@ -366,6 +381,7 @@ const inventory = ref([])
 const pavilions = ref([])
 const selectedPavilionId = ref('')
 const includeInTransit = ref(false)
+const filterSupplier = ref('')
 
 // Paginación
 const currentPage = ref(1)
@@ -442,9 +458,11 @@ const loadInventory = async () => {
   currentPage.value = 1
   
   try {
+    const supplierFilter = filterSupplier.value.trim() || null
     const data = await inventoryService.getPavilionInventory(
       selectedPavilionId.value,
-      includeInTransit.value
+      includeInTransit.value,
+      supplierFilter
     )
     // Asegurarse de que inventory.value siempre sea un array
     inventory.value = Array.isArray(data) ? data : []
@@ -456,6 +474,26 @@ const loadInventory = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Función para aplicar filtros
+const applyFilters = () => {
+  loadInventory()
+}
+
+// Función para limpiar filtros
+const clearFilters = () => {
+  filterSupplier.value = ''
+  loadInventory()
+}
+
+// Debounce para el filtro de proveedor
+let debounceTimer = null
+const debouncedApplyFilters = () => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    applyFilters()
+  }, 500)
 }
 
 const getTotalAvailable = () => {

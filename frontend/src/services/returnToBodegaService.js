@@ -235,6 +235,7 @@ class ReturnToBodegaService {
         storeName: 'N/A',
         storeId: null,
         receivedAt: null,
+        businessHoursElapsed: 0,
         daysElapsed: 0,
         shouldReturn: false,
         canReturn: false
@@ -252,9 +253,10 @@ class ReturnToBodegaService {
       storeName: supply.store_name || supply.storeName || 'N/A',
       storeId: supply.store_id || supply.storeId || null,
       receivedAt: supply.received_at || supply.receivedAt || null,
-      daysElapsed: supply.days_elapsed || supply.daysElapsed || 0,
+      businessHoursElapsed: supply.business_hours_elapsed || supply.businessHoursElapsed || 0,
+      daysElapsed: supply.days_elapsed || supply.daysElapsed || (supply.business_hours_elapsed || supply.businessHoursElapsed || 0) / 8, // Convertir horas a días aproximados
       shouldReturn: supply.should_return || supply.shouldReturn || false,
-      canReturn: (supply.days_elapsed || supply.daysElapsed || 0) >= 15
+      canReturn: supply.should_return || supply.shouldReturn || false // Usar shouldReturn directamente
     }
   }
 }

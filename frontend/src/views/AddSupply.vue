@@ -19,7 +19,7 @@
             Información del Insumo
           </h3>
           
-          <div class="grid md:grid-cols-3 gap-6">
+          <div class="grid md:grid-cols-2 gap-6">
             <div>
               <label for="supply-code" class="block text-sm font-medium text-gray-700 mb-2">
                 Código del Insumo <span class="text-red-500">*</span>
@@ -60,6 +60,24 @@
                 class="form-input"
                 required
               />
+            </div>
+            
+            <div>
+              <label for="critical-stock" class="block text-sm font-medium text-gray-700 mb-2">
+                Stock Crítico <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="critical-stock"
+                v-model.number="supplyForm.criticalStock"
+                type="number"
+                min="1"
+                placeholder="1"
+                class="form-input"
+                required
+              />
+              <p class="text-sm text-gray-500 mt-1">
+                Nivel mínimo de stock para generar alertas. Para insumos específicos, generalmente se usa 1.
+              </p>
             </div>
           </div>
         </div>
@@ -516,7 +534,8 @@ const showStoreOptions = ref(false)
 const supplyForm = ref({
   code: '',
   name: '',
-  codeSupplier: ''
+  codeSupplier: '',
+  criticalStock: 1
 })
 
 const batchForm = ref({
@@ -547,7 +566,8 @@ const createSupply = async () => {
       supply_code: {
         code: parseInt(supplyForm.value.code),
         name: supplyForm.value.name,
-        code_supplier: parseInt(supplyForm.value.codeSupplier)
+        code_supplier: parseInt(supplyForm.value.codeSupplier),
+        critical_stock: parseInt(supplyForm.value.criticalStock) || 1
       }
     }
 
@@ -657,7 +677,8 @@ const createAnother = () => {
   supplyForm.value = {
     code: '',
     name: '',
-    codeSupplier: ''
+    codeSupplier: '',
+    criticalStock: 1
   }
   
   batchForm.value = {

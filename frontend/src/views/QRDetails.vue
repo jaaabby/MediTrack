@@ -95,22 +95,22 @@
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="text-sm font-medium text-gray-600">Código:</label>
-                <p class="text-gray-900 font-mono">{{ qrInfo.supply_info.supply_code || 'N/A' }}</p>
+                <p class="text-gray-900 font-mono">{{ qrInfo.supply_info.SupplyCode?.code || qrInfo.supply_code || qrInfo.supply_info.supply_code || 'N/A' }}</p>
               </div>
               <div>
                 <label class="text-sm font-medium text-gray-600">Estado:</label>
-                <span :class="qrInfo.is_consumed ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'" 
+                <span :class="getStatusClass(qrInfo.current_status || qrInfo.status)" 
                       class="px-2 py-1 rounded-full text-xs font-medium">
-                  {{ qrInfo.is_consumed ? 'Consumido' : 'Disponible' }}
+                  {{ getStatusText(qrInfo.current_status || qrInfo.status) }}
                 </span>
               </div>
               <div>
                 <label class="text-sm font-medium text-gray-600">Nombre:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_info.supply_code_name || 'N/A' }}</p>
+                <p class="text-gray-900">{{ qrInfo.supply_info.name || qrInfo.supply_info.SupplyCode?.name || qrInfo.supply_info.supply_code_name || 'N/A' }}</p>
               </div>
               <div>
                 <label class="text-sm font-medium text-gray-600">Proveedor:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_info.supplier || 'N/A' }}</p>
+                <p class="text-gray-900">{{ qrInfo.supply_info.batch?.supplier || qrInfo.supply_info.supplier || 'N/A' }}</p>
               </div>
               <div>
                 <label class="text-sm font-medium text-gray-600">Almacén:</label>
@@ -118,7 +118,7 @@
               </div>
               <div>
                 <label class="text-sm font-medium text-gray-600">Vencimiento:</label>
-                <p class="text-gray-900">{{ formatDate(qrInfo.supply_info.expiration_date) }}</p>
+                <p class="text-gray-900">{{ formatDate(qrInfo.supply_info.batch?.expiration_date || qrInfo.supply_info.expiration_date) }}</p>
               </div>
             </div>
           </div>
@@ -163,17 +163,17 @@
           <div v-if="qrInfo.type === 'medical_supply'" class="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Estado del Insumo</h3>
             <div class="text-center">
-              <div :class="qrInfo.is_consumed ? 'text-red-600' : 'text-green-600'" 
+              <div :class="getStatusIconClass(qrInfo.current_status || qrInfo.status)" 
                    class="text-4xl font-bold mb-2">
-                {{ qrInfo.is_consumed ? '❌' : '✅' }}
+                {{ getStatusIcon(qrInfo.current_status || qrInfo.status) }}
               </div>
               <div class="text-lg font-medium text-gray-900">
-                {{ qrInfo.is_consumed ? 'Consumido' : 'Disponible' }}
+                {{ getStatusText(qrInfo.current_status || qrInfo.status) }}
               </div>
-              <div v-if="qrInfo.is_consumed" class="text-sm text-gray-600 mt-2">
+              <div v-if="(qrInfo.current_status || qrInfo.status) === 'consumido'" class="text-sm text-gray-600 mt-2">
                 Este insumo ya no está disponible para uso
               </div>
-              <div v-else-if="qrInfo.can_consume" class="text-sm text-gray-600 mt-2">
+              <div v-else-if="qrInfo.can_consume || (qrInfo.current_status || qrInfo.status) === 'recepcionado'" class="text-sm text-gray-600 mt-2">
                 Listo para ser consumido
               </div>
             </div>
@@ -183,7 +183,7 @@
       </div>
 
       <!-- Información del lote relacionado (para insumos individuales) -->
-      <div v-if="qrInfo.type === 'medical_supply' && qrInfo.batch_status" class="bg-blue-50 rounded-lg border border-blue-200 p-6">
+      <div v-if="qrInfo.type === 'medical_supply' && (qrInfo.supply_info?.batch || qrInfo.batch_status)" class="bg-blue-50 rounded-lg border border-blue-200 p-6">
         <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
           <svg class="h-6 w-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -193,35 +193,39 @@
         <div class="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label class="text-sm font-medium text-gray-600">ID del Lote:</label>
-            <p class="text-gray-900 font-mono">{{ qrInfo.batch_status.batch_id || 'N/A' }}</p>
+            <p class="text-gray-900 font-mono">{{ qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID || qrInfo.batch_status?.batch_id || 'N/A' }}</p>
           </div>
           <div>
             <label class="text-sm font-medium text-gray-600">Cantidad Disponible:</label>
-            <p class="text-gray-900 font-bold" :class="qrInfo.batch_status.current_amount > 0 ? 'text-green-600' : 'text-red-600'">
-              {{ qrInfo.batch_status.current_amount || 0 }} unidades
+            <p class="text-gray-900 font-bold" :class="(qrInfo.supply_info?.batch?.amount || qrInfo.batch_status?.current_amount || 0) > 0 ? 'text-green-600' : 'text-red-600'">
+              {{ qrInfo.supply_info?.batch?.amount || qrInfo.batch_status?.current_amount || 0 }} unidades
             </p>
           </div>
           <div>
             <label class="text-sm font-medium text-gray-600">Proveedor:</label>
-            <p class="text-gray-900">{{ qrInfo.batch_status.supplier || 'N/A' }}</p>
+            <p class="text-gray-900">{{ qrInfo.supply_info?.batch?.supplier || qrInfo.batch_status?.supplier || 'N/A' }}</p>
           </div>
           <div>
             <label class="text-sm font-medium text-gray-600">Vencimiento:</label>
-            <p class="text-gray-900">{{ formatDate(qrInfo.batch_status.expiration_date) }}</p>
+            <p class="text-gray-900">{{ formatDate(qrInfo.supply_info?.batch?.expiration_date || qrInfo.batch_status?.expiration_date) }}</p>
           </div>
           <div>
             <label class="text-sm font-medium text-gray-600">Stock:</label>
-            <span :class="qrInfo.batch_status.has_available_stock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+            <span :class="(qrInfo.supply_info?.batch?.amount || qrInfo.batch_status?.current_amount || 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
                   class="px-2 py-1 rounded-full text-xs font-medium">
-              {{ qrInfo.batch_status.has_available_stock ? 'Disponible' : 'Agotado' }}
+              {{ (qrInfo.supply_info?.batch?.amount || qrInfo.batch_status?.current_amount || 0) > 0 ? 'Disponible' : 'Agotado' }}
             </span>
           </div>
-          <div v-if="qrInfo.batch_status.batch_qr_code">
+          <div v-if="qrInfo.batch_status?.batch_qr_code || qrInfo.supply_info?.batch?.qr_code">
             <label class="text-sm font-medium text-gray-600">QR del Lote:</label>
-            <p class="text-gray-900 font-mono text-xs">{{ qrInfo.batch_status.batch_qr_code }}</p>
+            <p class="text-gray-900 font-mono text-xs">{{ qrInfo.batch_status?.batch_qr_code || qrInfo.supply_info?.batch?.qr_code }}</p>
           </div>
         </div>
-        <button @click="viewBatch(qrInfo.batch_status.batch_id)" class="btn-primary">
+        <button 
+          v-if="qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID || qrInfo.batch_status?.batch_id"
+          @click="viewBatch(qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID || qrInfo.batch_status?.batch_id)" 
+          class="btn-primary"
+        >
           Ver Lote Completo en Inventario
         </button>
       </div>
@@ -433,7 +437,7 @@ function showToast(msg, duration = 2500) {
 }
 
 // Computed
-const qrCode = computed(() => route.params.qrcode)
+const qrCode = computed(() => route.params.qrCode || route.params.qrcode)
 
 // Métodos principales
 const loadQRInfo = async () => {
@@ -704,6 +708,55 @@ const formatDate = (dateString) => {
   } catch (error) {
     return dateString
   }
+}
+
+// Funciones helper para estado
+const getStatusText = (status) => {
+  if (!status) return 'Desconocido'
+  const statusLabels = {
+    'disponible': 'Disponible',
+    'recepcionado': 'Recepcionado',
+    'en_camino_a_pabellon': 'En Camino a Pabellón',
+    'en_camino_a_bodega': 'En Camino a Bodega',
+    'consumido': 'Consumido'
+  }
+  return statusLabels[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+const getStatusClass = (status) => {
+  if (!status) return 'bg-gray-100 text-gray-800'
+  const statusColors = {
+    'disponible': 'bg-green-100 text-green-800',
+    'recepcionado': 'bg-blue-100 text-blue-800',
+    'en_camino_a_pabellon': 'bg-yellow-100 text-yellow-800',
+    'en_camino_a_bodega': 'bg-orange-100 text-orange-800',
+    'consumido': 'bg-red-100 text-red-800'
+  }
+  return statusColors[status.toLowerCase()] || 'bg-gray-100 text-gray-800'
+}
+
+const getStatusIcon = (status) => {
+  if (!status) return '❓'
+  const statusIcons = {
+    'disponible': '✅',
+    'recepcionado': '📥',
+    'en_camino_a_pabellon': '🚚',
+    'en_camino_a_bodega': '📤',
+    'consumido': '❌'
+  }
+  return statusIcons[status.toLowerCase()] || '❓'
+}
+
+const getStatusIconClass = (status) => {
+  if (!status) return 'text-gray-600'
+  const statusColors = {
+    'disponible': 'text-green-600',
+    'recepcionado': 'text-blue-600',
+    'en_camino_a_pabellon': 'text-yellow-600',
+    'en_camino_a_bodega': 'text-orange-600',
+    'consumido': 'text-red-600'
+  }
+  return statusColors[status.toLowerCase()] || 'text-gray-600'
 }
 
 // Lifecycle

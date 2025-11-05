@@ -52,7 +52,7 @@ class SupplyCodeService {
 
   async getSupplyCodeByID(id) {
     try {
-      const response = await this.api.get(`/supply-codes/${id}/`)
+      const response = await this.api.get(`/supply-codes/${id}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener código de insumo:', error)
@@ -62,7 +62,7 @@ class SupplyCodeService {
 
   async updateSupplyCode(id, supplyCodeData) {
     try {
-      const response = await this.api.put(`/supply-codes/${id}/`, supplyCodeData)
+      const response = await this.api.put(`/supply-codes/${id}`, supplyCodeData)
       return response.data
     } catch (error) {
       console.error('Error al actualizar código de insumo:', error)
@@ -72,7 +72,7 @@ class SupplyCodeService {
 
   async deleteSupplyCode(id) {
     try {
-      const response = await this.api.delete(`/supply-codes/${id}/`)
+      const response = await this.api.delete(`/supply-codes/${id}`)
       return response.data
     } catch (error) {
       console.error('Error al eliminar código de insumo:', error)

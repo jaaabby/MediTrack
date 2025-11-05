@@ -867,3 +867,23 @@ INSERT INTO supplier_config (supplier_name, expiration_alert_days, notes) VALUES
 ('Proveedor Tres', 180, 'Proveedor requiere 6 meses de anticipación'),
 ('Proveedor Cuatro', 90, 'Configuración estándar: 3 meses de anticipación')
 ON CONFLICT (supplier_name) DO NOTHING;
+
+-- Corregir insumos médicos que tienen LocationID = 0
+-- Actualizar LocationID y LocationType basándose en el batch al que pertenecen
+UPDATE medical_supply ms
+SET 
+    location_id = b.store_id,
+    location_type = 'store'
+FROM batch b
+WHERE ms.batch_id = b.id 
+    AND (ms.location_id = 0 OR ms.location_id IS NULL OR ms.location_type IS NULL OR ms.location_type = '')
+    AND b.store_id IS NOT NULL;
+
+-- Verificar cuántos insumos fueron actualizados
+SELECT 
+    'Insumos médicos actualizados:' as info,
+    COUNT(*) as total_updated
+FROM medical_supply ms
+JOIN batch b ON ms.batch_id = b.id
+WHERE ms.location_id = b.store_id 
+    AND ms.location_type = 'store';
