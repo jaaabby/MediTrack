@@ -123,6 +123,42 @@
             <label class="text-sm font-medium text-blue-700">Notas:</label>
             <p class="text-sm text-blue-900 bg-white p-2 rounded border mt-1">{{ qrInfo.request_assignment.notes }}</p>
           </div>
+
+          <!-- Información del carrito (solo si está cerrado) -->
+          <div v-if="qrInfo.request_assignment.cart && qrInfo.request_assignment.cart.status === 'closed'" class="mt-4 pt-4 border-t border-blue-200">
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div class="flex items-center mb-2">
+                <svg class="h-5 w-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <h5 class="font-semibold text-gray-700">Carrito Cerrado</h5>
+              </div>
+              <div class="text-sm text-gray-600 space-y-1">
+                <p><span class="font-medium">Número:</span> {{ qrInfo.request_assignment.cart.cart_number }}</p>
+                <p v-if="qrInfo.request_assignment.cart.closed_at">
+                  <span class="font-medium">Cerrado el:</span> {{ formatDate(qrInfo.request_assignment.cart.closed_at) }}
+                </p>
+                <p v-if="qrInfo.request_assignment.cart.closed_by_name">
+                  <span class="font-medium">Cerrado por:</span> {{ qrInfo.request_assignment.cart.closed_by_name }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Carrito de Insumos (solo si está activo) -->
+          <div v-if="qrInfo.request_assignment.cart && qrInfo.request_assignment.cart.status === 'active' && qrInfo.qr_code" class="mt-4 pt-4 border-t border-blue-200">
+            <SupplyCart 
+              :qr-code="qrInfo.qr_code"
+              :can-close="false"
+              :can-remove-items="false"
+              :can-manage-items="true"
+              :show-add-button="false"
+              :default-collapsed="true"
+              @cart-loaded="onCartLoaded"
+              @cart-closed="onCartClosed"
+              @error="onCartError"
+            />
+          </div>
         </div>
 
         <!-- Estadísticas de escaneo básicas 
@@ -286,6 +322,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qrService'
 import { useQRPdfDownload } from '@/composables/useQRPdfDownload'
+import SupplyCart from '@/components/SupplyCart.vue'
 
 // Props
 const props = defineProps({
@@ -331,6 +368,19 @@ const downloadQRAsPDF = async () => {
   } catch (error) {
     console.error('Error al descargar PDF:', error)
   }
+}
+
+// Métodos para el carrito
+const onCartLoaded = (cart) => {
+  console.log('Carrito cargado en QRInfoDisplay:', cart)
+}
+
+const onCartClosed = (cart) => {
+  console.log('Carrito cerrado en QRInfoDisplay:', cart)
+}
+
+const onCartError = (error) => {
+  console.log('No se encontró carrito para este QR (puede ser normal):', error)
 }
 
 // Cargar información de trazabilidad si está habilitada
@@ -449,6 +499,24 @@ const getScanPurposeLabel = (purpose) => {
     'assign': 'Asignación'
   }
   return labels[purpose] || purpose
+}
+
+const getCartStatusLabel = (status) => {
+  const labels = {
+    'active': 'Activo',
+    'closed': 'Cerrado',
+    'cancelled': 'Cancelado'
+  }
+  return labels[status] || status
+}
+
+const getCartStatusClass = (status) => {
+  const classes = {
+    'active': 'bg-green-100 text-green-800',
+    'closed': 'bg-gray-100 text-gray-800',
+    'cancelled': 'bg-red-100 text-red-800'
+  }
+  return classes[status] || 'bg-gray-100 text-gray-800'
 }
 
 // Funciones para determinar el estado correcto del insumo

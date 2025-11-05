@@ -8,8 +8,12 @@ import (
 )
 
 // SetupQRRoutes configura las rutas de códigos QR con funcionalidades mejoradas y trazabilidad completa
-func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medicalSupplyService services.MedicalSupplyService) {
+func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medicalSupplyService services.MedicalSupplyService, cartService *services.CartService) {
 	qrController := controllers.NewQRController(qrService)
+	// Set cart service if available
+	if cartService != nil {
+		qrController.SetCartService(cartService)
+	}
 	qrController.SetMedicalSupplyService(medicalSupplyService)
 
 	qr := router.Group("/qr")
@@ -73,7 +77,7 @@ func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medica
 		// Confirmar llegada de insumo a bodega
 		qr.POST("/confirm-arrival-to-store", qrController.ConfirmArrivalToStore)
 
-		// Obtener lista de insumos que deben regresar a bodega (15 días sin consumir)
+		// Obtener lista de insumos que deben regresar a bodega (8 horas laborales sin consumir)
 		qr.GET("/supplies-for-return", qrController.GetSuppliesForReturn)
 
 		// Ejecutar manualmente el proceso automático de retornos

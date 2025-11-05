@@ -22,6 +22,7 @@ func (c *SupplyCodeController) CreateSupplyCode(ctx *gin.Context) {
 		Code         int    `json:"code" binding:"required"`
 		Name         string `json:"name" binding:"required"`
 		CodeSupplier int    `json:"code_supplier" binding:"required"`
+		CriticalStock int    `json:"critical_stock" binding:"required,min=1"`
 	}
 
 	if err := ctx.ShouldBindJSON(&supplyCodeRequest); err != nil {
@@ -34,6 +35,7 @@ func (c *SupplyCodeController) CreateSupplyCode(ctx *gin.Context) {
 		Code:         supplyCodeRequest.Code,
 		Name:         supplyCodeRequest.Name,
 		CodeSupplier: supplyCodeRequest.CodeSupplier,
+		CriticalStock: supplyCodeRequest.CriticalStock,
 	}
 
 	if err := c.supplyCodeService.CreateSupplyCode(&supplyCode); err != nil {
@@ -76,14 +78,23 @@ func (c *SupplyCodeController) UpdateSupplyCode(ctx *gin.Context) {
 	supplyCode, err := c.supplyCodeService.GetSupplyCodeByID(intID)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{Success: false, Error: "Supply code no encontrado: " + err.Error()})
+		return
 	}
-	var newSupplyCode models.SupplyCode
-	if err := ctx.ShouldBindJSON(&newSupplyCode); err != nil {
+	
+	var updateRequest struct {
+		Name         string `json:"name" binding:"required"`
+		CodeSupplier int    `json:"code_supplier" binding:"required"`
+		CriticalStock int    `json:"critical_stock" binding:"required,min=1"`
+	}
+	
+	if err := ctx.ShouldBindJSON(&updateRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
-	supplyCode.Name = newSupplyCode.Name
-	supplyCode.CodeSupplier = newSupplyCode.CodeSupplier
+	
+	supplyCode.Name = updateRequest.Name
+	supplyCode.CodeSupplier = updateRequest.CodeSupplier
+	supplyCode.CriticalStock = updateRequest.CriticalStock
 	if _, err := c.supplyCodeService.UpdateSupplyCode(intID, supplyCode); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar supply code: " + err.Error()})
 		return

@@ -104,12 +104,23 @@ func main() {
 	supplyRequestService := services.NewSupplyRequestService(db)
 	supplyRequestController := controllers.NewSupplyRequestController(supplyRequestService, qrService)
 
+	// Inicializar servicio y controlador de Cart
+	cartService := services.NewCartService(db)
+	cartController := controllers.NewCartController(cartService)
+
 	// Registrar rutas de supply requests y trazabilidad QR
 	routes.SetupSupplyRequestRoutes(router, supplyRequestController)
+
+	// Registrar rutas de carritos
+	routes.SetupCartRoutes(router, cartController)
 
 	// Iniciar el verificador automático de retornos a bodega en una goroutine
 	go medicalSupplyService.StartAutomaticReturnChecker()
 	log.Println("✅ Iniciado verificador automático de retornos a bodega")
+
+	// Iniciar el verificador automático de stock bajo en una goroutine
+	go batchService.StartAutomaticLowStockChecker()
+	log.Println("✅ Iniciado verificador automático de stock bajo")
 
 	// Iniciar servidores HTTP y HTTPS
 	log.Printf("Servidor iniciando en puerto %d (HTTP)", cfg.Server.Port)
@@ -159,7 +170,7 @@ func main() {
 		log.Printf("🔒 Iniciando servidor HTTPS en puerto %d", httpsPort)
 		log.Printf("   Certificado: %s", foundCert)
 		log.Printf("   Clave: %s", foundKey)
-		
+
 		// Usar http.ListenAndServeTLS para HTTPS en puerto separado
 		go func() {
 			httpsServer := &http.Server{

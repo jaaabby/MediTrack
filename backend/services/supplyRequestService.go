@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"meditrack/mailer"
 	"meditrack/models"
@@ -54,17 +55,17 @@ func (ft *FlexibleTime) UnmarshalJSON(b []byte) error {
 
 // CreateSupplyRequestRequest representa la estructura para crear una solicitud
 type CreateSupplyRequestRequest struct {
-	PavilionID      int                              `json:"pavilion_id" binding:"required"`
-	RequestedBy     string                           `json:"requested_by" binding:"required"`
-	RequestedByName string                           `json:"requested_by_name" binding:"required"`
-	SurgeryDatetime FlexibleTime                     `json:"surgery_datetime" binding:"required"`
-	Notes           string                           `json:"notes"`
+	PavilionID      int          `json:"pavilion_id" binding:"required"`
+	RequestedBy     string       `json:"requested_by" binding:"required"`
+	RequestedByName string       `json:"requested_by_name" binding:"required"`
+	SurgeryDatetime FlexibleTime `json:"surgery_datetime" binding:"required"`
+	Notes           string       `json:"notes"`
 	// Campos de médico responsable
-	SurgeonID    *string `json:"surgeon_id"`
-	SurgeonName  *string `json:"surgeon_name"`
-	SurgeryID    *int    `json:"surgery_id"`
-	SpecialtyID  *int    `json:"specialty_id"`
-	Items           []CreateSupplyRequestItemRequest `json:"items" binding:"required,dive"`
+	SurgeonID   *string                          `json:"surgeon_id"`
+	SurgeonName *string                          `json:"surgeon_name"`
+	SurgeryID   *int                             `json:"surgery_id"`
+	SpecialtyID *int                             `json:"specialty_id"`
+	Items       []CreateSupplyRequestItemRequest `json:"items" binding:"required,dive"`
 }
 
 type CreateSupplyRequestItemRequest struct {
@@ -343,6 +344,16 @@ func (s *SupplyRequestService) ApproveSupplyRequest(requestID int, approval Appr
 			}
 		}
 
+		// Crear el carrito automáticamente al aprobar la solicitud
+		fmt.Printf("DEBUG: Intentando crear carrito para solicitud %d\n", requestID)
+		cartService := NewCartService(tx)
+		cart, err := cartService.CreateCartForRequest(requestID, approval.ApprovedBy, approval.ApprovedByName)
+		if err != nil {
+			fmt.Printf("ERROR creando carrito: %v\n", err)
+			return fmt.Errorf("error creando carrito: %v", err)
+		}
+		fmt.Printf("DEBUG: Carrito creado exitosamente con ID: %d\n", cart.ID)
+
 		return nil
 	})
 }
@@ -423,6 +434,29 @@ func (s *SupplyRequestService) AssignQRToRequest(assignment AssignQRToRequestReq
 		// Incrementar el contador de items entregados
 		if err := tx.Model(&item).Update("quantity_delivered", gorm.Expr("quantity_delivered + 1")).Error; err != nil {
 			return fmt.Errorf("error actualizando cantidad entregada: %v", err)
+		}
+
+		// Crear o actualizar el carrito automáticamente
+		cartService := NewCartService(tx)
+		var cart models.SupplyCart
+		err := tx.Where("supply_request_id = ?", assignment.SupplyRequestID).First(&cart).Error
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Crear nuevo carrito si no existe
+				_, err := cartService.CreateCartForRequest(assignment.SupplyRequestID, assignment.AssignedBy, assignment.AssignedByName)
+				if err != nil {
+					return fmt.Errorf("error creando carrito: %v", err)
+				}
+			} else {
+				return fmt.Errorf("error verificando carrito: %v", err)
+			}
+		} else {
+			// El carrito ya existe, agregar el item
+			_, err := cartService.AddItemToCart(cart.ID, qrAssignment.ID, assignment.AssignedBy, assignment.AssignedByName)
+			if err != nil {
+				return fmt.Errorf("error agregando item al carrito: %v", err)
+			}
 		}
 
 		return nil
@@ -802,10 +836,16 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 		// Si el item fue ACEPTADO, asignar automáticamente insumos del inventario
 		if req.ItemStatus == "aceptado" {
 			// Buscar insumos disponibles con el mismo código (supply_code)
+			// FEFO (First Expired First Out): Priorizar productos próximos a vencer
 			var availableSupplies []models.MedicalSupply
-			if err := tx.Where("code = ? AND status = ? AND location_type = ?",
-				item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
-				Order("updated_at ASC"). // FIFO: primero el más antiguo
+			// Usar JOIN con batch para ordenar por fecha de vencimiento
+			if err := tx.Table("medical_supply ms").
+				Select("ms.*").
+				Joins("JOIN batch b ON ms.batch_id = b.id").
+				Where("ms.code = ? AND ms.status = ? AND ms.location_type = ?",
+					item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
+				Where("b.expiration_date > ?", time.Now()). // Solo productos no vencidos
+				Order("b.expiration_date ASC, ms.updated_at ASC"). // FEFO: primero los que vencen antes
 				Limit(item.QuantityRequested).
 				Find(&availableSupplies).Error; err != nil {
 				return fmt.Errorf("error buscando insumos disponibles: %v", err)
@@ -929,6 +969,16 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 				request.ApprovalDate = &now
 				request.ApprovedBy = &req.ReviewedBy
 				request.ApprovedByName = &req.ReviewedByName
+
+				// Crear el carrito automáticamente cuando todos los items son aceptados
+				fmt.Printf("DEBUG: Todos los items aceptados, creando carrito para solicitud %d\n", item.SupplyRequestID)
+				cartService := NewCartService(tx)
+				cart, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
+				if err != nil {
+					fmt.Printf("ERROR creando carrito: %v\n", err)
+					return fmt.Errorf("error creando carrito: %v", err)
+				}
+				fmt.Printf("DEBUG: Carrito creado exitosamente con ID: %d, número: %s\n", cart.ID, cart.CartNumber)
 
 				// Enviar correo de aprobación
 				go func() {

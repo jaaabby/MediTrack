@@ -80,6 +80,7 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 			Code         int    `json:"code" binding:"required"`
 			Name         string `json:"name" binding:"required"`
 			CodeSupplier int    `json:"code_supplier" binding:"required"`
+			CriticalStock int    `json:"critical_stock" binding:"required,min=1"`
 		} `json:"supply_code" binding:"required"`
 		IndividualCount int `json:"individual_count" binding:"required,min=1"`
 	}
@@ -115,6 +116,7 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 		Code:         request.SupplyCode.Code,
 		Name:         request.SupplyCode.Name,
 		CodeSupplier: request.SupplyCode.CodeSupplier,
+		CriticalStock: request.SupplyCode.CriticalStock,
 	}
 
 	// Obtener días de alerta del request (si se proporciona, usar ese valor, sino usar 90 por defecto)

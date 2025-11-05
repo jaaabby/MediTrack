@@ -103,6 +103,7 @@ func (s *InventoryService) GetStoreInventory(
 func (s *InventoryService) GetPavilionInventory(
 	pavilionID int,
 	includeInTransit bool,
+	supplier *string,
 ) ([]models.PavilionInventorySummaryWithDetails, error) {
 	var inventory []models.PavilionInventorySummaryWithDetails
 
@@ -119,6 +120,11 @@ func (s *InventoryService) GetPavilionInventory(
 		Joins("LEFT JOIN batch b ON pis.batch_id = b.id").
 		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
 		Where("pis.pavilion_id = ?", pavilionID)
+
+	// Aplicar filtro por proveedor si se especifica
+	if supplier != nil {
+		query = query.Where("b.supplier LIKE ?", "%"+*supplier+"%")
+	}
 
 	if err := query.Find(&inventory).Error; err != nil {
 		return nil, err

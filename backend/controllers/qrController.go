@@ -19,10 +19,16 @@ import (
 type QRController struct {
 	qrService            services.QRService
 	medicalSupplyService services.MedicalSupplyService
+	cartService          *services.CartService
 }
 
 func NewQRController(qrService services.QRService) *QRController {
 	return &QRController{qrService: qrService}
+}
+
+// SetCartService establece el servicio de carritos
+func (c *QRController) SetCartService(cartService *services.CartService) {
+	c.cartService = cartService
 }
 
 // SetMedicalSupplyService establece el servicio de suministros médicos
@@ -122,6 +128,9 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 		"traceability":         qrInfo.Traceability,
 		"scan_events":          qrInfo.ScanEvents,
 		"scan_statistics":      qrInfo.ScanStatistics,
+		"request_assignment":   qrInfo.RequestAssignment,
+		"supply_request":       qrInfo.SupplyRequest,
+		"assigned_to_request":  qrInfo.RequestAssignment != nil,
 	}
 
 	// Estructura especial para supply_info con batch anidado
@@ -958,7 +967,6 @@ func (c *QRController) GetQRStats(ctx *gin.Context) {
 		Success: false,
 		Error:   "Funcionalidad de estadísticas QR no implementada en QRService",
 	})
-	return
 }
 
 // VerifySupplyAvailability verifica si un insumo está disponible para consumo
@@ -1302,6 +1310,27 @@ func (c *QRController) ConfirmArrivalToStore(ctx *gin.Context) {
 			Error:   err.Error(),
 		})
 		return
+	}
+
+	// Obtener el insumo para verificar si tiene un carrito asociado
+	var supply models.MedicalSupply
+	if err := c.qrService.DB.Where("qr_code = ?", req.QRCode).First(&supply).Error; err == nil {
+		// Obtener nombre del usuario para el cierre del carrito
+		var userName string
+		var user models.User
+		if err := c.qrService.DB.Where("rut = ?", req.UserRUT).First(&user).Error; err == nil {
+			userName = user.Name
+		} else {
+			userName = "Usuario Desconocido"
+		}
+
+		// Verificar y cerrar el carrito si corresponde
+		if c.cartService != nil {
+			if err := c.cartService.CheckAndAutoCloseCartForSupply(supply.ID, req.UserRUT, userName); err != nil {
+				// Log del error pero no fallar la respuesta
+				fmt.Printf("⚠️ Error al verificar cierre automático del carrito: %v\n", err)
+			}
+		}
 	}
 
 	ctx.JSON(http.StatusOK, response.Response{

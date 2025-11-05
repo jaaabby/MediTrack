@@ -65,6 +65,30 @@ export const useAuthStore = defineStore('auth', {
     // Verificar si puede ver QR scanner (todos excepto doctor y pavedad)
     canViewQR: (state) => !['doctor', 'pavedad'].includes(state.user?.role),
     
+    // Verificar si puede agregar insumos al inventario (admin, encargado de bodega, enfermera)
+    canAddSupplies: (state) => ['admin', 'encargado de bodega', 'enfermera'].includes(state.user?.role),
+    
+    // Verificar si puede gestionar transferencias (admin, encargado de bodega, enfermera, pabellón)
+    canManageTransfers: (state) => ['admin', 'encargado de bodega', 'enfermera', 'pabellón'].includes(state.user?.role),
+    
+    // Verificar si puede ver historial de insumos (admin, encargado de bodega, enfermera)
+    canViewSupplyHistory: (state) => ['admin', 'encargado de bodega', 'enfermera'].includes(state.user?.role),
+    
+    // Verificar si puede gestionar retornos a bodega (admin, encargado de bodega)
+    canManageReturns: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
+    
+    // Verificar si puede gestionar configuración médica (admin, encargado de bodega, enfermera)
+    canManageMedicalConfig: (state) => ['admin', 'encargado de bodega', 'enfermera'].includes(state.user?.role),
+    
+    // Verificar si puede gestionar configuración del sistema (admin, encargado de bodega)
+    canManageSystemConfig: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
+    
+    // Verificar si puede gestionar cirugías (admin, encargado de bodega, enfermera)
+    canManageSurgeries: (state) => ['admin', 'encargado de bodega', 'enfermera'].includes(state.user?.role),
+    
+    // Verificar si puede ver solo sus propias solicitudes (doctor, enfermera)
+    canViewOwnRequests: (state) => ['doctor', 'enfermera'].includes(state.user?.role),
+    
     // Obtener el nombre del usuario
     getUserName: (state) => state.user?.name,
     
@@ -261,11 +285,12 @@ export const useAuthStore = defineStore('auth', {
 
       // Definir rutas protegidas por rol
       const routePermissions = {
-        'admin': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
-        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'Profile'],
-        'encargado de bodega': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile'],
-        'enfermera': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
-        'doctor': ['Home', 'Inventory', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile']
+        'admin': ['Home', 'Inventory', 'InventoryDashboard', 'InventoryStore', 'InventoryPavilion', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'QRTransfer', 'QRReception', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Statistics', 'Transfers', 'Surgeries', 'SupplyHistory', 'ReturnManagement', 'MedicalSpecialties', 'SurgeryTypicalSupplies', 'DoctorInfo', 'SupplierConfigs', 'SupplyCodes', 'Profile'],
+        'pabellón': ['Home', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'QRTransfer', 'QRReception', 'Profile'],
+        'encargado de bodega': ['Home', 'Inventory', 'InventoryDashboard', 'InventoryStore', 'InventoryPavilion', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRTransfer', 'QRReception', 'SupplyRequestList', 'SupplyRequestDetail', 'Statistics', 'Transfers', 'Surgeries', 'SupplyHistory', 'ReturnManagement', 'MedicalSpecialties', 'SurgeryTypicalSupplies', 'DoctorInfo', 'SupplierConfigs', 'SupplyCodes', 'Profile'],
+        'enfermera': ['Home', 'Inventory', 'InventoryDashboard', 'InventoryStore', 'InventoryPavilion', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'QRTransfer', 'QRReception', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Statistics', 'Transfers', 'Surgeries', 'SupplyHistory', 'MedicalSpecialties', 'SurgeryTypicalSupplies', 'DoctorInfo', 'Profile'],
+        'doctor': ['Home', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
+        'pavedad': ['Home', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
       }
 
       const allowedRoutes = routePermissions[this.user.role] || []

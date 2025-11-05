@@ -175,8 +175,18 @@
           <div
             v-for="(item, index) in requestForm.items"
             :key="index"
-            class="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 relative"
+            class="bg-white p-3 sm:p-4 rounded-lg border relative"
+            :class="isDuplicateItem(index) ? 'border-orange-400 bg-orange-50' : 'border-gray-200'"
           >
+            <!-- Advertencia de duplicado -->
+            <div v-if="isDuplicateItem(index)" class="mb-3 p-2 bg-orange-100 border border-orange-300 rounded-md">
+              <div class="flex items-center gap-2 text-orange-800 text-sm">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="font-medium">Este insumo está duplicado. Las cantidades se consolidarán automáticamente al enviar.</span>
+              </div>
+            </div>
             <!-- Botón eliminar -->
             <button
               type="button"
@@ -191,17 +201,37 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pr-8">
               <!-- Código del insumo -->
-              <div>
+              <div class="relative">
                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Código Insumo <span class="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
-                  v-model.number="item.supply_code"
-                  required
-                  placeholder="1234"
+                  type="text"
+                  v-model="item.supply_code"
+                  @input="onSupplyCodeChange(index, $event.target.value)"
+                  @focus="onSupplyCodeFocus(index)"
+                  @blur="onSupplyCodeBlur(index)"
+                  placeholder="Escribir código..."
                   class="form-select text-sm"
                 />
+                <!-- Dropdown de sugerencias por código -->
+                <div 
+                  v-if="showCodeDropdowns[index] && medicalSupplies.length > 0"
+                  class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                >
+                  <div 
+                    v-for="supply in getFilteredSuppliesByCode(index)" 
+                    :key="supply.id"
+                    @click="selectSupply(index, supply)"
+                    class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div class="font-medium text-gray-900">Código: {{ supply.code }}</div>
+                    <div class="text-sm text-gray-500">{{ supply.name }}</div>
+                  </div>
+                  <div v-if="getFilteredSuppliesByCode(index).length === 0" class="px-3 py-2 text-gray-500 text-center">
+                    No se encontraron insumos
+                  </div>
+                </div>
               </div>
 
               <!-- Nombre del insumo con autocompletado -->
@@ -209,21 +239,32 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Nombre Insumo <span class="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  :value="supplySearchTerms[index] || item.supply_name"
+                <div class="flex gap-1">
+                  <input
+                    type="text"
+                    :value="supplySearchTerms[index] || item.supply_name"
                   @input="onSupplyInputChange(index, $event.target.value)"
                   @focus="onSupplyInputFocus(index)"
                   @blur="onSupplyInputBlur(index)"
-                  required
-                  placeholder="Buscar insumo..."
-                  class="form-input"
-                  autocomplete="off"
-                />
+                  placeholder="Escribir nombre o buscar..."
+                    class="form-input flex-1"
+                    autocomplete="off"
+                  />
+                  <button
+                    type="button"
+                    @click="toggleSupplyList(index)"
+                    class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
+                    title="Seleccionar de lista"
+                  >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 
-                <!-- Dropdown de sugerencias -->
+                <!-- Dropdown de sugerencias por nombre -->
                 <div 
-                  v-if="showSupplyDropdowns[index] && medicalSupplies.length > 0"
+                  v-if="showSupplyDropdowns[index] && medicalSupplies.length > 0 && !showSupplyListModals[index]"
                   class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
                 >
                   <div 
@@ -367,6 +408,71 @@
         </div>
       </div>
 
+      <!-- Modal de lista de insumos (fuera del loop para evitar múltiples modales) -->
+      <Teleport to="body">
+        <div 
+          v-if="currentSupplyListIndex !== null"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          @click.self="closeSupplyList(currentSupplyListIndex)"
+        >
+          <div class="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-bold text-gray-800">Seleccionar Insumo</h3>
+              <button
+                @click="closeSupplyList(currentSupplyListIndex)"
+                class="text-gray-400 hover:text-gray-600"
+              >
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <!-- Buscador en modal -->
+            <div class="mb-4">
+              <input
+                type="text"
+                v-model="supplyListSearchTerms[currentSupplyListIndex]"
+                placeholder="Buscar por código o nombre..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            <!-- Lista de insumos -->
+            <div class="flex-1 overflow-y-auto border border-gray-200 rounded-lg">
+              <div 
+                v-for="supply in getFilteredSuppliesForList(currentSupplyListIndex)" 
+                :key="supply.id"
+                @click="selectSupply(currentSupplyListIndex, supply)"
+                class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+              >
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <div class="font-medium text-gray-900">{{ supply.name }}</div>
+                    <div class="text-sm text-gray-500 mt-1">Código: {{ supply.code }}</div>
+                  </div>
+                  <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+              <div v-if="getFilteredSuppliesForList(currentSupplyListIndex).length === 0" class="px-4 py-8 text-center text-gray-500">
+                No se encontraron insumos
+              </div>
+            </div>
+            
+            <div class="mt-4 flex justify-end">
+              <button
+                @click="closeSupplyList(currentSupplyListIndex)"
+                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
       <!-- Botones de acción -->
       <div class="flex flex-col sm:flex-row sm:justify-between gap-3 sm:gap-0 pt-3 sm:pt-4 border-t border-gray-200">
         <button
@@ -452,6 +558,10 @@ const medicalSupplies = ref([])
 const loadingSupplies = ref(false)
 const supplySearchTerms = ref([])
 const showSupplyDropdowns = ref([])
+const showCodeDropdowns = ref([])
+const showSupplyListModals = ref([])
+const supplyListSearchTerms = ref([])
+const currentSupplyListIndex = ref(null)
 const surgeries = ref([])
 const loadingSurgeries = ref(false)
 
@@ -578,6 +688,9 @@ const addSupplyItem = () => {
   // Inicializar estados de búsqueda para el nuevo item al principio
   supplySearchTerms.value.unshift('')
   showSupplyDropdowns.value.unshift(false)
+  showCodeDropdowns.value.unshift(false)
+  showSupplyListModals.value.unshift(false)
+  supplyListSearchTerms.value.unshift('')
 }
 
 const removeSupplyItem = (index) => {
@@ -585,6 +698,9 @@ const removeSupplyItem = (index) => {
   // También remover los estados de búsqueda correspondientes
   supplySearchTerms.value.splice(index, 1)
   showSupplyDropdowns.value.splice(index, 1)
+  showCodeDropdowns.value.splice(index, 1)
+  showSupplyListModals.value.splice(index, 1)
+  supplyListSearchTerms.value.splice(index, 1)
 }
 
 // Funciones para autocompletado de insumos
@@ -598,11 +714,36 @@ const getFilteredSupplies = (index) => {
   ).slice(0, 10) // Limitar a 10 resultados
 }
 
+const getFilteredSuppliesByCode = (index) => {
+  const codeTerm = requestForm.items[index]?.supply_code || ''
+  if (!codeTerm) return medicalSupplies.value.slice(0, 10)
+  
+  const codeStr = codeTerm.toString()
+  return medicalSupplies.value.filter(supply => 
+    supply.code?.toString().includes(codeStr)
+  ).slice(0, 10)
+}
+
+const getFilteredSuppliesForList = (index) => {
+  const searchTerm = supplyListSearchTerms.value[index] || ''
+  if (!searchTerm) return medicalSupplies.value
+  
+  const term = searchTerm.toLowerCase()
+  return medicalSupplies.value.filter(supply => 
+    supply.name?.toLowerCase().includes(term) ||
+    supply.code?.toString().includes(searchTerm)
+  )
+}
+
 const selectSupply = (index, supply) => {
   requestForm.items[index].supply_name = supply.name
   requestForm.items[index].supply_code = supply.code
   supplySearchTerms.value[index] = supply.name
   showSupplyDropdowns.value[index] = false
+  showCodeDropdowns.value[index] = false
+  if (currentSupplyListIndex.value === index) {
+    currentSupplyListIndex.value = null
+  }
 }
 
 const onSupplyInputFocus = (index) => {
@@ -624,9 +765,166 @@ const onSupplyInputChange = (index, value) => {
   supplySearchTerms.value[index] = value
   requestForm.items[index].supply_name = value
   showSupplyDropdowns.value[index] = true
+  // Si se escribe el nombre manualmente, intentar buscar el código
+  if (value && medicalSupplies.value.length > 0) {
+    const foundSupply = medicalSupplies.value.find(s => 
+      s.name?.toLowerCase() === value.toLowerCase()
+    )
+    if (foundSupply) {
+      requestForm.items[index].supply_code = foundSupply.code
+    }
+  }
+}
+
+const onSupplyCodeChange = (index, value) => {
+  requestForm.items[index].supply_code = value
+  showCodeDropdowns.value[index] = true
+  // Si se escribe el código, intentar buscar el nombre
+  if (value && medicalSupplies.value.length > 0) {
+    const foundSupply = medicalSupplies.value.find(s => 
+      s.code?.toString() === value.toString()
+    )
+    if (foundSupply) {
+      requestForm.items[index].supply_name = foundSupply.name
+      supplySearchTerms.value[index] = foundSupply.name
+    }
+  }
+}
+
+const onSupplyCodeFocus = (index) => {
+  showCodeDropdowns.value[index] = true
+  if (!supplySearchTerms.value[index]) {
+    supplySearchTerms.value[index] = requestForm.items[index].supply_name || ''
+  }
+}
+
+const onSupplyCodeBlur = (index) => {
+  // Delay para permitir clicks en el dropdown
+  setTimeout(() => {
+    showCodeDropdowns.value[index] = false
+  }, 200)
+}
+
+const toggleSupplyList = (index) => {
+  if (currentSupplyListIndex.value === index) {
+    currentSupplyListIndex.value = null
+  } else {
+    currentSupplyListIndex.value = index
+    if (!supplyListSearchTerms.value[index]) {
+      supplyListSearchTerms.value[index] = ''
+    }
+  }
+}
+
+const closeSupplyList = (index) => {
+  if (currentSupplyListIndex.value === index) {
+    currentSupplyListIndex.value = null
+  }
+}
+
+// Verificar si un item es duplicado (mismo código que otro item)
+const isDuplicateItem = (index) => {
+  const currentItem = requestForm.items[index]
+  if (!currentItem?.supply_code) return false
+  
+  // Contar cuántas veces aparece este código
+  const count = requestForm.items.filter(item => 
+    item.supply_code && item.supply_code.toString() === currentItem.supply_code.toString()
+  ).length
+  
+  return count > 1
+}
+
+// Detectar y consolidar items duplicados
+const consolidateDuplicateItems = () => {
+  const consolidated = []
+  const seen = new Map() // Map<supply_code, index_en_consolidated>
+  
+  requestForm.items.forEach((item, originalIndex) => {
+    if (!item.supply_code) {
+      // Si no tiene código, agregarlo sin consolidar
+      consolidated.push({
+        ...item,
+        _originalIndex: originalIndex
+      })
+      return
+    }
+    
+    const codeKey = item.supply_code.toString()
+    
+    if (seen.has(codeKey)) {
+      // Ya existe este código, consolidar
+      const existingIndex = seen.get(codeKey)
+      const existingItem = consolidated[existingIndex]
+      
+      // Sumar cantidades
+      existingItem.quantity_requested += item.quantity_requested || 0
+      
+      // Si uno es pediátrico, ambos deben ser pediátricos
+      if (item.is_pediatric) {
+        existingItem.is_pediatric = true
+      }
+      
+      // Mostrar advertencia si hay diferencias en el nombre
+      if (existingItem.supply_name !== item.supply_name) {
+        console.warn(`Advertencia: El insumo ${codeKey} tiene nombres diferentes: "${existingItem.supply_name}" vs "${item.supply_name}"`)
+      }
+    } else {
+      // Primera vez que vemos este código
+      seen.set(codeKey, consolidated.length)
+      consolidated.push({
+        ...item,
+        _originalIndex: originalIndex
+      })
+    }
+  })
+  
+  return consolidated
 }
 
 const validateForm = () => {
+  // Primero consolidar items duplicados
+  const consolidated = consolidateDuplicateItems()
+  
+  // Verificar si hay duplicados
+  const hasDuplicates = consolidated.length < requestForm.items.length
+  
+  if (hasDuplicates) {
+    // Consolidar automáticamente sin preguntar
+    const duplicateCount = requestForm.items.length - consolidated.length
+    
+    // Consolidar items
+    const originalSearchTerms = [...supplySearchTerms.value]
+    
+    // Reconstruir arrays basados en items consolidados
+    requestForm.items = consolidated.map(item => {
+      const { _originalIndex, ...cleanItem } = item
+      return cleanItem
+    })
+    
+    // Reconstruir arrays de estados
+    supplySearchTerms.value = requestForm.items.map((item, index) => {
+      const originalIndex = consolidated[index]._originalIndex
+      return originalSearchTerms[originalIndex] || item.supply_name || ''
+    })
+    
+    showCodeDropdowns.value = requestForm.items.map(() => false)
+    showSupplyDropdowns.value = requestForm.items.map(() => false)
+    showSupplyListModals.value = requestForm.items.map(() => false)
+    supplyListSearchTerms.value = requestForm.items.map(() => '')
+    
+    // Mostrar mensaje informativo
+    Swal.fire({
+      icon: 'info',
+      title: 'Items Consolidados',
+      html: `Se detectaron <strong>${duplicateCount}</strong> insumo(s) duplicado(s).<br/>Las cantidades fueron sumadas automáticamente.`,
+      timer: 3000,
+      showConfirmButton: true,
+      confirmButtonText: 'Entendido'
+    })
+  }
+  
+  // Validar el formulario (con items consolidados si se aplicó)
   const validation = supplyRequestService.validateSupplyRequest(requestForm)
   errors.value = validation.errors
   return validation.isValid
@@ -860,6 +1158,9 @@ const loadRequestForEdit = async () => {
         // Inicializar arrays de búsqueda
         supplySearchTerms.value = requestForm.items.map(() => '')
         showSupplyDropdowns.value = requestForm.items.map(() => false)
+        showCodeDropdowns.value = requestForm.items.map(() => false)
+        showSupplyListModals.value = requestForm.items.map(() => false)
+        supplyListSearchTerms.value = requestForm.items.map(() => '')
       }
     }
   } catch (error) {

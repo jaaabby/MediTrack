@@ -5,6 +5,7 @@
 -- =======================
 -- ELIMINAR VISTAS
 -- =======================
+DROP VIEW IF EXISTS v_supply_cart_details CASCADE;
 DROP VIEW IF EXISTS v_qr_scan_statistics CASCADE;
 DROP VIEW IF EXISTS v_qr_complete_traceability CASCADE;
 DROP VIEW IF EXISTS v_qr_traceability CASCADE;
@@ -29,6 +30,7 @@ DROP TRIGGER IF EXISTS trg_update_doctor_info_updated_at ON doctor_info;
 DROP TRIGGER IF EXISTS trg_update_surgery_typical_supply_updated_at ON surgery_typical_supply;
 DROP TRIGGER IF EXISTS trg_update_medical_specialty_updated_at ON medical_specialty;
 DROP TRIGGER IF EXISTS trg_update_supplier_config_updated_at ON supplier_config;
+DROP TRIGGER IF EXISTS tr_supply_cart_updated_at ON supply_cart;
 
 -- =======================
 -- ELIMINAR FUNCIONES
@@ -52,10 +54,24 @@ DROP FUNCTION IF EXISTS update_doctor_info_updated_at();
 DROP FUNCTION IF EXISTS update_surgery_typical_supply_updated_at();
 DROP FUNCTION IF EXISTS update_medical_specialty_updated_at();
 DROP FUNCTION IF EXISTS update_supplier_config_updated_at();
+DROP FUNCTION IF EXISTS generate_cart_number();
+DROP FUNCTION IF EXISTS update_supply_cart_updated_at();
 
 -- =======================
 -- ELIMINAR ÍNDICES
 -- =======================
+
+-- Índices de supply_cart
+DROP INDEX IF EXISTS idx_supply_cart_created_at;
+DROP INDEX IF EXISTS idx_supply_cart_number;
+DROP INDEX IF EXISTS idx_supply_cart_status;
+DROP INDEX IF EXISTS idx_supply_cart_request;
+
+-- Índices de supply_cart_item
+DROP INDEX IF EXISTS idx_supply_cart_item_added_at;
+DROP INDEX IF EXISTS idx_supply_cart_item_active;
+DROP INDEX IF EXISTS idx_supply_cart_item_assignment;
+DROP INDEX IF EXISTS idx_supply_cart_item_cart;
 
 -- Índices de supplier_config
 DROP INDEX IF EXISTS idx_supplier_config_alert_days;
@@ -160,6 +176,10 @@ DROP TABLE IF EXISTS pavilion_inventory_summary CASCADE;
 -- Tabla de transferencias
 DROP TABLE IF EXISTS supply_transfer CASCADE;
 
+-- Tablas de carritos de insumos
+DROP TABLE IF EXISTS supply_cart_item CASCADE;
+DROP TABLE IF EXISTS supply_cart CASCADE;
+
 -- Tablas de solicitudes y asignaciones QR
 DROP TABLE IF EXISTS supply_request_qr_assignment CASCADE;
 DROP TABLE IF EXISTS supply_request_item CASCADE;
@@ -210,6 +230,8 @@ DROP SEQUENCE IF EXISTS qr_scan_event_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS supply_transfer_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS pavilion_inventory_summary_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS store_inventory_summary_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS supply_cart_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS supply_cart_item_id_seq CASCADE;
 
 -- =======================
 -- MENSAJE DE CONFIRMACIÓN

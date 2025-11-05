@@ -195,7 +195,8 @@ class InventoryService {
         supply_code: {
           code: parseInt(batchData.supply_code.code),
           name: batchData.supply_code.name,
-          code_supplier: parseInt(batchData.supply_code.code_supplier)
+          code_supplier: parseInt(batchData.supply_code.code_supplier),
+          critical_stock: parseInt(batchData.supply_code.critical_stock) || 1
         },
         individual_count: parseInt(batchData.batch.amount) // Esta es la clave - cantidad de insumos individuales
       })
@@ -520,10 +521,11 @@ class InventoryService {
   }
 
   // Obtener inventario de pabellón
-  async getPavilionInventory(pavilionId, includeInTransit = false) {
+  async getPavilionInventory(pavilionId, includeInTransit = false, supplier = null) {
     try {
       const params = new URLSearchParams()
       if (includeInTransit) params.append('include_in_transit', 'true')
+      if (supplier) params.append('supplier', supplier)
 
       const response = await this.api.get(`/inventory/pavilion/${pavilionId}?${params.toString()}`)
       // El backend devuelve {pavilion_id: ..., inventory: [...], count: ...}
