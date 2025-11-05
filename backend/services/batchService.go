@@ -724,6 +724,21 @@ func (s *BatchService) CheckAllBatchesLowStock() error {
 	return nil
 }
 
+// StartAutomaticLowStockChecker inicia el proceso automático de verificación de stock bajo (ejecutar como goroutine)
+func (s *BatchService) StartAutomaticLowStockChecker() {
+	ticker := time.NewTicker(24 * time.Hour) // Verificar cada 24 horas
+	defer ticker.Stop()
+
+	fmt.Println("🔄 Iniciado verificador automático de stock bajo")
+
+	for range ticker.C {
+		fmt.Println("🔍 Ejecutando verificación automática de stock bajo...")
+		if err := s.CheckAllBatchesLowStock(); err != nil {
+			fmt.Printf("❌ Error en verificación automática de stock bajo: %v\n", err)
+		}
+	}
+}
+
 // GetLowStockSummary obtiene un resumen de todos los insumos con stock bajo
 func (s *BatchService) GetLowStockSummary() ([]map[string]interface{}, error) {
 	query := `

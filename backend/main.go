@@ -117,6 +117,10 @@ func main() {
 	go medicalSupplyService.StartAutomaticReturnChecker()
 	log.Println("✅ Iniciado verificador automático de retornos a bodega")
 
+	// Iniciar el verificador automático de stock bajo en una goroutine
+	go batchService.StartAutomaticLowStockChecker()
+	log.Println("✅ Iniciado verificador automático de stock bajo")
+
 	// Iniciar servidor correctamente con Gin
 	log.Printf("Servidor iniciando en puerto %d", cfg.Server.Port)
 	if err := router.Run(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {

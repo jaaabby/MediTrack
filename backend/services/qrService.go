@@ -1491,6 +1491,10 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumptionResponse, error) {
 	var supply models.MedicalSupply
 	var response QRConsumptionResponse
+	
+	// Variables para guardar información del batch fuera de la transacción
+	var batchID int
+	var previousAmount int
 
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		// Buscar el insumo por QR
@@ -1508,6 +1512,10 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 		if err := tx.Where("id = ?", supply.BatchID).First(&batch).Error; err != nil {
 			return fmt.Errorf("lote no encontrado: %v", err)
 		}
+
+		// Guardar información del batch para uso fuera de la transacción
+		batchID = batch.ID
+		previousAmount = batch.Amount
 
 		// Verificar que hay stock disponible
 		if batch.Amount <= 0 {
@@ -1666,7 +1674,86 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 		return nil, err
 	}
 
+	// Verificar si se debe enviar alerta de stock bajo después de consumir el insumo
+	// Obtener el batch actualizado usando el BatchID guardado
+	var updatedBatch models.Batch
+	if err := s.DB.First(&updatedBatch, batchID).Error; err == nil {
+		// Obtener el stock crítico del tipo de insumo
+		var supplyCode models.SupplyCode
+		if err := s.DB.Joins("JOIN medical_supply ON medical_supply.code = supply_code.code").
+			Where("medical_supply.batch_id = ?", batchID).
+			First(&supplyCode).Error; err == nil {
+
+			// Verificar si el stock está en nivel crítico
+			// Enviar alerta cuando el stock llega al nivel crítico o por debajo
+			newAmount := updatedBatch.Amount
+			
+			// Solo enviar alerta si:
+			// 1. El nuevo stock está en o por debajo del crítico
+			// 2. El stock anterior era mayor al crítico (para evitar alertas repetidas cuando ya está en crítico)
+			if newAmount > 0 && newAmount <= supplyCode.CriticalStock {
+				// Si el stock anterior era mayor al crítico, es la primera vez que llega al crítico
+				if previousAmount > supplyCode.CriticalStock {
+					// Enviar alerta en una goroutine para no bloquear la respuesta
+					go func() {
+						if err := s.sendLowStockAlertForBatch(updatedBatch, supplyCode); err != nil {
+							fmt.Printf("Error al enviar alerta de stock bajo para lote %d: %v\n", batchID, err)
+						} else {
+							fmt.Printf("✅ Alerta de stock bajo enviada para lote %d (%s): Stock actual %d, Stock crítico %d\n",
+								batchID, supplyCode.Name, newAmount, supplyCode.CriticalStock)
+						}
+					}()
+				}
+			}
+		}
+	}
+
 	return &response, nil
+}
+
+// sendLowStockAlertForBatch envía correo de alerta de stock bajo para un lote
+func (s *QRService) sendLowStockAlertForBatch(batch models.Batch, supplyCode models.SupplyCode) error {
+	// Verificar que las variables de entorno del mailer estén configuradas
+	emailDir := os.Getenv("EMAIL_DIR")
+	emailPass := os.Getenv("EMAIL_PASS")
+	emailServer := os.Getenv("EMAIL_SERVER")
+	emailPort := os.Getenv("EMAIL_PORT")
+	
+	if emailDir == "" || emailPass == "" || emailServer == "" || emailPort == "" {
+		fmt.Printf("⚠️ Variables de entorno del mailer no configuradas. No se puede enviar correo.\n")
+		fmt.Printf("   EMAIL_DIR: %s, EMAIL_SERVER: %s, EMAIL_PORT: %s\n", 
+			func() string { if emailDir == "" { return "NO CONFIGURADO" }; return "configurado" }(),
+			func() string { if emailServer == "" { return "NO CONFIGURADO" }; return "configurado" }(),
+			func() string { if emailPort == "" { return "NO CONFIGURADO" }; return "configurado" }())
+		return fmt.Errorf("variables de entorno del mailer no configuradas")
+	}
+	
+	// Crear datos para la plantilla
+	data := map[string]interface{}{
+		"BatchID":       batch.ID,
+		"Code":          supplyCode.Code,
+		"Name":          supplyCode.Name,
+		"CurrentStock":  batch.Amount,
+		"CriticalStock": supplyCode.CriticalStock,
+		"Date":          time.Now().Format("02/01/2006"),
+	}
+
+	// Crear solicitud de correo
+	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Stock Bajo en Lote")
+
+	// Enviar correo usando la plantilla de stock bajo
+	templatePath := "mailer/templates/low_stock.html"
+	fmt.Printf("📧 Intentando enviar alerta de stock bajo: Lote %d (%s), Stock: %d/%d\n", 
+		batch.ID, supplyCode.Name, batch.Amount, supplyCode.CriticalStock)
+	
+	err := req.SendMailSkipTLS(templatePath, data)
+	if err != nil {
+		fmt.Printf("❌ Error al enviar correo de alerta de stock bajo: %v\n", err)
+		return err
+	}
+	
+	fmt.Printf("✅ Correo de alerta de stock bajo enviado exitosamente a vergara.javiera12@gmail.com\n")
+	return nil
 }
 
 // mapQRTypeToDatabase mapea tipos internos a tipos de base de datos

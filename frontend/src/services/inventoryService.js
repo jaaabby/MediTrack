@@ -194,7 +194,8 @@ class InventoryService {
         supply_code: {
           code: parseInt(batchData.supply_code.code),
           name: batchData.supply_code.name,
-          code_supplier: parseInt(batchData.supply_code.code_supplier)
+          code_supplier: parseInt(batchData.supply_code.code_supplier),
+          critical_stock: parseInt(batchData.supply_code.critical_stock) || 1
         },
         individual_count: parseInt(batchData.batch.amount) // Esta es la clave - cantidad de insumos individuales
       })

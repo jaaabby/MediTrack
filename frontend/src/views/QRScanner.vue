@@ -458,6 +458,8 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 const canBeConsumed = (info) => {
   if (!info || info.type !== 'medical_supply') return false
   if (info.is_consumed) return false
+  // Si está asociado a un carrito, no mostrar botón de consumir
+  if (isInCart(info)) return false
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   return status === 'recepcionado'
@@ -482,6 +484,8 @@ const canBeReceived = (info) => {
 const canBeReturnedToStore = (info) => {
   if (!info || info.type !== 'medical_supply') return false
   if (info.is_consumed) return false
+  // Si está asociado a un carrito, no mostrar botón de devolver a bodega
+  if (isInCart(info)) return false
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   // Puede ser regresado si está recepcionado (hace tiempo sin consumir)
@@ -990,8 +994,15 @@ const canAddToCart = (info) => {
 
 const isInCart = (info) => {
   if (!info || info.type !== 'medical_supply') return false
-  // Está en un carrito si tiene una asignación de request
-  return !!info.request_assignment
+  // Está en un carrito si tiene una asignación de request Y un carrito asociado
+  if (!info.request_assignment) return false
+  
+  // Verificar si hay un carrito activo asociado
+  const cart = info.request_assignment?.cart || info.request_assignment?.Cart
+  if (!cart) return false
+  
+  // Solo considerar que está en un carrito si el carrito está activo
+  return cart.status === 'active' || cart.Status === 'active'
 }
 
 const loadAvailableCarts = async () => {

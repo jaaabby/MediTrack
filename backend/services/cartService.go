@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"meditrack/models"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -1124,61 +1125,30 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 				return fmt.Errorf("el insumo %s ya fue consumido", supply.QRCode)
 			}
 
+			// Guardar el store_id original antes de cambiar la ubicación
+			originalStoreID := supply.LocationID
+
 			// Obtener información del batch
 			var batch models.Batch
 			if err := tx.First(&batch, supply.BatchID).Error; err != nil {
 				return fmt.Errorf("lote no encontrado para insumo %s: %w", supply.QRCode, err)
 			}
 
-			// Crear registro de transferencia
-			transferCode := fmt.Sprintf("TRANS-CART-%d-%s", time.Now().Unix(), supply.QRCode[len(supply.QRCode)-5:])
-			transfer := models.SupplyTransfer{
-				TransferCode:    transferCode,
-				QRCode:          supply.QRCode,
-				MedicalSupplyID: supply.ID,
-				OriginType:      models.TransferLocationStore,
-				OriginID:        supply.LocationID,
-				DestinationType: models.TransferLocationPavilion,
-				DestinationID:   pavilionID,
-				SentBy:          userRUT,
-				SentByName:      userName,
-				Status:          models.TransferStatusInTransit,
-				TransferReason:  fmt.Sprintf("Transferencia desde carrito %s", cart.CartNumber),
-				SendDate:        time.Now(),
-				Notes:           fmt.Sprintf("Transferencia automática desde carrito de solicitud %s", cart.SupplyRequest.RequestNumber),
-			}
-
-			if err := tx.Create(&transfer).Error; err != nil {
-				return fmt.Errorf("error al crear transferencia para insumo %s: %w", supply.QRCode, err)
-			}
-
-			// Actualizar ubicación del insumo y marcarlo en tránsito
+			// Descontar del stock de bodega ANTES de actualizar la ubicación del insumo
 			now := time.Now()
-			supply.LocationType = models.SupplyLocationPavilion
-			supply.LocationID = pavilionID
-			supply.InTransit = true
-			supply.TransferDate = &now
-			supply.TransferredBy = &userRUT
-			supply.Status = models.StatusEnRouteToPavilion
-
-			if err := tx.Save(&supply).Error; err != nil {
-				return fmt.Errorf("error al actualizar insumo %s: %w", supply.QRCode, err)
-			}
-
-			// Descontar del stock de bodega
 			var storeSummary models.StoreInventorySummary
-			if err := tx.Where("store_id = ? AND batch_id = ?", supply.LocationID, batch.ID).
+			if err := tx.Where("store_id = ? AND batch_id = ?", originalStoreID, batch.ID).
 				First(&storeSummary).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					// Si no existe el resumen, crearlo basado en el stock real actual
 					var realCount int64
 					tx.Model(&models.MedicalSupply{}).
 						Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
-							batch.ID, models.SupplyLocationStore, supply.LocationID, models.StatusConsumed).
+							batch.ID, models.SupplyLocationStore, originalStoreID, models.StatusConsumed).
 						Count(&realCount)
 
 					storeSummary = models.StoreInventorySummary{
-						StoreID:            supply.LocationID,
+						StoreID:            originalStoreID,
 						BatchID:            batch.ID,
 						SupplyCode:         supply.Code,
 						SurgeryID:          batch.SurgeryID,
@@ -1188,7 +1158,30 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 						LastTransferOutDate: &now,
 					}
 					if err := tx.Create(&storeSummary).Error; err != nil {
-						return fmt.Errorf("error creando resumen de bodega: %w", err)
+						// Si el error es de clave duplicada, significa que otro item del mismo batch ya creó el resumen
+						// Intentar obtenerlo nuevamente
+						errMsg := err.Error()
+						if errMsg != "" && (strings.Contains(errMsg, "duplicate key") || 
+						    strings.Contains(errMsg, "llave duplicada") || 
+						    strings.Contains(errMsg, "23505") ||
+						    strings.Contains(errMsg, "unique constraint")) {
+							// Intentar obtener el resumen que fue creado por otro item
+							if err2 := tx.Where("store_id = ? AND batch_id = ?", originalStoreID, batch.ID).
+								First(&storeSummary).Error; err2 != nil {
+								return fmt.Errorf("error obteniendo resumen de bodega después de intento de creación: %w", err2)
+							}
+							// Actualizar el resumen existente
+							if storeSummary.CurrentInStore > 0 {
+								storeSummary.CurrentInStore--
+							}
+							storeSummary.TotalTransferredOut++
+							storeSummary.LastTransferOutDate = &now
+							if err2 := tx.Save(&storeSummary).Error; err2 != nil {
+								return fmt.Errorf("error actualizando resumen de bodega después de creación duplicada: %w", err2)
+							}
+						} else {
+							return fmt.Errorf("error creando resumen de bodega: %w", err)
+						}
 					}
 				} else {
 					return fmt.Errorf("error obteniendo resumen de bodega: %w", err)
@@ -1203,6 +1196,40 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 				if err := tx.Save(&storeSummary).Error; err != nil {
 					return fmt.Errorf("error actualizando resumen de bodega: %w", err)
 				}
+			}
+
+			// Crear registro de transferencia
+			transferCode := fmt.Sprintf("TRANS-CART-%d-%s", time.Now().Unix(), supply.QRCode[len(supply.QRCode)-5:])
+			transfer := models.SupplyTransfer{
+				TransferCode:    transferCode,
+				QRCode:          supply.QRCode,
+				MedicalSupplyID: supply.ID,
+				OriginType:      models.TransferLocationStore,
+				OriginID:        originalStoreID,
+				DestinationType: models.TransferLocationPavilion,
+				DestinationID:   pavilionID,
+				SentBy:          userRUT,
+				SentByName:      userName,
+				Status:          models.TransferStatusInTransit,
+				TransferReason:  fmt.Sprintf("Transferencia desde carrito %s", cart.CartNumber),
+				SendDate:        now,
+				Notes:           fmt.Sprintf("Transferencia automática desde carrito de solicitud %s", cart.SupplyRequest.RequestNumber),
+			}
+
+			if err := tx.Create(&transfer).Error; err != nil {
+				return fmt.Errorf("error al crear transferencia para insumo %s: %w", supply.QRCode, err)
+			}
+
+			// Actualizar ubicación del insumo y marcarlo en tránsito
+			supply.LocationType = models.SupplyLocationPavilion
+			supply.LocationID = pavilionID
+			supply.InTransit = true
+			supply.TransferDate = &now
+			supply.TransferredBy = &userRUT
+			supply.Status = models.StatusEnRouteToPavilion
+
+			if err := tx.Save(&supply).Error; err != nil {
+				return fmt.Errorf("error al actualizar insumo %s: %w", supply.QRCode, err)
 			}
 
 			// Registrar en historial

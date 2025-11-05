@@ -309,8 +309,17 @@ const routes = [
     meta: {
       title: 'Configuración de Proveedores - MediTrack',
       description: 'Gestión de alertas de vencimiento por proveedor',
-      requiresAuth: true,
-      requiredRoles: ['admin', 'encargado de bodega']
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/supply-codes',
+    name: 'SupplyCodeManagement',
+    component: () => import('@/views/SupplyCodeManagement.vue'),
+    meta: {
+      title: 'Gestión de Códigos de Insumos - MediTrack',
+      description: 'Gestión de códigos de insumos y niveles críticos de stock',
+      requiresAuth: true
     }
   },
 
