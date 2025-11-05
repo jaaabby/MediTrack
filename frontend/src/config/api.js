@@ -14,8 +14,10 @@ export function getApiBaseUrl() {
   // 1. Prioridad: VITE_API_URL (Cloudflare Pages en producción)
   const viteApiUrl = import.meta.env.VITE_API_URL
   if (viteApiUrl) {
-    console.log('✅ API URL desde VITE_API_URL:', viteApiUrl)
-    return viteApiUrl
+    // Asegurar que termine con /api/v1 si no lo tiene
+    const url = viteApiUrl.endsWith('/api/v1') ? viteApiUrl : `${viteApiUrl}/api/v1`
+    console.log('✅ API URL desde VITE_API_URL:', url)
+    return url
   }
 
   // 2. Si hay VITE_API_BASE_URL (legacy), usarla
