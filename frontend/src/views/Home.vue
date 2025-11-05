@@ -134,7 +134,7 @@
       </div>
 
       <!-- Agregar nuevo insumo -->
-      <div v-if="authStore.canViewInventory" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/inventory/add')">
+      <div v-if="authStore.canAddSupplies" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/inventory/add')">
         <div class="flex items-center gap-4">
           <div class="bg-green-100 p-3 rounded-lg">
             <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

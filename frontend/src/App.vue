@@ -90,6 +90,7 @@
                   </div>
                 </router-link>
                 <router-link
+                  v-if="authStore.canAddSupplies"
                   to="/inventory/add"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-t border-gray-200"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/add' }"
@@ -148,6 +149,7 @@
               <!-- Dropdown menu -->
               <div v-if="managementMenuOpen" class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-96 overflow-y-auto">
                 <router-link
+                  v-if="authStore.canManageTransfers"
                   to="/transfers"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/transfers' }"
@@ -161,6 +163,7 @@
                   </div>
                 </router-link>
                 <router-link
+                  v-if="authStore.canManageSurgeries"
                   to="/surgeries"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/surgeries' }"
@@ -174,6 +177,7 @@
                   </div>
                 </router-link>
                 <router-link
+                  v-if="authStore.canViewSupplyHistory"
                   to="/supply-history"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/supply-history' }"
@@ -187,7 +191,7 @@
                   </div>
                 </router-link>
                 <router-link
-                  v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+                  v-if="authStore.canManageReturns"
                   to="/return-management"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/return-management' }"
@@ -202,13 +206,14 @@
                 </router-link>
                 
                 <!-- Separador -->
-                <div class="border-t border-gray-200 my-1"></div>
+                <div v-if="authStore.canManageMedicalConfig" class="border-t border-gray-200 my-1"></div>
                 
-                <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <div v-if="authStore.canManageMedicalConfig" class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Configuración Médica
                 </div>
                 
                 <router-link
+                  v-if="authStore.canManageMedicalConfig"
                   to="/medical-specialties"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/medical-specialties' }"
@@ -222,6 +227,7 @@
                   </div>
                 </router-link>
                 <router-link
+                  v-if="authStore.canManageMedicalConfig"
                   to="/surgery-typical-supplies"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/surgery-typical-supplies' }"
@@ -235,6 +241,7 @@
                   </div>
                 </router-link>
                 <router-link
+                  v-if="authStore.canManageMedicalConfig"
                   to="/doctor-info"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/doctor-info' }"
@@ -249,14 +256,14 @@
                 </router-link>
                 
                 <!-- Separador -->
-                <div class="border-t border-gray-200 my-1"></div>
+                <div v-if="authStore.canManageSystemConfig" class="border-t border-gray-200 my-1"></div>
                 
-                <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <div v-if="authStore.canManageSystemConfig" class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Configuración del Sistema
                 </div>
                 
                 <router-link
-                  v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+                  v-if="authStore.canManageSystemConfig"
                   to="/supplier-configs"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/supplier-configs' }"
@@ -271,7 +278,7 @@
                   </div>
                 </router-link>
                 <router-link
-                  v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+                  v-if="authStore.canManageSystemConfig"
                   to="/supply-codes"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   :class="{ 'bg-blue-50 text-blue-600': $route.path === '/supply-codes' }"
@@ -455,6 +462,7 @@
               Pabellones
             </router-link>
             <router-link
+              v-if="authStore.canAddSupplies"
               to="/inventory/add"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -506,6 +514,7 @@
               Gestión
             </div>
             <router-link
+              v-if="authStore.canManageTransfers"
               to="/transfers"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -515,6 +524,7 @@
             </router-link>
 
             <router-link
+              v-if="authStore.canManageSurgeries"
               to="/surgeries"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -524,6 +534,7 @@
             </router-link>
 
             <router-link
+              v-if="authStore.canViewSupplyHistory"
               to="/supply-history"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -533,7 +544,7 @@
             </router-link>
             
             <router-link
-              v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+              v-if="authStore.canManageReturns"
               to="/return-management"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -543,13 +554,14 @@
             </router-link>
             
             <!-- Separador -->
-            <div class="border-t border-blue-600 my-2"></div>
+            <div v-if="authStore.canManageMedicalConfig" class="border-t border-blue-600 my-2"></div>
             
-            <div class="text-blue-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+            <div v-if="authStore.canManageMedicalConfig" class="text-blue-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
               Configuración Médica
             </div>
             
             <router-link
+              v-if="authStore.canManageMedicalConfig"
               to="/medical-specialties"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -559,6 +571,7 @@
             </router-link>
             
             <router-link
+              v-if="authStore.canManageMedicalConfig"
               to="/surgery-typical-supplies"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -568,6 +581,7 @@
             </router-link>
             
             <router-link
+              v-if="authStore.canManageMedicalConfig"
               to="/doctor-info"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -577,14 +591,14 @@
             </router-link>
             
             <!-- Separador -->
-            <div class="border-t border-blue-600 my-2"></div>
+            <div v-if="authStore.canManageSystemConfig" class="border-t border-blue-600 my-2"></div>
             
-            <div class="text-blue-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+            <div v-if="authStore.canManageSystemConfig" class="text-blue-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
               Configuración del Sistema
             </div>
             
             <router-link
-              v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+              v-if="authStore.canManageSystemConfig"
               to="/supplier-configs"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
@@ -593,7 +607,7 @@
               Configuración de Proveedores
             </router-link>
             <router-link
-              v-if="authStore.isAuthenticated && (authStore.isAdmin || authStore.isWarehouseManager)"
+              v-if="authStore.canManageSystemConfig"
               to="/supply-codes"
               @click.stop="mobileMenuOpen = false"
               class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
