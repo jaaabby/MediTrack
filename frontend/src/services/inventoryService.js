@@ -520,10 +520,11 @@ class InventoryService {
   }
 
   // Obtener inventario de pabellón
-  async getPavilionInventory(pavilionId, includeInTransit = false) {
+  async getPavilionInventory(pavilionId, includeInTransit = false, supplier = null) {
     try {
       const params = new URLSearchParams()
       if (includeInTransit) params.append('include_in_transit', 'true')
+      if (supplier) params.append('supplier', supplier)
 
       const response = await this.api.get(`/inventory/pavilion/${pavilionId}?${params.toString()}`)
       // El backend devuelve {pavilion_id: ..., inventory: [...], count: ...}

@@ -20,12 +20,15 @@ type MedicalSupplyService struct {
 }
 
 // CreateMultipleIndividualSuppliesTx crea múltiples insumos individuales usando una transacción existente
-func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, batchID int, code int, quantity int) ([]models.MedicalSupply, error) {
+func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, batchID int, code int, quantity int, storeID int) ([]models.MedicalSupply, error) {
 	var supplies []models.MedicalSupply
 	for i := 0; i < quantity; i++ {
 		supply := models.MedicalSupply{
-			Code:    code,
-			BatchID: batchID,
+			Code:         code,
+			BatchID:      batchID,
+			LocationType: models.SupplyLocationStore,
+			LocationID:   storeID,
+			Status:       models.StatusAvailable,
 			// QRCode se generará después de crear el insumo para tener el ID
 		}
 

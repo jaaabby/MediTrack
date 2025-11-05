@@ -187,6 +187,7 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 				batch.ID,
 				supplyCode.Code,
 				individualCount,
+				batch.StoreID, // Pasar el storeID para establecer LocationID
 			)
 			if err != nil {
 				return fmt.Errorf("error creando insumos individuales: %v", err)
@@ -201,9 +202,12 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 				}
 
 				supply := models.MedicalSupply{
-					Code:    supplyCode.Code,
-					QRCode:  qrCode,
-					BatchID: batch.ID,
+					Code:         supplyCode.Code,
+					QRCode:       qrCode,
+					BatchID:      batch.ID,
+					LocationType: models.SupplyLocationStore,
+					LocationID:   batch.StoreID,
+					Status:       models.StatusAvailable,
 				}
 
 				if err := tx.Create(&supply).Error; err != nil {

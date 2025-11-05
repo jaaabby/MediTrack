@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"meditrack/models"
-	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -1127,6 +1126,24 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 
 			// Guardar el store_id original antes de cambiar la ubicación
 			originalStoreID := supply.LocationID
+			
+			// Si LocationID es 0, obtener el store_id del batch
+			if originalStoreID == 0 {
+				var batch models.Batch
+				if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+					return fmt.Errorf("lote no encontrado para insumo %s: %w", supply.QRCode, err)
+				}
+				originalStoreID = batch.StoreID
+				// Actualizar el supply con el LocationID correcto si estaba en 0
+				if err := tx.Model(&supply).Updates(map[string]interface{}{
+					"location_id":   originalStoreID,
+					"location_type": models.SupplyLocationStore,
+				}).Error; err != nil {
+					return fmt.Errorf("error actualizando LocationID del insumo: %w", err)
+				}
+				supply.LocationID = originalStoreID
+				supply.LocationType = models.SupplyLocationStore
+			}
 
 			// Obtener información del batch
 			var batch models.Batch
@@ -1135,12 +1152,12 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 			}
 
 			// Descontar del stock de bodega ANTES de actualizar la ubicación del insumo
+			// El store_inventory_summary ya debería existir (se crea cuando se crea el lote)
 			now := time.Now()
 			var storeSummary models.StoreInventorySummary
-			if err := tx.Where("store_id = ? AND batch_id = ?", originalStoreID, batch.ID).
-				First(&storeSummary).Error; err != nil {
+			if err := tx.Where("batch_id = ?", batch.ID).First(&storeSummary).Error; err != nil {
+				// Si no existe el resumen (no debería pasar), crearlo basado en el stock real actual
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					// Si no existe el resumen, crearlo basado en el stock real actual
 					var realCount int64
 					tx.Model(&models.MedicalSupply{}).
 						Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
@@ -1158,30 +1175,7 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 						LastTransferOutDate: &now,
 					}
 					if err := tx.Create(&storeSummary).Error; err != nil {
-						// Si el error es de clave duplicada, significa que otro item del mismo batch ya creó el resumen
-						// Intentar obtenerlo nuevamente
-						errMsg := err.Error()
-						if errMsg != "" && (strings.Contains(errMsg, "duplicate key") || 
-						    strings.Contains(errMsg, "llave duplicada") || 
-						    strings.Contains(errMsg, "23505") ||
-						    strings.Contains(errMsg, "unique constraint")) {
-							// Intentar obtener el resumen que fue creado por otro item
-							if err2 := tx.Where("store_id = ? AND batch_id = ?", originalStoreID, batch.ID).
-								First(&storeSummary).Error; err2 != nil {
-								return fmt.Errorf("error obteniendo resumen de bodega después de intento de creación: %w", err2)
-							}
-							// Actualizar el resumen existente
-							if storeSummary.CurrentInStore > 0 {
-								storeSummary.CurrentInStore--
-							}
-							storeSummary.TotalTransferredOut++
-							storeSummary.LastTransferOutDate = &now
-							if err2 := tx.Save(&storeSummary).Error; err2 != nil {
-								return fmt.Errorf("error actualizando resumen de bodega después de creación duplicada: %w", err2)
-							}
-						} else {
-							return fmt.Errorf("error creando resumen de bodega: %w", err)
-						}
+						return fmt.Errorf("error creando resumen de bodega: %w", err)
 					}
 				} else {
 					return fmt.Errorf("error obteniendo resumen de bodega: %w", err)

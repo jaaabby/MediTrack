@@ -836,10 +836,16 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 		// Si el item fue ACEPTADO, asignar automáticamente insumos del inventario
 		if req.ItemStatus == "aceptado" {
 			// Buscar insumos disponibles con el mismo código (supply_code)
+			// FEFO (First Expired First Out): Priorizar productos próximos a vencer
 			var availableSupplies []models.MedicalSupply
-			if err := tx.Where("code = ? AND status = ? AND location_type = ?",
-				item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
-				Order("updated_at ASC"). // FIFO: primero el más antiguo
+			// Usar JOIN con batch para ordenar por fecha de vencimiento
+			if err := tx.Table("medical_supply ms").
+				Select("ms.*").
+				Joins("JOIN batch b ON ms.batch_id = b.id").
+				Where("ms.code = ? AND ms.status = ? AND ms.location_type = ?",
+					item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
+				Where("b.expiration_date > ?", time.Now()). // Solo productos no vencidos
+				Order("b.expiration_date ASC, ms.updated_at ASC"). // FEFO: primero los que vencen antes
 				Limit(item.QuantityRequested).
 				Find(&availableSupplies).Error; err != nil {
 				return fmt.Errorf("error buscando insumos disponibles: %v", err)

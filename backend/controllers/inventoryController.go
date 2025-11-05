@@ -136,7 +136,12 @@ func (c *InventoryController) GetPavilionInventory(ctx *gin.Context) {
 
 	includeInTransit := ctx.Query("include_in_transit") == "true"
 
-	inventory, err := c.inventoryService.GetPavilionInventory(pavilionID, includeInTransit)
+	var supplier *string
+	if sup := ctx.Query("supplier"); sup != "" {
+		supplier = &sup
+	}
+
+	inventory, err := c.inventoryService.GetPavilionInventory(pavilionID, includeInTransit, supplier)
 	if err != nil {
 		sendError(ctx, http.StatusInternalServerError, "Error al obtener inventario de pabellón", err.Error())
 		return
