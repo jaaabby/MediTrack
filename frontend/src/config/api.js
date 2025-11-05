@@ -11,36 +11,30 @@
  *   o detecta automáticamente el protocolo y host actual
  */
 export function getApiBaseUrl() {
-  // Si hay una URL específica configurada (necesaria para Railway/Cloud), usarla
-  const envUrl = import.meta.env.VITE_API_BASE_URL
-  
-  if (envUrl) {
-    // Asegurar que la URL termine con /api/v1 si no lo hace
-    const cleanUrl = envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl
-    const apiUrl = cleanUrl.endsWith('/api/v1') ? cleanUrl : `${cleanUrl}/api/v1`
-    console.log('🔧 API URL (desde variable de entorno VITE_API_BASE_URL):', apiUrl)
-    return apiUrl
+  // 1. Prioridad: VITE_API_URL (Cloudflare Pages en producción)
+  const viteApiUrl = import.meta.env.VITE_API_URL
+  if (viteApiUrl) {
+    console.log('✅ API URL desde VITE_API_URL:', viteApiUrl)
+    return viteApiUrl
   }
 
-  // En Docker Compose, el frontend está detrás de nginx que hace proxy de /api/ al backend
-  // Por lo tanto, podemos usar URLs relativas que funcionan tanto en localhost como desde el celular
-  // Esto evita problemas de CORS y configuración de IPs
-  
-  // Detectar si estamos en modo producción (build de Vite) o desarrollo (Vite dev server)
-  // En producción, Vite establece MODE='production' y import.meta.env.PROD=true
-  // En desarrollo, Vite establece MODE='development' y import.meta.env.DEV=true
+  // 2. Si hay VITE_API_BASE_URL (legacy), usarla
+  const envUrl = import.meta.env.VITE_API_BASE_URL
+  if (envUrl) {
+    console.log('✅ API URL desde VITE_API_BASE_URL:', envUrl)
+    return envUrl
+  }
+
+  // 3. Detectar si estamos en modo producción
   const isProduction = import.meta.env.PROD || import.meta.env.MODE === 'production'
   
-  // Si estamos en producción (nginx), usar URL relativa
-  // nginx hará el proxy de /api/ al backend automáticamente (solo en Docker Compose)
-  // En Railway/Cloud, si VITE_API_BASE_URL no está configurada, esto fallará
-  // y el usuario debe configurar VITE_API_BASE_URL en Railway
+  // Si estamos en producción SIN variables de entorno, usar URL relativa (Docker + Nginx)
+  // NOTA: En Cloudflare Pages, SIEMPRE debes configurar VITE_API_URL
   if (isProduction) {
     const apiUrl = '/api/v1'
-    console.log('🔧 API URL (producción, usando proxy nginx):', apiUrl)
+    console.warn('⚠️ Producción sin VITE_API_URL configurada. Usando URL relativa (solo funciona con Nginx proxy):', apiUrl)
     console.log('   Protocolo:', window.location.protocol)
     console.log('   Hostname:', window.location.hostname)
-    console.log('   ⚠️  Si estás en Railway/Cloud y esto no funciona, configura VITE_API_BASE_URL')
     return apiUrl
   }
 
