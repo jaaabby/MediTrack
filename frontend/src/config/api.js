@@ -11,14 +11,18 @@
  *   o detecta automáticamente el protocolo y host actual
  */
 export function getApiBaseUrl() {
-  // Si hay una URL específica configurada, usarla
+  // Si hay una URL específica configurada (necesaria para Railway/Cloud), usarla
   const envUrl = import.meta.env.VITE_API_BASE_URL
   
   if (envUrl) {
-    return envUrl
+    // Asegurar que la URL termine con /api/v1 si no lo hace
+    const cleanUrl = envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl
+    const apiUrl = cleanUrl.endsWith('/api/v1') ? cleanUrl : `${cleanUrl}/api/v1`
+    console.log('🔧 API URL (desde variable de entorno VITE_API_BASE_URL):', apiUrl)
+    return apiUrl
   }
 
-  // En Docker, el frontend está detrás de nginx que hace proxy de /api/ al backend
+  // En Docker Compose, el frontend está detrás de nginx que hace proxy de /api/ al backend
   // Por lo tanto, podemos usar URLs relativas que funcionan tanto en localhost como desde el celular
   // Esto evita problemas de CORS y configuración de IPs
   
@@ -28,13 +32,15 @@ export function getApiBaseUrl() {
   const isProduction = import.meta.env.PROD || import.meta.env.MODE === 'production'
   
   // Si estamos en producción (nginx), usar URL relativa
-  // nginx hará el proxy de /api/ al backend automáticamente
-  // Esto funciona tanto en localhost como desde el celular sin configuración adicional
+  // nginx hará el proxy de /api/ al backend automáticamente (solo en Docker Compose)
+  // En Railway/Cloud, si VITE_API_BASE_URL no está configurada, esto fallará
+  // y el usuario debe configurar VITE_API_BASE_URL en Railway
   if (isProduction) {
     const apiUrl = '/api/v1'
     console.log('🔧 API URL (producción, usando proxy nginx):', apiUrl)
     console.log('   Protocolo:', window.location.protocol)
     console.log('   Hostname:', window.location.hostname)
+    console.log('   ⚠️  Si estás en Railway/Cloud y esto no funciona, configura VITE_API_BASE_URL')
     return apiUrl
   }
 

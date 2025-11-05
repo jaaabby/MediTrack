@@ -1,6 +1,8 @@
 import axios from 'axios'
+import { getApiBaseUrl } from '@/config/api.js'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+// Usar la misma función centralizada para obtener la URL de la API
+const API_BASE_URL = getApiBaseUrl().replace('/api/v1', '')
 
 class CartService {
   constructor() {
