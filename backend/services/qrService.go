@@ -469,27 +469,35 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 			result.Traceability = traceability
 		}
 
-		// Obtener asignación a solicitud activa si existe
+		// Obtener asignación a solicitud (incluyendo consumidos, para mostrar el carrito)
 		var assignment models.SupplyRequestQRAssignment
-		if err := s.DB.Where("qr_code = ? AND status NOT IN (?)", qrCode,
-			[]string{models.AssignmentStatusConsumed}).
+		if err := s.DB.Where("qr_code = ?", qrCode).
 			Preload("SupplyRequest").
 			Preload("SupplyRequestItem").
 			Order("assigned_date DESC").
 			First(&assignment).Error; err == nil {
 			result.RequestAssignment = &assignment
 			result.SupplyRequest = &assignment.SupplyRequest
+			
+			fmt.Printf("DEBUG - Found assignment for QR %s: ID=%d, Status=%s\n", qrCode, assignment.ID, assignment.Status)
 
 			// Cargar información del carrito si esta asignación está en un carrito
+			// Buscar tanto items activos como inactivos para mostrar el carrito completo
 			var cartItem models.SupplyCartItem
-			if err := s.DB.Where("supply_request_qr_assignment_id = ? AND is_active = ?",
-				assignment.ID, true).
+			if err := s.DB.Where("supply_request_qr_assignment_id = ?", assignment.ID).
 				Preload("SupplyCart").
+				Order("added_at DESC").
 				First(&cartItem).Error; err == nil {
 				// Agregar la información del carrito al assignment
 				assignment.Cart = &cartItem.SupplyCart
 				result.RequestAssignment = &assignment
+				fmt.Printf("DEBUG - Found cart item for assignment %d: Cart ID=%d, Cart Number=%s\n", 
+					assignment.ID, cartItem.SupplyCart.ID, cartItem.SupplyCart.CartNumber)
+			} else {
+				fmt.Printf("DEBUG - No cart item found for assignment %d: %v\n", assignment.ID, err)
 			}
+		} else {
+			fmt.Printf("DEBUG - No assignment found for QR %s: %v\n", qrCode, err)
 		}
 
 	} else if qrType == "batch" {
@@ -1298,7 +1306,139 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 
 		fmt.Printf("✅ Historial creado: HistoryID=%d, Status=%s\n", history.ID, history.Status)
 
-		// 8. Programar alerta para insumo recepcionado (después de la transacción)
+		// 8. Recepcionar automáticamente todos los insumos del mismo carrito que estén en tránsito
+		// Buscar el carrito asociado a este insumo
+		var assignment models.SupplyRequestQRAssignment
+		if err := tx.Where("medical_supply_id = ?", supply.ID).First(&assignment).Error; err == nil {
+			// Buscar el item del carrito asociado a esta asignación
+			var cartItem models.SupplyCartItem
+			if err := tx.Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignment.ID, true).
+				First(&cartItem).Error; err == nil {
+				// Obtener todos los items activos del carrito
+				var cartItems []models.SupplyCartItem
+				if err := tx.Where("supply_cart_id = ? AND is_active = ?", cartItem.SupplyCartID, true).
+					Preload("SupplyRequestQRAssignment").
+					Preload("SupplyRequestQRAssignment.MedicalSupply").
+					Find(&cartItems).Error; err == nil {
+					
+					// Recepcionar todos los insumos del carrito que estén en tránsito al pabellón
+					recepcionadosCount := 0
+					for _, item := range cartItems {
+						// Saltar el insumo que ya fue recepcionado
+						if item.SupplyRequestQRAssignment.MedicalSupplyID == supply.ID {
+							continue
+						}
+						
+						otherSupply := item.SupplyRequestQRAssignment.MedicalSupply
+						
+						// Solo recepcionar insumos que estén en tránsito al pabellón
+						if otherSupply.Status == models.StatusEnRouteToPavilion && 
+						   otherSupply.InTransit &&
+						   otherSupply.LocationType == models.SupplyLocationPavilion &&
+						   otherSupply.LocationID == transfer.DestinationID {
+							
+							// Buscar la transferencia asociada
+							var otherTransfer models.SupplyTransfer
+							if err := tx.Where("qr_code = ? AND status = ?", otherSupply.QRCode, models.TransferStatusInTransit).
+								First(&otherTransfer).Error; err == nil {
+								
+								// Actualizar la transferencia
+								otherTransfer.Status = models.TransferStatusReceived
+								otherTransfer.ReceiveDate = &now
+								otherTransfer.ReceivedBy = &userRUT
+								otherTransfer.ReceivedByName = &userName
+								if notes != "" {
+									if otherTransfer.Notes != "" {
+										otherTransfer.Notes = otherTransfer.Notes + "\n" + notes + " (recepcionado automáticamente con el carrito)"
+									} else {
+										otherTransfer.Notes = notes + " (recepcionado automáticamente con el carrito)"
+									}
+								} else {
+									otherTransfer.Notes = "Recepcionado automáticamente con otros insumos del carrito"
+								}
+								
+								if err := tx.Save(&otherTransfer).Error; err != nil {
+									fmt.Printf("⚠️ Error al actualizar transferencia de insumo %s: %v\n", otherSupply.QRCode, err)
+									continue
+								}
+								
+								// Actualizar el estado del insumo
+								otherSupply.Status = models.StatusReceived
+								otherSupply.InTransit = false
+								otherSupply.UpdatedAt = now
+								
+								if err := tx.Save(&otherSupply).Error; err != nil {
+									fmt.Printf("⚠️ Error al actualizar insumo %s: %v\n", otherSupply.QRCode, err)
+									continue
+								}
+								
+								// Actualizar inventario del pabellón
+								var otherPavilionSummary models.PavilionInventorySummary
+								if err := tx.Where("pavilion_id = ? AND batch_id = ?", transfer.DestinationID, otherSupply.BatchID).
+									First(&otherPavilionSummary).Error; err != nil {
+									if errors.Is(err, gorm.ErrRecordNotFound) {
+										// Crear resumen si no existe
+										otherPavilionSummary = models.PavilionInventorySummary{
+											PavilionID:       transfer.DestinationID,
+											BatchID:          otherSupply.BatchID,
+											SupplyCode:       otherSupply.Code,
+											TotalReceived:    1,
+											CurrentAvailable: 1,
+											LastReceivedDate: &now,
+										}
+										if err := tx.Create(&otherPavilionSummary).Error; err != nil {
+											fmt.Printf("⚠️ Error al crear resumen de pabellón para insumo %s: %v\n", otherSupply.QRCode, err)
+											continue
+										}
+									} else {
+										fmt.Printf("⚠️ Error al obtener resumen de pabellón para insumo %s: %v\n", otherSupply.QRCode, err)
+										continue
+									}
+								} else {
+									// Actualizar resumen existente
+									otherPavilionSummary.TotalReceived++
+									otherPavilionSummary.CurrentAvailable++
+									otherPavilionSummary.LastReceivedDate = &now
+									
+									if err := tx.Save(&otherPavilionSummary).Error; err != nil {
+										fmt.Printf("⚠️ Error al actualizar resumen de pabellón para insumo %s: %v\n", otherSupply.QRCode, err)
+										continue
+									}
+								}
+								
+								// Registrar en historial
+								otherHistory := models.SupplyHistory{
+									MedicalSupplyID: otherSupply.ID,
+									DateTime:        now,
+									Status:          models.StatusReceived,
+									DestinationType: models.DestinationTypePavilion,
+									DestinationID:   transfer.DestinationID,
+									UserRUT:         userRUT,
+									Notes:           fmt.Sprintf("Recepcionado automáticamente junto con el insumo %s del mismo carrito", qrCode),
+									OriginType:      &otherTransfer.OriginType,
+									OriginID:        &otherTransfer.OriginID,
+								}
+								
+								if err := tx.Create(&otherHistory).Error; err != nil {
+									fmt.Printf("⚠️ Error al crear historial para insumo %s: %v\n", otherSupply.QRCode, err)
+									continue
+								}
+								
+								recepcionadosCount++
+								fmt.Printf("✅ Insumo del carrito recepcionado automáticamente: QR=%s, Status=%s\n", 
+									otherSupply.QRCode, otherSupply.Status)
+							}
+						}
+					}
+					
+					if recepcionadosCount > 0 {
+						fmt.Printf("✅ %d insumos adicionales del carrito recepcionados automáticamente\n", recepcionadosCount)
+					}
+				}
+			}
+		}
+
+		// 9. Programar alerta para insumo recepcionado (después de la transacción)
 		go func() {
 			// Esperar 1 minuto para pruebas (cambiar a 12 * time.Hour en producción)
 			time.Sleep(1 * time.Minute)

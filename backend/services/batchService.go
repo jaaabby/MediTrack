@@ -390,6 +390,7 @@ func (s *BatchService) UpdateBatch(id int, newBatch *models.Batch) (*models.Batc
 
 	// Guardar valores anteriores para el historial
 	previousBatch := batch
+	amountChanged := batch.Amount != newBatch.Amount
 
 	batch.ExpirationDate = newBatch.ExpirationDate
 	batch.Amount = newBatch.Amount
@@ -398,6 +399,36 @@ func (s *BatchService) UpdateBatch(id int, newBatch *models.Batch) (*models.Batc
 
 	if err := s.DB.Save(&batch).Error; err != nil {
 		return nil, err
+	}
+
+	// Si cambió la cantidad, actualizar el resumen de inventario para mantener consistencia
+	if amountChanged {
+		var storeSummary models.StoreInventorySummary
+		if err := s.DB.Where("batch_id = ?", batch.ID).First(&storeSummary).Error; err == nil {
+			// Si existe el resumen, actualizar el OriginalAmount si es necesario
+			// El CurrentInStore se mantiene según los insumos reales, pero ajustamos OriginalAmount
+			// Solo si el nuevo amount es mayor que el original y hay diferencia
+			if newBatch.Amount > storeSummary.OriginalAmount {
+				// Si se aumentó la cantidad del lote, ajustar el original y el current
+				diff := newBatch.Amount - storeSummary.OriginalAmount
+				storeSummary.OriginalAmount = newBatch.Amount
+				storeSummary.CurrentInStore += diff
+				if err := s.DB.Save(&storeSummary).Error; err != nil {
+					fmt.Printf("⚠️ Error actualizando resumen de bodega tras cambio de cantidad: %v\n", err)
+				}
+			} else if newBatch.Amount < storeSummary.OriginalAmount {
+				// Si se disminuyó la cantidad del lote, ajustar el original
+				// No ajustamos CurrentInStore porque refleja el stock real
+				storeSummary.OriginalAmount = newBatch.Amount
+				if storeSummary.CurrentInStore > newBatch.Amount {
+					// Si el stock actual es mayor que el nuevo amount, ajustar
+					storeSummary.CurrentInStore = newBatch.Amount
+				}
+				if err := s.DB.Save(&storeSummary).Error; err != nil {
+					fmt.Printf("⚠️ Error actualizando resumen de bodega tras cambio de cantidad: %v\n", err)
+				}
+			}
+		}
 	}
 
 	// Registrar en el historial (RUT hardcodeado por ahora)

@@ -209,6 +209,44 @@ class CartService {
     }
   }
 
+  /**
+   * Procesa múltiples items del carrito en una sola operación
+   * Permite marcar algunos como usados y otros como devueltos en un solo paso
+   * @param {number} cartId - ID del carrito
+   * @param {Array} items - Array de objetos { item_id, action: 'use'|'return', reason?: string }
+   * @returns {Promise} Resultado de la operación múltiple
+   */
+  async batchOperationItems(cartId, items) {
+    try {
+      const response = await this.api.post(`/api/carts/${cartId}/items/batch-operation`, {
+        items: items.map(item => ({
+          item_id: item.itemId || item.item_id,
+          action: item.action,
+          reason: item.reason || ''
+        }))
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error en operación múltiple de items:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Transfiere todos los items del carrito al pabellón
+   * @param {number} cartId - ID del carrito
+   * @returns {Promise} Respuesta del servidor
+   */
+  async transferCartToPavilion(cartId) {
+    try {
+      const response = await this.api.post(`/api/carts/${cartId}/transfer-to-pavilion`)
+      return response.data
+    } catch (error) {
+      console.error('Error al transferir carrito al pabellón:', error)
+      throw error
+    }
+  }
+
   // ========================
   // UTILIDADES
   // ========================

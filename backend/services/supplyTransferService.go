@@ -92,18 +92,27 @@ func (s *SupplyTransferService) TransferToPavilion(
 
 			// 5. Descontar del stock de bodega
 			var storeSummary models.StoreInventorySummary
-			if err := tx.Where("batch_id = ?", batch.ID).First(&storeSummary).Error; err != nil {
+			if err := tx.Where("store_id = ? AND batch_id = ?", supply.LocationID, batch.ID).First(&storeSummary).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Si no existe el resumen, calcular el stock real en bodega
+					var realCount int64
+					tx.Model(&models.MedicalSupply{}).
+						Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
+							batch.ID, models.SupplyLocationStore, supply.LocationID, models.StatusConsumed).
+						Count(&realCount)
+
 					// Crear resumen si no existe
 					storeSummary = models.StoreInventorySummary{
-						StoreID:             batch.StoreID,
+						StoreID:             supply.LocationID,
 						BatchID:             batch.ID,
 						SupplyCode:          supply.Code,
 						SurgeryID:           batch.SurgeryID,
-						OriginalAmount:      batch.Amount,
-						CurrentInStore:      batch.Amount - 1,
+						OriginalAmount:      int(realCount) + 1, // +1 porque vamos a transferir uno
+						CurrentInStore:      int(realCount),     // Stock actual sin contar el que se transfiere
 						TotalTransferredOut: 1,
 					}
+					now := time.Now()
+					storeSummary.LastTransferOutDate = &now
 					if err := tx.Create(&storeSummary).Error; err != nil {
 						return fmt.Errorf("error al crear resumen de bodega: %v", err)
 					}
@@ -112,7 +121,9 @@ func (s *SupplyTransferService) TransferToPavilion(
 				}
 			} else {
 				// Actualizar resumen existente
-				storeSummary.CurrentInStore--
+				if storeSummary.CurrentInStore > 0 {
+					storeSummary.CurrentInStore--
+				}
 				storeSummary.TotalTransferredOut++
 				now := time.Now()
 				storeSummary.LastTransferOutDate = &now

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"meditrack/services"
 	"net/http"
 	"strconv"
@@ -202,11 +203,42 @@ func (c *CartController) CloseCart(ctx *gin.Context) {
 	}
 
 	// Obtener información del usuario desde el contexto
-	userRUT, _ := ctx.Get("userRUT")
-	userName, _ := ctx.Get("userName")
+	userRUTValue, exists := ctx.Get("userRUT")
+	userNameValue, nameExists := ctx.Get("userName")
 
-	if err := c.cartService.CloseCart(cartID, userRUT.(string), userName.(string)); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+	var userRUT string
+	var userName string
+
+	if exists && userRUTValue != nil {
+		userRUT = userRUTValue.(string)
+	} else {
+		// Si no existe userRUT, usar user_id del contexto (que es el RUT)
+		userIDValue, idExists := ctx.Get("user_id")
+		if idExists && userIDValue != nil {
+			userRUT = userIDValue.(string)
+		} else {
+			ctx.JSON(http.StatusUnauthorized, Response{
+				Success: false,
+				Error:   "Usuario no autenticado",
+			})
+			return
+		}
+	}
+
+	if nameExists && userNameValue != nil {
+		userName = userNameValue.(string)
+	} else {
+		// Si no existe userName, usar email o valor por defecto
+		emailValue, emailExists := ctx.Get("user_email")
+		if emailExists && emailValue != nil {
+			userName = emailValue.(string)
+		} else {
+			userName = "Usuario Sistema"
+		}
+	}
+
+	if err := c.cartService.CloseCart(cartID, userRUT, userName); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al cerrar carrito: " + err.Error(),
 		})
@@ -216,6 +248,65 @@ func (c *CartController) CloseCart(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Carrito cerrado exitosamente",
+	})
+}
+
+// TransferCartToPavilion transfiere todos los items del carrito al pabellón
+// POST /api/carts/:id/transfer-to-pavilion
+func (c *CartController) TransferCartToPavilion(ctx *gin.Context) {
+	cartID, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de carrito inválido: " + err.Error(),
+		})
+		return
+	}
+
+	// Obtener información del usuario desde el contexto
+	userRUTValue, exists := ctx.Get("userRUT")
+	userNameValue, nameExists := ctx.Get("userName")
+
+	var userRUT string
+	var userName string
+
+	if exists && userRUTValue != nil {
+		userRUT = userRUTValue.(string)
+	} else {
+		userIDValue, idExists := ctx.Get("user_id")
+		if idExists && userIDValue != nil {
+			userRUT = userIDValue.(string)
+		} else {
+			ctx.JSON(http.StatusUnauthorized, Response{
+				Success: false,
+				Error:   "Usuario no autenticado",
+			})
+			return
+		}
+	}
+
+	if nameExists && userNameValue != nil {
+		userName = userNameValue.(string)
+	} else {
+		emailValue, emailExists := ctx.Get("user_email")
+		if emailExists && emailValue != nil {
+			userName = emailValue.(string)
+		} else {
+			userName = "Usuario Sistema"
+		}
+	}
+
+	if err := c.cartService.TransferCartToPavilion(cartID, userRUT, userName); err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error al transferir carrito al pabellón: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Carrito transferido al pabellón exitosamente. El pabellón debe confirmar recepción.",
 	})
 }
 
@@ -404,5 +495,100 @@ func (c *CartController) MarkItemForReturn(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: "Item marcado para devolución exitosamente",
+	})
+}
+
+// BatchOperationRequest estructura para operación múltiple de items
+type BatchOperationRequest struct {
+	Items []services.BatchOperationItem `json:"items" binding:"required"`
+}
+
+// BatchOperationItems procesa múltiples items del carrito en una sola operación
+// POST /api/carts/:id/items/batch-operation
+func (c *CartController) BatchOperationItems(ctx *gin.Context) {
+	cartID, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "ID de carrito inválido: " + err.Error(),
+		})
+		return
+	}
+
+	var req BatchOperationRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	if len(req.Items) == 0 {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Debe proporcionar al menos un item para procesar",
+		})
+		return
+	}
+
+	// Obtener información del usuario desde el contexto
+	userRUTValue, exists := ctx.Get("userRUT")
+	userNameValue, nameExists := ctx.Get("userName")
+
+	var userRUT string
+	var userName string
+
+	if exists && userRUTValue != nil {
+		userRUT = userRUTValue.(string)
+	} else {
+		// Si no existe userRUT, usar user_id del contexto (que es el RUT)
+		userIDValue, idExists := ctx.Get("user_id")
+		if idExists && userIDValue != nil {
+			userRUT = userIDValue.(string)
+		} else {
+			ctx.JSON(http.StatusUnauthorized, Response{
+				Success: false,
+				Error:   "Usuario no autenticado",
+			})
+			return
+		}
+	}
+
+	if nameExists && userNameValue != nil {
+		userName = userNameValue.(string)
+	} else {
+		// Si no existe userName, usar email o valor por defecto
+		emailValue, emailExists := ctx.Get("user_email")
+		if emailExists && emailValue != nil {
+			userName = emailValue.(string)
+		} else {
+			userName = "Usuario Sistema"
+		}
+	}
+
+	result, err := c.cartService.BatchOperationItems(cartID, req.Items, userRUT, userName)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Error al procesar items: " + err.Error(),
+		})
+		return
+	}
+
+	// Determinar el mensaje según los resultados
+	var message string
+	if result.ErrorCount == 0 {
+		message = fmt.Sprintf("Todos los items procesados exitosamente (%d items)", result.SuccessCount)
+	} else if result.SuccessCount > 0 {
+		message = fmt.Sprintf("Procesados %d items exitosamente, %d fallaron", result.SuccessCount, result.ErrorCount)
+	} else {
+		message = fmt.Sprintf("Error al procesar items: todos fallaron (%d items)", result.ErrorCount)
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: result.ErrorCount == 0,
+		Message: message,
+		Data:    result,
 	})
 }

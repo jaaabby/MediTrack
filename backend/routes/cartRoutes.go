@@ -48,7 +48,13 @@ func SetupCartRoutes(router *gin.Engine, cartController *controllers.CartControl
 		// Marcar item para devolución
 		cartRoutes.POST("/:id/items/:itemId/return", cartController.MarkItemForReturn)
 
+		// Operación múltiple de items (marcar varios como usados/devueltos en un solo paso)
+		cartRoutes.POST("/:id/items/batch-operation", cartController.BatchOperationItems)
+
 		// Cerrar carrito
 		cartRoutes.POST("/:id/close", cartController.CloseCart)
+
+		// Transferir carrito al pabellón
+		cartRoutes.POST("/:id/transfer-to-pavilion", cartController.TransferCartToPavilion)
 	}
 }

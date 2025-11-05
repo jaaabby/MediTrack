@@ -124,42 +124,41 @@
             <p class="text-sm text-blue-900 bg-white p-2 rounded border mt-1">{{ qrInfo.request_assignment.notes }}</p>
           </div>
 
-          <!-- Información del Carrito -->
-          <div v-if="qrInfo.request_assignment.cart" class="mt-4 pt-4 border-t border-blue-200">
-            <div class="flex items-center mb-2">
-              <svg class="h-5 w-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-              <h5 class="font-semibold text-blue-900">Carrito Asociado</h5>
-            </div>
-            <div class="bg-white rounded p-3 border border-blue-100">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label class="text-xs font-medium text-blue-700">Número de Carrito:</label>
-                  <p class="text-sm text-blue-900 font-mono">{{ qrInfo.request_assignment.cart.cart_number }}</p>
-                </div>
-                <div>
-                  <label class="text-xs font-medium text-blue-700">Estado:</label>
-                  <span :class="getCartStatusClass(qrInfo.request_assignment.cart.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-1">
-                    {{ getCartStatusLabel(qrInfo.request_assignment.cart.status) }}
-                  </span>
-                </div>
+          <!-- Información del carrito (solo si está cerrado) -->
+          <div v-if="qrInfo.request_assignment.cart && qrInfo.request_assignment.cart.status === 'closed'" class="mt-4 pt-4 border-t border-blue-200">
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div class="flex items-center mb-2">
+                <svg class="h-5 w-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <h5 class="font-semibold text-gray-700">Carrito Cerrado</h5>
+              </div>
+              <div class="text-sm text-gray-600 space-y-1">
+                <p><span class="font-medium">Número:</span> {{ qrInfo.request_assignment.cart.cart_number }}</p>
+                <p v-if="qrInfo.request_assignment.cart.closed_at">
+                  <span class="font-medium">Cerrado el:</span> {{ formatDate(qrInfo.request_assignment.cart.closed_at) }}
+                </p>
+                <p v-if="qrInfo.request_assignment.cart.closed_by_name">
+                  <span class="font-medium">Cerrado por:</span> {{ qrInfo.request_assignment.cart.closed_by_name }}
+                </p>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Carrito de Insumos (si existe) -->
-        <div v-if="qrInfo.request_assignment && qrInfo.qr_code">
-          <SupplyCart 
-            :qr-code="qrInfo.qr_code"
-            :can-close="false"
-            :can-remove-items="false"
-            :can-manage-items="true"
-            :show-add-button="false"
-            @cart-loaded="onCartLoaded"
-            @error="onCartError"
-          />
+          <!-- Carrito de Insumos (solo si está activo) -->
+          <div v-if="qrInfo.request_assignment.cart && qrInfo.request_assignment.cart.status === 'active' && qrInfo.qr_code" class="mt-4 pt-4 border-t border-blue-200">
+            <SupplyCart 
+              :qr-code="qrInfo.qr_code"
+              :can-close="false"
+              :can-remove-items="false"
+              :can-manage-items="true"
+              :show-add-button="false"
+              :default-collapsed="true"
+              @cart-loaded="onCartLoaded"
+              @cart-closed="onCartClosed"
+              @error="onCartError"
+            />
+          </div>
         </div>
 
         <!-- Estadísticas de escaneo básicas 
@@ -373,7 +372,11 @@ const downloadQRAsPDF = async () => {
 
 // Métodos para el carrito
 const onCartLoaded = (cart) => {
-  console.log('Carrito cargado en vista QR:', cart)
+  console.log('Carrito cargado en QRInfoDisplay:', cart)
+}
+
+const onCartClosed = (cart) => {
+  console.log('Carrito cerrado en QRInfoDisplay:', cart)
 }
 
 const onCartError = (error) => {

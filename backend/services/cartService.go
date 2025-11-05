@@ -319,19 +319,124 @@ func (s *CartService) MarkItemAsUsed(cartID, itemID int, userRUT, userName strin
 			return fmt.Errorf("error actualizando asignación QR: %w", err)
 		}
 
+		// Obtener información completa del insumo
+		var supply models.MedicalSupply
+		if err := tx.First(&supply, cartItem.SupplyRequestQRAssignment.MedicalSupplyID).Error; err != nil {
+			return fmt.Errorf("error obteniendo insumo: %w", err)
+		}
+
+		// Verificar que el insumo esté recibido en el pabellón antes de permitir uso
+		if supply.Status != models.StatusReceived || supply.LocationType != models.SupplyLocationPavilion {
+			return fmt.Errorf("el insumo debe estar recibido en el pabellón antes de ser utilizado. Estado actual: %s, Ubicación: %s", supply.Status, supply.LocationType)
+		}
+
+		// Obtener información del lote
+		var batch models.Batch
+		if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+			return fmt.Errorf("error obteniendo lote: %w", err)
+		}
+
+		// Obtener información del pabellón desde la solicitud
+		pavilionID := 0
+		var supplyRequest models.SupplyRequest
+		if err := tx.First(&supplyRequest, cartItem.SupplyRequestQRAssignment.SupplyRequestID).Error; err == nil {
+			pavilionID = supplyRequest.PavilionID
+		}
+
 		// Actualizar el insumo médico a estado "consumido"
-		if err := tx.Model(&models.MedicalSupply{}).
-			Where("id = ?", cartItem.SupplyRequestQRAssignment.MedicalSupplyID).
-			Update("status", models.StatusConsumed).Error; err != nil {
+		if err := tx.Model(&supply).
+			Updates(map[string]interface{}{
+				"status": models.StatusConsumed,
+			}).Error; err != nil {
 			return fmt.Errorf("error actualizando estado del insumo: %w", err)
+		}
+
+		// Actualizar cantidad del lote (restar 1)
+		newAmount := batch.Amount - 1
+		if err := tx.Model(&batch).Update("amount", newAmount).Error; err != nil {
+			return fmt.Errorf("error actualizando cantidad del lote: %w", err)
+		}
+
+		// Actualizar inventarios según la ubicación del insumo
+		if supply.LocationType == models.SupplyLocationStore {
+			// Insumo consumido desde bodega - actualizar store_inventory_summary
+			var storeSummary models.StoreInventorySummary
+			if err := tx.Where("store_id = ? AND batch_id = ?", supply.LocationID, supply.BatchID).
+				First(&storeSummary).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Si no existe el resumen, calcular el stock real en bodega
+					var realCount int64
+					tx.Model(&models.MedicalSupply{}).
+						Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
+							supply.BatchID, models.SupplyLocationStore, supply.LocationID, models.StatusConsumed).
+						Count(&realCount)
+
+					// Crear resumen con valores calculados
+					storeSummary = models.StoreInventorySummary{
+						StoreID:              supply.LocationID,
+						BatchID:              supply.BatchID,
+						SupplyCode:           supply.Code,
+						SurgeryID:            batch.SurgeryID,
+						OriginalAmount:       int(realCount) + 1,
+						CurrentInStore:       int(realCount),
+						TotalConsumedInStore: 1,
+						LastConsumedDate:     &now,
+					}
+					if err := tx.Create(&storeSummary).Error; err != nil {
+						return fmt.Errorf("error creando resumen de bodega: %w", err)
+					}
+				} else {
+					return fmt.Errorf("error obteniendo resumen de bodega: %w", err)
+				}
+			} else {
+				// Actualizar resumen existente
+				storeSummary.CurrentInStore--
+				storeSummary.TotalConsumedInStore++
+				storeSummary.LastConsumedDate = &now
+				if err := tx.Save(&storeSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de bodega: %w", err)
+				}
+			}
+		} else if supply.LocationType == models.SupplyLocationPavilion {
+			// Insumo consumido desde pabellón - actualizar pavilion_inventory_summary
+			var pavilionSummary models.PavilionInventorySummary
+			if err := tx.Where("pavilion_id = ? AND batch_id = ?", supply.LocationID, supply.BatchID).
+				First(&pavilionSummary).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Si no existe el resumen, crearlo
+					pavilionSummary = models.PavilionInventorySummary{
+						PavilionID:       supply.LocationID,
+						BatchID:          supply.BatchID,
+						SupplyCode:       supply.Code,
+						TotalReceived:    1,
+						CurrentAvailable: 0,
+						TotalConsumed:    1,
+						LastConsumedDate: &now,
+					}
+					if err := tx.Create(&pavilionSummary).Error; err != nil {
+						return fmt.Errorf("error creando resumen de pabellón: %w", err)
+					}
+				} else {
+					return fmt.Errorf("error obteniendo resumen de pabellón: %w", err)
+				}
+			} else {
+				// Actualizar resumen existente
+				pavilionSummary.CurrentAvailable--
+				pavilionSummary.TotalConsumed++
+				pavilionSummary.LastConsumedDate = &now
+				if err := tx.Save(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de pabellón: %w", err)
+				}
+			}
 		}
 
 		// Registrar en historial
 		history := models.SupplyHistory{
-			MedicalSupplyID: cartItem.SupplyRequestQRAssignment.MedicalSupplyID,
+			MedicalSupplyID: supply.ID,
 			DateTime:        now,
 			Status:          "consumido",
 			DestinationType: "pabellon",
+			DestinationID:   pavilionID,
 			UserRUT:         userRUT,
 			Notes:           fmt.Sprintf("Insumo utilizado y marcado desde carrito %s", cart.CartNumber),
 		}
@@ -352,11 +457,19 @@ func (s *CartService) MarkItemAsUsed(cartID, itemID int, userRUT, userName strin
 
 		return nil
 	})
+
+	// Verificar si todos los items activos están procesados y cerrar automáticamente el carrito
+	if err := s.checkAndAutoCloseCart(cartID, userRUT, userName); err != nil {
+		// Log del error pero no fallar la operación
+		fmt.Printf("Advertencia: Error al verificar cierre automático del carrito %d: %v\n", cartID, err)
+	}
+
+	return nil
 }
 
 // MarkItemForReturn marca un item del carrito para devolución
 func (s *CartService) MarkItemForReturn(cartID, itemID int, userRUT, userName, reason string) error {
-	return s.DB.Transaction(func(tx *gorm.DB) error {
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		// Verificar que el carrito existe y está activo
 		var cart models.SupplyCart
 		if err := tx.First(&cart, cartID).Error; err != nil {
@@ -397,25 +510,89 @@ func (s *CartService) MarkItemForReturn(cartID, itemID int, userRUT, userName, r
 			return fmt.Errorf("error obteniendo insumo: %w", err)
 		}
 
-		// Devolver el insumo a bodega (disponible)
-		if err := tx.Model(&models.MedicalSupply{}).
-			Where("id = ?", supply.ID).
+		// Verificar que el insumo esté recibido en el pabellón antes de permitir devolución
+		if supply.Status != models.StatusReceived || supply.LocationType != models.SupplyLocationPavilion {
+			return fmt.Errorf("el insumo debe estar recibido en el pabellón antes de ser devuelto. Estado actual: %s, Ubicación: %s", supply.Status, supply.LocationType)
+		}
+
+		// Obtener información del lote para determinar la bodega de destino
+		var batch models.Batch
+		if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+			return fmt.Errorf("error obteniendo lote: %w", err)
+		}
+
+		// Guardar ubicación anterior para el historial
+		oldLocationType := supply.LocationType
+		oldLocationID := supply.LocationID
+		storeID := batch.StoreID
+
+		// Crear transferencia de devolución (en tránsito de vuelta a bodega)
+		transferCode := fmt.Sprintf("RETURN-CART-%d-%s", time.Now().Unix(), supply.QRCode[len(supply.QRCode)-5:])
+		transfer := models.SupplyTransfer{
+			TransferCode:    transferCode,
+			QRCode:          supply.QRCode,
+			MedicalSupplyID: supply.ID,
+			OriginType:      models.TransferLocationPavilion,
+			OriginID:        supply.LocationID,
+			DestinationType: models.TransferLocationStore,
+			DestinationID:   storeID,
+			SentBy:          userRUT,
+			SentByName:      userName,
+			Status:          models.TransferStatusInTransit, // En tránsito, el bodeguero debe confirmar recepción
+			TransferReason:  fmt.Sprintf("Devolución desde carrito %s", cart.CartNumber),
+			SendDate:        now,
+			Notes:           reason,
+		}
+
+		if err := tx.Create(&transfer).Error; err != nil {
+			return fmt.Errorf("error al crear transferencia de devolución: %w", err)
+		}
+
+		// Marcar el insumo como en tránsito de vuelta a bodega
+		if err := tx.Model(&supply).
 			Updates(map[string]interface{}{
-				"status":        models.StatusAvailable,
+				"status":        models.StatusEnRouteToStore,
 				"location_type": models.SupplyLocationStore,
+				"location_id":   storeID,
+				"in_transit":    true,
 			}).Error; err != nil {
 			return fmt.Errorf("error actualizando estado del insumo: %w", err)
 		}
 
-		// Registrar en historial
+		// Actualizar inventarios
+		// Decrementar el resumen del pabellón (ya que el insumo está en tránsito de vuelta)
+		if oldLocationType == models.SupplyLocationPavilion && oldLocationID > 0 {
+			var pavilionSummary models.PavilionInventorySummary
+			if err := tx.Where("pavilion_id = ? AND batch_id = ?", oldLocationID, supply.BatchID).
+				First(&pavilionSummary).Error; err == nil {
+				// Solo actualizar si existe el resumen
+				pavilionSummary.CurrentAvailable--
+				pavilionSummary.TotalReturned++
+				pavilionSummary.LastReturnedDate = &now
+				if err := tx.Save(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de pabellón: %w", err)
+				}
+			}
+		}
+
+		// NO incrementar stock de bodega todavía - el insumo está en tránsito
+		// El stock se incrementará cuando el bodeguero confirme la recepción
+
+		// NO incrementar cantidad del lote todavía - se incrementará cuando se confirme la recepción
+
+		// Registrar en historial como "en tránsito a bodega"
+		originType := oldLocationType
+		originID := oldLocationID
 		history := models.SupplyHistory{
 			MedicalSupplyID: supply.ID,
 			DateTime:        now,
-			Status:          "disponible",
+			Status:          models.StatusEnRouteToStore,
 			DestinationType: models.DestinationTypeStore,
-			DestinationID:   supply.LocationID,
+			DestinationID:   storeID,
 			UserRUT:         userRUT,
-			Notes:           fmt.Sprintf("Devuelto desde carrito %s. Motivo: %s", cart.CartNumber, reason),
+			Notes:           fmt.Sprintf("Devuelto desde carrito %s (en tránsito). Motivo: %s. El bodeguero debe confirmar recepción.", cart.CartNumber, reason),
+			OriginType:      &originType,
+			OriginID:        &originID,
 		}
 		if err := tx.Create(&history).Error; err != nil {
 			return fmt.Errorf("error registrando historial: %w", err)
@@ -430,6 +607,617 @@ func (s *CartService) MarkItemForReturn(cartID, itemID int, userRUT, userName, r
 		}
 		if err := tx.Save(&cartItem).Error; err != nil {
 			return fmt.Errorf("error actualizando notas del item: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// Verificar si todos los items activos están procesados y cerrar automáticamente el carrito
+	if err := s.checkAndAutoCloseCart(cartID, userRUT, userName); err != nil {
+		// Log del error pero no fallar la operación
+		fmt.Printf("Advertencia: Error al verificar cierre automático del carrito %d: %v\n", cartID, err)
+	}
+
+	return nil
+}
+
+// BatchOperationItem representa un item para operación múltiple
+type BatchOperationItem struct {
+	ItemID int    `json:"item_id"` // ID del item del carrito
+	Action string `json:"action"`  // "use" o "return"
+	Reason string `json:"reason"`  // Motivo (opcional, para devolución)
+}
+
+// BatchOperationResult representa el resultado de una operación múltiple
+type BatchOperationResult struct {
+	SuccessCount int      `json:"success_count"`
+	ErrorCount   int      `json:"error_count"`
+	Errors       []string `json:"errors,omitempty"`
+	Processed    []int    `json:"processed"` // IDs de items procesados exitosamente
+}
+
+// BatchOperationItems procesa múltiples items del carrito en una sola operación
+// Permite marcar algunos como usados y otros como devueltos en un solo paso
+func (s *CartService) BatchOperationItems(cartID int, items []BatchOperationItem, userRUT, userName string) (*BatchOperationResult, error) {
+	result := &BatchOperationResult{
+		Processed: []int{},
+		Errors:    []string{},
+	}
+
+	// Verificar que el carrito existe y está activo
+	var cart models.SupplyCart
+	if err := s.DB.First(&cart, cartID).Error; err != nil {
+		return nil, fmt.Errorf("carrito no encontrado: %w", err)
+	}
+
+	if !cart.CanAddItems() {
+		return nil, fmt.Errorf("el carrito no está activo")
+	}
+
+	// Validar que haya items para procesar
+	if len(items) == 0 {
+		return nil, fmt.Errorf("no hay items para procesar")
+	}
+
+	// Procesar cada item en una transacción
+	for _, itemOp := range items {
+		err := s.DB.Transaction(func(tx *gorm.DB) error {
+			// Verificar que el item existe y pertenece al carrito
+			var cartItem models.SupplyCartItem
+			if err := tx.Where("id = ? AND supply_cart_id = ?", itemOp.ItemID, cartID).
+				Preload("SupplyRequestQRAssignment").
+				Preload("SupplyRequestQRAssignment.SupplyRequestItem").
+				First(&cartItem).Error; err != nil {
+				return fmt.Errorf("item %d no encontrado en el carrito", itemOp.ItemID)
+			}
+
+			if !cartItem.IsActive {
+				return fmt.Errorf("el item %d no está activo", itemOp.ItemID)
+			}
+
+			// Verificar si ya fue procesado
+			if cartItem.SupplyRequestQRAssignment.Status == models.AssignmentStatusConsumed ||
+				cartItem.SupplyRequestQRAssignment.Status == models.AssignmentStatusReturned {
+				return fmt.Errorf("el item %d ya fue procesado", itemOp.ItemID)
+			}
+
+			now := time.Now()
+
+			switch itemOp.Action {
+			case "use":
+				// Marcar como usado (consumido)
+				if err := tx.Model(&models.SupplyRequestQRAssignment{}).
+					Where("id = ?", cartItem.SupplyRequestQRAssignmentID).
+					Updates(map[string]interface{}{
+						"status":            models.AssignmentStatusConsumed,
+						"delivered_date":    now,
+						"delivered_by":      userRUT,
+						"delivered_by_name": userName,
+						"updated_at":        now,
+					}).Error; err != nil {
+					return fmt.Errorf("error actualizando asignación QR: %w", err)
+				}
+
+				// Obtener información completa del insumo
+				var supply models.MedicalSupply
+				if err := tx.First(&supply, cartItem.SupplyRequestQRAssignment.MedicalSupplyID).Error; err != nil {
+					return fmt.Errorf("error obteniendo insumo: %w", err)
+				}
+
+				// Verificar que el insumo esté recibido en el pabellón antes de permitir uso
+				if supply.Status != models.StatusReceived || supply.LocationType != models.SupplyLocationPavilion {
+					return fmt.Errorf("el insumo debe estar recibido en el pabellón antes de ser utilizado. Estado actual: %s, Ubicación: %s", supply.Status, supply.LocationType)
+				}
+
+				// Obtener información del lote
+				var batch models.Batch
+				if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+					return fmt.Errorf("error obteniendo lote: %w", err)
+				}
+
+				// Obtener información del pabellón desde la solicitud
+				pavilionID := 0
+				var supplyRequest models.SupplyRequest
+				if err := tx.First(&supplyRequest, cartItem.SupplyRequestQRAssignment.SupplyRequestID).Error; err == nil {
+					pavilionID = supplyRequest.PavilionID
+				}
+
+				// Actualizar el insumo médico a estado "consumido"
+				if err := tx.Model(&supply).
+					Updates(map[string]interface{}{
+						"status": models.StatusConsumed,
+					}).Error; err != nil {
+					return fmt.Errorf("error actualizando estado del insumo: %w", err)
+				}
+
+				// Actualizar cantidad del lote (restar 1)
+				newAmount := batch.Amount - 1
+				if err := tx.Model(&batch).Update("amount", newAmount).Error; err != nil {
+					return fmt.Errorf("error actualizando cantidad del lote: %w", err)
+				}
+
+				// Actualizar inventarios según la ubicación del insumo
+				if supply.LocationType == models.SupplyLocationStore {
+					// Insumo consumido desde bodega - actualizar store_inventory_summary
+					var storeSummary models.StoreInventorySummary
+					if err := tx.Where("store_id = ? AND batch_id = ?", supply.LocationID, supply.BatchID).
+						First(&storeSummary).Error; err != nil {
+						if errors.Is(err, gorm.ErrRecordNotFound) {
+							// Si no existe el resumen, calcular el stock real en bodega
+							var realCount int64
+							tx.Model(&models.MedicalSupply{}).
+								Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
+									supply.BatchID, models.SupplyLocationStore, supply.LocationID, models.StatusConsumed).
+								Count(&realCount)
+
+							// Crear resumen con valores calculados
+							storeSummary = models.StoreInventorySummary{
+								StoreID:              supply.LocationID,
+								BatchID:              supply.BatchID,
+								SupplyCode:           supply.Code,
+								SurgeryID:            batch.SurgeryID,
+								OriginalAmount:       int(realCount) + 1,
+								CurrentInStore:       int(realCount),
+								TotalConsumedInStore: 1,
+								LastConsumedDate:     &now,
+							}
+							if err := tx.Create(&storeSummary).Error; err != nil {
+								return fmt.Errorf("error creando resumen de bodega: %w", err)
+							}
+						} else {
+							return fmt.Errorf("error obteniendo resumen de bodega: %w", err)
+						}
+					} else {
+						// Actualizar resumen existente
+						storeSummary.CurrentInStore--
+						storeSummary.TotalConsumedInStore++
+						storeSummary.LastConsumedDate = &now
+						if err := tx.Save(&storeSummary).Error; err != nil {
+							return fmt.Errorf("error actualizando resumen de bodega: %w", err)
+						}
+					}
+				} else if supply.LocationType == models.SupplyLocationPavilion {
+					// Insumo consumido desde pabellón - actualizar pavilion_inventory_summary
+					var pavilionSummary models.PavilionInventorySummary
+					if err := tx.Where("pavilion_id = ? AND batch_id = ?", supply.LocationID, supply.BatchID).
+						First(&pavilionSummary).Error; err != nil {
+						if errors.Is(err, gorm.ErrRecordNotFound) {
+							// Si no existe el resumen, crearlo
+							pavilionSummary = models.PavilionInventorySummary{
+								PavilionID:       supply.LocationID,
+								BatchID:          supply.BatchID,
+								SupplyCode:       supply.Code,
+								TotalReceived:    1,
+								CurrentAvailable: 0,
+								TotalConsumed:    1,
+								LastConsumedDate: &now,
+							}
+							if err := tx.Create(&pavilionSummary).Error; err != nil {
+								return fmt.Errorf("error creando resumen de pabellón: %w", err)
+							}
+						} else {
+							return fmt.Errorf("error obteniendo resumen de pabellón: %w", err)
+						}
+					} else {
+						// Actualizar resumen existente
+						pavilionSummary.CurrentAvailable--
+						pavilionSummary.TotalConsumed++
+						pavilionSummary.LastConsumedDate = &now
+						if err := tx.Save(&pavilionSummary).Error; err != nil {
+							return fmt.Errorf("error actualizando resumen de pabellón: %w", err)
+						}
+					}
+				}
+
+				// Registrar en historial
+				history := models.SupplyHistory{
+					MedicalSupplyID: supply.ID,
+					DateTime:        now,
+					Status:          "consumido",
+					DestinationType: "pabellon",
+					DestinationID:   pavilionID,
+					UserRUT:         userRUT,
+					Notes:           fmt.Sprintf("Insumo utilizado y marcado desde carrito %s (operación múltiple)", cart.CartNumber),
+				}
+				if err := tx.Create(&history).Error; err != nil {
+					return fmt.Errorf("error registrando historial: %w", err)
+				}
+
+				// Agregar nota al item del carrito
+				notes := fmt.Sprintf("Marcado como utilizado el %s por %s (operación múltiple)", now.Format("02/01/2006 15:04"), userName)
+				if cartItem.Notes != "" {
+					cartItem.Notes += "\n" + notes
+				} else {
+					cartItem.Notes = notes
+				}
+
+			case "return":
+				// Marcar para devolución
+				reason := itemOp.Reason
+				if reason == "" {
+					reason = "Sin especificar"
+				}
+
+				if err := tx.Model(&models.SupplyRequestQRAssignment{}).
+					Where("id = ?", cartItem.SupplyRequestQRAssignmentID).
+					Updates(map[string]interface{}{
+						"status":     models.AssignmentStatusReturned,
+						"notes":      reason,
+						"updated_at": now,
+					}).Error; err != nil {
+					return fmt.Errorf("error actualizando asignación QR: %w", err)
+				}
+
+				// Obtener información del insumo y su ubicación
+				var supply models.MedicalSupply
+				if err := tx.First(&supply, cartItem.SupplyRequestQRAssignment.MedicalSupplyID).Error; err != nil {
+					return fmt.Errorf("error obteniendo insumo: %w", err)
+				}
+
+				// Verificar que el insumo esté recibido en el pabellón antes de permitir devolución
+				if supply.Status != models.StatusReceived || supply.LocationType != models.SupplyLocationPavilion {
+					return fmt.Errorf("el insumo debe estar recibido en el pabellón antes de ser devuelto. Estado actual: %s, Ubicación: %s", supply.Status, supply.LocationType)
+				}
+
+				// Obtener información del lote para determinar la bodega de destino
+				var batch models.Batch
+				if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+					return fmt.Errorf("error obteniendo lote: %w", err)
+				}
+
+				// Guardar ubicación anterior para el historial
+				oldLocationType := supply.LocationType
+				oldLocationID := supply.LocationID
+				storeID := batch.StoreID
+
+				// Crear transferencia de devolución (en tránsito de vuelta a bodega)
+				transferCode := fmt.Sprintf("RETURN-CART-%d-%s", time.Now().Unix(), supply.QRCode[len(supply.QRCode)-5:])
+				transfer := models.SupplyTransfer{
+					TransferCode:    transferCode,
+					QRCode:          supply.QRCode,
+					MedicalSupplyID: supply.ID,
+					OriginType:      models.TransferLocationPavilion,
+					OriginID:        supply.LocationID,
+					DestinationType: models.TransferLocationStore,
+					DestinationID:   storeID,
+					SentBy:          userRUT,
+					SentByName:      userName,
+					Status:          models.TransferStatusInTransit, // En tránsito, el bodeguero debe confirmar recepción
+					TransferReason:  fmt.Sprintf("Devolución desde carrito %s", cart.CartNumber),
+					SendDate:        now,
+					Notes:           reason,
+				}
+
+				if err := tx.Create(&transfer).Error; err != nil {
+					return fmt.Errorf("error al crear transferencia de devolución: %w", err)
+				}
+
+				// Marcar el insumo como en tránsito de vuelta a bodega
+				if err := tx.Model(&supply).
+					Updates(map[string]interface{}{
+						"status":        models.StatusEnRouteToStore,
+						"location_type": models.SupplyLocationStore,
+						"location_id":   storeID,
+						"in_transit":    true,
+					}).Error; err != nil {
+					return fmt.Errorf("error actualizando estado del insumo: %w", err)
+				}
+
+				// Actualizar inventarios
+				// Decrementar el resumen del pabellón (ya que el insumo está en tránsito de vuelta)
+				if oldLocationType == models.SupplyLocationPavilion && oldLocationID > 0 {
+					var pavilionSummary models.PavilionInventorySummary
+					if err := tx.Where("pavilion_id = ? AND batch_id = ?", oldLocationID, supply.BatchID).
+						First(&pavilionSummary).Error; err == nil {
+						// Solo actualizar si existe el resumen
+						pavilionSummary.CurrentAvailable--
+						pavilionSummary.TotalReturned++
+						pavilionSummary.LastReturnedDate = &now
+						if err := tx.Save(&pavilionSummary).Error; err != nil {
+							return fmt.Errorf("error actualizando resumen de pabellón: %w", err)
+						}
+					}
+				}
+
+				// NO incrementar stock de bodega todavía - el insumo está en tránsito
+				// El stock se incrementará cuando el bodeguero confirme la recepción
+
+				// NO incrementar cantidad del lote todavía - se incrementará cuando se confirme la recepción
+
+				// Registrar en historial como "en tránsito a bodega"
+				originType := oldLocationType
+				originID := oldLocationID
+				history := models.SupplyHistory{
+					MedicalSupplyID: supply.ID,
+					DateTime:        now,
+					Status:          models.StatusEnRouteToStore,
+					DestinationType: models.DestinationTypeStore,
+					DestinationID:   storeID,
+					UserRUT:         userRUT,
+					Notes:           fmt.Sprintf("Devuelto desde carrito %s (operación múltiple, en tránsito). Motivo: %s. El bodeguero debe confirmar recepción.", cart.CartNumber, reason),
+					OriginType:      &originType,
+					OriginID:        &originID,
+				}
+				if err := tx.Create(&history).Error; err != nil {
+					return fmt.Errorf("error registrando historial: %w", err)
+				}
+
+				// Agregar nota al item del carrito
+				notes := fmt.Sprintf("Marcado para devolución el %s por %s (operación múltiple). Motivo: %s", now.Format("02/01/2006 15:04"), userName, reason)
+				if cartItem.Notes != "" {
+					cartItem.Notes += "\n" + notes
+				} else {
+					cartItem.Notes = notes
+				}
+
+			default:
+				return fmt.Errorf("acción inválida: %s (debe ser 'use' o 'return')", itemOp.Action)
+			}
+
+			// Guardar notas del item
+			if err := tx.Save(&cartItem).Error; err != nil {
+				return fmt.Errorf("error actualizando notas del item: %w", err)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			result.ErrorCount++
+			result.Errors = append(result.Errors, fmt.Sprintf("Item %d: %v", itemOp.ItemID, err))
+		} else {
+			result.SuccessCount++
+			result.Processed = append(result.Processed, itemOp.ItemID)
+		}
+	}
+
+	// Verificar si todos los items activos están procesados y cerrar automáticamente el carrito
+	if err := s.checkAndAutoCloseCart(cartID, userRUT, userName); err != nil {
+		// Log del error pero no fallar la operación
+		fmt.Printf("Advertencia: Error al verificar cierre automático del carrito %d: %v\n", cartID, err)
+	}
+
+	return result, nil
+}
+
+// checkAndAutoCloseCart verifica si todos los items activos del carrito están procesados
+// y cierra automáticamente el carrito si es así
+func (s *CartService) checkAndAutoCloseCart(cartID int, closedByRUT, closedByName string) error {
+	// Obtener el carrito con todos sus items activos
+	var cart models.SupplyCart
+	if err := s.DB.Where("id = ? AND status = ?", cartID, models.CartStatusActive).
+		Preload("Items", "is_active = ?", true).
+		Preload("Items.SupplyRequestQRAssignment").
+		Preload("Items.SupplyRequestQRAssignment.MedicalSupply").
+		First(&cart).Error; err != nil {
+		return fmt.Errorf("carrito no encontrado o no activo: %w", err)
+	}
+
+	// Si no hay items activos, no hay nada que verificar
+	if len(cart.Items) == 0 {
+		return nil
+	}
+
+	// Verificar si todos los items activos están procesados (consumidos o devueltos)
+	// Y si los items devueltos ya llegaron a bodega (no están en tránsito)
+	allProcessed := true
+	for _, item := range cart.Items {
+		if !item.IsActive {
+			continue
+		}
+		status := item.SupplyRequestQRAssignment.Status
+		supply := item.SupplyRequestQRAssignment.MedicalSupply
+
+		if status == models.AssignmentStatusConsumed {
+			// Item consumido - está procesado
+			continue
+		} else if status == models.AssignmentStatusReturned {
+			// Item devuelto - verificar si ya llegó a bodega (no está en tránsito)
+			if supply.InTransit && supply.Status == models.StatusEnRouteToStore {
+				// Item devuelto pero todavía en tránsito - NO cerrar el carrito todavía
+				allProcessed = false
+				fmt.Printf("Carrito %d no se cierra: item %d está devuelto pero en tránsito (QR: %s)\n",
+					cartID, item.ID, supply.QRCode)
+				break
+			}
+			// Item devuelto y ya recibido en bodega - está procesado
+			continue
+		} else {
+			// Item no procesado
+			allProcessed = false
+			break
+		}
+	}
+
+	// Si todos los items están procesados Y no hay devoluciones en tránsito, cerrar automáticamente el carrito
+	if allProcessed {
+		now := time.Now()
+		cart.Status = models.CartStatusClosed
+		cart.ClosedAt = &now
+		cart.ClosedBy = &closedByRUT
+		cart.ClosedByName = &closedByName
+		cart.Notes = "Cerrado automáticamente: todos los items han sido procesados"
+
+		if err := s.DB.Save(&cart).Error; err != nil {
+			return fmt.Errorf("error al cerrar automáticamente el carrito: %w", err)
+		}
+
+		fmt.Printf("Carrito %d cerrado automáticamente: todos los items han sido procesados\n", cartID)
+	}
+
+	return nil
+}
+
+// CheckAndAutoCloseCartForSupply verifica y cierra automáticamente el carrito asociado a un insumo
+// si todos los items del carrito están procesados (consumidos o devueltos y recibidos en bodega)
+func (s *CartService) CheckAndAutoCloseCartForSupply(supplyID int, closedByRUT, closedByName string) error {
+	// Buscar el assignment asociado al insumo
+	var assignment models.SupplyRequestQRAssignment
+	if err := s.DB.Where("medical_supply_id = ?", supplyID).First(&assignment).Error; err != nil {
+		// No hay assignment - no hay carrito asociado
+		return nil
+	}
+
+	// Buscar el item del carrito asociado a este assignment
+	var cartItem models.SupplyCartItem
+	if err := s.DB.Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignment.ID, true).
+		First(&cartItem).Error; err != nil {
+		// No hay item activo del carrito - no hay carrito activo
+		return nil
+	}
+
+	// Verificar y cerrar el carrito si corresponde
+	return s.checkAndAutoCloseCart(cartItem.SupplyCartID, closedByRUT, closedByName)
+}
+
+// TransferCartToPavilion transfiere todos los items del carrito al pabellón
+// Este método debe ser llamado por el bodeguero después de aprobar la solicitud
+func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName string) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		// Verificar que el carrito existe y está activo
+		var cart models.SupplyCart
+		if err := tx.Preload("SupplyRequest").First(&cart, cartID).Error; err != nil {
+			return fmt.Errorf("carrito no encontrado: %w", err)
+		}
+
+		if !cart.CanAddItems() {
+			return fmt.Errorf("el carrito no está activo")
+		}
+
+		// Obtener todos los items activos del carrito
+		var cartItems []models.SupplyCartItem
+		if err := tx.Where("supply_cart_id = ? AND is_active = ?", cartID, true).
+			Preload("SupplyRequestQRAssignment").
+			Preload("SupplyRequestQRAssignment.MedicalSupply").
+			Find(&cartItems).Error; err != nil {
+			return fmt.Errorf("error al obtener items del carrito: %w", err)
+		}
+
+		if len(cartItems) == 0 {
+			return fmt.Errorf("el carrito no tiene items para transferir")
+		}
+
+		// Obtener el pabellón de la solicitud
+		pavilionID := cart.SupplyRequest.PavilionID
+		if pavilionID == 0 {
+			return fmt.Errorf("la solicitud no tiene pabellón asignado")
+		}
+
+		// Transferir cada insumo al pabellón
+		for _, cartItem := range cartItems {
+			supply := cartItem.SupplyRequestQRAssignment.MedicalSupply
+			
+			// Verificar que el insumo esté en bodega
+			if supply.LocationType != models.SupplyLocationStore {
+				return fmt.Errorf("el insumo %s no está en bodega (ubicación: %s)", supply.QRCode, supply.LocationType)
+			}
+
+			if supply.InTransit {
+				return fmt.Errorf("el insumo %s ya está en tránsito", supply.QRCode)
+			}
+
+			if supply.Status == models.StatusConsumed {
+				return fmt.Errorf("el insumo %s ya fue consumido", supply.QRCode)
+			}
+
+			// Obtener información del batch
+			var batch models.Batch
+			if err := tx.First(&batch, supply.BatchID).Error; err != nil {
+				return fmt.Errorf("lote no encontrado para insumo %s: %w", supply.QRCode, err)
+			}
+
+			// Crear registro de transferencia
+			transferCode := fmt.Sprintf("TRANS-CART-%d-%s", time.Now().Unix(), supply.QRCode[len(supply.QRCode)-5:])
+			transfer := models.SupplyTransfer{
+				TransferCode:    transferCode,
+				QRCode:          supply.QRCode,
+				MedicalSupplyID: supply.ID,
+				OriginType:      models.TransferLocationStore,
+				OriginID:        supply.LocationID,
+				DestinationType: models.TransferLocationPavilion,
+				DestinationID:   pavilionID,
+				SentBy:          userRUT,
+				SentByName:      userName,
+				Status:          models.TransferStatusInTransit,
+				TransferReason:  fmt.Sprintf("Transferencia desde carrito %s", cart.CartNumber),
+				SendDate:        time.Now(),
+				Notes:           fmt.Sprintf("Transferencia automática desde carrito de solicitud %s", cart.SupplyRequest.RequestNumber),
+			}
+
+			if err := tx.Create(&transfer).Error; err != nil {
+				return fmt.Errorf("error al crear transferencia para insumo %s: %w", supply.QRCode, err)
+			}
+
+			// Actualizar ubicación del insumo y marcarlo en tránsito
+			now := time.Now()
+			supply.LocationType = models.SupplyLocationPavilion
+			supply.LocationID = pavilionID
+			supply.InTransit = true
+			supply.TransferDate = &now
+			supply.TransferredBy = &userRUT
+			supply.Status = models.StatusEnRouteToPavilion
+
+			if err := tx.Save(&supply).Error; err != nil {
+				return fmt.Errorf("error al actualizar insumo %s: %w", supply.QRCode, err)
+			}
+
+			// Descontar del stock de bodega
+			var storeSummary models.StoreInventorySummary
+			if err := tx.Where("store_id = ? AND batch_id = ?", supply.LocationID, batch.ID).
+				First(&storeSummary).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// Si no existe el resumen, crearlo basado en el stock real actual
+					var realCount int64
+					tx.Model(&models.MedicalSupply{}).
+						Where("batch_id = ? AND location_type = ? AND location_id = ? AND status != ?",
+							batch.ID, models.SupplyLocationStore, supply.LocationID, models.StatusConsumed).
+						Count(&realCount)
+
+					storeSummary = models.StoreInventorySummary{
+						StoreID:            supply.LocationID,
+						BatchID:            batch.ID,
+						SupplyCode:         supply.Code,
+						SurgeryID:          batch.SurgeryID,
+						OriginalAmount:     int(realCount) + 1, // +1 porque vamos a transferir uno
+						CurrentInStore:     int(realCount),     // Stock actual sin contar el que se transfiere
+						TotalTransferredOut: 1,
+						LastTransferOutDate: &now,
+					}
+					if err := tx.Create(&storeSummary).Error; err != nil {
+						return fmt.Errorf("error creando resumen de bodega: %w", err)
+					}
+				} else {
+					return fmt.Errorf("error obteniendo resumen de bodega: %w", err)
+				}
+			} else {
+				// Actualizar resumen existente
+				if storeSummary.CurrentInStore > 0 {
+					storeSummary.CurrentInStore--
+				}
+				storeSummary.TotalTransferredOut++
+				storeSummary.LastTransferOutDate = &now
+				if err := tx.Save(&storeSummary).Error; err != nil {
+					return fmt.Errorf("error actualizando resumen de bodega: %w", err)
+				}
+			}
+
+			// Registrar en historial
+			history := models.SupplyHistory{
+				MedicalSupplyID: supply.ID,
+				DateTime:        now,
+				Status:          models.StatusEnRouteToPavilion,
+				DestinationType: models.DestinationTypePavilion,
+				DestinationID:   pavilionID,
+				UserRUT:         userRUT,
+				Notes:           fmt.Sprintf("Transferido desde carrito %s al pabellón. El pabellón debe confirmar recepción.", cart.CartNumber),
+			}
+			if err := tx.Create(&history).Error; err != nil {
+				return fmt.Errorf("error registrando historial: %w", err)
+			}
 		}
 
 		return nil

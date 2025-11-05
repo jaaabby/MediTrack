@@ -8,8 +8,12 @@ import (
 )
 
 // SetupQRRoutes configura las rutas de códigos QR con funcionalidades mejoradas y trazabilidad completa
-func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medicalSupplyService services.MedicalSupplyService) {
+func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medicalSupplyService services.MedicalSupplyService, cartService *services.CartService) {
 	qrController := controllers.NewQRController(qrService)
+	// Set cart service if available
+	if cartService != nil {
+		qrController.SetCartService(cartService)
+	}
 	qrController.SetMedicalSupplyService(medicalSupplyService)
 
 	qr := router.Group("/qr")

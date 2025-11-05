@@ -60,7 +60,9 @@ func SetupRoutes(
 		SetupSupplyCodeRoutes(v1, supplyCodeService)
 
 		// Configurar rutas de códigos QR
-		SetupQRRoutes(v1, qrService, medicalSupplyService)
+		// Obtener cartService desde main.go o crear aquí
+		cartService := services.NewCartService(db)
+		SetupQRRoutes(v1, qrService, medicalSupplyService, cartService)
 
 		// Configurar rutas de historial de lotes
 		SetupBatchHistoryRoutes(v1, batchHistoryService)

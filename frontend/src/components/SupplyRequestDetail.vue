@@ -144,10 +144,26 @@
 
           <!-- Items solicitados -->
           <div class="bg-white rounded-lg shadow border">
-            <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 class="text-base sm:text-lg font-semibold text-gray-900">Insumos Solicitados</h3>
+              <button
+                v-if="hasActiveCart"
+                @click="toggleItemsCollapsed"
+                class="text-gray-500 hover:text-gray-700"
+                :title="itemsCollapsed ? 'Expandir' : 'Colapsar'"
+              >
+                <svg 
+                  class="h-5 w-5 transition-transform duration-200"
+                  :class="{ 'transform rotate-180': !itemsCollapsed }"
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
             </div>
-            <div class="divide-y divide-gray-200">
+            <div v-show="!itemsCollapsed || !hasActiveCart" class="divide-y divide-gray-200">
               <div v-for="(item, index) in items" :key="item.id" class="p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
                   <div class="flex-1 min-w-0">
@@ -761,6 +777,145 @@
       @close="showReviewItemsModal = false"
       @itemsReviewed="handleItemsReviewed"
     />
+
+    <!-- Modales personalizados -->
+    <!-- Modal de confirmación -->
+    <div v-if="showConfirmModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="closeConfirmModal"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                  {{ confirmModalTitle }}
+                </h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500">{{ confirmModalMessage }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+            <button
+              type="button"
+              @click="executeConfirmCallback"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Confirmar
+            </button>
+            <button
+              type="button"
+              @click="closeConfirmModal"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de mensaje -->
+    <div v-if="showMessageModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="closeMessageModal"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10"
+                :class="messageModalType === 'success' ? 'bg-green-100' : messageModalType === 'error' ? 'bg-red-100' : 'bg-blue-100'">
+                <svg v-if="messageModalType === 'success'" class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg v-else-if="messageModalType === 'error'" class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <svg v-else class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                  {{ messageModalTitle }}
+                </h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500">{{ messageModalMessage }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button
+              type="button"
+              @click="closeMessageModal"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de input (para motivo de rechazo) -->
+    <div v-if="showInputModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="closeInputModal"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1 w-full">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                  {{ inputModalTitle }}
+                </h3>
+                <div class="mt-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ inputModalLabel }}</label>
+                  <input
+                    v-model="inputModalValue"
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    :placeholder="inputModalPlaceholder"
+                    @keyup.enter="confirmInputModal"
+                  />
+                  <p v-if="inputModalError" class="mt-1 text-sm text-red-600">{{ inputModalError }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+            <button
+              type="button"
+              @click="confirmInputModal"
+              :disabled="!inputModalValue.trim()"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              {{ inputModalConfirmText }}
+            </button>
+            <button
+              type="button"
+              @click="closeInputModal"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -772,7 +927,6 @@ import supplyRequestService from '../services/supplyRequestService'
 import pavilionService from '../services/pavilionService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import Swal from 'sweetalert2'
 import AssignRequestModal from '@/components/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/ReviewItemsModal.vue'
 import QrcodeVue from 'qrcode.vue'
@@ -796,6 +950,28 @@ const showAssignQRModal = ref(false)
 const selectedItem = ref(null)
 const showAssignModal = ref(false)
 const showReviewItemsModal = ref(false)
+const hasActiveCart = ref(false)
+const itemsCollapsed = ref(false)
+
+// Estados para modales personalizados
+const showConfirmModal = ref(false)
+const confirmModalTitle = ref('')
+const confirmModalMessage = ref('')
+const confirmModalCallback = ref(null)
+
+const showMessageModal = ref(false)
+const messageModalType = ref('info') // 'success', 'error', 'info'
+const messageModalTitle = ref('')
+const messageModalMessage = ref('')
+
+const showInputModal = ref(false)
+const inputModalTitle = ref('')
+const inputModalLabel = ref('')
+const inputModalPlaceholder = ref('')
+const inputModalValue = ref('')
+const inputModalError = ref('')
+const inputModalConfirmText = ref('Confirmar')
+const inputModalCallback = ref(null)
 
 // Formulario de asignación QR
 const qrAssignmentForm = reactive({
@@ -844,72 +1020,62 @@ const loadPavilions = async () => {
 }
 
 const approveRequest = async () => {
-  const result = await Swal.fire({
-    title: '¿Está seguro de aprobar esta solicitud?',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, aprobar',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
-
-  processing.value = true
-  try {
-    const approvalData = {
-      approved_by: 'ADMIN',
-      approved_by_name: 'Sistema Admin',
-      approval_notes: 'Aprobada desde interfaz web'
+  openConfirmModal(
+    'Aprobar Solicitud',
+    '¿Está seguro de aprobar esta solicitud?',
+    async () => {
+      processing.value = true
+      try {
+        const approvalData = {
+          approved_by: 'ADMIN',
+          approved_by_name: 'Sistema Admin',
+          approval_notes: 'Aprobada desde interfaz web'
+        }
+        
+        await supplyRequestService.approveSupplyRequest(requestId.value, approvalData)
+        await loadSupplyRequest()
+        showMessage('success', 'Solicitud Aprobada', 'La solicitud ha sido aprobada exitosamente')
+      } catch (err) {
+        console.error('Error aprobando solicitud:', err)
+        showMessage('error', 'Error al aprobar la solicitud', err.response?.data?.error || err.message)
+      } finally {
+        processing.value = false
+      }
     }
-    
-    await supplyRequestService.approveSupplyRequest(requestId.value, approvalData)
-    await loadSupplyRequest()
-  } catch (err) {
-    console.error('Error aprobando solicitud:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al aprobar la solicitud',
-      text: err.response?.data?.error || err.message
-    })
-  } finally {
-    processing.value = false
-  }
+  )
 }
 
 const rejectRequest = async () => {
-  const { value: reason } = await Swal.fire({
-    title: 'Motivo del rechazo',
-    input: 'text',
-    inputLabel: 'Ingrese el motivo del rechazo:',
-    inputPlaceholder: 'Motivo...',
-    showCancelButton: true,
-    confirmButtonText: 'Rechazar',
-    cancelButtonText: 'Cancelar',
-    inputValidator: (value) => {
-      if (!value) return 'Debe ingresar un motivo';
-    }
-  })
-  if (!reason) return
-
-  processing.value = true
-  try {
-    const rejectionData = {
-      rejected_by: 'ADMIN',
-      rejected_by_name: 'Sistema Admin',
-      notes: reason
-    }
-    
-    await supplyRequestService.rejectSupplyRequest(requestId.value, rejectionData)
-    await loadSupplyRequest()
-  } catch (err) {
-    console.error('Error rechazando solicitud:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al rechazar la solicitud',
-      text: err.response?.data?.error || err.message
-    })
-  } finally {
-    processing.value = false
-  }
+  openInputModal(
+    'Motivo del Rechazo',
+    'Ingrese el motivo del rechazo:',
+    'Motivo...',
+    async (reason) => {
+      if (!reason || !reason.trim()) {
+        inputModalError.value = 'Debe ingresar un motivo'
+        return
+      }
+      
+      processing.value = true
+      try {
+        const rejectionData = {
+          rejected_by: 'ADMIN',
+          rejected_by_name: 'Sistema Admin',
+          notes: reason
+        }
+        
+        await supplyRequestService.rejectSupplyRequest(requestId.value, rejectionData)
+        await loadSupplyRequest()
+        showMessage('success', 'Solicitud Rechazada', 'La solicitud ha sido rechazada exitosamente')
+      } catch (err) {
+        console.error('Error rechazando solicitud:', err)
+        showMessage('error', 'Error al rechazar la solicitud', err.response?.data?.error || err.message)
+      } finally {
+        processing.value = false
+      }
+    },
+    'Rechazar'
+  )
 }
 
 const openAssignModal = () => {
@@ -935,11 +1101,7 @@ const goToEditRequest = async () => {
   
   if (!id) {
     console.error('No se pudo obtener el ID de la solicitud')
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'No se pudo determinar el ID de la solicitud'
-    })
+    showMessage('error', 'Error', 'No se pudo determinar el ID de la solicitud')
     return
   }
   
@@ -955,11 +1117,7 @@ const goToEditRequest = async () => {
     console.log('Navegación exitosa')
   } catch (error) {
     console.error('Error en navegación:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error de Navegación',
-      text: 'No se pudo navegar a la página de edición: ' + error.message
-    })
+    showMessage('error', 'Error de Navegación', 'No se pudo navegar a la página de edición: ' + error.message)
   }
 }
 
@@ -1018,13 +1176,10 @@ const assignQR = async () => {
     await supplyRequestService.assignQRToRequest(assignmentData)
     await loadSupplyRequest()
     closeAssignQRModal()
+    showMessage('success', 'QR Asignado', 'El código QR ha sido asignado exitosamente')
   } catch (err) {
     console.error('Error asignando QR:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al asignar QR',
-      text: err.response?.data?.error || err.message
-    })
+    showMessage('error', 'Error al asignar QR', err.response?.data?.error || err.message)
   } finally {
     assigningQR.value = false
   }
@@ -1333,27 +1488,103 @@ const getAssignmentStatusLabel = (status) => {
 // Métodos para el carrito
 const onCartLoaded = (cart) => {
   console.log('Carrito cargado:', cart)
+  // Si el carrito está activo, colapsar automáticamente la sección de insumos
+  if (cart && cart.status === 'active') {
+    hasActiveCart.value = true
+    itemsCollapsed.value = true // Colapsar automáticamente cuando hay carrito activo
+  } else {
+    hasActiveCart.value = false
+  }
+}
+
+const toggleItemsCollapsed = () => {
+  itemsCollapsed.value = !itemsCollapsed.value
 }
 
 const onCartClosed = (cart) => {
-  Swal.fire({
-    icon: 'success',
-    title: 'Carrito cerrado',
-    text: 'El carrito ha sido cerrado exitosamente',
-    timer: 2000,
-    showConfirmButton: false
-  })
+  hasActiveCart.value = false
+  itemsCollapsed.value = false // Expandir la sección cuando se cierra el carrito
+  showMessage('success', 'Carrito cerrado', 'El carrito ha sido cerrado exitosamente')
 }
 
 const onItemRemoved = (itemId) => {
   console.log('Item removido del carrito:', itemId)
-  Swal.fire({
-    icon: 'info',
-    title: 'Item removido',
-    text: 'El item ha sido removido del carrito',
-    timer: 2000,
-    showConfirmButton: false
-  })
+  showMessage('info', 'Item removido', 'El item ha sido removido del carrito')
+}
+
+// Funciones para manejar modales
+const openConfirmModal = (title, message, callback) => {
+  confirmModalTitle.value = title
+  confirmModalMessage.value = message
+  confirmModalCallback.value = callback
+  showConfirmModal.value = true
+}
+
+const closeConfirmModal = () => {
+  showConfirmModal.value = false
+  confirmModalTitle.value = ''
+  confirmModalMessage.value = ''
+  confirmModalCallback.value = null
+}
+
+const executeConfirmCallback = () => {
+  if (confirmModalCallback.value) {
+    confirmModalCallback.value()
+  }
+  closeConfirmModal()
+}
+
+const openMessageModal = (type, title, message) => {
+  messageModalType.value = type
+  messageModalTitle.value = title
+  messageModalMessage.value = message
+  showMessageModal.value = true
+}
+
+const closeMessageModal = () => {
+  showMessageModal.value = false
+  messageModalType.value = 'info'
+  messageModalTitle.value = ''
+  messageModalMessage.value = ''
+}
+
+const showMessage = (type, title, message) => {
+  openMessageModal(type, title, message)
+}
+
+const openInputModal = (title, label, placeholder, callback, confirmText = 'Confirmar') => {
+  inputModalTitle.value = title
+  inputModalLabel.value = label
+  inputModalPlaceholder.value = placeholder
+  inputModalValue.value = ''
+  inputModalError.value = ''
+  inputModalConfirmText.value = confirmText
+  inputModalCallback.value = callback
+  showInputModal.value = true
+}
+
+const closeInputModal = () => {
+  showInputModal.value = false
+  inputModalTitle.value = ''
+  inputModalLabel.value = ''
+  inputModalPlaceholder.value = ''
+  inputModalValue.value = ''
+  inputModalError.value = ''
+  inputModalConfirmText.value = 'Confirmar'
+  inputModalCallback.value = null
+}
+
+const confirmInputModal = () => {
+  if (!inputModalValue.value.trim() && inputModalConfirmText.value === 'Rechazar') {
+    inputModalError.value = 'Debe ingresar un motivo'
+    return
+  }
+  
+  if (inputModalCallback.value) {
+    inputModalError.value = '' // Limpiar error antes de ejecutar
+    inputModalCallback.value(inputModalValue.value)
+    closeInputModal() // Cerrar después de ejecutar el callback
+  }
 }
 
 // Lifecycle
