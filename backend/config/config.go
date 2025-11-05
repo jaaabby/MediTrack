@@ -62,9 +62,18 @@ type RedisConfig struct {
 
 // Load carga la configuración desde variables de entorno
 func Load() (*Config, error) {
-	// Cargar archivo .env si existe
-	if err := godotenv.Load(); err != nil {
-		logrus.Warn("No se pudo cargar archivo .env, usando variables de entorno del sistema")
+	// Detectar entorno
+	env := os.Getenv("ENV")
+
+	// Solo cargar .env si NO estamos en producción
+	if env != "production" {
+		if err := godotenv.Load(); err != nil {
+			logrus.Warn("No se pudo cargar archivo .env, usando variables de entorno del sistema")
+		} else {
+			logrus.Info("Archivo .env cargado (desarrollo local)")
+		}
+	} else {
+		logrus.Info("Modo producción: usando variables de entorno de Railway")
 	}
 
 	config := &Config{
