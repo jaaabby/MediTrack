@@ -1,13 +1,17 @@
 <template>
   <div id="app" class="min-h-screen bg-gray-50">
-    <!-- Header principal -->
-    <header class="bg-blue-600 shadow-sm border-b border-blue-700">
+    <!-- Header principal - Oculto en login -->
+    <header v-if="$route.name !== 'Login'" class="bg-brand-blue-dark shadow-sm border-b border-brand-blue-medium">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <!-- Logo y título -->
           <div class="flex items-center flex-shrink-0">
-            <router-link to="/" class="cursor-pointer hover:opacity-80 transition-opacity">
-              <h1 class="text-xl sm:text-2xl font-bold text-white">MediTrack</h1>
+            <router-link to="/" class="cursor-pointer hover:opacity-80 transition-opacity flex items-center">
+              <img 
+                :src="logoImage" 
+                alt="MediTrack" 
+                class="h-12 sm:h-14 md:h-16 w-auto brightness-0 invert"
+              />
             </router-link>
           </div>
           
@@ -15,8 +19,8 @@
           <nav v-if="$route.name !== 'Login'" class="hidden lg:flex items-center space-x-4 xl:space-x-8 flex-1 justify-center max-w-4xl">
             <router-link v-if="authStore.isAuthenticated && authStore.canViewHome"
               to="/"
-              class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
-              :class="{ 'bg-blue-700': $route.path === '/' }"
+              class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+              :class="{ 'bg-brand-blue-medium': $route.path === '/' }"
               @click.stop
             >
               Inicio
@@ -26,8 +30,8 @@
             <div v-if="authStore.isAuthenticated && authStore.canViewInventory" class="relative">
               <button
                 @click="inventoryMenuOpen = !inventoryMenuOpen"
-                class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
-                :class="{ 'bg-blue-700': $route.path.startsWith('/inventory') }"
+                class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
+                :class="{ 'bg-brand-blue-medium': $route.path.startsWith('/inventory') }"
               >
                 Inventario
                 <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': inventoryMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,8 +43,8 @@
               <div v-if="inventoryMenuOpen" class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
                 <router-link
                   to="/inventory"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/inventory' }"
                   @click="inventoryMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -52,8 +56,8 @@
                 </router-link>
                 <router-link
                   to="/inventory/dashboard"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/dashboard' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/inventory/dashboard' }"
                   @click="inventoryMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -65,8 +69,8 @@
                 </router-link>
                 <router-link
                   to="/inventory/store"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/store' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/inventory/store' }"
                   @click="inventoryMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -78,8 +82,8 @@
                 </router-link>
                 <router-link
                   to="/inventory/pavilion"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/pavilion' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/inventory/pavilion' }"
                   @click="inventoryMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -92,8 +96,8 @@
                 <router-link
                   v-if="authStore.canAddSupplies"
                   to="/inventory/add"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-t border-gray-200"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/inventory/add' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors border-t border-gray-200"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/inventory/add' }"
                   @click="inventoryMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -108,8 +112,8 @@
             
             <router-link v-if="authStore.isAuthenticated && authStore.canViewRequests"
               to="/supply-requests"
-              class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
-              :class="{ 'bg-blue-700': $route.path.startsWith('/supply-requests') }"
+              class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+              :class="{ 'bg-brand-blue-medium': $route.path.startsWith('/supply-requests') }"
               @click.stop
             >
               Solicitudes
@@ -117,8 +121,8 @@
             
             <router-link v-if="authStore.isAuthenticated && authStore.canViewQR"
               to="/qr"
-              class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
-              :class="{ 'bg-blue-700': $route.path.startsWith('/qr') }"
+              class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+              :class="{ 'bg-brand-blue-medium': $route.path.startsWith('/qr') }"
               @click.stop
             >
               Escaner QR
@@ -126,8 +130,8 @@
 
             <router-link v-if="authStore.isAuthenticated && authStore.canViewStatistics"
               to="/statistics"
-              class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
-              :class="{ 'bg-blue-700': $route.path === '/statistics' }"
+              class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+              :class="{ 'bg-brand-blue-medium': $route.path === '/statistics' }"
               @click.stop
             >
               Estadisticas
@@ -137,8 +141,8 @@
             <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad" class="relative">
               <button
                 @click="managementMenuOpen = !managementMenuOpen"
-                class="text-white hover:text-blue-200 px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
-                :class="{ 'bg-blue-700': ['/transfers', '/surgeries', '/supply-history', '/return-management', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info', '/supplier-configs', '/supply-codes'].some(path => $route.path.startsWith(path)) }"
+                class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
+                :class="{ 'bg-brand-blue-medium': ['/transfers', '/surgeries', '/supply-history', '/return-management', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info', '/supplier-configs', '/supply-codes'].some(path => $route.path.startsWith(path)) }"
               >
                 Gestión
                 <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': managementMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,8 +155,8 @@
                 <router-link
                   v-if="authStore.canManageTransfers"
                   to="/transfers"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/transfers' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/transfers' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -165,8 +169,8 @@
                 <router-link
                   v-if="authStore.canManageSurgeries"
                   to="/surgeries"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/surgeries' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/surgeries' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -179,8 +183,8 @@
                 <router-link
                   v-if="authStore.canViewSupplyHistory"
                   to="/supply-history"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/supply-history' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/supply-history' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -193,8 +197,8 @@
                 <router-link
                   v-if="authStore.canManageReturns"
                   to="/return-management"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/return-management' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/return-management' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -215,8 +219,8 @@
                 <router-link
                   v-if="authStore.canManageMedicalConfig"
                   to="/medical-specialties"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/medical-specialties' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/medical-specialties' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -229,8 +233,8 @@
                 <router-link
                   v-if="authStore.canManageMedicalConfig"
                   to="/surgery-typical-supplies"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/surgery-typical-supplies' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/surgery-typical-supplies' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -243,8 +247,8 @@
                 <router-link
                   v-if="authStore.canManageMedicalConfig"
                   to="/doctor-info"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/doctor-info' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/doctor-info' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -265,8 +269,8 @@
                 <router-link
                   v-if="authStore.canManageSystemConfig"
                   to="/supplier-configs"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/supplier-configs' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/supplier-configs' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -280,8 +284,8 @@
                 <router-link
                   v-if="authStore.canManageSystemConfig"
                   to="/supply-codes"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === '/supply-codes' }"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/supply-codes' }"
                   @click="managementMenuOpen = false"
                 >
                   <div class="flex items-center">
@@ -299,8 +303,8 @@
           <nav class="hidden md:flex lg:hidden items-center space-x-2 flex-1 justify-center">
             <router-link v-if="authStore.isAuthenticated && authStore.canViewHome"
               to="/"
-              class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
-              :class="{ 'bg-blue-700': $route.path === '/' }"
+              class="text-white hover:text-brand-blue-light p-2 rounded-md transition-colors"
+              :class="{ 'bg-brand-blue-medium': $route.path === '/' }"
               @click.stop
               title="Inicio"
             >
@@ -311,8 +315,8 @@
             
             <router-link v-if="authStore.isAuthenticated && authStore.canViewInventory"
               to="/inventory"
-              class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
-              :class="{ 'bg-blue-700': $route.path === '/inventory' }"
+              class="text-white hover:text-brand-blue-light p-2 rounded-md transition-colors"
+              :class="{ 'bg-brand-blue-medium': $route.path === '/inventory' }"
               @click.stop
               title="Inventario"
             >
@@ -323,8 +327,8 @@
             
             <router-link v-if="authStore.isAuthenticated && authStore.canViewRequests"
               to="/supply-requests"
-              class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
-              :class="{ 'bg-blue-700': $route.path.startsWith('/supply-requests') }"
+              class="text-white hover:text-brand-blue-light p-2 rounded-md transition-colors"
+              :class="{ 'bg-brand-blue-medium': $route.path.startsWith('/supply-requests') }"
               @click.stop
               title="Solicitudes"
             >
@@ -335,8 +339,8 @@
             
             <router-link v-if="authStore.isAuthenticated && authStore.canViewQR"
               to="/qr"
-              class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
-              :class="{ 'bg-blue-700': $route.path.startsWith('/qr') }"
+              class="text-white hover:text-brand-blue-light p-2 rounded-md transition-colors"
+              :class="{ 'bg-brand-blue-medium': $route.path.startsWith('/qr') }"
               @click.stop
               title="Escaner QR"
             >
@@ -347,8 +351,8 @@
 
             <router-link v-if="authStore.isAuthenticated && authStore.canViewStatistics"
               to="/statistics"
-              class="text-white hover:text-blue-200 p-2 rounded-md transition-colors"
-              :class="{ 'bg-blue-700': $route.path === '/statistics' }"
+              class="text-white hover:text-brand-blue-light p-2 rounded-md transition-colors"
+              :class="{ 'bg-brand-blue-medium': $route.path === '/statistics' }"
               @click.stop
               title="Estadisticas"
             >
@@ -365,18 +369,18 @@
               <div class="text-right text-white hidden sm:block">
                 <router-link 
                   to="/profile"
-                  class="text-sm font-medium hover:text-blue-200 transition-colors cursor-pointer block"
+                  class="text-sm font-medium hover:text-brand-blue-light transition-colors cursor-pointer block"
                   title="Ver mi perfil"
                 >
                   {{ authStore.getUserName }}
                 </router-link>
-                <p class="text-xs text-blue-200">{{ authStore.getUserRole }}</p>
+                <p class="text-xs text-brand-blue-light">{{ authStore.getUserRole }}</p>
               </div>
               
               <!-- Icono de usuario para pantallas pequeñas -->
               <router-link 
                 to="/profile"
-                class="sm:hidden p-2 rounded-lg hover:bg-blue-700 transition-colors"
+                class="sm:hidden p-2 rounded-lg hover:bg-brand-blue-medium transition-colors"
                 title="Ver mi perfil"
               >
                 <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -386,7 +390,7 @@
               
               <button 
                 @click="handleLogout"
-                class="p-2 rounded-lg hover:bg-blue-700 transition-colors"
+                class="p-2 rounded-lg hover:bg-brand-blue-medium transition-colors"
                 title="Cerrar sesion"
               >
                 <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -399,7 +403,7 @@
             <button 
               v-if="authStore.isAuthenticated"
               @click="mobileMenuOpen = !mobileMenuOpen"
-              class="md:hidden p-2 rounded-lg hover:bg-blue-700 transition-colors"
+              class="md:hidden p-2 rounded-lg hover:bg-brand-blue-medium transition-colors"
               aria-label="Abrir menu"
             >
               <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -413,51 +417,51 @@
 
       <!-- Menu movil -->
       <div v-if="mobileMenuOpen" class="md:hidden">
-        <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-blue-700">
+        <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-brand-blue-medium">
           <router-link
             v-if="authStore.isAuthenticated && authStore.canViewHome"
             to="/"
             @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/' }"
+            class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors"
+            :class="{ 'bg-brand-blue-dark': $route.path === '/' }"
           >
             Inicio
           </router-link>
           
           <!-- Sección de Inventario -->
           <div v-if="authStore.isAuthenticated && authStore.canViewInventory" class="space-y-1">
-            <div class="text-blue-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide">
+            <div class="text-brand-blue-light px-3 py-2 text-sm font-semibold uppercase tracking-wide">
               Inventario
             </div>
             <router-link
               to="/inventory"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/inventory' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/inventory' }"
             >
               Ver Lotes
             </router-link>
             <router-link
               to="/inventory/dashboard"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/inventory/dashboard' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/inventory/dashboard' }"
             >
               Dashboard
             </router-link>
             <router-link
               to="/inventory/store"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/inventory/store' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/inventory/store' }"
             >
               Bodegas
             </router-link>
             <router-link
               to="/inventory/pavilion"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/inventory/pavilion' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/inventory/pavilion' }"
             >
               Pabellones
             </router-link>
@@ -465,22 +469,22 @@
               v-if="authStore.canAddSupplies"
               to="/inventory/add"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/inventory/add' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/inventory/add' }"
             >
               Agregar Insumo
             </router-link>
           </div>
           
           <!-- Separador -->
-          <div class="border-t border-blue-600 my-2"></div>
+          <div class="border-t border-brand-blue-medium my-2"></div>
           
           <router-link
             v-if="authStore.isAuthenticated && authStore.canViewRequests"
             to="/supply-requests"
             @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path.startsWith('/supply-requests') }"
+            class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors"
+            :class="{ 'bg-brand-blue-dark': $route.path.startsWith('/supply-requests') }"
           >
             Solicitudes de Insumo
           </router-link>
@@ -489,8 +493,8 @@
             v-if="authStore.isAuthenticated && authStore.canViewQR"
             to="/qr"
             @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path.startsWith('/qr') }"
+            class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors"
+            :class="{ 'bg-brand-blue-dark': $route.path.startsWith('/qr') }"
           >
             Escaner QR
           </router-link>
@@ -499,26 +503,26 @@
             v-if="authStore.isAuthenticated && authStore.canViewStatistics"
             to="/statistics"
             @click.stop="mobileMenuOpen = false"
-            class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors"
-            :class="{ 'bg-blue-800': $route.path === '/statistics' }"
+            class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors"
+            :class="{ 'bg-brand-blue-dark': $route.path === '/statistics' }"
           >
             Estadisticas
           </router-link>
 
           <!-- Separador -->
-          <div class="border-t border-blue-600 my-2"></div>
+          <div class="border-t border-brand-blue-medium my-2"></div>
           
           <!-- Sección de Gestión -->
           <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad" class="space-y-1">
-            <div class="text-blue-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide">
+            <div class="text-brand-blue-light px-3 py-2 text-sm font-semibold uppercase tracking-wide">
               Gestión
             </div>
             <router-link
               v-if="authStore.canManageTransfers"
               to="/transfers"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/transfers' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/transfers' }"
             >
               Transferencias
             </router-link>
@@ -527,8 +531,8 @@
               v-if="authStore.canManageSurgeries"
               to="/surgeries"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/surgeries' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/surgeries' }"
             >
               Cirugías
             </router-link>
@@ -537,8 +541,8 @@
               v-if="authStore.canViewSupplyHistory"
               to="/supply-history"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/supply-history' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/supply-history' }"
             >
               Historial de Insumos
             </router-link>
@@ -547,16 +551,16 @@
               v-if="authStore.canManageReturns"
               to="/return-management"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/return-management' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/return-management' }"
             >
               Retornos a Bodega
             </router-link>
             
             <!-- Separador -->
-            <div v-if="authStore.canManageMedicalConfig" class="border-t border-blue-600 my-2"></div>
+            <div v-if="authStore.canManageMedicalConfig" class="border-t border-brand-blue-medium my-2"></div>
             
-            <div v-if="authStore.canManageMedicalConfig" class="text-blue-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+            <div v-if="authStore.canManageMedicalConfig" class="text-brand-blue-light px-3 py-2 text-xs font-semibold uppercase tracking-wide">
               Configuración Médica
             </div>
             
@@ -564,8 +568,8 @@
               v-if="authStore.canManageMedicalConfig"
               to="/medical-specialties"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/medical-specialties' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/medical-specialties' }"
             >
               Especialidades Médicas
             </router-link>
@@ -574,8 +578,8 @@
               v-if="authStore.canManageMedicalConfig"
               to="/surgery-typical-supplies"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/surgery-typical-supplies' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/surgery-typical-supplies' }"
             >
               Insumos Típicos
             </router-link>
@@ -584,16 +588,16 @@
               v-if="authStore.canManageMedicalConfig"
               to="/doctor-info"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/doctor-info' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/doctor-info' }"
             >
               Información de Doctores
             </router-link>
             
             <!-- Separador -->
-            <div v-if="authStore.canManageSystemConfig" class="border-t border-blue-600 my-2"></div>
+            <div v-if="authStore.canManageSystemConfig" class="border-t border-brand-blue-medium my-2"></div>
             
-            <div v-if="authStore.canManageSystemConfig" class="text-blue-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+            <div v-if="authStore.canManageSystemConfig" class="text-brand-blue-light px-3 py-2 text-xs font-semibold uppercase tracking-wide">
               Configuración del Sistema
             </div>
             
@@ -601,8 +605,8 @@
               v-if="authStore.canManageSystemConfig"
               to="/supplier-configs"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/supplier-configs' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/supplier-configs' }"
             >
               Configuración de Proveedores
             </router-link>
@@ -610,8 +614,8 @@
               v-if="authStore.canManageSystemConfig"
               to="/supply-codes"
               @click.stop="mobileMenuOpen = false"
-              class="text-white hover:text-blue-200 block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
-              :class="{ 'bg-blue-800': $route.path === '/supply-codes' }"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/supply-codes' }"
             >
               Códigos de Insumos
             </router-link>
@@ -622,18 +626,18 @@
     </header>
 
     <!-- Contenido principal -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <main :class="$route.name === 'Login' ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'">
       <router-view />
     </main>
 
     <!-- Navegacion inferior (inspirada en la app movil) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40" v-if="authStore.isAuthenticated">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40" v-if="authStore.isAuthenticated && $route.name !== 'Login'">
       <!-- Para doctores y pavedad: solo mostrar inicio y solicitudes -->
       <div v-if="authStore.isDoctor || authStore.isPavedad" class="grid grid-cols-2 gap-1">
         <router-link
           to="/"
           class="flex flex-col items-center py-3 px-6 text-sm font-medium transition-colors"
-          :class="$route.path === '/' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path === '/' ? 'text-brand-blue-dark' : 'text-gray-500 hover:text-brand-blue-dark'"
         >
           <svg class="h-8 w-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -643,7 +647,7 @@
         <router-link
           to="/supply-requests"
           class="flex flex-col items-center py-3 px-6 text-sm font-medium transition-colors"
-          :class="$route.path.startsWith('/supply-requests') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path.startsWith('/supply-requests') ? 'text-brand-blue-dark' : 'text-gray-500 hover:text-brand-blue-dark'"
         >
           <svg class="h-8 w-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -658,7 +662,7 @@
           v-if="authStore.canViewHome"
           to="/"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
-          :class="$route.path === '/' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path === '/' ? 'text-brand-blue-dark' : 'text-gray-500 hover:text-brand-blue-dark'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -670,7 +674,7 @@
           v-if="authStore.canViewInventory"
           to="/inventory"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
-          :class="$route.path.startsWith('/inventory') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path.startsWith('/inventory') ? 'text-brand-blue-dark' : 'text-gray-500 hover:text-brand-blue-dark'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -682,7 +686,7 @@
           v-if="authStore.canViewRequests"
           to="/supply-requests"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors relative"
-          :class="$route.path.startsWith('/supply-requests') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path.startsWith('/supply-requests') ? 'text-brand-blue-dark' : 'text-gray-500 hover:text-brand-blue-dark'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -694,7 +698,7 @@
           v-if="authStore.canViewQR"
           to="/qr"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
-          :class="$route.path.startsWith('/qr') ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="$route.path.startsWith('/qr') ? 'text-brand-blue-dark' : 'text-gray-500 hover:text-brand-blue-dark'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
@@ -706,7 +710,7 @@
           v-if="authStore.canViewStatistics"
           to="/statistics"
           class="flex flex-col items-center py-2 px-1 text-xs font-medium transition-colors"
-          :class="mobileMenuOpen ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'"
+          :class="mobileMenuOpen ? 'text-brand-blue-dark' : 'text-gray-500 hover:text-brand-blue-dark'"
         >
           <svg class="h-6 w-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -717,7 +721,7 @@
     </nav>
 
     <!-- Padding para la navegacion inferior en moviles -->
-    <div v-if="authStore.isAuthenticated" class="h-20 md:hidden"></div>
+    <div v-if="authStore.isAuthenticated && $route.name !== 'Login'" class="h-20 md:hidden"></div>
 
     <!-- Toast/Notificacion global (futuro) -->
     <!-- <div v-if="globalNotification" class="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50">
@@ -730,6 +734,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import logoImage from '@/assets/images/MEDITRACK_LOGO.svg'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -784,7 +789,7 @@ router.afterEach(() => {
 <style scoped>
 /* Estilos especificos del componente */
 .router-link-active {
-  color: #2563eb; /* text-blue-600 */
+  color: #0C70CD; /* text-brand-blue-dark */
 }
 
 /* Transiciones suaves para la navegacion */
@@ -805,12 +810,12 @@ router.afterEach(() => {
 }
 
 /* Efecto de resaltado para navegacion activa */
-.bg-blue-700 {
-  background-color: #1d4ed8;
+.bg-brand-blue-medium {
+  background-color: #2B88D0;
 }
 
-.bg-blue-800 {
-  background-color: #1e40af;
+.bg-brand-blue-dark {
+  background-color: #0C70CD;
 }
 
 /* Sombras para el header */

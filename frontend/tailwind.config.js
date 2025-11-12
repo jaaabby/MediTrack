@@ -7,6 +7,16 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Colores de marca MediTrack
+        brand: {
+          blue: {
+            dark: '#0C70CD',
+            medium: '#2B88D0',
+            light: '#31CDE3',
+          },
+          green: '#B0F2B4',
+          pink: '#FA92B9',
+        },
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',
@@ -74,7 +84,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Akzidenz Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+        brand: ['Akzidenz Grotesk', 'sans-serif'],
       },
       spacing: {
         '18': '4.5rem',
