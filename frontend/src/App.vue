@@ -1,7 +1,7 @@
 <template>
   <div id="app" class="min-h-screen bg-gray-50">
-    <!-- Header principal - Oculto en login -->
-    <header v-if="$route.name !== 'Login'" class="bg-brand-blue-dark shadow-sm border-b border-brand-blue-medium">
+    <!-- Header principal - Oculto en login y registro -->
+    <header v-if="$route.name !== 'Login' && $route.name !== 'Register'" class="bg-brand-blue-dark shadow-sm border-b border-brand-blue-medium">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <!-- Logo y título -->
@@ -15,8 +15,8 @@
             </router-link>
           </div>
           
-          <!-- Navegación principal (desktop y tablet) - Oculta en login -->
-          <nav v-if="$route.name !== 'Login'" class="hidden lg:flex items-center space-x-4 xl:space-x-8 flex-1 justify-center max-w-4xl">
+          <!-- Navegación principal (desktop y tablet) - Oculta en login y registro -->
+          <nav v-if="$route.name !== 'Login' && $route.name !== 'Register'" class="hidden lg:flex items-center space-x-4 xl:space-x-8 flex-1 justify-center max-w-4xl">
             <router-link v-if="authStore.isAuthenticated && authStore.canViewHome"
               to="/"
               class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
@@ -362,8 +362,8 @@
             </router-link>
           </nav>
           
-          <!-- Menu de usuario - Oculto en login -->
-          <div v-if="$route.name !== 'Login'" class="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+          <!-- Menu de usuario - Oculto en login y registro -->
+          <div v-if="$route.name !== 'Login' && $route.name !== 'Register'" class="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
             <!-- Informacion del usuario autenticado -->
             <div v-if="authStore.isAuthenticated" class="flex items-center space-x-2 sm:space-x-3">
               <div class="text-right text-white hidden sm:block">
@@ -626,12 +626,12 @@
     </header>
 
     <!-- Contenido principal -->
-    <main :class="$route.name === 'Login' ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'">
+    <main :class="$route.name === 'Login' || $route.name === 'Register' ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'">
       <router-view />
     </main>
 
     <!-- Navegacion inferior (inspirada en la app movil) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40" v-if="authStore.isAuthenticated && $route.name !== 'Login'">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-40" v-if="authStore.isAuthenticated && $route.name !== 'Login' && $route.name !== 'Register'">
       <!-- Para doctores y pavedad: solo mostrar inicio y solicitudes -->
       <div v-if="authStore.isDoctor || authStore.isPavedad" class="grid grid-cols-2 gap-1">
         <router-link
@@ -721,7 +721,7 @@
     </nav>
 
     <!-- Padding para la navegacion inferior en moviles -->
-    <div v-if="authStore.isAuthenticated && $route.name !== 'Login'" class="h-20 md:hidden"></div>
+    <div v-if="authStore.isAuthenticated && $route.name !== 'Login' && $route.name !== 'Register'" class="h-20 md:hidden"></div>
 
     <!-- Toast/Notificacion global (futuro) -->
     <!-- <div v-if="globalNotification" class="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50">
