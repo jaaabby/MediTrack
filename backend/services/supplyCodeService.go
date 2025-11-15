@@ -41,11 +41,7 @@ func (s *SupplyCodeService) UpdateSupplyCode(id int, newSupplyCode *models.Suppl
 		return nil, err
 	}
 
-	supplyCode.Name = newSupplyCode.Name
-	supplyCode.CodeSupplier = newSupplyCode.CodeSupplier
-	supplyCode.CriticalStock = newSupplyCode.CriticalStock
-
-	if err := s.DB.Save(&supplyCode).Error; err != nil {
+	if err := s.DB.Model(&supplyCode).Omit("code").Updates(newSupplyCode).Error; err != nil {
 		return nil, err
 	}
 	return &supplyCode, nil

@@ -158,7 +158,7 @@
       />
       
       <!-- Gestión del Carrito -->
-      <div v-if="canAddToCart(scannedInfo)" class="p-3 sm:p-4 border-t border-gray-200 bg-blue-50">
+      <div v-if="canAddToCart(scannedInfo) && availableCarts.length > 0" class="p-3 sm:p-4 border-t border-gray-200 bg-blue-50">
         <div class="flex items-start gap-3">
           <div class="flex-shrink-0">
             <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +229,7 @@
           <router-link 
             v-if="canBeConsumed(scannedInfo)"
             :to="{ name: 'QRConsumer', query: { qr: scannedInfo.qr_code } }" 
-            class="btn-primary text-sm"
+            class="btn-primary text-sm flex items-center justify-center"
           >
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -241,7 +241,7 @@
           <router-link 
             v-if="canBeTransferred(scannedInfo)"
             :to="{ name: 'QRTransfer', query: { qr: scannedInfo.qr_code } }" 
-            class="btn-primary text-sm"
+            class="btn-primary text-sm flex items-center justify-center"
           >
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -253,7 +253,7 @@
           <router-link 
             v-if="canBeReceived(scannedInfo)"
             :to="{ name: 'QRReception', query: { qr: scannedInfo.qr_code } }" 
-            class="btn-primary text-sm"
+            class="btn-primary text-sm flex items-center justify-center"
           >
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -266,7 +266,7 @@
             v-if="canBeReturnedToStore(scannedInfo)"
             @click="returnToStore(scannedInfo.qr_code)"
             :disabled="returningToStore"
-            class="btn-danger text-sm"
+            class="btn-danger text-sm flex items-center justify-center"
           >
             <svg v-if="returningToStore" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -283,7 +283,7 @@
             v-if="isOnRouteToStore(scannedInfo)"
             @click="confirmArrivalToStore(scannedInfo.qr_code)"
             :disabled="confirmingArrival"
-            class="btn-success text-sm"
+            class="btn-success text-sm flex items-center justify-center"
           >
             <svg v-if="confirmingArrival" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -913,10 +913,10 @@ const returnToStore = async (qrCode) => {
   // Confirmar la acción
   const result = await Swal.fire({
     title: '¿Está seguro de que desea regresar este insumo a bodega?',
-    html: 'Esta acción cambiará el estado del insumo a <b>en_camino_a_bodega</b> y será registrada en el historial de trazabilidad.',
+    html: 'Esta acción cambiará el estado del insumo a <b>en_camino_a_bodega</b>. Deberá confirmar la llegada cuando el insumo llegue físicamente a bodega.',
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'Sí, regresar',
+    confirmButtonText: 'Sí, marcar como en camino',
     cancelButtonText: 'Cancelar',
   })
   if (!result.isConfirmed) return
@@ -931,7 +931,7 @@ const returnToStore = async (qrCode) => {
     )
     
     // Mostrar notificación de éxito
-    showSuccessNotification('Insumo regresado a bodega exitosamente')
+    showSuccessNotification('Insumo marcado como en camino a bodega. Confirme la llegada cuando el insumo llegue físicamente.')
     
     // Volver a escanear para actualizar la información
     await scanQRCode()

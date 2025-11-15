@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"fmt"
 	"meditrack/models"
 	"meditrack/services"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,29 +19,21 @@ func NewSupplyHistoryController(supplyHistoryService services.SupplyHistoryServi
 }
 
 func (c *SupplyHistoryController) CreateSupplyHistory(ctx *gin.Context) {
-	var historyRequest struct {
-		DateTime        time.Time `json:"date_time"`
-		Status          string    `json:"status" binding:"required"`
-		DestinationType string    `json:"destination_type" binding:"required"`
-		DestinationID   int       `json:"destination_id" binding:"required"`
-		MedicalSupplyID int       `json:"medical_supply_id" binding:"required"`
-		UserRUT         string    `json:"user_rut" binding:"required"`
-	}
+	var history models.SupplyHistory
 
-	if err := ctx.ShouldBindJSON(&historyRequest); err != nil {
+	if err := ctx.ShouldBindJSON(&history); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
 
-	// Crear modelo sin ID
-	history := models.SupplyHistory{
-		DateTime:        historyRequest.DateTime,
-		Status:          historyRequest.Status,
-		DestinationType: historyRequest.DestinationType,
-		DestinationID:   historyRequest.DestinationID,
-		MedicalSupplyID: historyRequest.MedicalSupplyID,
-		UserRUT:         historyRequest.UserRUT,
-		// ID se auto-generará
+	// Si no se proporciona fecha, usar la fecha actual
+	if history.DateTime.IsZero() {
+		history.DateTime = time.Now()
+	}
+
+	if history.Status == "" {
+		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "El estado es requerido"})
+		return
 	}
 
 	if err := c.supplyHistoryService.CreateSupplyHistory(&history); err != nil {
@@ -52,13 +44,12 @@ func (c *SupplyHistoryController) CreateSupplyHistory(ctx *gin.Context) {
 }
 
 func (c *SupplyHistoryController) GetSupplyHistoryByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	history, err := c.supplyHistoryService.GetSupplyHistoryByID(intID)
+	history, err := c.supplyHistoryService.GetSupplyHistoryByID(id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{Success: false, Error: "Supply history no encontrado: " + err.Error()})
 		return
@@ -66,30 +57,19 @@ func (c *SupplyHistoryController) GetSupplyHistoryByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, Response{Success: true, Data: history})
 }
 
-func (c *SupplyHistoryController) GetAllSupplyHistories(ctx *gin.Context) {
-	histories, err := c.supplyHistoryService.GetAllSupplyHistories()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener supply histories: " + err.Error()})
-		return
-	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
-}
-
 func (c *SupplyHistoryController) DeleteSupplyHistory(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	if err := c.supplyHistoryService.DeleteSupplyHistory(intID); err != nil {
+	if err := c.supplyHistoryService.DeleteSupplyHistory(id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al eliminar supply history: " + err.Error()})
 		return
 	}
 	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Supply history eliminado"})
 }
 
-// GetAllSupplyHistory - obtiene todos los supply histories
 func (c *SupplyHistoryController) GetAllSupplyHistory(ctx *gin.Context) {
 	histories, err := c.supplyHistoryService.GetAllSupplyHistories()
 	if err != nil {
@@ -99,11 +79,9 @@ func (c *SupplyHistoryController) GetAllSupplyHistory(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
 }
 
-// UpdateSupplyHistory - actualiza un supply history por ID
 func (c *SupplyHistoryController) UpdateSupplyHistory(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
@@ -112,11 +90,16 @@ func (c *SupplyHistoryController) UpdateSupplyHistory(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
-	if err := c.supplyHistoryService.UpdateSupplyHistory(intID, &history); err != nil {
+	if err := c.supplyHistoryService.UpdateSupplyHistory(id, &history); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar supply history: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Supply history actualizado", Data: history})
+	updatedHistory, err := c.supplyHistoryService.GetSupplyHistoryByID(id)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Response{Success: true, Message: "Supply history actualizado"})
+		return
+	}
+	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Supply history actualizado", Data: updatedHistory})
 }
 
 // GetAllSupplyHistoriesWithDetails - obtiene todos los supply histories con información detallada del insumo

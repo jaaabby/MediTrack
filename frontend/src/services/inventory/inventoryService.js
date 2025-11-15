@@ -51,14 +51,8 @@ class InventoryService {
       const response = await this.api.get(`/medical-supplies/inventory/store?store_id=${storeId}`)
       return response.data.data || response.data || []
     } catch (error) {
-      // Fallback sin parámetros de query
-      try {
-        const response = await this.api.get(`/medical-supplies/inventory/store/?store_id=${storeId}`)
-        return response.data.data || response.data || []
-      } catch (fallbackError) {
-        console.error('Error al obtener inventario por bodega:', error)
-        throw error
-      }
+      console.error('Error al obtener inventario por bodega:', error)
+      throw error
     }
   }
 
@@ -68,21 +62,15 @@ class InventoryService {
       const response = await this.api.get(`/medical-supplies/inventory/supplier?supplier=${encodeURIComponent(supplier)}`)
       return response.data.data || response.data || []
     } catch (error) {
-      // Fallback con slash final
-      try {
-        const response = await this.api.get(`/medical-supplies/inventory/supplier/?supplier=${encodeURIComponent(supplier)}`)
-        return response.data.data || response.data || []
-      } catch (fallbackError) {
-        console.error('Error al obtener inventario por proveedor:', error)
-        throw error
-      }
+      console.error('Error al obtener inventario por proveedor:', error)
+      throw error
     }
   }
 
   // Obtener todos los insumos médicos (método original)
   async getAllMedicalSupplies() {
     try {
-      const response = await this.api.get('/medical-supplies/')
+      const response = await this.api.get('/medical-supplies')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener insumos médicos:', error)
@@ -93,7 +81,7 @@ class InventoryService {
   // Crear insumo médico básico
   async createMedicalSupply(supply) {
     try {
-      const response = await this.api.post('/medical-supplies/', supply)
+      const response = await this.api.post('/medical-supplies', supply)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al crear insumo médico:', error)
@@ -113,7 +101,7 @@ class InventoryService {
       }
 
       console.log('Datos formateados:', formattedData)
-      const response = await this.api.post('/batches/', formattedData)
+      const response = await this.api.post('/batches', formattedData)
       return response.data
     } catch (error) {
       const backendError = error.response?.data?.error || error.message
@@ -125,7 +113,7 @@ class InventoryService {
   // Crear código de insumo (supply code)
   async createSupplyCode(supplyCodeData) {
     try {
-      const response = await this.api.post('/supply-codes/', supplyCodeData)
+      const response = await this.api.post('/supply-codes', supplyCodeData)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al crear código de insumo:', error)
@@ -222,7 +210,7 @@ class InventoryService {
         supplier: '',
         store_id: ''
       };
-      const response = await this.api.post('/batch-history/', {
+      const response = await this.api.post('/batch-history', {
         date_time: now,
         change_details: 'Lote creado',
         previous_values: '{}',
@@ -242,7 +230,7 @@ class InventoryService {
   // Actualizar insumo médico
   async updateMedicalSupply(id, supply) {
     try {
-      const response = await this.api.put(`/medical-supplies/${id}/`, supply)
+      const response = await this.api.put(`/medical-supplies/${id}`, supply)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al actualizar insumo médico:', error)
@@ -253,7 +241,7 @@ class InventoryService {
   // Actualizar batch (lote) - Compatible con ambas versiones
   async updateBatch(id, batchData) {
     try {
-      const response = await this.api.put(`/batches/${id}/`, batchData)
+      const response = await this.api.put(`/batches/${id}`, batchData)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al actualizar batch:', error)
@@ -264,7 +252,7 @@ class InventoryService {
   // Eliminar batch (lote) - Compatible con ambas versiones
   async deleteBatch(id) {
     try {
-      const response = await this.api.delete(`/batches/${id}/`)
+      const response = await this.api.delete(`/batches/${id}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al eliminar batch:', error)

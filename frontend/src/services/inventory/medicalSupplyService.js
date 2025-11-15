@@ -53,7 +53,7 @@ class MedicalSupplyService {
 
   async getMedicalSupplyByID(id) {
     try {
-      const response = await this.api.get(`/medical-supplies/${id}/`)
+      const response = await this.api.get(`/medical-supplies/${id}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener insumo médico:', error)
@@ -63,7 +63,7 @@ class MedicalSupplyService {
 
   async updateMedicalSupply(id, supplyData) {
     try {
-      const response = await this.api.put(`/medical-supplies/${id}/`, supplyData)
+      const response = await this.api.put(`/medical-supplies/${id}`, supplyData)
       return response.data
     } catch (error) {
       console.error('Error al actualizar insumo médico:', error)
@@ -73,7 +73,7 @@ class MedicalSupplyService {
 
   async deleteMedicalSupply(id) {
     try {
-      const response = await this.api.delete(`/medical-supplies/${id}/`)
+      const response = await this.api.delete(`/medical-supplies/${id}`)
       return response.data
     } catch (error) {
       console.error('Error al eliminar insumo médico:', error)
@@ -87,7 +87,7 @@ class MedicalSupplyService {
 
   async getInventoryList() {
     try {
-      const response = await this.api.get('/medical-supplies/inventory/')
+      const response = await this.api.get('/medical-supplies/inventory')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener lista de inventario:', error)
@@ -97,7 +97,7 @@ class MedicalSupplyService {
 
   async getInventoryListAdvanced() {
     try {
-      const response = await this.api.get('/medical-supplies/inventory/advanced/')
+      const response = await this.api.get('/medical-supplies/inventory/advanced')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener inventario avanzado:', error)
@@ -111,7 +111,7 @@ class MedicalSupplyService {
 
   async getMedicalSupplyByQR(qrcode) {
     try {
-      const response = await this.api.get(`/medical-supplies/qr/${qrcode}/`)
+      const response = await this.api.get(`/medical-supplies/qr/${qrcode}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener insumo por QR:', error)
@@ -121,7 +121,7 @@ class MedicalSupplyService {
 
   async getSupplyWithBatchInfo(qrcode) {
     try {
-      const response = await this.api.get(`/medical-supplies/details/${qrcode}/`)
+      const response = await this.api.get(`/medical-supplies/details/${qrcode}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener insumo con información de lote:', error)
@@ -131,7 +131,7 @@ class MedicalSupplyService {
 
   async getIndividualSuppliesByCode(code) {
     try {
-      const response = await this.api.get(`/medical-supplies/code/${code}/`)
+      const response = await this.api.get(`/medical-supplies/code/${code}`)
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener insumos individuales por código:', error)
@@ -141,7 +141,7 @@ class MedicalSupplyService {
 
   async getAvailableSuppliesByBatch(batchId) {
     try {
-      const response = await this.api.get(`/medical-supplies/batch/${batchId}/available/`)
+      const response = await this.api.get(`/medical-supplies/batch/${batchId}/available`)
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener insumos disponibles por lote:', error)
@@ -155,7 +155,7 @@ class MedicalSupplyService {
 
   async createMultipleSupplies(suppliesData) {
     try {
-      const response = await this.api.post('/medical-supplies/create-multiple/', suppliesData)
+      const response = await this.api.post('/medical-supplies/create-multiple', suppliesData)
       return response.data
     } catch (error) {
       console.error('Error al crear múltiples insumos:', error)
@@ -165,7 +165,7 @@ class MedicalSupplyService {
 
   async consumeSupply(consumeData) {
     try {
-      const response = await this.api.post('/medical-supplies/consume/', consumeData)
+      const response = await this.api.post('/medical-supplies/consume', consumeData)
       return response.data
     } catch (error) {
       console.error('Error al consumir insumo:', error)
@@ -173,9 +173,9 @@ class MedicalSupplyService {
     }
   }
 
-  async syncBatchAmounts(syncData) {
+  async syncBatchAmounts() {
     try {
-      const response = await this.api.post('/medical-supplies/sync-amounts/', syncData)
+      const response = await this.api.post('/medical-supplies/sync-amounts')
       return response.data
     } catch (error) {
       console.error('Error al sincronizar cantidades de lotes:', error)
@@ -187,9 +187,9 @@ class MedicalSupplyService {
   // ALERTAS DE INSUMOS NO CONSUMIDOS
   // ========================
 
-  async getUnconsumedSupplies(days = 15) {
+  async getUnconsumedSupplies() {
     try {
-      const response = await this.api.get(`/medical-supplies/unconsumed/?days=${days}`)
+      const response = await this.api.get('/medical-supplies/unconsumed')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener insumos no consumidos:', error)
@@ -197,9 +197,9 @@ class MedicalSupplyService {
     }
   }
 
-  async checkUnconsumedSupplies(checkData = {}) {
+  async checkUnconsumedSupplies() {
     try {
-      const response = await this.api.post('/medical-supplies/check-unconsumed/', checkData)
+      const response = await this.api.post('/medical-supplies/check-unconsumed')
       return response.data
     } catch (error) {
       console.error('Error al verificar insumos no consumidos:', error)
@@ -213,7 +213,7 @@ class MedicalSupplyService {
 
   async checkLowStockForIndividualSupply(supplyCode) {
     try {
-      const response = await this.api.post(`/medical-supplies/${supplyCode}/check-low-stock/`)
+      const response = await this.api.post(`/medical-supplies/${supplyCode}/check-low-stock`)
       return response.data
     } catch (error) {
       console.error('Error al verificar alerta de stock bajo para insumo individual:', error)
@@ -223,7 +223,7 @@ class MedicalSupplyService {
 
   async checkAllIndividualSuppliesLowStock() {
     try {
-      const response = await this.api.post('/medical-supplies/check-all-low-stock/')
+      const response = await this.api.post('/medical-supplies/check-all-low-stock')
       return response.data
     } catch (error) {
       console.error('Error al verificar alertas de stock bajo para todos los insumos individuales:', error)

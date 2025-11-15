@@ -1,4 +1,3 @@
-// services/storeService.js
 import axios from 'axios'
 import { getApiBaseUrl } from '@/config/api.js'
 
@@ -28,68 +27,42 @@ class StoreService {
     )
   }
 
-  // Obtener todos los almacenes/stores
   async getAllStores() {
     try {
       const response = await this.api.get('/stores/')
       return response.data.data || response.data || []
     } catch (error) {
-      console.error('Error al obtener almacenes:', error)
+      console.error('Error en getAllStores:', error)
       throw error
     }
   }
 
-  // Obtener almacén por ID
-  async getStoreById(id) {
-    try {
-      const response = await this.api.get(`/stores/${id}`)
-      return response.data.data || response.data
-    } catch (error) {
-      console.error('Error al obtener almacén:', error)
-      throw error
-    }
-  }
-
-  // Obtener almacenes por centro médico
-  async getByMedicalCenter(medicalCenterId) {
-    try {
-      const allStores = await this.getAllStores()
-      return allStores.filter(s => s.medical_center_id === parseInt(medicalCenterId))
-    } catch (error) {
-      console.error('Error al obtener almacenes por centro médico:', error)
-      throw error
-    }
-  }
-
-  // Crear nuevo almacén
   async createStore(storeData) {
     try {
-      const response = await this.api.post('/stores', storeData)
+      const response = await this.api.post('/stores/', storeData)
       return response.data
     } catch (error) {
-      console.error('Error al crear almacén:', error)
+      console.error('Error en createStore:', error)
       throw error
     }
   }
 
-  // Actualizar almacén
   async updateStore(id, storeData) {
     try {
       const response = await this.api.put(`/stores/${id}`, storeData)
       return response.data
     } catch (error) {
-      console.error('Error al actualizar almacén:', error)
+      console.error('Error en updateStore:', error)
       throw error
     }
   }
 
-  // Eliminar almacén
   async deleteStore(id) {
     try {
       const response = await this.api.delete(`/stores/${id}`)
       return response.data
     } catch (error) {
-      console.error('Error al eliminar almacén:', error)
+      console.error('Error en deleteStore:', error)
       throw error
     }
   }

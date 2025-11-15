@@ -689,8 +689,6 @@ func (c *QRController) GenerateSupplyQR(ctx *gin.Context) {
 
 // TransferSupply transfiere un insumo individual por su código QR
 func (c *QRController) TransferSupply(ctx *gin.Context) {
-	fmt.Printf("🎯 DEBUG - CONTROLLER TransferSupply llamado desde %s, Time=%s\n",
-		ctx.ClientIP(), time.Now().Format("2006-01-02 15:04:05.000"))
 
 	var request struct {
 		QRCode          string `json:"qr_code" binding:"required"`
@@ -1243,7 +1241,7 @@ func (c *QRController) ReturnSupplyToStore(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Insumo regresado a bodega exitosamente",
+		Message: "Insumo marcado como en camino a bodega. Debe confirmar la llegada cuando el insumo llegue físicamente.",
 		Data: map[string]interface{}{
 			"qr_code": request.QRCode,
 			"status":  "en_camino_a_bodega",
@@ -1326,10 +1324,7 @@ func (c *QRController) ConfirmArrivalToStore(ctx *gin.Context) {
 
 		// Verificar y cerrar el carrito si corresponde
 		if c.cartService != nil {
-			if err := c.cartService.CheckAndAutoCloseCartForSupply(supply.ID, req.UserRUT, userName); err != nil {
-				// Log del error pero no fallar la respuesta
-				fmt.Printf("⚠️ Error al verificar cierre automático del carrito: %v\n", err)
-			}
+			_ = c.cartService.CheckAndAutoCloseCartForSupply(supply.ID, req.UserRUT, userName)
 		}
 	}
 

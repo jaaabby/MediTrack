@@ -96,20 +96,13 @@ func (s *DoctorInfoService) UpdateDoctorInfo(rut string, doctorInfo *models.Doct
 		return nil, err
 	}
 
-	existingDoctorInfo.MedicalLicense = doctorInfo.MedicalLicense
-	if doctorInfo.LicenseExpirationDate != nil {
-		existingDoctorInfo.LicenseExpirationDate = doctorInfo.LicenseExpirationDate
+	// Actualizar campos omitiendo user_rut, created_at y updated_at
+	if err := s.DB.Model(&existingDoctorInfo).Omit("user_rut", "created_at", "updated_at").Updates(doctorInfo).Error; err != nil {
+		return nil, err
 	}
-	existingDoctorInfo.Specialization = doctorInfo.Specialization
-	existingDoctorInfo.SpecialtyID = doctorInfo.SpecialtyID
-	existingDoctorInfo.YearsOfExperience = doctorInfo.YearsOfExperience
-	existingDoctorInfo.Phone = doctorInfo.Phone
-	existingDoctorInfo.EmergencyContact = doctorInfo.EmergencyContact
-	existingDoctorInfo.EmergencyPhone = doctorInfo.EmergencyPhone
-	existingDoctorInfo.IsAvailable = doctorInfo.IsAvailable
-	existingDoctorInfo.Notes = doctorInfo.Notes
 
-	if err := s.DB.Save(&existingDoctorInfo).Error; err != nil {
+	// Recargar con relaciones para retornar datos completos
+	if err := s.DB.Preload("User").Preload("Specialty").Where("user_rut = ?", rut).First(&existingDoctorInfo).Error; err != nil {
 		return nil, err
 	}
 
@@ -120,17 +113,3 @@ func (s *DoctorInfoService) UpdateDoctorInfo(rut string, doctorInfo *models.Doct
 func (s *DoctorInfoService) DeleteDoctorInfo(rut string) error {
 	return s.DB.Where("user_rut = ?", rut).Delete(&models.DoctorInfo{}).Error
 }
-
-// GetDoctorsBySpecialtyCode obtiene todos los doctores de una especialidad por código
-func (s *DoctorInfoService) GetDoctorsBySpecialtyCode(specialtyCode string) ([]models.DoctorInfo, error) {
-	var doctorsInfo []models.DoctorInfo
-	if err := s.DB.Preload("User").Preload("Specialty").
-		Joins("JOIN medical_specialty ms ON doctor_info.specialty_id = ms.id").
-		Where("ms.code = ? AND doctor_info.is_available = ?", specialtyCode, true).
-		Order("user_rut ASC").
-		Find(&doctorsInfo).Error; err != nil {
-		return nil, err
-	}
-	return doctorsInfo, nil
-}
-

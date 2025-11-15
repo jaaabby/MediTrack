@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"fmt"
 	"meditrack/models"
 	"meditrack/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,21 +18,16 @@ func NewPavilionController(pavilionService services.PavilionService) *PavilionCo
 }
 
 func (c *PavilionController) CreatePavilion(ctx *gin.Context) {
-	var pavilionRequest struct {
-		Name            string `json:"name" binding:"required"`
-		MedicalCenterID int    `json:"medical_center_id" binding:"required"`
-	}
+	var pavilion models.Pavilion
 
-	if err := ctx.ShouldBindJSON(&pavilionRequest); err != nil {
+	if err := ctx.ShouldBindJSON(&pavilion); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
 
-	// Crear modelo sin ID
-	pavilion := models.Pavilion{
-		Name:            pavilionRequest.Name,
-		MedicalCenterID: pavilionRequest.MedicalCenterID,
-		// ID se auto-generará
+	if pavilion.Name == "" {
+		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "El nombre es requerido"})
+		return
 	}
 
 	if err := c.pavilionService.CreatePavilion(&pavilion); err != nil {
@@ -43,13 +38,12 @@ func (c *PavilionController) CreatePavilion(ctx *gin.Context) {
 }
 
 func (c *PavilionController) GetPavilionByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	pavilion, err := c.pavilionService.GetPavilionByID(intID)
+	pavilion, err := c.pavilionService.GetPavilionByID(id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{Success: false, Error: "Pavilion no encontrado: " + err.Error()})
 		return
@@ -58,10 +52,8 @@ func (c *PavilionController) GetPavilionByID(ctx *gin.Context) {
 }
 
 func (c *PavilionController) GetAllPavilions(ctx *gin.Context) {
-	fmt.Println("[LOG] GET /pavilions llamado")
 	pavilions, err := c.pavilionService.GetAllPavilions()
 	if err != nil {
-		fmt.Println("[LOG] Error al obtener pavilions:", err)
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener pavilions: " + err.Error()})
 		return
 	}
@@ -69,9 +61,8 @@ func (c *PavilionController) GetAllPavilions(ctx *gin.Context) {
 }
 
 func (c *PavilionController) UpdatePavilion(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
@@ -80,22 +71,21 @@ func (c *PavilionController) UpdatePavilion(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
-	pavilion.ID = intID
-	if _, err := c.pavilionService.UpdatePavilion(intID, &pavilion); err != nil {
+	updatedPavilion, err := c.pavilionService.UpdatePavilion(id, &pavilion)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar pavilion: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Pavilion actualizado", Data: pavilion})
+	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Pavilion actualizado", Data: updatedPavilion})
 }
 
 func (c *PavilionController) DeletePavilion(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	if err := c.pavilionService.DeletePavilion(intID); err != nil {
+	if err := c.pavilionService.DeletePavilion(id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al eliminar pavilion: " + err.Error()})
 		return
 	}

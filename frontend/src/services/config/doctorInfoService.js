@@ -37,38 +37,12 @@ class DoctorInfoService {
     }
   }
 
-  async getDoctorsPaginated(page = 1, pageSize = 20, search = '', specialtyId = null) {
-    try {
-      const params = {
-        page: page.toString(),
-        page_size: pageSize.toString(),
-        ...(search && { search }),
-        ...(specialtyId && { specialty_id: specialtyId.toString() })
-      }
-      const response = await this.api.get('/doctors', { params })
-      return response.data.data || response.data
-    } catch (error) {
-      console.error('Error en getDoctorsPaginated:', error)
-      throw error
-    }
-  }
-
   async getDoctorByRut(rut) {
     try {
       const response = await this.api.get(`/doctors/${rut}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error en getDoctorByRut:', error)
-      throw error
-    }
-  }
-
-  async getDoctorsBySpecialtyId(specialtyId) {
-    try {
-      const response = await this.api.get(`/doctors/specialty/${specialtyId}`)
-      return response.data.data?.doctors || response.data.doctors || []
-    } catch (error) {
-      console.error('Error en getDoctorsBySpecialtyId:', error)
       throw error
     }
   }

@@ -34,19 +34,19 @@
 @layer components {
   /* Botones */
   .btn-primary {
-    @apply bg-brand-blue-dark hover:bg-brand-blue-medium text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-blue-light focus:ring-offset-2;
+    @apply bg-brand-blue-dark hover:bg-brand-blue-medium text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-blue-light focus:ring-offset-2 flex items-center justify-center;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center justify-center;
   }
   
   .btn-success {
-    @apply bg-brand-green hover:bg-opacity-90 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2;
+    @apply bg-brand-green hover:bg-opacity-90 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 flex items-center justify-center;
   }
   
   .btn-danger {
-    @apply bg-brand-pink hover:bg-opacity-90 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:ring-offset-2;
+    @apply bg-brand-pink hover:bg-opacity-90 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:ring-offset-2 flex items-center justify-center;
   }
   
   /* Campos de formulario */

@@ -235,34 +235,3 @@ func (c *DoctorInfoController) DeleteDoctorInfo(ctx *gin.Context) {
 	})
 }
 
-// GetDoctorsBySpecialtyCode obtiene todos los doctores de una especialidad por código
-func (c *DoctorInfoController) GetDoctorsBySpecialtyCode(ctx *gin.Context) {
-	specialtyCode := ctx.Param("code")
-	if specialtyCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Message: "Código de especialidad inválido",
-		})
-		return
-	}
-
-	doctorsInfo, err := c.doctorInfoService.GetDoctorsBySpecialtyCode(specialtyCode)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
-			Success: false,
-			Message: "Error al obtener doctores de la especialidad",
-			Error:   err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, Response{
-		Success: true,
-		Message: "Doctores obtenidos",
-		Data: gin.H{
-			"doctors": doctorsInfo,
-			"count":   len(doctorsInfo),
-		},
-	})
-}
-

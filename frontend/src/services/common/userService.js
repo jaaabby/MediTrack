@@ -45,7 +45,7 @@ export const userService = {
   // Obtener información completa del perfil del usuario
   async getProfile(email) {
     try {
-      const response = await apiClient.get(`/users/profile/${email}`)
+      const response = await apiClient.get(`/users/profile?email=${encodeURIComponent(email)}`)
       return {
         success: true,
         data: response.data
@@ -54,7 +54,7 @@ export const userService = {
       console.error('Error al obtener perfil:', error)
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al obtener información del perfil'
+        error: error.response?.data?.error || error.response?.data?.message || 'Error al obtener información del perfil'
       }
     }
   },
@@ -71,133 +71,7 @@ export const userService = {
       console.error('Error al actualizar perfil:', error)
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al actualizar el perfil'
-      }
-    }
-  },
-
-  // Cambiar contraseña
-  async changePassword(passwordData) {
-    try {
-      const response = await apiClient.put('/users/change-password', passwordData)
-      return {
-        success: true,
-        data: response.data
-      }
-    } catch (error) {
-      console.error('Error al cambiar contraseña:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al cambiar la contraseña'
-      }
-    }
-  },
-
-  // Obtener estadísticas del usuario
-  async getUserStats() {
-    try {
-      const response = await apiClient.get('/users/stats')
-      return {
-        success: true,
-        data: response.data
-      }
-    } catch (error) {
-      console.error('Error al obtener estadísticas:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al obtener estadísticas'
-      }
-    }
-  },
-
-  // Obtener historial de actividad del usuario
-  async getUserActivity(limit = 10, offset = 0) {
-    try {
-      const response = await apiClient.get(`/users/activity?limit=${limit}&offset=${offset}`)
-      return {
-        success: true,
-        data: response.data
-      }
-    } catch (error) {
-      console.error('Error al obtener actividad:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al obtener historial de actividad'
-      }
-    }
-  },
-
-  // Subir foto de perfil
-  async uploadProfilePicture(file) {
-    try {
-      const formData = new FormData()
-      formData.append('profile_picture', file)
-
-      const response = await apiClient.post('/users/profile-picture', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
-      return {
-        success: true,
-        data: response.data
-      }
-    } catch (error) {
-      console.error('Error al subir foto de perfil:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al subir la foto de perfil'
-      }
-    }
-  },
-
-  // Eliminar foto de perfil
-  async deleteProfilePicture() {
-    try {
-      const response = await apiClient.delete('/users/profile-picture')
-      return {
-        success: true,
-        data: response.data
-      }
-    } catch (error) {
-      console.error('Error al eliminar foto de perfil:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al eliminar la foto de perfil'
-      }
-    }
-  },
-
-  // Obtener configuración de notificaciones del usuario
-  async getNotificationSettings() {
-    try {
-      const response = await apiClient.get('/users/notification-settings')
-      return {
-        success: true,
-        data: response.data
-      }
-    } catch (error) {
-      console.error('Error al obtener configuración de notificaciones:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al obtener configuración de notificaciones'
-      }
-    }
-  },
-
-  // Actualizar configuración de notificaciones
-  async updateNotificationSettings(settings) {
-    try {
-      const response = await apiClient.put('/users/notification-settings', settings)
-      return {
-        success: true,
-        data: response.data
-      }
-    } catch (error) {
-      console.error('Error al actualizar configuración de notificaciones:', error)
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al actualizar configuración de notificaciones'
+        error: error.response?.data?.error || error.response?.data?.message || 'Error al actualizar el perfil'
       }
     }
   },

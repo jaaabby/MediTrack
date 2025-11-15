@@ -74,11 +74,7 @@ func (s *SurgeryService) UpdateSurgery(id int, surgery *models.Surgery) (*models
 		return nil, err
 	}
 
-	existingSurgery.Name = surgery.Name
-	existingSurgery.Duration = surgery.Duration
-	existingSurgery.SpecialtyID = surgery.SpecialtyID
-
-	if err := s.DB.Save(&existingSurgery).Error; err != nil {
+	if err := s.DB.Model(&existingSurgery).Omit("id", "created_at", "updated_at").Updates(surgery).Error; err != nil {
 		return nil, err
 	}
 

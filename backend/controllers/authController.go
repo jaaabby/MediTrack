@@ -2,12 +2,12 @@ package controllers
 
 import (
 	"fmt"
-	"net/http"
-	"time"
-
 	"meditrack/config"
 	"meditrack/models"
+	"meditrack/pkg/response"
 	"meditrack/services"
+	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -25,6 +25,15 @@ func NewAuthController(userService services.UserService, secretKey string) *Auth
 		userService: userService,
 		secretKey:   secretKey,
 	}
+}
+
+// getUserIDFromContext obtiene el user_id del contexto de Gin
+func (c *AuthController) getUserIDFromContext(ctx *gin.Context) (string, error) {
+	userID, exists := ctx.Get("user_id")
+	if !exists {
+		return "", fmt.Errorf("usuario no autenticado")
+	}
+	return userID.(string), nil
 }
 
 // LoginRequest representa la solicitud de login
@@ -55,7 +64,7 @@ type LoginResponse struct {
 func (c *AuthController) Login(ctx *gin.Context) {
 	var loginReq LoginRequest
 	if err := ctx.ShouldBindJSON(&loginReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de login inválidos: " + err.Error(),
 		})
@@ -65,7 +74,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	// Buscar usuario por email
 	user, err := c.userService.GetUserByEmail(loginReq.Email)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, Response{
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
 			Error:   "Credenciales inválidas",
 		})
@@ -74,7 +83,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 
 	// Verificar si el usuario está activo
 	if !user.IsActive {
-		ctx.JSON(http.StatusUnauthorized, Response{
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
 			Error:   "Usuario inactivo",
 		})
@@ -83,9 +92,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 
 	// Verificar contraseña
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
-		fmt.Println("user.Password", user.Password)
-		fmt.Println("loginReq.Password", loginReq.Password)
-		ctx.JSON(http.StatusUnauthorized, Response{
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
 			Error:   "Credenciales inválidas",
 		})
@@ -96,7 +103,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	duration := 24 * time.Hour
 	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, c.secretKey, duration)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al generar token: " + err.Error(),
 		})
@@ -111,7 +118,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		TokenType: "Bearer",
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Login exitoso",
 		Data:    loginResp,
@@ -120,25 +127,25 @@ func (c *AuthController) Login(ctx *gin.Context) {
 
 // GetProfile obtiene el perfil del usuario autenticado
 func (c *AuthController) GetProfile(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, Response{
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Error:   "Usuario no autenticado",
+			Error:   err.Error(),
 		})
 		return
 	}
 
-	user, err := c.userService.GetUserByRut(userID.(string))
+	user, err := c.userService.GetUserByRut(userID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   "Usuario no encontrado: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    user.ToResponse(),
 	})
@@ -152,17 +159,25 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&changePassReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
 		return
 	}
 
-	userID, _ := ctx.Get("user_id")
-	user, err := c.userService.GetUserByRut(userID.(string))
+	userID, err := c.getUserIDFromContext(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   "Usuario no encontrado",
 		})
@@ -171,7 +186,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 
 	// Verificar contraseña actual
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(changePassReq.CurrentPassword)); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Contraseña actual incorrecta",
 		})
@@ -181,7 +196,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	// Hashear nueva contraseña
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(changePassReq.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al procesar nueva contraseña",
 		})
@@ -191,14 +206,14 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	// Actualizar contraseña
 	user.Password = string(hashedPassword)
 	if _, err := c.userService.UpdateUser(user.RUT, user); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al actualizar contraseña: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Contraseña cambiada exitosamente",
 	})
@@ -208,7 +223,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 func (c *AuthController) Register(ctx *gin.Context) {
 	var registerReq RegisterRequest
 	if err := ctx.ShouldBindJSON(&registerReq); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de registro inválidos: " + err.Error(),
 		})
@@ -218,7 +233,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	// Verificar si el usuario ya existe por RUT
 	existingUserByRUT, _ := c.userService.GetUserByRut(registerReq.RUT)
 	if existingUserByRUT != nil {
-		ctx.JSON(http.StatusConflict, Response{
+		ctx.JSON(http.StatusConflict, response.Response{
 			Success: false,
 			Error:   "Ya existe un usuario con este RUT",
 		})
@@ -228,7 +243,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	// Verificar si el usuario ya existe por email
 	existingUserByEmail, _ := c.userService.GetUserByEmail(registerReq.Email)
 	if existingUserByEmail != nil {
-		ctx.JSON(http.StatusConflict, Response{
+		ctx.JSON(http.StatusConflict, response.Response{
 			Success: false,
 			Error:   "Ya existe un usuario con este email",
 		})
@@ -238,7 +253,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	// Hashear la contraseña
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerReq.Password), bcrypt.DefaultCost)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al procesar contraseña: " + err.Error(),
 		})
@@ -258,14 +273,14 @@ func (c *AuthController) Register(ctx *gin.Context) {
 
 	// Guardar usuario en la base de datos
 	if err := c.userService.CreateUser(newUser); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al crear usuario: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, Response{
+	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
 		Message: "Usuario registrado exitosamente",
 		Data:    newUser.ToResponse(),

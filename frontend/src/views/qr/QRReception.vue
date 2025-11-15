@@ -2,8 +2,20 @@
   <div class="max-w-4xl mx-auto p-6">
     <!-- Header -->
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Recepción de Insumos</h1>
-      <p class="text-gray-600 mt-2">Recepcionar insumos que están en camino al pabellón</p>
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Recepción de Insumos</h1>
+          <p class="text-gray-600 mt-2">Recepcionar insumos que están en camino al pabellón</p>
+        </div>
+        <div class="flex space-x-2">
+          <router-link to="/qr" class="btn-secondary">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Volver al Scanner
+          </router-link>
+        </div>
+      </div>
     </div>
 
     <!-- Mensaje de Error -->
@@ -172,10 +184,16 @@
               Estado cambiado de "{{ consumptionSuccess.status_change.from }}" a "{{ consumptionSuccess.status_change.to }}"
             </div>
           </div>
-          <div class="mt-4 flex space-x-3">
+          <div class="mt-4 flex flex-wrap gap-3">
             <button @click="resetForm" class="btn-primary text-sm">
               Recepcionar Otro Insumo
             </button>
+            <router-link to="/qr" class="btn-secondary text-sm">
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              Volver al Scanner
+            </router-link>
             <router-link v-if="consumptionSuccess.qr_code" :to="`/qr/${consumptionSuccess.qr_code}/traceability`" class="btn-secondary text-sm">
               Ver Trazabilidad
             </router-link>

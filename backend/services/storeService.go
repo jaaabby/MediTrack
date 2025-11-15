@@ -41,19 +41,14 @@ func (s *StoreService) UpdateStore(id int, newStore *models.Store) (*models.Stor
 		return nil, err
 	}
 
-	store.Name = newStore.Name
-	store.Type = newStore.Type
-	store.MedicalCenterID = newStore.MedicalCenterID
-
-	if err := s.DB.Save(&store).Error; err != nil {
+	// Actualizar campos omitiendo ID
+	if err := s.DB.Model(&store).Omit("id").Updates(newStore).Error; err != nil {
 		return nil, err
 	}
+
 	return &store, nil
 }
 
 func (s *StoreService) DeleteStore(id int) error {
-	if err := s.DB.Delete(&models.Store{}, id).Error; err != nil {
-		return err
-	}
-	return nil
+	return s.DB.Delete(&models.Store{}, id).Error
 }

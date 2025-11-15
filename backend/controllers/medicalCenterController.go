@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"fmt"
 	"meditrack/models"
 	"meditrack/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,25 +18,16 @@ func NewMedicalCenterController(medicalCenterService services.MedicalCenterServi
 }
 
 func (c *MedicalCenterController) CreateMedicalCenter(ctx *gin.Context) {
-	var centerRequest struct {
-		Name    string `json:"name" binding:"required"`
-		Address string `json:"address"`
-		Phone   string `json:"phone"`
-		Email   string `json:"email"`
-	}
+	var center models.MedicalCenter
 
-	if err := ctx.ShouldBindJSON(&centerRequest); err != nil {
+	if err := ctx.ShouldBindJSON(&center); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
 
-	// Crear modelo sin ID
-	center := models.MedicalCenter{
-		Name:    centerRequest.Name,
-		Address: centerRequest.Address,
-		Phone:   centerRequest.Phone,
-		Email:   centerRequest.Email,
-		// ID se auto-generará
+	if center.Name == "" {
+		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "El nombre es requerido"})
+		return
 	}
 
 	if err := c.medicalCenterService.CreateMedicalCenter(&center); err != nil {
@@ -47,13 +38,12 @@ func (c *MedicalCenterController) CreateMedicalCenter(ctx *gin.Context) {
 }
 
 func (c *MedicalCenterController) GetMedicalCenterByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	center, err := c.medicalCenterService.GetMedicalCenterByID(intID)
+	center, err := c.medicalCenterService.GetMedicalCenterByID(id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{Success: false, Error: "Centro médico no encontrado: " + err.Error()})
 		return
@@ -71,9 +61,8 @@ func (c *MedicalCenterController) GetAllMedicalCenters(ctx *gin.Context) {
 }
 
 func (c *MedicalCenterController) UpdateMedicalCenter(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
@@ -82,22 +71,21 @@ func (c *MedicalCenterController) UpdateMedicalCenter(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
-	center.ID = intID
-	if _, err := c.medicalCenterService.UpdateMedicalCenter(intID, &center); err != nil {
+	updatedCenter, err := c.medicalCenterService.UpdateMedicalCenter(id, &center)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar centro médico: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Centro médico actualizado", Data: center})
+	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Centro médico actualizado", Data: updatedCenter})
 }
 
 func (c *MedicalCenterController) DeleteMedicalCenter(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	if err := c.medicalCenterService.DeleteMedicalCenter(intID); err != nil {
+	if err := c.medicalCenterService.DeleteMedicalCenter(id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al eliminar centro médico: " + err.Error()})
 		return
 	}

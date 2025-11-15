@@ -33,7 +33,7 @@ class BatchService {
 
   async createBatch(batchData) {
     try {
-      const response = await this.api.post('/batches/', batchData)
+      const response = await this.api.post('/batches', batchData)
       return response.data
     } catch (error) {
       console.error('Error al crear lote:', error)
@@ -43,7 +43,7 @@ class BatchService {
 
   async getAllBatches() {
     try {
-      const response = await this.api.get('/batches/')
+      const response = await this.api.get('/batches')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener lotes:', error)
@@ -53,7 +53,7 @@ class BatchService {
 
   async getBatchByID(id) {
     try {
-      const response = await this.api.get(`/batches/${id}/`)
+      const response = await this.api.get(`/batches/${id}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener lote:', error)
@@ -63,7 +63,7 @@ class BatchService {
 
   async updateBatch(id, batchData) {
     try {
-      const response = await this.api.put(`/batches/${id}/`, batchData)
+      const response = await this.api.put(`/batches/${id}`, batchData)
       return response.data
     } catch (error) {
       console.error('Error al actualizar lote:', error)
@@ -73,7 +73,7 @@ class BatchService {
 
   async deleteBatch(id) {
     try {
-      const response = await this.api.delete(`/batches/${id}/`)
+      const response = await this.api.delete(`/batches/${id}`)
       return response.data
     } catch (error) {
       console.error('Error al eliminar lote:', error)
@@ -87,7 +87,7 @@ class BatchService {
 
   async createBatchWithIndividualSupplies(batchData) {
     try {
-      const response = await this.api.post('/batches/create-with-supplies/', batchData)
+      const response = await this.api.post('/batches/create-with-supplies', batchData)
       return response.data
     } catch (error) {
       console.error('Error al crear lote con insumos:', error)
@@ -97,7 +97,7 @@ class BatchService {
 
   async getBatchWithSupplyInfo(id) {
     try {
-      const response = await this.api.get(`/batches/${id}/with-supplies/`)
+      const response = await this.api.get(`/batches/${id}/with-supplies`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener lote con información de insumos:', error)
@@ -107,7 +107,7 @@ class BatchService {
 
   async getBatchByQR(qrcode) {
     try {
-      const response = await this.api.get(`/batches/qr/${qrcode}/`)
+      const response = await this.api.get(`/batches/qr/${qrcode}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener lote por QR:', error)
@@ -117,7 +117,7 @@ class BatchService {
 
   async getBatchesNeedingSync() {
     try {
-      const response = await this.api.get('/batches/sync/needed/')
+      const response = await this.api.get('/batches/sync/needed')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener lotes que necesitan sincronización:', error)
@@ -131,7 +131,7 @@ class BatchService {
 
   async updateBatchAmount(id, amount) {
     try {
-      const response = await this.api.patch(`/batches/${id}/amount/`, { amount })
+      const response = await this.api.patch(`/batches/${id}/amount`, { amount })
       return response.data
     } catch (error) {
       console.error('Error al actualizar cantidad del lote:', error)
@@ -141,7 +141,7 @@ class BatchService {
 
   async syncAllBatchAmounts() {
     try {
-      const response = await this.api.post('/batches/sync/all/')
+      const response = await this.api.post('/batches/sync/all')
       return response.data
     } catch (error) {
       console.error('Error al sincronizar cantidades de lotes:', error)
@@ -155,7 +155,7 @@ class BatchService {
 
   async checkLowStockAlert(id) {
     try {
-      const response = await this.api.post(`/batches/${id}/check-low-stock/`)
+      const response = await this.api.post(`/batches/${id}/check-low-stock`)
       return response.data
     } catch (error) {
       console.error('Error al verificar alerta de bajo stock:', error)
@@ -166,7 +166,7 @@ class BatchService {
   async checkExpirationAlert(id, days = null) {
     try {
       const params = days ? { days } : {}
-      const response = await this.api.post(`/batches/${id}/check-expiration/`, null, { params })
+      const response = await this.api.post(`/batches/${id}/check-expiration`, null, { params })
       return response.data
     } catch (error) {
       console.error('Error al verificar alerta de expiración:', error)
@@ -176,7 +176,7 @@ class BatchService {
 
   async checkAllBatchesExpiration() {
     try {
-      const response = await this.api.post('/batches/check-all-expiration/')
+      const response = await this.api.post('/batches/check-all-expiration')
       return response.data
     } catch (error) {
       console.error('Error al verificar alertas de vencimiento para todos los lotes:', error)
@@ -186,7 +186,7 @@ class BatchService {
 
   async checkAllBatchesLowStock() {
     try {
-      const response = await this.api.post('/batches/check-all-low-stock/')
+      const response = await this.api.post('/batches/check-all-low-stock')
       return response.data
     } catch (error) {
       console.error('Error al verificar alertas de stock bajo para todos los lotes:', error)
@@ -196,7 +196,7 @@ class BatchService {
 
   async getLowStockSummary() {
     try {
-      const response = await this.api.get('/batches/low-stock-summary/')
+      const response = await this.api.get('/batches/low-stock-summary')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener resumen de stock bajo:', error)

@@ -68,11 +68,7 @@ func (s *SurgeryTypicalSupplyService) UpdateSurgeryTypicalSupply(id int, typical
 		return nil, err
 	}
 
-	existingTypicalSupply.TypicalQuantity = typicalSupply.TypicalQuantity
-	existingTypicalSupply.IsRequired = typicalSupply.IsRequired
-	existingTypicalSupply.Notes = typicalSupply.Notes
-
-	if err := s.DB.Save(&existingTypicalSupply).Error; err != nil {
+	if err := s.DB.Model(&existingTypicalSupply).Omit("id", "surgery_id", "supply_code", "created_at", "updated_at").Updates(typicalSupply).Error; err != nil {
 		return nil, err
 	}
 

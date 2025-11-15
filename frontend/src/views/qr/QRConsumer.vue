@@ -237,10 +237,16 @@
               }}"
             </div>
           </div>
-          <div class="mt-4 flex space-x-3">
+          <div class="mt-4 flex flex-wrap gap-3">
             <button @click="resetForm" class="btn-primary text-sm">
               Consumir Otro Insumo
             </button>
+            <router-link to="/qr" class="btn-secondary text-sm">
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              Volver al Scanner
+            </router-link>
             <router-link v-if="consumptionSuccess.qr_code" :to="`/qr/${consumptionSuccess.qr_code}/traceability`"
               class="btn-secondary text-sm">
               Ver Trazabilidad

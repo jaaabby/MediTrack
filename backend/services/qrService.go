@@ -148,16 +148,6 @@ func (s *QRService) ScanQRWithAutoLogging(qrCode string, context *ScanContext) (
 	stats, _ := s.GetQRScanStatistics(qrCode)
 	qrInfo.ScanStatistics = stats
 
-	// Log para debug del frontend
-	fmt.Printf("DEBUG - QR Response from ScanQRWithAutoLogging for %s:\n", qrInfo.QRCode)
-	fmt.Printf("  - SupplyInfo exists: %v\n", qrInfo.SupplyInfo != nil)
-	if qrInfo.SupplyInfo != nil {
-		fmt.Printf("  - BatchInfo exists: %v\n", qrInfo.SupplyInfo.BatchInfo != nil)
-		if qrInfo.SupplyInfo.BatchInfo != nil {
-			fmt.Printf("  - Batch ID: %d, Amount: %d\n", qrInfo.SupplyInfo.BatchInfo.ID, qrInfo.SupplyInfo.BatchInfo.Amount)
-		}
-	}
-
 	return qrInfo, nil
 }
 
@@ -177,7 +167,6 @@ func (s *QRService) logScanEvent(qrCode string, context *ScanContext, qrInfo *QR
 
 			if err == nil {
 				// Ya existe un escaneo reciente, no crear otro
-				fmt.Printf("DEBUG - Evitando duplicar escaneo de verificación para %s\n", qrCode)
 				return &recentScan, nil
 			}
 		}
@@ -463,8 +452,7 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 		// Obtener información de trazabilidad
 		traceability, err := s.GetQRTraceability(qrCode)
 		if err != nil {
-			// No fallar si no hay trazabilidad, solo registrar
-			fmt.Printf("Advertencia: Error obteniendo trazabilidad para %s: %v\n", qrCode, err)
+			// No fallar si no hay trazabilidad
 		} else {
 			result.Traceability = traceability
 		}
@@ -478,26 +466,16 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 			First(&assignment).Error; err == nil {
 			result.RequestAssignment = &assignment
 			result.SupplyRequest = &assignment.SupplyRequest
-			
-			fmt.Printf("DEBUG - Found assignment for QR %s: ID=%d, Status=%s\n", qrCode, assignment.ID, assignment.Status)
 
 			// Cargar información del carrito si esta asignación está en un carrito
-			// Buscar tanto items activos como inactivos para mostrar el carrito completo
 			var cartItem models.SupplyCartItem
 			if err := s.DB.Where("supply_request_qr_assignment_id = ?", assignment.ID).
 				Preload("SupplyCart").
 				Order("added_at DESC").
 				First(&cartItem).Error; err == nil {
-				// Agregar la información del carrito al assignment
 				assignment.Cart = &cartItem.SupplyCart
 				result.RequestAssignment = &assignment
-				fmt.Printf("DEBUG - Found cart item for assignment %d: Cart ID=%d, Cart Number=%s\n", 
-					assignment.ID, cartItem.SupplyCart.ID, cartItem.SupplyCart.CartNumber)
-			} else {
-				fmt.Printf("DEBUG - No cart item found for assignment %d: %v\n", assignment.ID, err)
 			}
-		} else {
-			fmt.Printf("DEBUG - No assignment found for QR %s: %v\n", qrCode, err)
 		}
 
 	} else if qrType == "batch" {
@@ -888,16 +866,6 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 	result["scan_events"] = qrInfo.ScanEvents
 	result["scan_statistics"] = qrInfo.ScanStatistics
 
-	// Log para debug del frontend
-	fmt.Printf("DEBUG - QR Response for %s:\n", qrInfo.QRCode)
-	fmt.Printf("  - SupplyInfo exists: %v\n", qrInfo.SupplyInfo != nil)
-	if qrInfo.SupplyInfo != nil {
-		fmt.Printf("  - BatchInfo exists: %v\n", qrInfo.SupplyInfo.BatchInfo != nil)
-		if qrInfo.SupplyInfo.BatchInfo != nil {
-			fmt.Printf("  - Batch ID: %d, Amount: %d\n", qrInfo.SupplyInfo.BatchInfo.ID, qrInfo.SupplyInfo.BatchInfo.Amount)
-		}
-	}
-
 	return result, nil
 }
 
@@ -905,10 +873,6 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destinationType string, destinationID int, notes string) (map[string]interface{}, error) {
 	var supply models.MedicalSupply
 	var result map[string]interface{}
-
-	// DEBUG: Log de entrada al método
-	fmt.Printf("🚀 DEBUG - INICIO TransferSupplyByQR: QR=%s, User=%s, Destination=%s:%d, Time=%s\n",
-		qrCode, userRUT, destinationType, destinationID, time.Now().Format("2006-01-02 15:04:05.000"))
 
 	// Validar formato del RUT
 	if len(userRUT) < 9 || !strings.Contains(userRUT, "-") {
@@ -976,17 +940,6 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			return fmt.Errorf("error actualizando estado del insumo: %v", err)
 		}
 
-		// 🕵️ DEBUG: Verificar SI el update del estado creó historial automáticamente
-		var historyCountAfterUpdate int64
-		tx.Model(&models.SupplyHistory{}).Where("medical_supply_id = ?", supply.ID).Count(&historyCountAfterUpdate)
-		fmt.Printf("🔍 DEBUG - DESPUÉS de Update status: QR=%s, HistoryCount=%d\n", qrCode, historyCountAfterUpdate)
-
-		// DEBUG: Verificar cuántas entradas de historial existen para este insumo ANTES de crear nueva
-		var historyCountBefore int64
-		tx.Model(&models.SupplyHistory{}).Where("medical_supply_id = ?", supply.ID).Count(&historyCountBefore)
-		fmt.Printf("DEBUG - ANTES crear historial: QR=%s, SupplyID=%d, HistoryCount=%d, CurrentStatus=%s\n",
-			qrCode, supply.ID, historyCountBefore, supply.Status)
-
 		// Crear entrada en el historial de suministros para la transferencia
 		history := models.SupplyHistory{
 			DateTime:        time.Now(),
@@ -998,19 +951,9 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			Notes:           fmt.Sprintf("Transferencia a %s - %s", destinationType, notes),
 		}
 
-		// DEBUG: Log para detectar posibles duplicados
-		fmt.Printf("DEBUG - Creando historial de transferencia: QR=%s, Status=%s, Destination=%s:%d, User=%s, Time=%s\n",
-			qrCode, transitStatus, destinationType, destinationID, userRUT, history.DateTime.Format("2006-01-02 15:04:05"))
-
 		if err := tx.Create(&history).Error; err != nil {
 			return fmt.Errorf("error creando historial de transferencia: %v", err)
 		}
-
-		// DEBUG: Verificar cuántas entradas existen DESPUÉS de crear
-		var historyCountAfter int64
-		tx.Model(&models.SupplyHistory{}).Where("medical_supply_id = ?", supply.ID).Count(&historyCountAfter)
-		fmt.Printf("DEBUG - DESPUÉS crear historial: QR=%s, HistoryID=%d, HistoryCount=%d (incremento: %d)\n",
-			qrCode, history.ID, historyCountAfter, historyCountAfter-historyCountBefore)
 
 		// Crear registro en supply_transfer para tracking en la vista de transferencias
 		transferCode := fmt.Sprintf("TRF-%d-%s", supply.ID, time.Now().Format("20060102150405"))
@@ -1054,9 +997,6 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			return fmt.Errorf("error creando registro de transferencia: %v", err)
 		}
 
-		fmt.Printf("✅ DEBUG - Registro de transferencia creado: Code=%s, QR=%s, Origin=%s:%d, Destination=%s:%d\n",
-			transferCode, qrCode, originType, originID, destinationType, destinationID)
-
 		// Actualizar contadores de inventario si se transfiere desde bodega
 		if originType == models.TransferLocationStore || supply.LocationType == models.SupplyLocationStore {
 			var batch models.Batch
@@ -1087,8 +1027,6 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 					if err := tx.Create(&storeSummary).Error; err != nil {
 						return fmt.Errorf("error creando resumen de bodega: %v", err)
 					}
-					fmt.Printf("✅ Resumen de bodega creado al transferir: StoreID=%d, BatchID=%d, CurrentInStore=%d, TotalTransferredOut=1\n",
-						storeID, supply.BatchID, batch.Amount-1)
 				} else {
 					return fmt.Errorf("error obteniendo resumen de bodega: %v", err)
 				}
@@ -1101,8 +1039,6 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 				if err := tx.Save(&storeSummary).Error; err != nil {
 					return fmt.Errorf("error actualizando resumen de bodega: %v", err)
 				}
-				fmt.Printf("✅ Resumen de bodega actualizado: CurrentInStore=%d, TotalTransferredOut=%d\n",
-					storeSummary.CurrentInStore, storeSummary.TotalTransferredOut)
 			}
 		}
 
@@ -1188,9 +1124,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("error al actualizar transferencia: %v", err)
 		}
 
-		fmt.Printf("✅ Transferencia actualizada: Code=%s, Status=%s, ReceivedBy=%s\n",
-			transfer.TransferCode, transfer.Status, userName)
-
 		// 5. Actualizar el estado del insumo
 		supply.Status = models.StatusReceived
 		supply.InTransit = false
@@ -1201,9 +1134,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 		if err := tx.Save(&supply).Error; err != nil {
 			return fmt.Errorf("error al actualizar estado del insumo: %v", err)
 		}
-
-		fmt.Printf("✅ Insumo actualizado: QR=%s, Status=%s, Location=%s:%d\n",
-			qrCode, supply.Status, supply.LocationType, supply.LocationID)
 
 		// 6. Actualizar inventario según el tipo de destino
 		if transfer.DestinationType == models.TransferLocationPavilion {
@@ -1224,8 +1154,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 					if err := tx.Create(&pavilionSummary).Error; err != nil {
 						return fmt.Errorf("error al crear resumen de pabellón: %v", err)
 					}
-					fmt.Printf("✅ Resumen de pabellón creado: PavilionID=%d, BatchID=%d\n",
-						transfer.DestinationID, supply.BatchID)
 				} else {
 					return fmt.Errorf("error al obtener resumen de pabellón: %v", err)
 				}
@@ -1238,8 +1166,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 				if err := tx.Save(&pavilionSummary).Error; err != nil {
 					return fmt.Errorf("error al actualizar resumen de pabellón: %v", err)
 				}
-				fmt.Printf("✅ Resumen de pabellón actualizado: TotalReceived=%d, CurrentAvailable=%d\n",
-					pavilionSummary.TotalReceived, pavilionSummary.CurrentAvailable)
 			}
 		} else if transfer.DestinationType == models.TransferLocationStore {
 			// Incrementar stock en bodega
@@ -1266,8 +1192,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 					if err := tx.Create(&storeSummary).Error; err != nil {
 						return fmt.Errorf("error al crear resumen de bodega: %v", err)
 					}
-					fmt.Printf("✅ Resumen de bodega creado: StoreID=%d, BatchID=%d, CurrentInStore=1\n",
-						transfer.DestinationID, supply.BatchID)
 				} else {
 					return fmt.Errorf("error al obtener resumen de bodega: %v", err)
 				}
@@ -1280,8 +1204,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 				if err := tx.Save(&storeSummary).Error; err != nil {
 					return fmt.Errorf("error al actualizar resumen de bodega: %v", err)
 				}
-				fmt.Printf("✅ Resumen de bodega actualizado: CurrentInStore=%d, TotalReturnedIn=%d\n",
-					storeSummary.CurrentInStore, storeSummary.TotalReturnedIn)
 			}
 		}
 
@@ -1304,8 +1226,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("error al crear historial de recepción: %v", err)
 		}
 
-		fmt.Printf("✅ Historial creado: HistoryID=%d, Status=%s\n", history.ID, history.Status)
-
 		// 8. Recepcionar automáticamente todos los insumos del mismo carrito que estén en tránsito
 		// Buscar el carrito asociado a este insumo
 		var assignment models.SupplyRequestQRAssignment
@@ -1320,7 +1240,7 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 					Preload("SupplyRequestQRAssignment").
 					Preload("SupplyRequestQRAssignment.MedicalSupply").
 					Find(&cartItems).Error; err == nil {
-					
+
 					// Recepcionar todos los insumos del carrito que estén en tránsito al pabellón
 					recepcionadosCount := 0
 					for _, item := range cartItems {
@@ -1328,20 +1248,20 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 						if item.SupplyRequestQRAssignment.MedicalSupplyID == supply.ID {
 							continue
 						}
-						
+
 						otherSupply := item.SupplyRequestQRAssignment.MedicalSupply
-						
+
 						// Solo recepcionar insumos que estén en tránsito al pabellón
-						if otherSupply.Status == models.StatusEnRouteToPavilion && 
-						   otherSupply.InTransit &&
-						   otherSupply.LocationType == models.SupplyLocationPavilion &&
-						   otherSupply.LocationID == transfer.DestinationID {
-							
+						if otherSupply.Status == models.StatusEnRouteToPavilion &&
+							otherSupply.InTransit &&
+							otherSupply.LocationType == models.SupplyLocationPavilion &&
+							otherSupply.LocationID == transfer.DestinationID {
+
 							// Buscar la transferencia asociada
 							var otherTransfer models.SupplyTransfer
 							if err := tx.Where("qr_code = ? AND status = ?", otherSupply.QRCode, models.TransferStatusInTransit).
 								First(&otherTransfer).Error; err == nil {
-								
+
 								// Actualizar la transferencia
 								otherTransfer.Status = models.TransferStatusReceived
 								otherTransfer.ReceiveDate = &now
@@ -1356,22 +1276,20 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 								} else {
 									otherTransfer.Notes = "Recepcionado automáticamente con otros insumos del carrito"
 								}
-								
+
 								if err := tx.Save(&otherTransfer).Error; err != nil {
-									fmt.Printf("⚠️ Error al actualizar transferencia de insumo %s: %v\n", otherSupply.QRCode, err)
 									continue
 								}
-								
+
 								// Actualizar el estado del insumo
 								otherSupply.Status = models.StatusReceived
 								otherSupply.InTransit = false
 								otherSupply.UpdatedAt = now
-								
+
 								if err := tx.Save(&otherSupply).Error; err != nil {
-									fmt.Printf("⚠️ Error al actualizar insumo %s: %v\n", otherSupply.QRCode, err)
 									continue
 								}
-								
+
 								// Actualizar inventario del pabellón
 								var otherPavilionSummary models.PavilionInventorySummary
 								if err := tx.Where("pavilion_id = ? AND batch_id = ?", transfer.DestinationID, otherSupply.BatchID).
@@ -1387,11 +1305,9 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 											LastReceivedDate: &now,
 										}
 										if err := tx.Create(&otherPavilionSummary).Error; err != nil {
-											fmt.Printf("⚠️ Error al crear resumen de pabellón para insumo %s: %v\n", otherSupply.QRCode, err)
 											continue
 										}
 									} else {
-										fmt.Printf("⚠️ Error al obtener resumen de pabellón para insumo %s: %v\n", otherSupply.QRCode, err)
 										continue
 									}
 								} else {
@@ -1399,13 +1315,12 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 									otherPavilionSummary.TotalReceived++
 									otherPavilionSummary.CurrentAvailable++
 									otherPavilionSummary.LastReceivedDate = &now
-									
+
 									if err := tx.Save(&otherPavilionSummary).Error; err != nil {
-										fmt.Printf("⚠️ Error al actualizar resumen de pabellón para insumo %s: %v\n", otherSupply.QRCode, err)
 										continue
 									}
 								}
-								
+
 								// Registrar en historial
 								otherHistory := models.SupplyHistory{
 									MedicalSupplyID: otherSupply.ID,
@@ -1418,22 +1333,16 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 									OriginType:      &otherTransfer.OriginType,
 									OriginID:        &otherTransfer.OriginID,
 								}
-								
+
 								if err := tx.Create(&otherHistory).Error; err != nil {
-									fmt.Printf("⚠️ Error al crear historial para insumo %s: %v\n", otherSupply.QRCode, err)
 									continue
 								}
-								
+
 								recepcionadosCount++
-								fmt.Printf("✅ Insumo del carrito recepcionado automáticamente: QR=%s, Status=%s\n", 
-									otherSupply.QRCode, otherSupply.Status)
 							}
 						}
 					}
-					
-					if recepcionadosCount > 0 {
-						fmt.Printf("✅ %d insumos adicionales del carrito recepcionados automáticamente\n", recepcionadosCount)
-					}
+
 				}
 			}
 		}
@@ -1446,7 +1355,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			// Verificar si el insumo sigue en estado "Recepcionado"
 			var updatedSupply models.MedicalSupply
 			if err := s.DB.First(&updatedSupply, supply.ID).Error; err != nil {
-				fmt.Printf("Error obteniendo insumo %d para verificación de alerta: %v\n", supply.ID, err)
 				return
 			}
 
@@ -1474,9 +1382,6 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			"transfer_completed": true,
 		}
 
-		fmt.Printf("🎉 Recepción completada exitosamente: QR=%s, Transfer=%s, ReceivedBy=%s\n",
-			qrCode, transfer.TransferCode, userName)
-
 		return nil
 	})
 
@@ -1491,7 +1396,7 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumptionResponse, error) {
 	var supply models.MedicalSupply
 	var response QRConsumptionResponse
-	
+
 	// Variables para guardar información del batch fuera de la transacción
 	var batchID int
 	var previousAmount int
@@ -1577,8 +1482,6 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 					if err := tx.Create(&storeSummary).Error; err != nil {
 						return fmt.Errorf("error creando resumen de bodega: %v", err)
 					}
-					fmt.Printf("✅ Resumen de bodega creado al consumir: StoreID=%d, BatchID=%d, CurrentInStore=%d, TotalConsumedInStore=1\n",
-						supply.LocationID, supply.BatchID, int(realCount))
 				} else {
 					return fmt.Errorf("error obteniendo resumen de bodega: %v", err)
 				}
@@ -1590,8 +1493,6 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 				if err := tx.Save(&storeSummary).Error; err != nil {
 					return fmt.Errorf("error actualizando resumen de bodega: %v", err)
 				}
-				fmt.Printf("✅ Resumen de bodega actualizado: CurrentInStore=%d, TotalConsumedInStore=%d\n",
-					storeSummary.CurrentInStore, storeSummary.TotalConsumedInStore)
 			}
 		} else if supply.LocationType == models.SupplyLocationPavilion {
 			// Insumo consumido desde pabellón - actualizar pavilion_inventory_summary
@@ -1612,8 +1513,6 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 					if err := tx.Create(&pavilionSummary).Error; err != nil {
 						return fmt.Errorf("error creando resumen de pabellón: %v", err)
 					}
-					fmt.Printf("✅ Resumen de pabellón creado al consumir: PavilionID=%d, BatchID=%d, TotalConsumed=1\n",
-						supply.LocationID, supply.BatchID)
 				} else {
 					return fmt.Errorf("error obteniendo resumen de pabellón: %v", err)
 				}
@@ -1625,8 +1524,6 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 				if err := tx.Save(&pavilionSummary).Error; err != nil {
 					return fmt.Errorf("error actualizando resumen de pabellón: %v", err)
 				}
-				fmt.Printf("✅ Resumen de pabellón actualizado: CurrentAvailable=%d, TotalConsumed=%d\n",
-					pavilionSummary.CurrentAvailable, pavilionSummary.TotalConsumed)
 			}
 		}
 
@@ -1687,7 +1584,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 			// Verificar si el stock está en nivel crítico
 			// Enviar alerta cuando el stock llega al nivel crítico o por debajo
 			newAmount := updatedBatch.Amount
-			
+
 			// Solo enviar alerta si:
 			// 1. El nuevo stock está en o por debajo del crítico
 			// 2. El stock anterior era mayor al crítico (para evitar alertas repetidas cuando ya está en crítico)
@@ -1696,12 +1593,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 				if previousAmount > supplyCode.CriticalStock {
 					// Enviar alerta en una goroutine para no bloquear la respuesta
 					go func() {
-						if err := s.sendLowStockAlertForBatch(updatedBatch, supplyCode); err != nil {
-							fmt.Printf("Error al enviar alerta de stock bajo para lote %d: %v\n", batchID, err)
-						} else {
-							fmt.Printf("✅ Alerta de stock bajo enviada para lote %d (%s): Stock actual %d, Stock crítico %d\n",
-								batchID, supplyCode.Name, newAmount, supplyCode.CriticalStock)
-						}
+						_ = s.sendLowStockAlertForBatch(updatedBatch, supplyCode)
 					}()
 				}
 			}
@@ -1718,16 +1610,11 @@ func (s *QRService) sendLowStockAlertForBatch(batch models.Batch, supplyCode mod
 	emailPass := os.Getenv("EMAIL_PASS")
 	emailServer := os.Getenv("EMAIL_SERVER")
 	emailPort := os.Getenv("EMAIL_PORT")
-	
+
 	if emailDir == "" || emailPass == "" || emailServer == "" || emailPort == "" {
-		fmt.Printf("⚠️ Variables de entorno del mailer no configuradas. No se puede enviar correo.\n")
-		fmt.Printf("   EMAIL_DIR: %s, EMAIL_SERVER: %s, EMAIL_PORT: %s\n", 
-			func() string { if emailDir == "" { return "NO CONFIGURADO" }; return "configurado" }(),
-			func() string { if emailServer == "" { return "NO CONFIGURADO" }; return "configurado" }(),
-			func() string { if emailPort == "" { return "NO CONFIGURADO" }; return "configurado" }())
 		return fmt.Errorf("variables de entorno del mailer no configuradas")
 	}
-	
+
 	// Crear datos para la plantilla
 	data := map[string]interface{}{
 		"BatchID":       batch.ID,
@@ -1743,17 +1630,7 @@ func (s *QRService) sendLowStockAlertForBatch(batch models.Batch, supplyCode mod
 
 	// Enviar correo usando la plantilla de stock bajo
 	templatePath := "mailer/templates/low_stock.html"
-	fmt.Printf("📧 Intentando enviar alerta de stock bajo: Lote %d (%s), Stock: %d/%d\n", 
-		batch.ID, supplyCode.Name, batch.Amount, supplyCode.CriticalStock)
-	
-	err := req.SendMailSkipTLS(templatePath, data)
-	if err != nil {
-		fmt.Printf("❌ Error al enviar correo de alerta de stock bajo: %v\n", err)
-		return err
-	}
-	
-	fmt.Printf("✅ Correo de alerta de stock bajo enviado exitosamente a vergara.javiera12@gmail.com\n")
-	return nil
+	return req.SendMailSkipTLS(templatePath, data)
 }
 
 // mapQRTypeToDatabase mapea tipos internos a tipos de base de datos
@@ -1967,7 +1844,6 @@ func (s *QRService) sendUnconsumedSupplyAlert(supply *models.MedicalSupply) {
 	// Obtener información adicional del insumo
 	supplyInfo, err := s.getSupplyWithBatchInfo(supply.QRCode)
 	if err != nil {
-		fmt.Printf("Error obteniendo información del insumo %d: %v\n", supply.ID, err)
 		return
 	}
 
@@ -2000,16 +1876,9 @@ func (s *QRService) sendUnconsumedSupplyAlert(supply *models.MedicalSupply) {
 	// Obtener el directorio actual y construir la ruta absoluta
 	wd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("Error obteniendo directorio de trabajo: %v\n", err)
 		return
 	}
 
 	templatePath := filepath.Join(wd, "mailer", "templates", "unconsumed_supply_alert.html")
-	fmt.Printf("Buscando plantilla en: %s\n", templatePath)
-
-	if err := request.SendMailSkipTLS(templatePath, emailData); err != nil {
-		fmt.Printf("Error enviando alerta de insumo no consumido: %v\n", err)
-	} else {
-		fmt.Printf("Alerta enviada para insumo %d que no ha sido consumido\n", supply.ID)
-	}
+	_ = request.SendMailSkipTLS(templatePath, emailData)
 }

@@ -33,7 +33,7 @@ class SupplyTransferService {
 
   async transferToPavilion(transferData) {
     try {
-      const response = await this.api.post('/transfers/to-pavilion/', transferData)
+      const response = await this.api.post('/transfers/to-pavilion', transferData)
       return response.data
     } catch (error) {
       console.error('Error al transferir a pabellón:', error)
@@ -43,7 +43,7 @@ class SupplyTransferService {
 
   async returnToStore(transferData) {
     try {
-      const response = await this.api.post('/transfers/return-to-store/', transferData)
+      const response = await this.api.post('/transfers/return-to-store', transferData)
       return response.data
     } catch (error) {
       console.error('Error al retornar a bodega:', error)
@@ -57,7 +57,7 @@ class SupplyTransferService {
 
   async confirmReception(code, confirmationData = {}) {
     try {
-      const response = await this.api.post(`/transfers/${code}/confirm/`, confirmationData)
+      const response = await this.api.post(`/transfers/${code}/confirm`, confirmationData)
       return response.data
     } catch (error) {
       console.error('Error al confirmar recepción:', error)
@@ -67,7 +67,7 @@ class SupplyTransferService {
 
   async cancelTransfer(code, cancellationData = {}) {
     try {
-      const response = await this.api.post(`/transfers/${code}/cancel/`, cancellationData)
+      const response = await this.api.post(`/transfers/${code}/cancel`, cancellationData)
       return response.data
     } catch (error) {
       console.error('Error al cancelar transferencia:', error)
@@ -81,7 +81,7 @@ class SupplyTransferService {
 
   async getTransferByCode(code) {
     try {
-      const response = await this.api.get(`/transfers/${code}/`)
+      const response = await this.api.get(`/transfers/${code}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener transferencia por código:', error)
@@ -102,7 +102,7 @@ class SupplyTransferService {
       if (filters.offset) queryParams.append('offset', filters.offset)
       
       const queryString = queryParams.toString()
-      const url = queryString ? `/transfers/?${queryString}` : '/transfers/'
+      const url = queryString ? `/transfers?${queryString}` : '/transfers'
       
       const response = await this.api.get(url)
       return response.data.data || response.data || []

@@ -27,10 +27,7 @@ func (s *UserService) GetUserByRut(rut string) (*models.User, error) {
 }
 
 func (s *UserService) DeleteUser(rut string) error {
-	if err := s.DB.Delete(&models.User{}, "rut = ?", rut).Error; err != nil {
-		return err
-	}
-	return nil
+	return s.DB.Delete(&models.User{}, "rut = ?", rut).Error
 }
 
 func (s *UserService) UpdateUser(rut string, newUser *models.User) (*models.User, error) {
@@ -38,15 +35,11 @@ func (s *UserService) UpdateUser(rut string, newUser *models.User) (*models.User
 	if err := s.DB.First(&user, "rut = ?", rut).Error; err != nil {
 		return nil, err
 	}
-	user.Name = newUser.Name
-	user.Email = newUser.Email
-	user.Password = newUser.Password
-	user.Role = newUser.Role
-	user.MedicalCenterID = newUser.MedicalCenterID
 
-	if err := s.DB.Save(&user).Error; err != nil {
+	if err := s.DB.Model(&user).Omit("rut", "created_at", "updated_at").Updates(newUser).Error; err != nil {
 		return nil, err
 	}
+
 	return &user, nil
 }
 
@@ -88,10 +81,3 @@ func (s *UserService) ActivateUser(rut string) error {
 	return nil
 }
 
-func (s *UserService) GetUserProfileByEmail(email string) (*models.User, error) {
-	var user models.User
-	if err := s.DB.Preload("MedicalCenter").Preload("Specialty").First(&user, "email = ?", email).Error; err != nil {
-		return nil, err
-	}
-	return &user, nil
-}

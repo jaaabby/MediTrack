@@ -114,16 +114,6 @@ class SupplyRequestService {
     }
   }
 
-  // Actualizar estado de solicitud
-  async updateSupplyRequestStatus(id, statusData) {
-    try {
-      const response = await this.api.put(`/supply-requests/${id}/status`, statusData)
-      return response.data
-    } catch (error) {
-      console.error('Error al actualizar estado:', error)
-      throw error
-    }
-  }
 
   // Eliminar solicitud
   async deleteSupplyRequest(id) {
@@ -207,15 +197,6 @@ class SupplyRequestService {
   // MÉTODOS AUXILIARES
   // ========================
 
-  // Generar número de solicitud (backup frontend)
-  generateRequestNumber() {
-    const now = new Date()
-    const year = now.getFullYear().toString().slice(-2)
-    const month = (now.getMonth() + 1).toString().padStart(2, '0')
-    const day = now.getDate().toString().padStart(2, '0')
-    const time = now.getTime().toString().slice(-6)
-    return `REQ-${year}${month}${day}-${time}`
-  }
 
   // Validar datos de solicitud
   validateSupplyRequest(requestData) {

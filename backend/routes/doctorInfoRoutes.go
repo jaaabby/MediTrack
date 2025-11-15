@@ -19,7 +19,6 @@ func SetupDoctorInfoRoutes(router *gin.RouterGroup, doctorInfoService *services.
 		// Rutas específicas ANTES de las rutas con parámetros
 		doctors.GET("/all", doctorInfoController.GetAllDoctorInfo)
 		doctors.GET("/specialty/:specialty_id", doctorInfoController.GetDoctorsBySpecialtyID)
-		doctors.GET("/specialty-code/:code", doctorInfoController.GetDoctorsBySpecialtyCode)
 
 		// Rutas con parámetros al final
 		doctors.GET("/:rut", doctorInfoController.GetDoctorInfoByRUT)
@@ -27,4 +26,3 @@ func SetupDoctorInfoRoutes(router *gin.RouterGroup, doctorInfoService *services.
 		doctors.DELETE("/:rut", doctorInfoController.DeleteDoctorInfo)
 	}
 }
-

@@ -37,31 +37,6 @@ class MedicalSpecialtyService {
     }
   }
 
-  async getSpecialtiesPaginated(page = 1, pageSize = 20, search = '') {
-    try {
-      const params = {
-        page: page.toString(),
-        page_size: pageSize.toString(),
-        ...(search && { search })
-      }
-      const response = await this.api.get('/medical-specialties', { params })
-      return response.data.data || response.data
-    } catch (error) {
-      console.error('Error en getSpecialtiesPaginated:', error)
-      throw error
-    }
-  }
-
-  async getSpecialtyById(id) {
-    try {
-      const response = await this.api.get(`/medical-specialties/${id}`)
-      return response.data.data || response.data
-    } catch (error) {
-      console.error('Error en getSpecialtyById:', error)
-      throw error
-    }
-  }
-
   async createSpecialty(specialtyData) {
     try {
       const response = await this.api.post('/medical-specialties/', specialtyData)
@@ -91,17 +66,6 @@ class MedicalSpecialtyService {
       throw error
     }
   }
-
-  async searchSpecialties(name) {
-    try {
-      const response = await this.api.get(`/medical-specialties/search?name=${encodeURIComponent(name)}`)
-      return response.data.data?.specialties || response.data.specialties || []
-    } catch (error) {
-      console.error('Error en searchSpecialties:', error)
-      throw error
-    }
-  }
 }
 
 export default new MedicalSpecialtyService()
-

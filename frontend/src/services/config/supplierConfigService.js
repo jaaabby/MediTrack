@@ -27,16 +27,12 @@ class SupplierConfigService {
     )
   }
 
-  // ========================
-  // CRUD BÁSICO
-  // ========================
-
   async createSupplierConfig(configData) {
     try {
       const response = await this.api.post('/supplier-configs/', configData)
       return response.data.data || response.data
     } catch (error) {
-      console.error('Error al crear configuración de proveedor:', error)
+      console.error('Error en createSupplierConfig:', error)
       throw error
     }
   }
@@ -46,7 +42,7 @@ class SupplierConfigService {
       const response = await this.api.get('/supplier-configs/')
       return response.data.data || response.data || []
     } catch (error) {
-      console.error('Error al obtener configuraciones de proveedores:', error)
+      console.error('Error en getAllSupplierConfigs:', error)
       throw error
     }
   }
@@ -56,7 +52,7 @@ class SupplierConfigService {
       const response = await this.api.get(`/supplier-configs/${encodeURIComponent(supplierName)}`)
       return response.data.data || response.data
     } catch (error) {
-      console.error('Error al obtener configuración de proveedor:', error)
+      console.error('Error en getSupplierConfig:', error)
       throw error
     }
   }
@@ -66,7 +62,7 @@ class SupplierConfigService {
       const response = await this.api.put(`/supplier-configs/${encodeURIComponent(supplierName)}`, configData)
       return response.data.data || response.data
     } catch (error) {
-      console.error('Error al actualizar configuración de proveedor:', error)
+      console.error('Error en updateSupplierConfig:', error)
       throw error
     }
   }
@@ -76,11 +72,10 @@ class SupplierConfigService {
       const response = await this.api.delete(`/supplier-configs/${encodeURIComponent(supplierName)}`)
       return response.data
     } catch (error) {
-      console.error('Error al eliminar configuración de proveedor:', error)
+      console.error('Error en deleteSupplierConfig:', error)
       throw error
     }
   }
 }
 
 export default new SupplierConfigService()
-

@@ -33,7 +33,7 @@ class BatchHistoryService {
 
   async createBatchHistory(batchHistoryData) {
     try {
-      const response = await this.api.post('/batch-history/', batchHistoryData)
+      const response = await this.api.post('/batch-history', batchHistoryData)
       return response.data
     } catch (error) {
       console.error('Error al crear historial de lote:', error)
@@ -41,9 +41,9 @@ class BatchHistoryService {
     }
   }
 
-  async getAllBatchHistory() {
+  async getAllBatchHistories() {
     try {
-      const response = await this.api.get('/batch-history/')
+      const response = await this.api.get('/batch-history')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener historiales de lotes:', error)
@@ -53,7 +53,7 @@ class BatchHistoryService {
 
   async getBatchHistoryByID(id) {
     try {
-      const response = await this.api.get(`/batch-history/${id}/`)
+      const response = await this.api.get(`/batch-history/${id}`)
       return response.data.data || response.data
     } catch (error) {
       console.error('Error al obtener historial de lote:', error)
@@ -63,7 +63,7 @@ class BatchHistoryService {
 
   async updateBatchHistory(id, batchHistoryData) {
     try {
-      const response = await this.api.put(`/batch-history/${id}/`, batchHistoryData)
+      const response = await this.api.put(`/batch-history/${id}`, batchHistoryData)
       return response.data
     } catch (error) {
       console.error('Error al actualizar historial de lote:', error)
@@ -73,7 +73,7 @@ class BatchHistoryService {
 
   async deleteBatchHistory(id) {
     try {
-      const response = await this.api.delete(`/batch-history/${id}/`)
+      const response = await this.api.delete(`/batch-history/${id}`)
       return response.data
     } catch (error) {
       console.error('Error al eliminar historial de lote:', error)
@@ -87,7 +87,7 @@ class BatchHistoryService {
 
   async searchBatchHistoryByBatchNumber(batchNumber) {
     try {
-      const response = await this.api.get(`/batch-history/search/${batchNumber}/`)
+      const response = await this.api.get(`/batch-history/search/${batchNumber}`)
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al buscar historial por número de lote:', error)
@@ -97,7 +97,7 @@ class BatchHistoryService {
 
   async getAllBatchHistoriesWithDetails() {
     try {
-      const response = await this.api.get('/batch-history/details/')
+      const response = await this.api.get('/batch-history/details')
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error al obtener historiales con detalles:', error)

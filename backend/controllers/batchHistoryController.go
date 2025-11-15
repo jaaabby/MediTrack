@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"fmt"
 	"meditrack/models"
+	"meditrack/pkg/response"
 	"meditrack/services"
 	"net/http"
 	"strconv"
@@ -19,6 +19,10 @@ func NewBatchHistoryController(batchHistoryService services.BatchHistoryService)
 	return &BatchHistoryController{batchHistoryService: batchHistoryService}
 }
 
+// ========================
+// CRUD BÁSICO
+// ========================
+
 func (c *BatchHistoryController) CreateBatchHistory(ctx *gin.Context) {
 	var historyRequest struct {
 		DateTime       time.Time `json:"date_time"`
@@ -32,11 +36,10 @@ func (c *BatchHistoryController) CreateBatchHistory(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&historyRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
 
-	// Crear modelo sin ID
 	history := models.BatchHistory{
 		DateTime:       historyRequest.DateTime,
 		ChangeDetails:  historyRequest.ChangeDetails,
@@ -46,89 +49,106 @@ func (c *BatchHistoryController) CreateBatchHistory(ctx *gin.Context) {
 		BatchID:        historyRequest.BatchID,
 		UserRUT:        historyRequest.UserRUT,
 		BatchNumber:    historyRequest.BatchNumber,
-		// ID se auto-generará
 	}
 
 	if err := c.batchHistoryService.CreateBatchHistory(&history); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al crear batch history: " + err.Error()})
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al crear batch history: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusCreated, Response{Success: true, Message: "Batch history creado", Data: history})
+	ctx.JSON(http.StatusCreated, response.Response{Success: true, Message: "Batch history creado", Data: history})
 }
 
 func (c *BatchHistoryController) GetBatchHistoryByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID invÃ¡lido: " + err.Error()})
-		return
-	}
-	history, err := c.batchHistoryService.GetBatchHistoryByID(intID)
+	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{Success: false, Error: "Batch history no encontrado: " + err.Error()})
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: history})
+
+	history, err := c.batchHistoryService.GetBatchHistoryByID(id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{Success: false, Error: "Batch history no encontrado: " + err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Data: history})
 }
 
 func (c *BatchHistoryController) GetAllBatchHistories(ctx *gin.Context) {
 	histories, err := c.batchHistoryService.GetAllBatchHistories()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener batch histories: " + err.Error()})
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al obtener batch histories: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Data: histories})
+}
+
+func (c *BatchHistoryController) UpdateBatchHistory(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: "ID inválido: " + err.Error()})
+		return
+	}
+
+	var history models.BatchHistory
+	if err := ctx.ShouldBindJSON(&history); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: "Datos inválidos: " + err.Error()})
+		return
+	}
+
+	if err := c.batchHistoryService.UpdateBatchHistory(id, &history); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al actualizar batch history: " + err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Message: "Batch history actualizado", Data: history})
 }
 
 func (c *BatchHistoryController) DeleteBatchHistory(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID invÃ¡lido: " + err.Error()})
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	if err := c.batchHistoryService.DeleteBatchHistory(intID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al eliminar batch history: " + err.Error()})
+
+	if err := c.batchHistoryService.DeleteBatchHistory(id); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al eliminar batch history: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Batch history eliminado"})
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Message: "Batch history eliminado"})
 }
+
+// ========================
+// CONSULTAS ESPECIALIZADAS
+// ========================
 
 func (c *BatchHistoryController) GetAllBatchHistoriesWithDetails(ctx *gin.Context) {
 	histories, err := c.batchHistoryService.GetAllBatchHistoriesWithDetails()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener batch histories: " + err.Error()})
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al obtener batch histories: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Data: histories})
 }
 
-// GetAllBatchHistoriesWithDetailsPaginated - MÃ©todo faltante agregado
 func (c *BatchHistoryController) GetAllBatchHistoriesWithDetailsPaginated(ctx *gin.Context) {
-	// Obtener parÃ¡metros de paginaciÃ³n
-	pageStr := ctx.DefaultQuery("page", "1")
-	pageSizeStr := ctx.DefaultQuery("pageSize", "10")
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "10"))
 
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
+	if page < 1 {
 		page = 1
 	}
-
-	pageSize, err := strconv.Atoi(pageSizeStr)
-	if err != nil || pageSize < 1 || pageSize > 100 {
+	if pageSize < 1 || pageSize > 100 {
 		pageSize = 10
 	}
 
 	histories, total, err := c.batchHistoryService.GetAllBatchHistoriesWithDetailsPaginated(page, pageSize)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener batch histories paginados: " + err.Error()})
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al obtener batch histories paginados: " + err.Error()})
 		return
 	}
 
-	// Calcular informaciÃ³n de paginaciÃ³n
 	totalPages := (int(total) + pageSize - 1) / pageSize
 
-	response := map[string]interface{}{
+	paginationData := map[string]interface{}{
 		"data": histories,
 		"pagination": map[string]interface{}{
 			"current_page": page,
@@ -140,70 +160,24 @@ func (c *BatchHistoryController) GetAllBatchHistoriesWithDetailsPaginated(ctx *g
 		},
 	}
 
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: response})
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Data: paginationData})
 }
 
-// GetBatchHistoryByBatchNumber obtiene el historial de un lote especÃ­fico por su nÃºmero
-func (c *BatchHistoryController) GetBatchHistoryByBatchNumber(ctx *gin.Context) {
-	batchNumber := ctx.Param("batchNumber")
-	var intBatchNumber int
-	if _, err := fmt.Sscanf(batchNumber, "%d", &intBatchNumber); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "NÃºmero de lote invÃ¡lido: " + err.Error()})
-		return
-	}
-
-	histories, err := c.batchHistoryService.GetBatchHistoryByBatchNumber(intBatchNumber)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener historial del lote: " + err.Error()})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
-}
-
-// SearchBatchHistoryByBatchNumber busca en el historial por nÃºmero de lote con detalles formateados
-// GetAllBatchHistory - obtiene todos los batch histories
-func (c *BatchHistoryController) GetAllBatchHistory(ctx *gin.Context) {
-	histories, err := c.batchHistoryService.GetAllBatchHistories()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener batch histories: " + err.Error()})
-		return
-	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
-}
-
-// UpdateBatchHistory - actualiza un batch history por ID
-func (c *BatchHistoryController) UpdateBatchHistory(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
-		return
-	}
-	var history models.BatchHistory
-	if err := ctx.ShouldBindJSON(&history); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
-		return
-	}
-	if err := c.batchHistoryService.UpdateBatchHistory(intID, &history); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar batch history: " + err.Error()})
-		return
-	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Batch history actualizado", Data: history})
-}
 func (c *BatchHistoryController) SearchBatchHistoryByBatchNumber(ctx *gin.Context) {
-	batchNumber := ctx.Param("batchNumber")
-	var intBatchNumber int
-	if _, err := fmt.Sscanf(batchNumber, "%d", &intBatchNumber); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "NÃºmero de lote invÃ¡lido: " + err.Error()})
-		return
-	}
-
-	histories, err := c.batchHistoryService.SearchBatchHistoryByBatchNumber(intBatchNumber)
+	batchNumber, err := strconv.Atoi(ctx.Param("batchNumber"))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al buscar historial del lote: " + err.Error()})
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: "Número de lote inválido: " + err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
+	histories, err := c.batchHistoryService.SearchBatchHistoryByBatchNumber(batchNumber)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al buscar historial del lote: " + err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Data: histories})
 }
+
+// ELIMINADO: GetAllBatchHistory - duplicado de GetAllBatchHistories
+// ELIMINADO: GetBatchHistoryByBatchNumber - usa SearchBatchHistoryByBatchNumber

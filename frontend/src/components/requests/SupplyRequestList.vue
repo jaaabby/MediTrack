@@ -859,45 +859,6 @@ const handleItemsReviewed = () => {
   loadSupplyRequests()
 }
 
-const startProcessing = async (id) => {
-  try {
-    const result = await Swal.fire({
-      title: '¿Iniciar procesamiento?',
-      text: 'La solicitud pasará a estado "En Proceso"',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, iniciar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#3B82F6'
-    })
-
-    if (result.isConfirmed) {
-      // Cambiar estado a "en_proceso"
-      const updateData = {
-        status: 'en_proceso'
-      }
-      
-      await supplyRequestService.updateSupplyRequestStatus(id, updateData)
-      
-      await Swal.fire({
-        icon: 'success',
-        title: 'Proceso Iniciado',
-        text: 'La solicitud ahora está en proceso',
-        timer: 2000,
-        showConfirmButton: false
-      })
-      
-      await loadSupplyRequests()
-    }
-  } catch (err) {
-    console.error('Error iniciando proceso:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: err.response?.data?.error || err.message || 'Error al iniciar el proceso'
-    })
-  }
-}
 
 const previousPage = () => {
   if (currentPage.value > 1) {

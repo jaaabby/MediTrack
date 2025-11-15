@@ -26,15 +26,18 @@ class QRService {
   // ========================
 
   setupRequestInterceptors() {
-    // Interceptor para agregar headers de trazabilidad automáticamente
+    // Interceptor para agregar headers de trazabilidad y autenticación
     this.api.interceptors.request.use((config) => {
-      // Agregar headers de trazabilidad en todas las requests
+      // Agregar headers de trazabilidad
       config.headers['X-Session-ID'] = this.sessionId
       config.headers['X-Device-Info'] = JSON.stringify(this.deviceInfo)
       config.headers['X-Browser-Info'] = JSON.stringify(this.browserInfo)
 
-      // Nota: La información del usuario se envía via query parameters, no headers
-      // para evitar problemas de CORS
+      // Agregar token de autenticación
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
 
       return config
     })
@@ -47,10 +50,6 @@ class QRService {
   // Escanear un código QR con contexto completo para trazabilidad
   async scanQRCode(qrCode, scanContext = {}) {
     try {
-      // Modo de prueba para desarrollo
-      if (qrCode.includes('test')) {
-        return this.generateTestResponse(qrCode)
-      }
 
       // Construir contexto completo de escaneo
       const fullContext = {
@@ -1220,52 +1219,6 @@ class QRService {
   // UTILIDADES ADICIONALES PARA UX
   // ========================
 
-  // Generar sugerencias de QR para testing (solo desarrollo)
-  generateTestQRCodes() {
-    const timestamp = Math.floor(Date.now() / 1000)
-    const randomId = Math.random().toString(16).substr(2, 8)
-
-    return {
-      supply: `SUPPLY_${timestamp}_${randomId}`,
-      batch: `BATCH_${timestamp}_${randomId}`
-    }
-  }
-
-  // Validar entrada de usuario con sugerencias
-  validateUserInput(input) {
-    if (!input || typeof input !== 'string') {
-      return {
-        valid: false,
-        error: 'Por favor ingrese un código QR válido',
-        suggestions: ['Escanee con la cámara o pegue el código QR']
-      }
-    }
-
-    const trimmed = input.trim().toUpperCase()
-
-    if (!this.isValidQRFormat(trimmed)) {
-      const suggestions = ['Formato válido: SUPPLY_timestamp_random', 'Formato válido: BATCH_timestamp_random']
-
-      if (trimmed.includes('SUPPLY') || trimmed.includes('BATCH')) {
-        suggestions.unshift('Verifique que el código esté completo')
-      } else {
-        suggestions.unshift('Los códigos QR deben comenzar con SUPPLY_ o BATCH_')
-      }
-
-      return {
-        valid: false,
-        error: 'Formato de código QR inválido',
-        suggestions
-      }
-    }
-
-    return {
-      valid: true,
-      formatted: trimmed,
-      type: this.getQRType(trimmed),
-      is_individual_supply: this.isIndividualSupply(trimmed)
-    }
-  }
 
   // Transferir un insumo individual por su código QR con trazabilidad
   async transferSupply(transferData) {
@@ -1323,218 +1276,8 @@ class QRService {
     }
   }
 
-  // Actualizar trazabilidad después de transferencia
-  async updateSupplyTraceabilityAfterTransfer(transferDetails) {
-    try {
-      const traceabilityData = {
-        qr_code: transferDetails.qrCode,
-        event_type: 'transfer',
-        user_rut: transferDetails.userRUT,
-        user_name: transferDetails.userName,
-        destination_type: transferDetails.destinationType,
-        destination_id: transferDetails.destinationId,
-        medical_center_id: transferDetails.medicalCenterId,
-        notes: transferDetails.notes,
-        timestamp: transferDetails.transferTimestamp,
-        event_data: {
-          action: 'transferred',
-          previous_status: 'disponible',
-          new_status: 'transferido',
-          transfer_context: {
-            destination_type: transferDetails.destinationType,
-            destination_id: transferDetails.destinationId,
-            medical_center_id: transferDetails.medicalCenterId
-          }
-        }
-      }
 
-      const response = await this.api.post('/qr/traceability/add-event', traceabilityData)
 
-      if (response.data && response.data.success) {
-        console.log('Trazabilidad actualizada después de transferencia:', response.data)
-        return response.data
-      }
-
-      return response.data
-    } catch (error) {
-      console.error('Error al actualizar trazabilidad después de transferencia:', error)
-      throw error
-    }
-  }
-
-  // Verificar disponibilidad para transferencia
-  async verifyTransferAvailability(qrCode) {
-    try {
-      if (!this.isIndividualSupply(qrCode)) {
-        return {
-          available: false,
-          reason: 'not_individual_supply',
-          message: 'Solo se pueden transferir insumos individuales'
-        }
-      }
-
-      const response = await this.api.get(`/qr/verify-transfer/${encodeURIComponent(qrCode)}`)
-
-      return {
-        ...response.data,
-        is_individual_supply: true,
-        transfer_recommendations: this.getTransferRecommendations(response.data)
-      }
-    } catch (error) {
-      console.error('Error al verificar disponibilidad para transferencia:', error)
-      throw error
-    }
-  }
-
-  // Obtener recomendaciones para transferencia
-  getTransferRecommendations(availabilityData) {
-    const recommendations = []
-
-    if (availabilityData.available && availabilityData.status === 'disponible') {
-      recommendations.push({
-        type: 'success',
-        message: 'Insumo disponible para transferencia',
-        action: 'transfer'
-      })
-    }
-
-    if (!availabilityData.available && availabilityData.status === 'recepcionado') {
-      recommendations.push({
-        type: 'info',
-        message: 'Este insumo tiene estado "recepcionado" y solo puede ser consumido.',
-        action: 'consume_instead'
-      })
-    }
-
-    if (!availabilityData.available && availabilityData.reason === 'already_consumed') {
-      recommendations.push({
-        type: 'warning',
-        message: 'Este insumo ya fue consumido y no puede ser transferido.',
-        action: 'scan_another'
-      })
-    }
-
-    if (availabilityData.batch_info && availabilityData.batch_info.low_stock) {
-      recommendations.push({
-        type: 'warning',
-        message: 'Stock bajo en este lote. Considere la transferencia cuidadosamente.',
-        action: 'alert_low_stock'
-      })
-    }
-
-    return recommendations
-  }
-
-  // Generar respuesta de prueba para desarrollo
-  generateTestResponse(qrCode) {
-    const qrType = this.getQRType(qrCode)
-
-    if (qrType === 'SUPPLY') {
-      return {
-        type: 'medical_supply',
-        id: 1,
-        qr_code: qrCode,
-        is_consumed: false,
-        can_consume: true,
-        supply_info: {
-          supply_code: 12345,
-          supply_code_name: 'Paracetamol 500mg (PRUEBA)',
-          code_supplier: 'TEST_001',
-          supplier: 'Proveedor de Prueba S.A.',
-          expiration_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-          store_name: 'Farmacia Central',
-          store_type: 'Farmacia',
-          batch_id: 10,
-          is_consumed: false,
-          batch: {
-            id: 10,
-            amount: 50
-          }
-        },
-        batch_status: {
-          batch_id: 10,
-          current_amount: 50,
-          expiration_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-          supplier: 'Proveedor de Prueba S.A.',
-          has_available_stock: true
-        },
-        supply_code: {
-          code: 12345,
-          name: 'Paracetamol 500mg',
-          code_supplier: 'TEST_001'
-        },
-        history: [
-          {
-            id: 1,
-            status: 'creado',
-            date_time: new Date().toISOString(),
-            user_rut: '12345678-9',
-            destination_type: 'store',
-            destination_id: 1
-          }
-        ],
-        scan_events: [],
-        scan_statistics: {
-          total_scans: 1,
-          unique_scanners: 1,
-          last_scan: new Date().toISOString()
-        },
-        traceability: {
-          qr_code: qrCode,
-          current_status: 'available',
-          total_movements: 1
-        }
-      }
-    } else if (qrType === 'BATCH') {
-      return {
-        type: 'batch',
-        id: 10,
-        qr_code: qrCode,
-        is_consumed: false,
-        can_consume: false,
-        batch_info: {
-          id: 10,
-          qr_code: qrCode,
-          supplier: 'Proveedor de Prueba S.A.',
-          expiration_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-          amount: 50,
-          store_id: 1
-        },
-        batch_status: {
-          total_individual_supplies: 100,
-          consumed_supplies: 50,
-          available_supplies: 50,
-          current_batch_amount: 50,
-          amounts_synchronized: true
-        },
-        scan_events: [],
-        scan_statistics: {
-          total_scans: 1,
-          unique_scanners: 1,
-          last_scan: new Date().toISOString()
-        }
-      }
-    }
-
-    throw new Error('Tipo de QR de prueba no reconocido')
-  }
-
-  // ========================
-  // OBTENER CONTEXTO ACTUAL
-  // ========================
-
-  // Obtener información de contexto actual completa
-  getCurrentContext() {
-    return {
-      userRUT: this.getCurrentUserRUT(),
-      userName: this.getCurrentUserName(),
-      pavilionId: this.getCurrentPavilionId(),
-      medicalCenterId: this.getCurrentMedicalCenterId(),
-      sessionId: this.sessionId,
-      deviceInfo: this.deviceInfo,
-      browserInfo: this.browserInfo
-    }
-  }
 
   // Recepcionar un insumo que está en estado "en_camino_a_pabellon"
   async receiveSupply(qrCode, userRUT, destinationType, destinationID, notes = '') {

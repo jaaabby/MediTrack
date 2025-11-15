@@ -15,10 +15,7 @@ func NewPavilionService(db *gorm.DB) *PavilionService {
 }
 
 func (s *PavilionService) CreatePavilion(pavilion *models.Pavilion) error {
-	if err := s.DB.Create(pavilion).Error; err != nil {
-		return err
-	}
-	return nil
+	return s.DB.Create(pavilion).Error
 }
 
 func (s *PavilionService) GetPavilionByID(id int) (*models.Pavilion, error) {
@@ -43,18 +40,14 @@ func (s *PavilionService) UpdatePavilion(id int, newPavilion *models.Pavilion) (
 		return nil, err
 	}
 
-	pavilion.Name = newPavilion.Name
-	pavilion.MedicalCenterID = newPavilion.MedicalCenterID
-
-	if err := s.DB.Save(&pavilion).Error; err != nil {
+	// Actualizar campos omitiendo ID
+	if err := s.DB.Model(&pavilion).Omit("id").Updates(newPavilion).Error; err != nil {
 		return nil, err
 	}
+
 	return &pavilion, nil
 }
 
 func (s *PavilionService) DeletePavilion(id int) error {
-	if err := s.DB.Delete(&models.Pavilion{}, id).Error; err != nil {
-		return err
-	}
-	return nil
+	return s.DB.Delete(&models.Pavilion{}, id).Error
 }

@@ -72,6 +72,9 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 
+	// Deshabilitar redirección automática de trailing slash para evitar problemas con CORS
+	router.RedirectTrailingSlash = false
+
 	// Middleware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())

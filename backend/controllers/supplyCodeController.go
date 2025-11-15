@@ -3,8 +3,10 @@ package controllers
 import (
 	"fmt"
 	"meditrack/models"
+	"meditrack/pkg/response"
 	"meditrack/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,6 +19,16 @@ func NewSupplyCodeController(supplyCodeService services.SupplyCodeService) *Supp
 	return &SupplyCodeController{supplyCodeService: supplyCodeService}
 }
 
+// parseIDFromParam parsea el ID del parámetro de la URL
+func (c *SupplyCodeController) parseIDFromParam(ctx *gin.Context) (int, error) {
+	id := ctx.Param("id")
+	intID, err := strconv.Atoi(id)
+	if err != nil {
+		return 0, fmt.Errorf("ID inválido: debe ser un número entero")
+	}
+	return intID, nil
+}
+
 func (c *SupplyCodeController) CreateSupplyCode(ctx *gin.Context) {
 	var supplyCodeRequest struct {
 		Code         int    `json:"code" binding:"required"`
@@ -26,7 +38,7 @@ func (c *SupplyCodeController) CreateSupplyCode(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&supplyCodeRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
 
@@ -39,45 +51,46 @@ func (c *SupplyCodeController) CreateSupplyCode(ctx *gin.Context) {
 	}
 
 	if err := c.supplyCodeService.CreateSupplyCode(&supplyCode); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al crear supply code: " + err.Error()})
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al crear supply code: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusCreated, Response{Success: true, Message: "Supply code creado", Data: supplyCode})
+	ctx.JSON(http.StatusCreated, response.Response{Success: true, Message: "Supply code creado", Data: supplyCode})
 }
 
 func (c *SupplyCodeController) GetSupplyCodeByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
+	intID, err := c.parseIDFromParam(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: err.Error()})
 		return
 	}
 	supplyCode, err := c.supplyCodeService.GetSupplyCodeByID(intID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{Success: false, Error: "Supply code no encontrado: " + err.Error()})
+		ctx.JSON(http.StatusNotFound, response.Response{Success: false, Error: "Supply code no encontrado: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: supplyCode})
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Data: supplyCode})
 }
 
 func (c *SupplyCodeController) GetAllSupplyCodes(ctx *gin.Context) {
 	supplyCodes, err := c.supplyCodeService.GetAllSupplyCodes()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener supply codes: " + err.Error()})
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al obtener supply codes: " + err.Error()})
+		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Data: supplyCodes})
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Data: supplyCodes})
 }
 
 func (c *SupplyCodeController) UpdateSupplyCode(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
+	intID, err := c.parseIDFromParam(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: err.Error()})
 		return
 	}
-	supplyCode, err := c.supplyCodeService.GetSupplyCodeByID(intID)
+	
+	// Verificar que el supply code existe
+	_, err = c.supplyCodeService.GetSupplyCodeByID(intID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{Success: false, Error: "Supply code no encontrado: " + err.Error()})
+		ctx.JSON(http.StatusNotFound, response.Response{Success: false, Error: "Supply code no encontrado: " + err.Error()})
 		return
 	}
 	
@@ -88,30 +101,35 @@ func (c *SupplyCodeController) UpdateSupplyCode(ctx *gin.Context) {
 	}
 	
 	if err := ctx.ShouldBindJSON(&updateRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
 	
-	supplyCode.Name = updateRequest.Name
-	supplyCode.CodeSupplier = updateRequest.CodeSupplier
-	supplyCode.CriticalStock = updateRequest.CriticalStock
-	if _, err := c.supplyCodeService.UpdateSupplyCode(intID, supplyCode); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar supply code: " + err.Error()})
+	// Crear modelo con los datos actualizados
+	updatedSupplyCode := models.SupplyCode{
+		Code:         intID,
+		Name:         updateRequest.Name,
+		CodeSupplier: updateRequest.CodeSupplier,
+		CriticalStock: updateRequest.CriticalStock,
+	}
+	
+	result, err := c.supplyCodeService.UpdateSupplyCode(intID, &updatedSupplyCode)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al actualizar supply code: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Supply code actualizado", Data: supplyCode})
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Message: "Supply code actualizado", Data: result})
 }
 
 func (c *SupplyCodeController) DeleteSupplyCode(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
+	intID, err := c.parseIDFromParam(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{Success: false, Error: err.Error()})
 		return
 	}
 	if err := c.supplyCodeService.DeleteSupplyCode(intID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al eliminar supply code: " + err.Error()})
+		ctx.JSON(http.StatusInternalServerError, response.Response{Success: false, Error: "Error al eliminar supply code: " + err.Error()})
+		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Supply code eliminado"})
-
+	ctx.JSON(http.StatusOK, response.Response{Success: true, Message: "Supply code eliminado"})
 }

@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"meditrack/models"
+	"meditrack/pkg/response"
 	"meditrack/services"
 	"net/http"
 	"strconv"
@@ -34,7 +35,7 @@ func (c *BatchController) CreateBatch(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&batchRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de lote inválidos: " + err.Error(),
 		})
@@ -52,14 +53,14 @@ func (c *BatchController) CreateBatch(ctx *gin.Context) {
 	}
 
 	if err := c.batchService.CreateBatch(&batch); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al crear lote: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, Response{
+	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
 		Message: "Lote creado exitosamente",
 		Data:    batch,
@@ -86,7 +87,7 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -96,7 +97,7 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 	// Convertir fecha
 	expirationDate, err := parseDate(request.Batch.ExpirationDate)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Fecha de expiración inválida: " + err.Error(),
 		})
@@ -133,14 +134,14 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 		expirationAlertDays, // Pasar días de alerta para configuración del proveedor
 	)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al crear lote con insumos individuales: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, Response{
+	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
 		Message: "Lote con insumos individuales creado exitosamente",
 		Data: map[string]interface{}{
@@ -152,36 +153,37 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 	})
 }
 
-// GetBatchByID obtiene un lote por ID
-func (c *BatchController) GetBatchByID(ctx *gin.Context) {
+// parseIDFromParam parsea el ID del parámetro de la URL
+func (c *BatchController) parseIDFromParam(ctx *gin.Context) (int, error) {
 	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de lote requerido",
-		})
-		return
-	}
-
 	intID, err := strconv.Atoi(id)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		return 0, fmt.Errorf("ID inválido: debe ser un número entero")
+	}
+	return intID, nil
+}
+
+// GetBatchByID obtiene un lote por ID
+func (c *BatchController) GetBatchByID(ctx *gin.Context) {
+	intID, err := c.parseIDFromParam(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
+			Error:   err.Error(),
 		})
 		return
 	}
 
 	batch, err := c.batchService.GetBatchByID(intID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   "Lote no encontrado: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    batch,
 	})
@@ -189,34 +191,25 @@ func (c *BatchController) GetBatchByID(ctx *gin.Context) {
 
 // GetBatchWithSupplyInfo obtiene un lote con información completa de sus insumos
 func (c *BatchController) GetBatchWithSupplyInfo(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de lote requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := c.parseIDFromParam(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
-		})
-		return
-	}
-
-	batchInfo, err := c.batchService.GetBatchWithSupplyInfo(intID)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	batchInfo, err := c.batchService.GetBatchWithSupplyInfo(intID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Información del lote obtenida exitosamente",
 		Data:    batchInfo,
@@ -227,7 +220,7 @@ func (c *BatchController) GetBatchWithSupplyInfo(ctx *gin.Context) {
 func (c *BatchController) GetBatchByQR(ctx *gin.Context) {
 	qrCode := ctx.Param("qrcode")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
@@ -236,14 +229,14 @@ func (c *BatchController) GetBatchByQR(ctx *gin.Context) {
 
 	batchInfo, err := c.batchService.GetBatchQRInfo(qrCode)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Información del lote por QR obtenida exitosamente",
 		Data:    batchInfo,
@@ -273,14 +266,14 @@ func (c *BatchController) GetAllBatches(ctx *gin.Context) {
 	if surgeryID == nil && storeID == nil && supplier == "" {
 		batches, err := c.batchService.GetAllBatches()
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, Response{
+			ctx.JSON(http.StatusInternalServerError, response.Response{
 				Success: false,
 				Error:   "Error al obtener lotes: " + err.Error(),
 			})
 			return
 		}
 
-		ctx.JSON(http.StatusOK, Response{
+		ctx.JSON(http.StatusOK, response.Response{
 			Success: true,
 			Data:    batches,
 		})
@@ -290,14 +283,14 @@ func (c *BatchController) GetAllBatches(ctx *gin.Context) {
 	// Obtener lotes con filtros
 	batches, err := c.batchService.GetBatchesWithFilters(surgeryID, storeID, supplier)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al obtener lotes: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    batches,
 	})
@@ -307,14 +300,14 @@ func (c *BatchController) GetAllBatches(ctx *gin.Context) {
 func (c *BatchController) GetBatchesNeedingSync(ctx *gin.Context) {
 	batches, err := c.batchService.GetBatchesNeedingSync()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al obtener lotes que necesitan sincronización: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Lotes que necesitan sincronización obtenidos exitosamente",
 		Data: map[string]interface{}{
@@ -326,20 +319,11 @@ func (c *BatchController) GetBatchesNeedingSync(ctx *gin.Context) {
 
 // UpdateBatch actualiza un lote existente
 func (c *BatchController) UpdateBatch(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de lote requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := c.parseIDFromParam(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
+			Error:   err.Error(),
 		})
 		return
 	}
@@ -353,7 +337,7 @@ func (c *BatchController) UpdateBatch(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&batchRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de lote inválidos: " + err.Error(),
 		})
@@ -372,14 +356,14 @@ func (c *BatchController) UpdateBatch(ctx *gin.Context) {
 
 	updatedBatch, err := c.batchService.UpdateBatch(intID, &batch)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al actualizar lote: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Lote actualizado exitosamente",
 		Data:    updatedBatch,
@@ -388,20 +372,11 @@ func (c *BatchController) UpdateBatch(ctx *gin.Context) {
 
 // UpdateBatchAmount actualiza solo la cantidad de un lote
 func (c *BatchController) UpdateBatchAmount(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de lote requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := c.parseIDFromParam(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
+			Error:   err.Error(),
 		})
 		return
 	}
@@ -411,7 +386,7 @@ func (c *BatchController) UpdateBatchAmount(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -420,14 +395,14 @@ func (c *BatchController) UpdateBatchAmount(ctx *gin.Context) {
 
 	err = c.batchService.UpdateBatchAmount(intID, request.Amount)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al actualizar cantidad del lote: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Cantidad del lote actualizada exitosamente",
 		Data: map[string]interface{}{
@@ -439,33 +414,24 @@ func (c *BatchController) UpdateBatchAmount(ctx *gin.Context) {
 
 // DeleteBatch elimina un lote
 func (c *BatchController) DeleteBatch(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de lote requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := c.parseIDFromParam(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
+			Error:   err.Error(),
 		})
 		return
 	}
 
 	if err := c.batchService.DeleteBatch(intID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al eliminar lote: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Lote eliminado exitosamente",
 	})
@@ -475,14 +441,14 @@ func (c *BatchController) DeleteBatch(ctx *gin.Context) {
 func (c *BatchController) SyncAllBatchAmounts(ctx *gin.Context) {
 	err := c.batchService.SyncAllBatchAmounts()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error sincronizando cantidades de lotes: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Todas las cantidades de lotes sincronizadas exitosamente",
 	})
@@ -490,20 +456,11 @@ func (c *BatchController) SyncAllBatchAmounts(ctx *gin.Context) {
 
 // CheckLowStockAlert verifica y envía alertas de stock bajo para un lote específico
 func (c *BatchController) CheckLowStockAlert(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de lote requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := c.parseIDFromParam(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
+			Error:   err.Error(),
 		})
 		return
 	}
@@ -517,14 +474,14 @@ func (c *BatchController) CheckLowStockAlert(ctx *gin.Context) {
 
 	err = c.batchService.CheckLowStockAlert(intID, threshold)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al verificar alerta de stock bajo: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Verificación de alerta de stock bajo completada",
 		Data: map[string]interface{}{
@@ -536,20 +493,11 @@ func (c *BatchController) CheckLowStockAlert(ctx *gin.Context) {
 
 // CheckExpirationAlert verifica y envía alertas de vencimiento próximo para un lote específico
 func (c *BatchController) CheckExpirationAlert(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de lote requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := c.parseIDFromParam(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
+			Error:   err.Error(),
 		})
 		return
 	}
@@ -563,14 +511,14 @@ func (c *BatchController) CheckExpirationAlert(ctx *gin.Context) {
 
 	err = c.batchService.CheckExpirationAlert(intID, days)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al verificar alerta de vencimiento: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Verificación de alerta de vencimiento completada",
 		Data: map[string]interface{}{

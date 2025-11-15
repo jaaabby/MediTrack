@@ -151,7 +151,7 @@
           </div>
         </div>
 
-        <table class="min-w-full divide-y divide-gray-200" style="min-width: 900px;">
+        <table class="min-w-full divide-y divide-gray-200">
           <thead class="table-header">
             <tr>
               <th class="table-header-cell">
@@ -396,7 +396,7 @@ const returnIndividualSupply = async (supply) => {
   
   const result = await Swal.fire({
     title: `¿Regresar ${supply.name} a bodega?`,
-    html: `QR: ${supply.qrCode}<br>Días sin consumir: ${supply.daysElapsed}`,
+    html: `QR: ${supply.qrCode}<br>Tiempo sin moverse: ${formatBusinessHours(supply.businessHoursElapsed || 0)}`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: 'Sí, regresar',
@@ -409,7 +409,7 @@ const returnIndividualSupply = async (supply) => {
   try {
     await returnToBodegaService.returnSupplyToStore(
       supply.qrCode, 
-      `Retorno manual - ${supply.daysElapsed} días sin consumir`
+      `Retorno manual - ${formatBusinessHours(supply.businessHoursElapsed || 0)} sin moverse`
     )
     
     Swal.fire({
@@ -561,22 +561,20 @@ onUnmounted(() => {
 
 .table-container {
   overflow-x: auto;
+  overflow-y: visible;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   -webkit-overflow-scrolling: touch;
   position: relative;
+  max-width: 100%;
+  width: 100%;
 }
 
-@media (min-width: 1024px) {
-  .table-container {
-    overflow-x: visible;
-  }
-  
-  .table-container table {
-    width: 100%;
-    min-width: 100%;
-  }
+.table-container table {
+  width: 100%;
+  min-width: 900px;
+  table-layout: auto;
 }
 
 .table-container::-webkit-scrollbar {
@@ -616,11 +614,34 @@ onUnmounted(() => {
   letter-spacing: 0.05em;
   color: #6b7280;
   white-space: nowrap;
-  min-width: 120px;
 }
 
 .table-header-cell {
-  @apply px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px];
+  @apply px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+}
+
+.table-header-cell:first-child {
+  min-width: 180px;
+}
+
+.table-header-cell:nth-child(2) {
+  min-width: 120px;
+}
+
+.table-header-cell:nth-child(3) {
+  min-width: 150px;
+}
+
+.table-header-cell:nth-child(4) {
+  min-width: 150px;
+}
+
+.table-header-cell:nth-child(5) {
+  min-width: 150px;
+}
+
+.table-header-cell:last-child {
+  min-width: 200px;
 }
 
 .btn-danger {
@@ -653,6 +674,11 @@ onUnmounted(() => {
     border-radius: 0;
     border-left: none;
     border-right: none;
+    overflow-x: auto;
+  }
+  
+  .table-container table {
+    min-width: 800px;
   }
 
   .table-header th,
