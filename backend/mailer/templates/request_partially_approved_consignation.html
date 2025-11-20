@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud Parcialmente Aprobada - Consignación</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-row {
+            margin: 10px 0;
+        }
+        .label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .value {
+            color: #212529;
+        }
+        .items-list {
+            margin: 15px 0;
+        }
+        .item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .item-approved {
+            background-color: #e7f5ee;
+        }
+        .item-rejected {
+            background-color: #ffebee;
+        }
+        .rejected-comment {
+            font-size: 12px;
+            color: #d32f2f;
+            font-style: italic;
+            margin-top: 5px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Solicitud Parcialmente Aprobada</h1>
+        </div>
+        <div class="content">
+            <p><strong>Para su conocimiento:</strong></p>
+            
+            <p>Se informa que la solicitud de insumos médicos ha sido <strong>parcialmente aprobada</strong>. Algunos items fueron aprobados y otros fueron rechazados.</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">Número de Solicitud:</span>
+                    <span class="value">{{.RequestNumber}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Solicitado por:</span>
+                    <span class="value">{{.RequestedByName}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Pabellón:</span>
+                    <span class="value">{{.PavilionName}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Fecha de Cirugía:</span>
+                    <span class="value">{{.SurgeryDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Revisado por:</span>
+                    <span class="value">{{.ApprovedByName}}</span>
+                </div>
+            </div>
+
+            {{if .ApprovedItems}}
+            <h3>✅ Insumos Aprobados:</h3>
+            <div class="items-list">
+                {{range .ApprovedItems}}
+                <div class="item item-approved">
+                    <span>{{.SupplyName}}</span>
+                    <span><strong>Cantidad: {{.Quantity}}</strong></span>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+
+            {{if .RejectedItems}}
+            <h3>❌ Insumos Rechazados:</h3>
+            <div class="items-list">
+                {{range .RejectedItems}}
+                <div class="item item-rejected">
+                    <div>
+                        <strong>{{.SupplyName}}</strong>
+                        <span style="margin-left: 10px;">Cantidad solicitada: {{.Quantity}}</span>
+                        <div class="rejected-comment">Motivo: {{.Comment}}</div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+
+            <div class="warning-box">
+                <p><strong>Estado:</strong></p>
+                <p>Algunos de los insumos solicitados no pudieron ser aprobados. Los items aprobados están disponibles para su uso.</p>
+            </div>
+
+            {{if .Notes}}
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="label">Comentarios:</span>
+                    <p class="value">{{.Notes}}</p>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        <div class="footer">
+            <p>Este es un correo automático de <a href="http://localhost:3000" style="color: #4CAF50; text-decoration: none;">MediTrack</a>. Por favor, no responder a este mensaje.</p>
+            <p>&copy; 2025 <a href="http://localhost:3000" style="color: #4CAF50; text-decoration: none;">MediTrack</a> - Sistema de Gestión de Insumos Médicos</p>
+        </div>
+    </div>
+</body>
+</html>
+

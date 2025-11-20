@@ -241,7 +241,15 @@
                   <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  Este insumo debe ser transferido al pabellón y recibido antes de poder ser utilizado o devuelto.
+                  <span v-if="getItemMedicalSupplyStatus(item) === 'pendiente_retiro'">
+                    Este insumo está pendiente de retiro físico de bodega. Debe ser escaneado para registrar el retiro, luego recepcionado en el pabellón.
+                  </span>
+                  <span v-else-if="getItemMedicalSupplyStatus(item) === 'en_camino_a_pabellon'">
+                    Este insumo está en camino al pabellón. Debe ser recepcionado antes de poder ser utilizado o devuelto.
+                  </span>
+                  <span v-else>
+                    Este insumo debe ser transferido al pabellón y recibido antes de poder ser utilizado o devuelto.
+                  </span>
                 </p>
               </div>
 
@@ -870,6 +878,13 @@ const getItemStatus = (item) => {
   return null
 }
 
+// Obtener el estado del insumo médico (no del assignment)
+const getItemMedicalSupplyStatus = (item) => {
+  const medicalSupply = item.supply_request_qr_assignment?.medical_supply
+  if (!medicalSupply) return null
+  return medicalSupply.status?.toLowerCase() || null
+}
+
 const getItemStatusClass = (item) => {
   const status = item.supply_request_qr_assignment?.status
   if (status === 'consumed') return 'bg-green-100 text-green-800'
@@ -897,14 +912,15 @@ const canTransferToPavilion = computed(() => {
   if (!cart.value || cart.value.status !== 'active') return false
   if (activeItems.value.length === 0) return false
   
-  // Verificar que todos los items activos estén en bodega
+  // Verificar que todos los items activos estén en bodega y disponibles
   return activeItems.value.every(item => {
     const medicalSupply = item.supply_request_qr_assignment?.medical_supply
     if (!medicalSupply) return false
     
-    // Debe estar en bodega y no consumido
+    // Debe estar en bodega, en estado DISPONIBLE, y no consumido ni en tránsito
+    // NO mostrar el botón si ya está en 'pendiente_retiro' o estados más avanzados
     return medicalSupply.location_type === 'store' && 
-           medicalSupply.status !== 'consumido' &&
+           medicalSupply.status === 'disponible' &&  // ← Verificar que esté disponible
            !medicalSupply.in_transit
   })
 })
@@ -914,19 +930,26 @@ const getItemLocationStatus = (item) => {
   const medicalSupply = item.supply_request_qr_assignment?.medical_supply
   if (!medicalSupply) return null
   
+  const status = medicalSupply.status?.toLowerCase() || ''
+  
+  // Verificar estados primero (independiente de location_type)
+  if (status === 'pendiente_retiro') {
+    return 'Pendiente de retiro'
+  } else if (status === 'en_camino_a_pabellon') {
+    return 'En tránsito al pabellón'
+  } else if (status === 'recepcionado') {
+    return 'Recibido en pabellón'
+  } else if (status === 'en_camino_a_bodega') {
+    return 'En tránsito a bodega'
+  }
+  
+  // Si no hay estado específico, usar location_type
   if (medicalSupply.location_type === 'store') {
     if (medicalSupply.in_transit) {
       return 'En tránsito al pabellón'
     }
     return 'En bodega'
   } else if (medicalSupply.location_type === 'pavilion') {
-    if (medicalSupply.status === 'recepcionado') {
-      return 'Recibido en pabellón'
-    } else if (medicalSupply.status === 'en_camino_a_pabellon') {
-      return 'En tránsito al pabellón'
-    } else if (medicalSupply.status === 'en_camino_a_bodega') {
-      return 'En tránsito a bodega'
-    }
     return 'En pabellón'
   }
   
@@ -938,14 +961,21 @@ const getItemLocationStatusClass = (item) => {
   const medicalSupply = item.supply_request_qr_assignment?.medical_supply
   if (!medicalSupply) return ''
   
+  const status = medicalSupply.status?.toLowerCase() || ''
+  
+  // Estados específicos primero
+  if (status === 'pendiente_retiro') {
+    return 'bg-yellow-100 text-yellow-800'
+  } else if (status === 'en_camino_a_pabellon') {
+    return 'bg-orange-100 text-orange-800'
+  } else if (status === 'recepcionado') {
+    return 'bg-green-100 text-green-800'
+  }
+  
+  // Fallback a location_type
   if (medicalSupply.location_type === 'store') {
     return 'bg-blue-100 text-blue-800'
   } else if (medicalSupply.location_type === 'pavilion') {
-    if (medicalSupply.status === 'recepcionado') {
-      return 'bg-green-100 text-green-800'
-    } else if (medicalSupply.in_transit) {
-      return 'bg-yellow-100 text-yellow-800'
-    }
     return 'bg-purple-100 text-purple-800'
   }
   

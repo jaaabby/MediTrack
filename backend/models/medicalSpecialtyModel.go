@@ -16,7 +16,7 @@ type MedicalSpecialty struct {
 
 	// Relaciones
 	Surgeries []Surgery `json:"surgeries,omitempty" gorm:"foreignKey:SpecialtyID"`
-	Doctors   []DoctorInfo `json:"doctors,omitempty" gorm:"foreignKey:SpecialtyID"`
+	Doctors   []User    `json:"doctors,omitempty" gorm:"foreignKey:SpecialtyID;where:role = 'doctor'"`
 }
 
 func (m MedicalSpecialty) TableName() string {

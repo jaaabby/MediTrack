@@ -493,6 +493,89 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
+  // Protección específica para enfermera - solo pueden ver inventario de pabellones y usar QR
+  if (authStore.isAuthenticated && authStore.isNurse) {
+    const allowedRoutesForNurse = [
+      'Home',
+      'PavilionInventoryView', // Solo ver inventario de pabellones (solo lectura)
+      'QRScanner',
+      'QRDetails',
+      'QRTraceability',
+      'QRConsumer',
+      'QRTransfer',
+      'QRReception',
+      'Profile'
+    ]
+    
+    if (!allowedRoutesForNurse.includes(to.name)) {
+      console.log('✗ Enfermera intentando acceder a ruta no permitida:', to.name)
+      next({ name: 'Home', replace: true })
+      return
+    }
+  }
+
+  // Protección específica para perfil de pabellón - pueden ver inventario de pabellones y usar QR
+  if (authStore.isAuthenticated && authStore.isPavilionUser) {
+    const allowedRoutesForPavilion = [
+      'Home',
+      'PavilionInventoryView', // Ver inventario de pabellones
+      'QRScanner',
+      'QRDetails',
+      'QRTraceability',
+      'QRConsumer',
+      'QRTransfer',
+      'QRReception',
+      'Profile'
+    ]
+    
+    if (!allowedRoutesForPavilion.includes(to.name)) {
+      console.log('✗ Usuario de pabellón intentando acceder a ruta no permitida:', to.name)
+      next({ name: 'Home', replace: true })
+      return
+    }
+  }
+
+  // Protección específica para encargado de bodega - no puede acceder a configuración médica
+  if (authStore.isAuthenticated && authStore.isWarehouseManager) {
+    const restrictedRoutesForWarehouse = [
+      'MedicalSpecialtyManagement',
+      'SurgeryTypicalSupplyManagement',
+      'DoctorInfoManagement',
+      'SurgeryManagement'
+    ]
+    
+    if (restrictedRoutesForWarehouse.includes(to.name)) {
+      console.log('✗ Encargado de bodega intentando acceder a ruta de configuración médica no permitida:', to.name)
+      next({ name: 'Home', replace: true })
+      return
+    }
+  }
+
+  // Protección específica para consignación - pueden ver inventario de pabellones, usar QR, ver solicitudes y gestionar configuración
+  if (authStore.isAuthenticated && authStore.isConsignation) {
+    const allowedRoutesForConsignation = [
+      'Home',
+      'PavilionInventoryView', // Ver inventario de pabellones
+      'QRScanner',
+      'QRDetails',
+      'QRTraceability',
+      'QRConsumer',
+      'QRTransfer',
+      'QRReception',
+      'SupplyRequestList',
+      'SupplyRequestDetails',
+      'SupplierConfigManagement', // Configuración de Proveedores
+      'SupplyCodeManagement', // Códigos de Insumos
+      'Profile'
+    ]
+    
+    if (!allowedRoutesForConsignation.includes(to.name)) {
+      console.log('✗ Usuario de consignación intentando acceder a ruta no permitida:', to.name)
+      next({ name: 'Home', replace: true })
+      return
+    }
+  }
+
   next()
 })
 

@@ -64,6 +64,7 @@ func (s SupplyHistory) GetDestinationDescription() string {
 type SupplyHistoryWithDestination struct {
 	SupplyHistory
 	DestinationName   *string `json:"destination_name,omitempty"`
+	OriginName        *string `json:"origin_name,omitempty"`
 	MedicalCenterName *string `json:"medical_center_name,omitempty"`
 	UserName          *string `json:"user_name,omitempty"`
 }

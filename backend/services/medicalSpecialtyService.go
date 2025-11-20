@@ -87,7 +87,7 @@ func (s *MedicalSpecialtyService) DeleteMedicalSpecialty(id int) error {
 	var surgeryCount int64
 	var doctorCount int64
 	s.DB.Model(&models.Surgery{}).Where("specialty_id = ?", id).Count(&surgeryCount)
-	s.DB.Model(&models.DoctorInfo{}).Where("specialty_id = ?", id).Count(&doctorCount)
+	s.DB.Model(&models.User{}).Where("specialty_id = ? AND role = ?", id, models.RoleDoctor).Count(&doctorCount)
 
 	if surgeryCount > 0 || doctorCount > 0 {
 		// Si hay asociaciones, solo desactivar

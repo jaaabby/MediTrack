@@ -4,8 +4,8 @@
     <div class="bg-white rounded-lg shadow-sm border p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 class="text-2xl font-semibold text-gray-900">Información de Doctores</h2>
-          <p class="text-gray-600 mt-1">Gestiona la información extendida de los doctores del sistema</p>
+          <h2 class="text-2xl font-semibold text-gray-900">Gestión de Doctores</h2>
+          <p class="text-gray-600 mt-1">Gestiona los doctores del sistema directamente desde la tabla de usuarios</p>
           <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedDoctors.length }} doctores</p>
         </div>
         <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
@@ -37,7 +37,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <input type="text" placeholder="Buscar por nombre, RUT o licencia..." 
+            <input type="text" placeholder="Buscar por nombre, RUT o email..." 
               class="form-input pl-10 w-full" v-model="searchTerm" @input="handleSearch" />
           </div>
         </div>
@@ -86,16 +86,13 @@
                 Nombre
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Licencia Médica
+                Email
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Especialidad
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Años Exp.
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Teléfono
+                Centro Médico
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Estado
@@ -106,32 +103,29 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="doctor in paginatedDoctors" :key="doctor.user_rut" 
+            <tr v-for="doctor in paginatedDoctors" :key="doctor.rut" 
               class="hover:bg-gray-50 transition-colors duration-150">
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ doctor.user_rut }}
+                {{ doctor.rut }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ doctor.user?.name || '-' }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ doctor.name || '-' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ doctor.medical_license || '-' }}
+                {{ doctor.email || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ getSpecialtyName(doctor.specialty_id) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ doctor.years_of_experience || '-' }}
-              </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ doctor.phone || '-' }}
+                {{ doctor.medical_center?.name || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="doctor.is_available" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Disponible
+                <span v-if="doctor.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Activo
                 </span>
                 <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  No Disponible
+                  Inactivo
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -188,7 +182,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
       <h3 class="mt-2 text-sm font-medium text-gray-900">No hay doctores registrados</h3>
-      <p class="mt-1 text-sm text-gray-500">{{ selectedSpecialtyId || searchTerm ? 'No se encontraron resultados con los filtros aplicados.' : 'Comienza registrando información de un doctor.' }}</p>
+      <p class="mt-1 text-sm text-gray-500">{{ selectedSpecialtyId || searchTerm ? 'No se encontraron resultados con los filtros aplicados.' : 'Comienza registrando un doctor.' }}</p>
       <div class="mt-6" v-if="!selectedSpecialtyId && !searchTerm">
         <button @click="openCreateModal" class="btn-primary">
           <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +200,7 @@
           <div class="space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
               <h3 class="text-xl font-semibold text-gray-900">
-                {{ isEditing ? 'Editar Información de Doctor' : 'Registrar Información de Doctor' }}
+                {{ isEditing ? 'Editar Doctor' : 'Registrar Nuevo Doctor' }}
               </h3>
               <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,99 +209,72 @@
               </button>
             </div>
             
-            <form @submit.prevent="saveDoctorInfo" class="space-y-4">
+            <form @submit.prevent="saveDoctor" class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  RUT del Usuario <span class="text-red-500">*</span>
+                  RUT <span class="text-red-500">*</span>
                 </label>
-                <input v-model="doctorForm.user_rut" type="text" class="form-input" 
+                <input v-model="doctorForm.rut" type="text" class="form-input" 
                   placeholder="Ej: 12345678-9" required :disabled="isEditing" />
-                <p class="mt-1 text-xs text-gray-500">El RUT debe corresponder a un usuario existente con rol "doctor"</p>
+                <p class="mt-1 text-xs text-gray-500">El RUT debe ser único y no puede modificarse después de crear</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Licencia Médica
+                  Nombre <span class="text-red-500">*</span>
                 </label>
-                <input v-model="doctorForm.medical_license" type="text" class="form-input" 
-                  placeholder="Ej: LIC-12345678" />
+                <input v-model="doctorForm.name" type="text" class="form-input" 
+                  placeholder="Ej: Dr. Juan Pérez" required />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Email <span class="text-red-500">*</span>
+                </label>
+                <input v-model="doctorForm.email" type="email" class="form-input" 
+                  placeholder="Ej: doctor@meditrack.com" required />
+              </div>
+
+              <div v-if="!isEditing">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Contraseña <span class="text-red-500">*</span>
+                </label>
+                <input v-model="doctorForm.password" type="password" class="form-input" 
+                  placeholder="Contraseña temporal" required />
+                <p class="mt-1 text-xs text-gray-500">El doctor deberá cambiar su contraseña en el primer inicio de sesión</p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha de Vencimiento de Licencia
+                    Centro Médico <span class="text-red-500">*</span>
                   </label>
-                  <input v-model="doctorForm.license_expiration_date" type="date" class="form-input" />
+                  <select v-model.number="doctorForm.medical_center_id" class="form-select" required>
+                    <option :value="null">Seleccionar centro médico</option>
+                    <option v-for="center in medicalCenters" :key="center.id" :value="center.id">
+                      {{ center.name }}
+                    </option>
+                  </select>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Años de Experiencia
+                    Especialidad Médica
                   </label>
-                  <input v-model.number="doctorForm.years_of_experience" type="number" min="0" 
-                    class="form-input" placeholder="Ej: 10" />
+                  <select v-model.number="doctorForm.specialty_id" class="form-select">
+                    <option :value="null">Sin especialidad</option>
+                    <option v-for="specialty in specialties" :key="specialty.id" :value="specialty.id">
+                      {{ specialty.name }}
+                    </option>
+                  </select>
                 </div>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Especialización
-                </label>
-                <input v-model="doctorForm.specialization" type="text" class="form-input" 
-                  placeholder="Ej: Cirugía General" />
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Especialidad Médica
-                </label>
-                <select v-model="doctorForm.specialty_id" class="form-select">
-                  <option :value="null">Sin especialidad</option>
-                  <option v-for="specialty in specialties" :key="specialty.id" :value="specialty.id">
-                    {{ specialty.name }}
-                  </option>
-                </select>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Teléfono
-                  </label>
-                  <input v-model="doctorForm.phone" type="tel" class="form-input" 
-                    placeholder="Ej: +56 9 1234 5678" />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Contacto de Emergencia
-                  </label>
-                  <input v-model="doctorForm.emergency_contact" type="text" class="form-input" 
-                    placeholder="Nombre del contacto" />
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Teléfono de Emergencia
-                </label>
-                <input v-model="doctorForm.emergency_phone" type="tel" class="form-input" 
-                  placeholder="Ej: +56 9 8765 4321" />
               </div>
 
               <div>
                 <label class="flex items-center space-x-2">
-                  <input v-model="doctorForm.is_available" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                  <span class="text-sm font-medium text-gray-700">Doctor disponible</span>
+                  <input v-model="doctorForm.is_active" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span class="text-sm font-medium text-gray-700">Doctor activo</span>
                 </label>
-                <p class="mt-1 text-xs text-gray-500">Los doctores no disponibles no aparecerán en listas de selección</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Notas
-                </label>
-                <textarea v-model="doctorForm.notes" rows="3" class="form-input" 
-                  placeholder="Notas adicionales sobre el doctor"></textarea>
+                <p class="mt-1 text-xs text-gray-500">Los doctores inactivos no podrán iniciar sesión</p>
               </div>
 
               <div class="flex justify-end space-x-3 pt-4 border-t">
@@ -329,10 +296,12 @@
 import { ref, computed, onMounted } from 'vue'
 import doctorInfoService from '@/services/config/doctorInfoService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
+import medicalCenterService from '@/services/config/medicalCenterService'
 import Swal from 'sweetalert2'
 
 const doctors = ref([])
 const specialties = ref([])
+const medicalCenters = ref([])
 const loading = ref(false)
 const error = ref(null)
 const searchTerm = ref('')
@@ -346,17 +315,14 @@ const currentPage = ref(1)
 const itemsPerPage = 10
 
 const doctorForm = ref({
-  user_rut: '',
-  medical_license: '',
-  license_expiration_date: '',
-  specialization: '',
+  rut: '',
+  name: '',
+  email: '',
+  password: '',
+  role: 'doctor',
+  medical_center_id: null,
   specialty_id: null,
-  years_of_experience: 0,
-  phone: '',
-  emergency_contact: '',
-  emergency_phone: '',
-  is_available: true,
-  notes: ''
+  is_active: true
 })
 
 let searchTimeout = null
@@ -367,17 +333,17 @@ const filteredDoctors = computed(() => {
 
   // Filtrar por especialidad
   if (selectedSpecialtyId.value) {
-    filtered = filtered.filter(d => d.specialty_id === selectedSpecialtyId.value)
+    filtered = filtered.filter(d => d.specialty_id === parseInt(selectedSpecialtyId.value))
   }
 
   // Filtrar por búsqueda
   if (searchTerm.value.trim()) {
     const term = searchTerm.value.toLowerCase().trim()
     filtered = filtered.filter(d => {
-      const userName = (d.user?.name || '').toLowerCase()
-      const license = (d.medical_license || '').toLowerCase()
-      const rut = d.user_rut.toLowerCase()
-      return userName.includes(term) || license.includes(term) || rut.includes(term)
+      const name = (d.name || '').toLowerCase()
+      const email = (d.email || '').toLowerCase()
+      const rut = (d.rut || '').toLowerCase()
+      return name.includes(term) || email.includes(term) || rut.includes(term)
     })
   }
 
@@ -387,8 +353,8 @@ const filteredDoctors = computed(() => {
 // Computed para ordenar
 const sortedDoctors = computed(() => {
   return [...filteredDoctors.value].sort((a, b) => {
-    const nameA = (a.user?.name || '').toLowerCase()
-    const nameB = (b.user?.name || '').toLowerCase()
+    const nameA = (a.name || '').toLowerCase()
+    const nameB = (b.name || '').toLowerCase()
     return nameA.localeCompare(nameB)
   })
 })
@@ -417,7 +383,7 @@ const loadDoctors = async () => {
     const data = await doctorInfoService.getAllDoctors()
     doctors.value = data
   } catch (err) {
-    error.value = err.message || 'Error al cargar información de doctores'
+    error.value = err.message || 'Error al cargar doctores'
     console.error('Error loading doctors:', err)
   } finally {
     loading.value = false
@@ -430,6 +396,15 @@ const loadSpecialties = async () => {
     specialties.value = data.filter(s => s.is_active)
   } catch (err) {
     console.error('Error loading specialties:', err)
+  }
+}
+
+const loadMedicalCenters = async () => {
+  try {
+    const response = await medicalCenterService.getAll()
+    medicalCenters.value = response.data || []
+  } catch (err) {
+    console.error('Error loading medical centers:', err)
   }
 }
 
@@ -453,17 +428,14 @@ const clearFilters = () => {
 const openCreateModal = () => {
   isEditing.value = false
   doctorForm.value = {
-    user_rut: '',
-    medical_license: '',
-    license_expiration_date: '',
-    specialization: '',
+    rut: '',
+    name: '',
+    email: '',
+    password: '',
+    role: 'doctor',
+    medical_center_id: null,
     specialty_id: null,
-    years_of_experience: 0,
-    phone: '',
-    emergency_contact: '',
-    emergency_phone: '',
-    is_available: true,
-    notes: ''
+    is_active: true
   }
   showModal.value = true
 }
@@ -471,17 +443,14 @@ const openCreateModal = () => {
 const openEditModal = (doctor) => {
   isEditing.value = true
   doctorForm.value = {
-    user_rut: doctor.user_rut,
-    medical_license: doctor.medical_license || '',
-    license_expiration_date: doctor.license_expiration_date ? doctor.license_expiration_date.split('T')[0] : '',
-    specialization: doctor.specialization || '',
+    rut: doctor.rut,
+    name: doctor.name || '',
+    email: doctor.email || '',
+    password: '', // No se muestra la contraseña
+    role: 'doctor',
+    medical_center_id: doctor.medical_center_id || null,
     specialty_id: doctor.specialty_id || null,
-    years_of_experience: doctor.years_of_experience || 0,
-    phone: doctor.phone || '',
-    emergency_contact: doctor.emergency_contact || '',
-    emergency_phone: doctor.emergency_phone || '',
-    is_available: doctor.is_available !== undefined ? doctor.is_available : true,
-    notes: doctor.notes || ''
+    is_active: doctor.is_active !== undefined ? doctor.is_active : true
   }
   showModal.value = true
 }
@@ -489,27 +458,64 @@ const openEditModal = (doctor) => {
 const closeModal = () => {
   showModal.value = false
   doctorForm.value = {
-    user_rut: '',
-    medical_license: '',
-    license_expiration_date: '',
-    specialization: '',
+    rut: '',
+    name: '',
+    email: '',
+    password: '',
+    role: 'doctor',
+    medical_center_id: null,
     specialty_id: null,
-    years_of_experience: 0,
-    phone: '',
-    emergency_contact: '',
-    emergency_phone: '',
-    is_available: true,
-    notes: ''
+    is_active: true
   }
 }
 
-const saveDoctorInfo = async () => {
+const saveDoctor = async () => {
   // Validaciones
-  if (!doctorForm.value.user_rut || !doctorForm.value.user_rut.trim()) {
+  if (!doctorForm.value.rut || !doctorForm.value.rut.trim()) {
     await Swal.fire({
       icon: 'warning',
       title: 'Campo requerido',
-      text: 'El RUT del usuario es obligatorio',
+      text: 'El RUT es obligatorio',
+      confirmButtonText: 'Aceptar'
+    })
+    return
+  }
+
+  if (!doctorForm.value.name || !doctorForm.value.name.trim()) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Campo requerido',
+      text: 'El nombre es obligatorio',
+      confirmButtonText: 'Aceptar'
+    })
+    return
+  }
+
+  if (!doctorForm.value.email || !doctorForm.value.email.trim()) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Campo requerido',
+      text: 'El email es obligatorio',
+      confirmButtonText: 'Aceptar'
+    })
+    return
+  }
+
+  if (!isEditing.value && (!doctorForm.value.password || !doctorForm.value.password.trim())) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Campo requerido',
+      text: 'La contraseña es obligatoria para nuevos doctores',
+      confirmButtonText: 'Aceptar'
+    })
+    return
+  }
+
+  if (!doctorForm.value.medical_center_id) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Campo requerido',
+      text: 'Debe seleccionar un centro médico',
       confirmButtonText: 'Aceptar'
     })
     return
@@ -517,7 +523,7 @@ const saveDoctorInfo = async () => {
 
   // Validar formato de RUT (básico)
   const rutRegex = /^\d{7,8}-[\dkK]$/
-  if (!rutRegex.test(doctorForm.value.user_rut.trim())) {
+  if (!rutRegex.test(doctorForm.value.rut.trim())) {
     await Swal.fire({
       icon: 'warning',
       title: 'RUT inválido',
@@ -530,38 +536,35 @@ const saveDoctorInfo = async () => {
   saving.value = true
   try {
     const doctorData = {
-      user_rut: doctorForm.value.user_rut.trim(),
-      medical_license: doctorForm.value.medical_license.trim() || null,
-      license_expiration_date: doctorForm.value.license_expiration_date || null,
-      specialization: doctorForm.value.specialization.trim() || null,
+      rut: doctorForm.value.rut.trim(),
+      name: doctorForm.value.name.trim(),
+      email: doctorForm.value.email.trim(),
+      role: 'doctor',
+      medical_center_id: doctorForm.value.medical_center_id,
       specialty_id: doctorForm.value.specialty_id || null,
-      years_of_experience: doctorForm.value.years_of_experience || 0,
-      phone: doctorForm.value.phone.trim() || null,
-      emergency_contact: doctorForm.value.emergency_contact.trim() || null,
-      emergency_phone: doctorForm.value.emergency_phone.trim() || null,
-      is_available: doctorForm.value.is_available !== undefined ? doctorForm.value.is_available : true,
-      notes: doctorForm.value.notes.trim() || null
+      is_active: doctorForm.value.is_active !== undefined ? doctorForm.value.is_active : true
     }
 
-    if (isEditing.value) {
-      await doctorInfoService.updateDoctorInfo(doctorForm.value.user_rut, doctorData)
-      await loadDoctors()
-      closeModal()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Actualizado',
-        text: 'Información del doctor actualizada exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
-    } else {
-      await doctorInfoService.createDoctorInfo(doctorData)
+    if (!isEditing.value) {
+      doctorData.password = doctorForm.value.password
+      await doctorInfoService.createDoctor(doctorData)
       await loadDoctors()
       closeModal()
       await Swal.fire({
         icon: 'success',
         title: 'Creado',
-        text: 'Información del doctor registrada exitosamente',
+        text: 'Doctor registrado exitosamente',
+        timer: 2000,
+        showConfirmButton: false
+      })
+    } else {
+      await doctorInfoService.updateDoctor(doctorForm.value.rut, doctorData)
+      await loadDoctors()
+      closeModal()
+      await Swal.fire({
+        icon: 'success',
+        title: 'Actualizado',
+        text: 'Doctor actualizado exitosamente',
         timer: 2000,
         showConfirmButton: false
       })
@@ -590,11 +593,11 @@ const saveDoctorInfo = async () => {
 }
 
 const confirmDelete = async (doctor) => {
-  const doctorName = doctor.user?.name || doctor.user_rut
+  const doctorName = doctor.name || doctor.rut
   
   const result = await Swal.fire({
     title: '¿Estás seguro?',
-    html: `¿Deseas eliminar la información del doctor <strong>"${doctorName}"</strong>?<br><small class="text-gray-600">Esta acción no se puede deshacer.</small>`,
+    html: `¿Deseas eliminar (desactivar) al doctor <strong>"${doctorName}"</strong>?<br><small class="text-gray-600">El doctor será desactivado y no podrá iniciar sesión.</small>`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#dc2626',
@@ -606,12 +609,12 @@ const confirmDelete = async (doctor) => {
 
   if (result.isConfirmed) {
     try {
-      await doctorInfoService.deleteDoctorInfo(doctor.user_rut)
+      await doctorInfoService.deleteDoctor(doctor.rut)
       await loadDoctors()
       await Swal.fire({
         icon: 'success',
         title: 'Eliminado',
-        text: 'Información del doctor eliminada exitosamente',
+        text: 'Doctor eliminado (desactivado) exitosamente',
         timer: 2000,
         showConfirmButton: false
       })
@@ -630,8 +633,8 @@ const confirmDelete = async (doctor) => {
 onMounted(async () => {
   await Promise.all([
     loadSpecialties(),
+    loadMedicalCenters(),
     loadDoctors()
   ])
 })
 </script>
-

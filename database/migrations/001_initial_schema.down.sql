@@ -1,6 +1,7 @@
 -- Script de rollback completo: Eliminar esquema completo de MediTrack
 -- Fecha: 2025-01-20
 -- Descripción: Eliminar todas las tablas, vistas, funciones, triggers e índices del sistema
+-- Nota: El constraint CHECK de la tabla "user" incluye los roles: 'admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad', 'consignación'
 
 -- =======================
 -- ELIMINAR VISTAS
@@ -26,7 +27,6 @@ DROP TRIGGER IF EXISTS tr_supply_request_updated_at ON supply_request;
 DROP TRIGGER IF EXISTS trg_log_batch_delete ON batch;
 DROP TRIGGER IF EXISTS set_batch_number ON batch_history;
 DROP TRIGGER IF EXISTS update_user_updated_at ON "user";
-DROP TRIGGER IF EXISTS trg_update_doctor_info_updated_at ON doctor_info;
 DROP TRIGGER IF EXISTS trg_update_surgery_typical_supply_updated_at ON surgery_typical_supply;
 DROP TRIGGER IF EXISTS trg_update_medical_specialty_updated_at ON medical_specialty;
 DROP TRIGGER IF EXISTS trg_update_supplier_config_updated_at ON supplier_config;
@@ -50,7 +50,6 @@ DROP FUNCTION IF EXISTS update_supply_request_updated_at();
 DROP FUNCTION IF EXISTS log_batch_delete();
 DROP FUNCTION IF EXISTS trg_set_batch_number();
 DROP FUNCTION IF EXISTS update_updated_at_column();
-DROP FUNCTION IF EXISTS update_doctor_info_updated_at();
 DROP FUNCTION IF EXISTS update_surgery_typical_supply_updated_at();
 DROP FUNCTION IF EXISTS update_medical_specialty_updated_at();
 DROP FUNCTION IF EXISTS update_supplier_config_updated_at();
@@ -140,11 +139,6 @@ DROP INDEX IF EXISTS idx_supply_request_status;
 -- Índices de surgery
 DROP INDEX IF EXISTS idx_surgery_specialty;
 
--- Índices de doctor_info
-DROP INDEX IF EXISTS idx_doctor_info_license;
-DROP INDEX IF EXISTS idx_doctor_info_available;
-DROP INDEX IF EXISTS idx_doctor_info_specialty;
-
 -- Índices de surgery_typical_supply
 DROP INDEX IF EXISTS idx_surgery_typical_supply_required;
 DROP INDEX IF EXISTS idx_surgery_typical_supply_code;
@@ -198,7 +192,6 @@ DROP TABLE IF EXISTS batch CASCADE;
 DROP TABLE IF EXISTS supply_code CASCADE;
 
 -- Tablas de configuración médica
-DROP TABLE IF EXISTS doctor_info CASCADE;
 DROP TABLE IF EXISTS surgery_typical_supply CASCADE;
 DROP TABLE IF EXISTS medical_specialty CASCADE;
 

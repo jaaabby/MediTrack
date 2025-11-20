@@ -164,11 +164,17 @@ func (s *InventoryService) GetMovementHistory(
 				WHEN sh.destination_type = 'store' THEN s.name
 				WHEN sh.destination_type = 'pavilion' THEN p.name
 			END as destination_name,
+			CASE 
+				WHEN sh.origin_type = 'store' THEN so.name
+				WHEN sh.origin_type = 'pavilion' THEN po.name
+			END as origin_name,
 			mc.name as medical_center_name,
 			u.name as user_name`).
 		Joins("LEFT JOIN store s ON sh.destination_type = 'store' AND sh.destination_id = s.id").
 		Joins("LEFT JOIN pavilion p ON sh.destination_type = 'pavilion' AND sh.destination_id = p.id").
-		Joins("LEFT JOIN medical_center mc ON (s.medical_center_id = mc.id OR p.medical_center_id = mc.id)").
+		Joins("LEFT JOIN store so ON sh.origin_type = 'store' AND sh.origin_id = so.id").
+		Joins("LEFT JOIN pavilion po ON sh.origin_type = 'pavilion' AND sh.origin_id = po.id").
+		Joins("LEFT JOIN medical_center mc ON (s.medical_center_id = mc.id OR p.medical_center_id = mc.id OR so.medical_center_id = mc.id OR po.medical_center_id = mc.id)").
 		Joins("LEFT JOIN \"user\" u ON sh.user_rut = u.rut")
 
 	// Aplicar filtros

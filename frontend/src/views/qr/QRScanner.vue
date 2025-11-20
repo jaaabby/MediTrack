@@ -147,7 +147,7 @@
     </div>
 
     <!-- Información del Insumo Escaneado -->
-    <div v-if="scannedInfo && !error" class="bg-white rounded-lg shadow-sm border overflow-hidden mb-4 sm:mb-6">
+    <div v-if="scannedInfo && !error" class="mb-4 sm:mb-6">
       <QRInfoDisplay 
         :qr-info="scannedInfo"
         :show-traceability="true"
@@ -201,29 +201,8 @@
         </div>
       </div>
 
-      <!-- NUEVA LÓGICA: State-specific recommendations -->
-      <div v-if="getStateRecommendation(scannedInfo)" class="p-3 sm:p-4 border-t border-gray-200">
-        <div :class="getRecommendationClass(scannedInfo)" class="rounded-md p-3 sm:p-4">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <svg :class="getRecommendationIconClass(scannedInfo)" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getRecommendationIcon(scannedInfo)" />
-              </svg>
-            </div>
-            <div class="ml-2 sm:ml-3">
-              <h3 :class="getRecommendationTitleClass(scannedInfo)" class="text-xs sm:text-sm font-medium">
-                {{ getStateRecommendation(scannedInfo).title }}
-              </h3>
-              <div :class="getRecommendationTextClass(scannedInfo)" class="mt-1 sm:mt-2 text-xs sm:text-sm">
-                {{ getStateRecommendation(scannedInfo).message }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- NUEVA LÓGICA: Acciones basadas en estado -->
-      <div v-if="scannedInfo.supply_info && !scannedInfo.is_consumed" class="p-3 sm:p-4 border-t border-gray-200 bg-gray-50">
+      <!-- Acciones basadas en estado -->
+      <div v-if="scannedInfo.supply_info && !scannedInfo.is_consumed" class="p-3 sm:p-4 border-t border-gray-200">
         <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
           <!-- NUEVA LÓGICA: Solo mostrar consumir si estado es "recepcionado" -->
           <router-link 
@@ -248,6 +227,23 @@
             </svg>
             Transferir
           </router-link>
+          
+          <!-- NUEVA LÓGICA: Mostrar retirar si estado es "pendiente_retiro" -->
+          <button 
+            v-if="canBePickedUp(scannedInfo)"
+            @click="pickupSupply(scannedInfo.qr_code)"
+            :disabled="pickingUp"
+            class="btn-primary text-sm flex items-center justify-center"
+          >
+            <svg v-if="pickingUp" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ pickingUp ? 'Registrando retiro...' : 'Retirar de Bodega' }}
+          </button>
           
           <!-- NUEVA LÓGICA: Solo mostrar recepcionar si estado es "en_camino_a_pabellon" -->
           <router-link 
@@ -439,11 +435,13 @@ const detecting = ref(false)
 // Estado del retorno a bodega
 const returningToStore = ref(false)
 const confirmingArrival = ref(false)
+const pickingUp = ref(false)
 
 // Estado del carrito
 const availableCarts = ref([])
 const selectedCartForAdd = ref('')
 const addingToCart = ref(false)
+const showCartSelection = ref(false)
 
 // Variables para manejo de cámara
 let mediaStream = null
@@ -470,6 +468,14 @@ const canBeTransferred = (info) => {
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   return status === 'disponible'
+}
+
+const canBePickedUp = (info) => {
+  if (!info || info.type !== 'medical_supply') return false
+  if (info.is_consumed) return false
+  
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+  return status === 'pendiente_retiro'
 }
 
 const canBeReceived = (info) => {
@@ -533,6 +539,12 @@ const getStateRecommendation = (info) => {
         title: 'Listo para Consumir',
         message: 'Este insumo tiene estado "recepcionado" y puede ser consumido en un procedimiento médico.',
         type: 'success'
+      }
+    case 'pendiente_retiro':
+      return {
+        title: 'Pendiente de Retiro',
+        message: 'Este insumo está preparado para retiro. Escanee el QR para registrar que fue retirado físicamente de bodega.',
+        type: 'warning'
       }
     case 'en_camino_a_pabellon':
       return {
@@ -904,6 +916,40 @@ const viewBatch = (batchId) => {
     name: 'Inventory',
     query: { batch: batchId }
   })
+}
+
+// ===== NUEVA FUNCIÓN: RETIRAR DE BODEGA =====
+const pickupSupply = async (qrCode) => {
+  if (!qrCode || pickingUp.value) return
+  
+  const userRUT = authStore.user?.rut
+  if (!userRUT) {
+    error.value = 'No se pudo obtener el RUT del usuario'
+    return
+  }
+  
+  pickingUp.value = true
+  error.value = null
+  
+  try {
+    const result = await qrService.pickupSupplyFromStore(qrCode, userRUT, '')
+    
+    if (result.success) {
+      // Mostrar notificación de éxito
+      showSuccessNotification('Retiro registrado exitosamente. El insumo está en camino al pabellón.')
+      
+      // Recargar la información del insumo
+      qrInput.value = qrCode
+      await scanQRCode()
+    } else {
+      throw new Error(result.error || 'Error al registrar retiro')
+    }
+  } catch (err) {
+    console.error('Error picking up supply:', err)
+    error.value = err.response?.data?.error || err.message || 'Error al registrar retiro del insumo'
+  } finally {
+    pickingUp.value = false
+  }
 }
 
 // ===== NUEVA FUNCIÓN: REGRESAR A BODEGA =====

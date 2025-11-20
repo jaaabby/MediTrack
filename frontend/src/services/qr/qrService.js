@@ -1052,10 +1052,31 @@ class QRService {
     } else if (qrInfo.type === 'medical_supply') {
       if (qrInfo.is_consumed) {
         return 'Insumo Consumido'
-      } else if (qrInfo.available_for_use === false) {
-        return 'Insumo No Disponible'
-      } else {
-        return 'Insumo Disponible'
+      }
+      
+      // Obtener el estado real del insumo desde supply_info
+      const status = qrInfo.supply_info?.status || qrInfo.supply_info?.Status || qrInfo.status
+      
+      // Mapear estados específicos a labels legibles
+      switch (status?.toLowerCase()) {
+        case 'pendiente_retiro':
+          return 'Pendiente de Retiro'
+        case 'en_camino_a_pabellon':
+          return 'En Camino a Pabellón'
+        case 'recepcionado':
+          return 'Recepcionado'
+        case 'en_camino_a_bodega':
+          return 'En Camino a Bodega'
+        case 'consumido':
+          return 'Consumido'
+        case 'disponible':
+          return 'Insumo Disponible'
+        default:
+          // Fallback para available_for_use
+          if (qrInfo.available_for_use === false) {
+            return 'Insumo No Disponible'
+          }
+          return 'Insumo Disponible'
       }
     }
 
@@ -1068,8 +1089,29 @@ class QRService {
 
     if (qrInfo.type === 'medical_supply') {
       if (qrInfo.is_consumed) return 'red'
-      if (qrInfo.available_for_use === false) return 'orange'
-      return 'green'
+      
+      // Obtener el estado real del insumo
+      const status = qrInfo.supply_info?.status || qrInfo.supply_info?.Status || qrInfo.status
+      
+      // Colores según el estado específico
+      switch (status?.toLowerCase()) {
+        case 'pendiente_retiro':
+          return 'yellow' // Amarillo para pendiente de retiro
+        case 'en_camino_a_pabellon':
+          return 'orange' // Naranja para en tránsito
+        case 'recepcionado':
+          return 'blue' // Azul para recepcionado
+        case 'en_camino_a_bodega':
+          return 'orange' // Naranja para retorno
+        case 'consumido':
+          return 'red' // Rojo para consumido
+        case 'disponible':
+          return 'green' // Verde para disponible
+        default:
+          // Fallback para available_for_use
+          if (qrInfo.available_for_use === false) return 'orange'
+          return 'green'
+      }
     } else if (qrInfo.type === 'batch') {
       const batchStatus = qrInfo.batch_status
       if (batchStatus && batchStatus.available_supplies === 0) return 'red'
@@ -1279,7 +1321,36 @@ class QRService {
 
 
 
-  // Recepcionar un insumo que está en estado "en_camino_a_pabellon"
+  // Retirar físicamente un insumo de bodega (Paso 1)
+  async pickupSupplyFromStore(qrCode, userRUT, notes = '') {
+    try {
+      // Validar que el QR code tenga el formato correcto
+      if (!qrCode || !qrCode.startsWith('SUPPLY_')) {
+        throw new Error('El código QR debe ser de un insumo individual (SUPPLY_)')
+      }
+
+      const response = await this.api.post('/qr/pickup', {
+        qr_code: qrCode,
+        user_rut: userRUT,
+        notes: notes
+      })
+
+      if (response.data.success) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message
+        }
+      } else {
+        throw new Error(response.data.error || 'Error al registrar retiro del insumo')
+      }
+    } catch (error) {
+      console.error('Error picking up supply:', error)
+      throw error
+    }
+  }
+
+  // Recepcionar un insumo que está en estado "en_camino_a_pabellon" (Paso 2)
   async receiveSupply(qrCode, userRUT, destinationType, destinationID, notes = '') {
     try {
       // Validar que el QR code tenga el formato correcto

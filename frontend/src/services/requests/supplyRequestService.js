@@ -414,9 +414,51 @@ class SupplyRequestService {
   async getPendingRequestsForPavedad() {
     try {
       const response = await this.api.get('/supply-requests/pending-pavedad')
-      return response.data
+      console.log('🔍 Respuesta raw de pending-pavedad:', response.data)
+      
+      // El backend devuelve { Success: true, Data: requests[] }
+      // Necesitamos normalizar la respuesta para que coincida con el formato esperado
+      let requests = []
+      
+      if (response.data) {
+        // Caso 1: Backend devuelve { Success: true, Data: [...] }
+        if (response.data.Success !== undefined && response.data.Data !== undefined) {
+          requests = Array.isArray(response.data.Data) ? response.data.Data : []
+          console.log('✅ Formato backend detectado (Success/Data), requests:', requests.length)
+        }
+        // Caso 2: Ya está normalizado { success: true, data: { requests: [...] } }
+        else if (response.data.success !== undefined) {
+          if (response.data.data && response.data.data.requests) {
+            requests = Array.isArray(response.data.data.requests) ? response.data.data.requests : []
+            console.log('✅ Formato normalizado detectado, requests:', requests.length)
+          } else if (Array.isArray(response.data.data)) {
+            requests = response.data.data
+            console.log('✅ Formato con data array, requests:', requests.length)
+          }
+        }
+        // Caso 3: Es directamente un array
+        else if (Array.isArray(response.data)) {
+          requests = response.data
+          console.log('✅ Array directo detectado, requests:', requests.length)
+        }
+        // Caso 4: Tiene data pero no está en el formato esperado
+        else if (response.data.data) {
+          requests = Array.isArray(response.data.data) ? response.data.data : []
+          console.log('✅ Formato con data, requests:', requests.length)
+        }
+      }
+      
+      console.log('📦 Requests finales normalizados:', requests.length)
+      
+      return {
+        success: true,
+        data: {
+          requests: requests
+        }
+      }
     } catch (error) {
-      console.error('Error al obtener solicitudes pendientes para Pavedad:', error)
+      console.error('❌ Error al obtener solicitudes pendientes para Pavedad:', error)
+      console.error('❌ Error response:', error.response?.data)
       throw error
     }
   }

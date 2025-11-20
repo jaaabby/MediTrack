@@ -222,7 +222,8 @@
               v-for="request in paginatedRequests" 
               :key="request.id"
               @click="viewRequest(request.id)"
-              class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+              class="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+              :class="isEmergency(request) ? 'border-red-400 border-2' : isUrgent(request) ? 'border-orange-400 border-2' : 'border-gray-200'"
             >
               <!-- Header con número y fecha -->
               <div class="flex items-start justify-between mb-3 pb-3 border-b border-gray-100">
@@ -232,6 +233,12 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <span class="text-sm font-semibold text-gray-900 truncate">{{ request.request_number }}</span>
+                    <!-- Badge de urgencia -->
+                    <span v-if="isEmergency(request) || isUrgent(request)" 
+                          :class="getUrgencyBadgeClass(request)" 
+                          class="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full border">
+                      {{ getUrgencyLabel(request) }}
+                    </span>
                   </div>
                   <div class="flex items-center gap-2 text-xs text-gray-500">
                     <svg class="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,6 +270,18 @@
                 <div class="flex items-center">
                   <div class="w-20 text-xs font-medium text-gray-500 flex-shrink-0">Items:</div>
                   <div class="text-sm text-gray-900">{{ request.total_items || 'N/A' }} items</div>
+                </div>
+
+                <!-- Fecha de cirugía con indicador de urgencia -->
+                <div v-if="request.surgery_datetime" class="flex items-start">
+                  <div class="w-20 text-xs font-medium text-gray-500 flex-shrink-0">Cirugía:</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm text-gray-900 font-medium">{{ formatDate(request.surgery_datetime) }}</div>
+                    <div v-if="isEmergency(request) || isUrgent(request)" class="text-xs mt-1" 
+                         :class="isEmergency(request) ? 'text-red-600 font-bold' : 'text-orange-600 font-semibold'">
+                      ⚠️ {{ getUrgencyLabel(request) }}
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Estado y Prioridad -->
@@ -365,8 +384,16 @@
             >
               <!-- Número de solicitud -->
               <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-2">
                 <div class="text-sm font-medium text-gray-900">
                   {{ request.request_number }}
+                  </div>
+                  <!-- Badge de urgencia -->
+                  <span v-if="isEmergency(request) || isUrgent(request)" 
+                        :class="getUrgencyBadgeClass(request)" 
+                        class="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full border">
+                    {{ getUrgencyLabel(request) }}
+                  </span>
                 </div>
               </td>
 
@@ -397,10 +424,12 @@
               <!-- Fecha de Cirugía -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">
-                  {{ formatSurgeryDateTime(request.surgery_datetime) }}
+                  {{ formatDate(request.surgery_datetime) }}
                 </div>
-                <span :class="getUrgencyBadgeClass(request.surgery_datetime)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1">
-                  {{ getUrgencyLabel(request.surgery_datetime) }}
+                <span v-if="isEmergency(request) || isUrgent(request)" 
+                      :class="getUrgencyBadgeClass(request)" 
+                      class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 border">
+                  {{ getUrgencyLabel(request) }}
                 </span>
               </td>
 
@@ -588,7 +617,7 @@ const filteredRequests = computed(() => {
 
   if (filters.value.urgency) {
     filtered = filtered.filter(request => 
-      supplyRequestService.calculateUrgencyFromSurgeryDate(request.surgery_datetime) === filters.value.urgency)
+      getUrgencyLevel(request) === filters.value.urgency)
   }
 
   if (filters.value.surgeryDate) {
@@ -670,6 +699,10 @@ const loadSupplyRequests = async () => {
     else if (authStore.isAdmin) {
       result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
     }
+    // Consignación ve todas las solicitudes (para manejo de solicitudes externas)
+    else if (authStore.isConsignation) {
+      result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+    }
     // Doctor ve solo sus solicitudes
     else if (authStore.canCreateRequests) {
       result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
@@ -687,7 +720,7 @@ const loadSupplyRequests = async () => {
       }
       
       // Filtrar por doctor si corresponde
-      if (authStore.canCreateRequests && !authStore.isAdmin && !authStore.isPavedad && !authStore.isWarehouseManager) {
+      if (authStore.canCreateRequests && !authStore.isAdmin && !authStore.isPavedad && !authStore.isWarehouseManager && !authStore.isConsignation) {
         const userRut = authStore.getUserRut
         requests.value = allRequests.filter(request => request.requested_by === userRut)
       } else {
@@ -924,29 +957,82 @@ const getStatusBadgeClass = (status) => {
 }
 
 const formatSurgeryDateTime = (surgeryDateTime) => {
-  return supplyRequestService.formatSurgeryDateTime(surgeryDateTime)
-}
-
-const getUrgencyLabel = (surgeryDateTime) => {
-  const urgency = supplyRequestService.calculateUrgencyFromSurgeryDate(surgeryDateTime)
-  const labels = {
-    'critical': 'Crítica',
-    'high': 'Alta',
-    'normal': 'Normal',
-    'low': 'Baja'
+  if (!surgeryDateTime) return 'N/A'
+  try {
+    return format(new Date(surgeryDateTime), 'dd/MM/yyyy HH:mm', { locale: es })
+  } catch {
+    return surgeryDateTime
   }
-  return labels[urgency] || 'Normal'
 }
 
-const getUrgencyBadgeClass = (surgeryDateTime) => {
-  const color = supplyRequestService.getUrgencyColor(surgeryDateTime)
+// Funciones de urgencia
+const getHoursUntilSurgery = (surgeryDatetime) => {
+  if (!surgeryDatetime) return null
+  const surgeryDate = new Date(surgeryDatetime)
+  const now = new Date()
+  const diffTime = surgeryDate - now
+  const diffHours = diffTime / (1000 * 60 * 60)
+  return diffHours
+}
+
+const getDaysUntilSurgery = (surgeryDatetime) => {
+  if (!surgeryDatetime) return null
+  const surgeryDate = new Date(surgeryDatetime)
+  const now = new Date()
+  const diffTime = surgeryDate - now
+  const diffDays = diffTime / (1000 * 60 * 60 * 24)
+  return diffDays
+}
+
+const isUrgent = (request) => {
+  const hours = getHoursUntilSurgery(request.surgery_datetime)
+  return hours !== null && hours > 0 && hours <= 48
+}
+
+const isEmergency = (request) => {
+  const hours = getHoursUntilSurgery(request.surgery_datetime)
+  return hours !== null && hours > 0 && hours <= 12
+}
+
+const getUrgencyLevel = (request) => {
+  const hours = getHoursUntilSurgery(request.surgery_datetime)
+  if (hours === null || hours < 0) return 'completed'
+  if (hours <= 12) return 'emergency'
+  if (hours <= 48) return 'urgent'
+  if (hours <= 72) return 'normal'
+  return 'low'
+}
+
+const getUrgencyBadgeClass = (request) => {
+  const level = getUrgencyLevel(request)
   const classes = {
-    'red': 'bg-red-100 text-red-800',
-    'orange': 'bg-orange-100 text-orange-800',
-    'blue': 'bg-blue-100 text-blue-800',
-    'gray': 'bg-gray-100 text-gray-800'
+    emergency: 'bg-red-100 text-red-800 border-red-300',
+    urgent: 'bg-orange-100 text-orange-800 border-orange-300',
+    normal: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    low: 'bg-gray-100 text-gray-800 border-gray-300',
+    completed: 'bg-gray-100 text-gray-500 border-gray-300'
   }
-  return classes[color] || classes.blue
+  return classes[level] || classes.low
+}
+
+const getUrgencyLabel = (request) => {
+  const level = getUrgencyLevel(request)
+  const hours = getHoursUntilSurgery(request.surgery_datetime)
+  const days = getDaysUntilSurgery(request.surgery_datetime)
+  
+  if (level === 'emergency') {
+    return `EMERGENCIA (${Math.ceil(hours)}h)`
+  }
+  if (level === 'urgent') {
+    return `URGENTE (${Math.ceil(hours)}h)`
+  }
+  if (level === 'normal') {
+    return `Normal (${Math.ceil(days)}d)`
+  }
+  if (level === 'low') {
+    return `Baja (${Math.ceil(days)}d)`
+  }
+  return 'Completada'
 }
 
 // Lifecycle

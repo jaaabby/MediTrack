@@ -108,6 +108,17 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 	var supplyRequest models.SupplyRequest
 	var medicalCenterID int
 
+	// Validar anticipación mínima (3 días por defecto)
+	const minimumAdvanceDays = 3.0
+	requestDate := time.Now()
+	daysUntilSurgery := request.SurgeryDatetime.Time.Sub(requestDate).Hours() / 24.0
+	
+	// Permitir urgencias (menos de 3 días) pero registrar advertencia
+	isUrgent := daysUntilSurgery > 0 && daysUntilSurgery < minimumAdvanceDays
+	if daysUntilSurgery < 0 {
+		return nil, fmt.Errorf("la fecha de cirugía no puede ser en el pasado")
+	}
+
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		// Obtener el medical_center_id desde el pavilion
 		var pavilion models.Pavilion
@@ -120,6 +131,17 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 		notes := request.Notes
 		if notes == "" {
 			notes = " " // Espacio en blanco para indicar "sin observaciones"
+		}
+		
+		// Agregar advertencia si es urgente o no programada
+		if isUrgent {
+			warningMsg := fmt.Sprintf("\n[ADVERTENCIA: Solicitud con menos de %.0f días de anticipación - Cirugía programada para %s]", 
+				minimumAdvanceDays, request.SurgeryDatetime.Time.Format("02/01/2006 15:04"))
+			if notes == " " {
+				notes = warningMsg
+			} else {
+				notes = notes + warningMsg
+			}
 		}
 
 		// Crear la solicitud principal
@@ -180,15 +202,33 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 
 	// Enviar correos de notificación
 	go func() {
+		fmt.Printf("=== INICIANDO ENVÍO DE CORREOS PARA SOLICITUD %s ===\n", fullRequest.RequestNumber)
+		
 		// Correo al solicitante
+		fmt.Printf("Intentando enviar correo al solicitante: %s\n", fullRequest.RequestedBy)
 		if err := s.sendRequestCreatedEmailToRequester(fullRequest); err != nil {
-			fmt.Printf("Error enviando correo al solicitante: %v\n", err)
+			fmt.Printf("ERROR enviando correo al solicitante: %v\n", err)
+		} else {
+			fmt.Printf("✓ Correo al solicitante enviado exitosamente\n")
 		}
 
 		// Correo a todos los usuarios Pavedad
+		fmt.Printf("Intentando enviar correo a usuarios Pavedad\n")
 		if err := s.sendRequestCreatedEmailToPavedad(fullRequest); err != nil {
-			fmt.Printf("Error enviando correo a Pavedad: %v\n", err)
+			fmt.Printf("ERROR enviando correo a Pavedad: %v\n", err)
+		} else {
+			fmt.Printf("✓ Correo a Pavedad enviado exitosamente\n")
 		}
+
+		// Correo a todos los usuarios Consignación
+		fmt.Printf("Intentando enviar correo a usuarios Consignación\n")
+		if err := s.sendRequestCreatedEmailToConsignation(fullRequest); err != nil {
+			fmt.Printf("ERROR enviando correo a Consignación: %v\n", err)
+		} else {
+			fmt.Printf("✓ Correo a Consignación enviado exitosamente\n")
+		}
+		
+		fmt.Printf("=== FIN ENVÍO DE CORREOS PARA SOLICITUD %s ===\n", fullRequest.RequestNumber)
 	}()
 
 	// Retornar la solicitud completa con items
@@ -253,7 +293,11 @@ func (s *SupplyRequestService) GetAllSupplyRequests(limit, offset int, status st
 	query.Count(&total)
 
 	// Obtener registros con paginación
+	// Ordenar por urgencia primero (urgentes primero), luego por fecha de creación
 	if err := query.Limit(limit).Offset(offset).
+		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+		Order("surgery_datetime ASC").
 		Order("created_at DESC").
 		Find(&requests).Error; err != nil {
 		return nil, 0, err
@@ -287,7 +331,11 @@ func (s *SupplyRequestService) GetSupplyRequestsByPavilion(pavilionID int, limit
 	query.Count(&total)
 
 	// Obtener registros
+	// Ordenar por urgencia primero (urgentes primero), luego por fecha
 	if err := query.Limit(limit).Offset(offset).
+		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+		Order("surgery_datetime ASC").
 		Order("created_at DESC").
 		Find(&requests).Error; err != nil {
 		return nil, 0, err
@@ -736,10 +784,13 @@ func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, re
 			return fmt.Errorf("error asignando solicitud: %v", err)
 		}
 
-		// Enviar correo al solicitante notificando la asignación
+		// Enviar correo al solicitante y consignación notificando la asignación
 		go func() {
 			if err := s.sendRequestAssignedEmail(&supplyRequest); err != nil {
-				fmt.Printf("Error enviando correo de asignación: %v\n", err)
+				fmt.Printf("Error enviando correo de asignación al solicitante: %v\n", err)
+			}
+			if err := s.sendRequestAssignedEmailToConsignation(&supplyRequest); err != nil {
+				fmt.Printf("Error enviando correo de asignación a consignación: %v\n", err)
 			}
 		}()
 
@@ -751,7 +802,11 @@ func (s *SupplyRequestService) AssignRequestToWarehouseManager(requestID int, re
 func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]SupplyRequestWithItems, error) {
 	var requests []models.SupplyRequest
 	// Pavedad ve tanto las pendientes como las ya asignadas
+	// Ordenar por urgencia primero (urgentes primero), luego por fecha
 	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "parcialmente_aprobado", "pendiente_revision", "devuelto"}).
+		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+		Order("surgery_datetime ASC").
 		Order("request_date DESC").
 		Find(&requests).Error
 
@@ -838,23 +893,58 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 			// Buscar insumos disponibles con el mismo código (supply_code)
 			// FEFO (First Expired First Out): Priorizar productos próximos a vencer
 			var availableSupplies []models.MedicalSupply
-			// Usar JOIN con batch para ordenar por fecha de vencimiento
-			if err := tx.Table("medical_supply ms").
-				Select("ms.*").
-				Joins("JOIN batch b ON ms.batch_id = b.id").
-				Where("ms.code = ? AND ms.status = ? AND ms.location_type = ?",
+			
+			// Buscar primero sin JOIN para asegurar que encontramos los insumos
+			// Luego intentaremos ordenar por batch si es posible
+			if err := tx.Model(&models.MedicalSupply{}).
+				Where("code = ? AND status = ? AND location_type = ?",
 					item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
-				Where("b.expiration_date > ?", time.Now()). // Solo productos no vencidos
-				Order("b.expiration_date ASC, ms.updated_at ASC"). // FEFO: primero los que vencen antes
+				Order("updated_at ASC").
 				Limit(item.QuantityRequested).
 				Find(&availableSupplies).Error; err != nil {
 				return fmt.Errorf("error buscando insumos disponibles: %v", err)
 			}
+			
+			// Si encontramos insumos, intentar reordenar por fecha de vencimiento (FEFO)
+			// Esto es opcional, solo para optimizar el orden
+			if len(availableSupplies) > 0 {
+				// Obtener los IDs de los insumos encontrados
+				var supplyIDs []int
+				for _, s := range availableSupplies {
+					supplyIDs = append(supplyIDs, s.ID)
+				}
+				
+				// Re-buscar con JOIN para ordenar por fecha de vencimiento
+				var orderedSupplies []models.MedicalSupply
+				if err := tx.Table("medical_supply ms").
+					Select("ms.*").
+					Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
+					Where("ms.id IN ?", supplyIDs).
+					Where("(b.expiration_date IS NULL OR b.expiration_date > ?)", time.Now()).
+					Order("CASE WHEN b.expiration_date IS NULL THEN 1 ELSE 0 END, b.expiration_date ASC, ms.updated_at ASC").
+					Find(&orderedSupplies).Error; err == nil && len(orderedSupplies) > 0 {
+					// Si el reordenamiento funcionó, usar esos resultados
+					availableSupplies = orderedSupplies
+				}
+				// Si falla el reordenamiento, usar los insumos encontrados originalmente
+			}
 
 			// Verificar que hay suficientes insumos disponibles
 			if len(availableSupplies) < item.QuantityRequested {
-				return fmt.Errorf("no hay suficientes insumos disponibles. Requeridos: %d, Disponibles: %d",
-					item.QuantityRequested, len(availableSupplies))
+				// Contar total de insumos con ese código para dar más información
+				var totalCount int64
+				tx.Model(&models.MedicalSupply{}).
+					Where("code = ?", item.SupplyCode).
+					Count(&totalCount)
+				
+				var availableCount int64
+				tx.Model(&models.MedicalSupply{}).
+					Where("code = ? AND status = ? AND location_type = ?", 
+						item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
+					Count(&availableCount)
+				
+				return fmt.Errorf("no hay suficientes insumos disponibles. Requeridos: %d, Disponibles: %d (Total con código %d: %d, Disponibles en bodega: %d)",
+					item.QuantityRequested, len(availableSupplies), item.SupplyCode, totalCount, availableCount)
 			}
 
 			// Crear asignaciones QR automáticas para cada insumo
@@ -917,55 +1007,23 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 		// Si todos los items fueron revisados, actualizar el estado de la solicitud
 		if totalItems == reviewedItems {
-			var allAccepted, hasReturned int64
-			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "aceptado").Count(&allAccepted)
+			var allAccepted, allRejected, allReturned, hasReturned, hasRejected, hasAccepted int64
+			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "aceptado").Count(&hasAccepted)
+			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "rechazado").Count(&hasRejected)
 			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Count(&hasReturned)
+			
+			allAccepted = hasAccepted
+			allRejected = hasRejected
+			allReturned = hasReturned
 
 			var request models.SupplyRequest
 			if err := tx.First(&request, item.SupplyRequestID).Error; err != nil {
 				return fmt.Errorf("error obteniendo solicitud: %v", err)
 			}
 
-			// Determinar nuevo estado de la solicitud
-			if hasReturned > 0 {
-				request.Status = "devuelto" // Al menos un item devuelto
-
-				// Agregar comentarios de items devueltos al historial de notes
-				var returnedItems []models.SupplyRequestItem
-				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Find(&returnedItems)
-
-				var returnComments string
-				for _, ri := range returnedItems {
-					if ri.ItemNotes != nil && *ri.ItemNotes != "" {
-						if returnComments != "" {
-							returnComments += "\n"
-						}
-						// Usar formato: Item "NombreItem": observación
-						returnComments += fmt.Sprintf("Item \"%s\": %s", ri.SupplyName, *ri.ItemNotes)
-					}
-				}
-
-				// Agregar comentarios de devolución a notes (solo los comentarios)
-				// Si no hay comentarios de devolución, agregar un espacio para mantener el orden
-				if returnComments == "" {
-					returnComments = " " // Espacio en blanco para indicar "sin observaciones"
-				}
-
-				if request.Notes == "" {
-					request.Notes = returnComments
-				} else {
-					request.Notes = request.Notes + "\n\n" + returnComments
-				}
-
-				// Enviar correo de devolución
-				go func() {
-					if err := s.sendRequestReturnedEmail(&request); err != nil {
-						fmt.Printf("Error enviando correo de devolución: %v\n", err)
-					}
-				}()
-
-			} else if allAccepted == totalItems {
-				request.Status = "aprobado" // Todos aceptados
+			// CASO 1: Todo aprobado
+			if allAccepted == totalItems && hasRejected == 0 && hasReturned == 0 {
+				request.Status = "aprobado"
 				request.ApprovalDate = &now
 				request.ApprovedBy = &req.ReviewedBy
 				request.ApprovedByName = &req.ReviewedByName
@@ -983,20 +1041,188 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 				// Enviar correo de aprobación
 				go func() {
 					if err := s.sendRequestApprovedEmail(&request); err != nil {
-						fmt.Printf("Error enviando correo de aprobación: %v\n", err)
+						fmt.Printf("Error enviando correo de aprobación al solicitante: %v\n", err)
+					}
+					if err := s.sendRequestApprovedEmailToConsignation(&request); err != nil {
+						fmt.Printf("Error enviando correo de aprobación a consignación: %v\n", err)
 					}
 				}()
 
-			} else {
-				request.Status = "parcialmente_aprobado" // Algunos rechazados
+			// CASO 2: Todo rechazado
+			} else if allRejected == totalItems && hasAccepted == 0 && hasReturned == 0 {
+				request.Status = "rechazado"
 				request.ApprovalDate = &now
 				request.ApprovedBy = &req.ReviewedBy
 				request.ApprovedByName = &req.ReviewedByName
 
-				// Enviar correo de aprobación parcial (usar template de aprobado)
+				// Agregar comentarios de items rechazados
+				var rejectedItems []models.SupplyRequestItem
+				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "rechazado").Find(&rejectedItems)
+
+				var rejectComments string
+				for _, ri := range rejectedItems {
+					if rejectComments != "" {
+						rejectComments += "\n"
+					}
+					comment := "Sin motivo especificado"
+					if ri.ItemNotes != nil && *ri.ItemNotes != "" {
+						comment = *ri.ItemNotes
+					}
+					rejectComments += fmt.Sprintf("Item \"%s\": %s", ri.SupplyName, comment)
+				}
+
+				if rejectComments != "" {
+					if request.Notes == "" {
+						request.Notes = rejectComments
+					} else {
+						request.Notes = request.Notes + "\n\n" + rejectComments
+					}
+				}
+
+				// Enviar correo de rechazo completo
 				go func() {
-					if err := s.sendRequestApprovedEmail(&request); err != nil {
-						fmt.Printf("Error enviando correo de aprobación parcial: %v\n", err)
+					if err := s.sendRequestRejectedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de rechazo al solicitante: %v\n", err)
+					}
+					if err := s.sendRequestRejectedEmailToConsignation(&request); err != nil {
+						fmt.Printf("Error enviando correo de rechazo a consignación: %v\n", err)
+					}
+				}()
+
+			// CASO 3: Todo devuelto
+			} else if allReturned == totalItems && hasAccepted == 0 && hasRejected == 0 {
+				request.Status = "devuelto"
+
+				// Agregar comentarios de items devueltos
+				var returnedItems []models.SupplyRequestItem
+				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Find(&returnedItems)
+
+				var returnComments string
+				for _, ri := range returnedItems {
+					if ri.ItemNotes != nil && *ri.ItemNotes != "" {
+						if returnComments != "" {
+							returnComments += "\n"
+						}
+						returnComments += fmt.Sprintf("Item \"%s\": %s", ri.SupplyName, *ri.ItemNotes)
+					}
+				}
+
+				if returnComments == "" {
+					returnComments = " "
+				}
+
+				if request.Notes == "" {
+					request.Notes = returnComments
+				} else {
+					request.Notes = request.Notes + "\n\n" + returnComments
+				}
+
+				// Enviar correo de devolución
+				go func() {
+					if err := s.sendRequestReturnedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de devolución al solicitante: %v\n", err)
+					}
+					if err := s.sendRequestReturnedEmailToConsignation(&request); err != nil {
+						fmt.Printf("Error enviando correo de devolución a consignación: %v\n", err)
+					}
+				}()
+
+			// CASOS 4, 6, 7: Hay devueltos (prioridad a devueltos)
+			} else if hasReturned > 0 {
+				request.Status = "devuelto"
+				request.ApprovalDate = &now
+				request.ApprovedBy = &req.ReviewedBy
+				request.ApprovedByName = &req.ReviewedByName
+
+				// Agregar comentarios de todos los tipos de items a notes
+				var allComments string
+
+				// Comentarios de items devueltos
+				var returnedItems []models.SupplyRequestItem
+				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Find(&returnedItems)
+				for _, ri := range returnedItems {
+					if ri.ItemNotes != nil && *ri.ItemNotes != "" {
+						if allComments != "" {
+							allComments += "\n"
+						}
+						allComments += fmt.Sprintf("Item \"%s\" devuelto: %s", ri.SupplyName, *ri.ItemNotes)
+					}
+				}
+
+				// Comentarios de items rechazados (si hay)
+				if hasRejected > 0 {
+					var rejectedItems []models.SupplyRequestItem
+					tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "rechazado").Find(&rejectedItems)
+					for _, ri := range rejectedItems {
+						if allComments != "" {
+							allComments += "\n"
+						}
+						comment := "Sin motivo especificado"
+						if ri.ItemNotes != nil && *ri.ItemNotes != "" {
+							comment = *ri.ItemNotes
+						}
+						allComments += fmt.Sprintf("Item \"%s\" rechazado: %s", ri.SupplyName, comment)
+					}
+				}
+
+				if allComments == "" {
+					allComments = " "
+				}
+
+				if request.Notes == "" {
+					request.Notes = allComments
+				} else {
+					request.Notes = request.Notes + "\n\n" + allComments
+				}
+
+				// Enviar correo mixto con todos los tipos de items
+				go func() {
+					if err := s.sendRequestMixedStatusEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo mixto al solicitante: %v\n", err)
+					}
+					if err := s.sendRequestMixedStatusEmailToConsignation(&request); err != nil {
+						fmt.Printf("Error enviando correo mixto a consignación: %v\n", err)
+					}
+				}()
+
+			// CASO 5: Aprobados + Rechazados (sin devueltos)
+			} else if hasAccepted > 0 && hasRejected > 0 && hasReturned == 0 {
+				request.Status = "parcialmente_aprobado"
+				request.ApprovalDate = &now
+				request.ApprovedBy = &req.ReviewedBy
+				request.ApprovedByName = &req.ReviewedByName
+
+				// Agregar comentarios de items rechazados
+				var rejectedItems []models.SupplyRequestItem
+				tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "rechazado").Find(&rejectedItems)
+
+				var rejectComments string
+				for _, ri := range rejectedItems {
+					if rejectComments != "" {
+						rejectComments += "\n"
+					}
+					comment := "Sin motivo especificado"
+					if ri.ItemNotes != nil && *ri.ItemNotes != "" {
+						comment = *ri.ItemNotes
+					}
+					rejectComments += fmt.Sprintf("Item \"%s\" rechazado: %s", ri.SupplyName, comment)
+				}
+
+				if rejectComments != "" {
+					if request.Notes == "" {
+						request.Notes = rejectComments
+					} else {
+						request.Notes = request.Notes + "\n\n" + rejectComments
+					}
+				}
+
+				// Enviar correo de aprobación parcial
+				go func() {
+					if err := s.sendRequestPartiallyApprovedEmail(&request); err != nil {
+						fmt.Printf("Error enviando correo de aprobación parcial al solicitante: %v\n", err)
+					}
+					if err := s.sendRequestPartiallyApprovedEmailToConsignation(&request); err != nil {
+						fmt.Printf("Error enviando correo de aprobación parcial a consignación: %v\n", err)
 					}
 				}()
 			}
@@ -1256,6 +1482,23 @@ func (s *SupplyRequestService) sendRequestRejectedEmail(request *models.SupplyRe
 	var pavilion models.Pavilion
 	s.DB.First(&pavilion, request.PavilionID)
 
+	// Obtener items rechazados
+	var rejectedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "rechazado").Find(&rejectedItems)
+
+	rejectedItemsData := []map[string]interface{}{}
+	for _, item := range rejectedItems {
+		comment := "Sin motivo especificado"
+		if item.ItemNotes != nil && *item.ItemNotes != "" {
+			comment = *item.ItemNotes
+		}
+		rejectedItemsData = append(rejectedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+			"Comment":    comment,
+		})
+	}
+
 	templatePath := filepath.Join("mailer", "templates", "request_rejected.html")
 
 	data := map[string]interface{}{
@@ -1264,10 +1507,237 @@ func (s *SupplyRequestService) sendRequestRejectedEmail(request *models.SupplyRe
 		"PavilionName":   pavilion.Name,
 		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
 		"RejectedByName": *request.AssignedToName,
+		"RejectedItems":  rejectedItemsData,
 		"Notes":          request.Notes,
 	}
 
 	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Rechazada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestRejectedEmailToConsignation(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Consignación
+	var consignationUsers []models.User
+	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
+	}
+
+	if len(consignationUsers) == 0 {
+		return nil
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range consignationUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		return nil
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items rechazados
+	var rejectedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "rechazado").Find(&rejectedItems)
+
+	rejectedItemsData := []map[string]interface{}{}
+	for _, item := range rejectedItems {
+		comment := "Sin motivo especificado"
+		if item.ItemNotes != nil && *item.ItemNotes != "" {
+			comment = *item.ItemNotes
+		}
+		rejectedItemsData = append(rejectedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+			"Comment":    comment,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_rejected_consignation.html")
+
+	data := map[string]interface{}{
+		"RequestNumber":  request.RequestNumber,
+		"RequestedByName": request.RequestedByName,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"RejectedByName": *request.AssignedToName,
+		"RejectedItems":  rejectedItemsData,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Solicitud Rechazada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestMixedStatusEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener todos los tipos de items
+	var approvedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "aceptado").Find(&approvedItems)
+
+	var rejectedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "rechazado").Find(&rejectedItems)
+
+	var returnedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "devuelto").Find(&returnedItems)
+
+	approvedItemsData := []map[string]interface{}{}
+	for _, item := range approvedItems {
+		approvedItemsData = append(approvedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	rejectedItemsData := []map[string]interface{}{}
+	for _, item := range rejectedItems {
+		comment := "Sin motivo especificado"
+		if item.ItemNotes != nil && *item.ItemNotes != "" {
+			comment = *item.ItemNotes
+		}
+		rejectedItemsData = append(rejectedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+			"Comment":    comment,
+		})
+	}
+
+	returnedItemsData := []map[string]interface{}{}
+	for _, item := range returnedItems {
+		comment := "Sin comentarios"
+		if item.ItemNotes != nil && *item.ItemNotes != "" {
+			comment = *item.ItemNotes
+		}
+		returnedItemsData = append(returnedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+			"Comment":    comment,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_mixed_status.html")
+
+	data := map[string]interface{}{
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ReviewedByName": *request.AssignedToName,
+		"ApprovedItems":  approvedItemsData,
+		"RejectedItems":  rejectedItemsData,
+		"ReturnedItems":  returnedItemsData,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud con Múltiples Estados - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestMixedStatusEmailToConsignation(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Consignación
+	var consignationUsers []models.User
+	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
+	}
+
+	if len(consignationUsers) == 0 {
+		return nil
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range consignationUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		return nil
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener todos los tipos de items
+	var approvedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "aceptado").Find(&approvedItems)
+
+	var rejectedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "rechazado").Find(&rejectedItems)
+
+	var returnedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "devuelto").Find(&returnedItems)
+
+	approvedItemsData := []map[string]interface{}{}
+	for _, item := range approvedItems {
+		approvedItemsData = append(approvedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	rejectedItemsData := []map[string]interface{}{}
+	for _, item := range rejectedItems {
+		comment := "Sin motivo especificado"
+		if item.ItemNotes != nil && *item.ItemNotes != "" {
+			comment = *item.ItemNotes
+		}
+		rejectedItemsData = append(rejectedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+			"Comment":    comment,
+		})
+	}
+
+	returnedItemsData := []map[string]interface{}{}
+	for _, item := range returnedItems {
+		comment := "Sin comentarios"
+		if item.ItemNotes != nil && *item.ItemNotes != "" {
+			comment = *item.ItemNotes
+		}
+		returnedItemsData = append(returnedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+			"Comment":    comment,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_mixed_status_consignation.html")
+
+	data := map[string]interface{}{
+		"RequestNumber":  request.RequestNumber,
+		"RequestedByName": request.RequestedByName,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ReviewedByName": *request.AssignedToName,
+		"ApprovedItems":  approvedItemsData,
+		"RejectedItems":  rejectedItemsData,
+		"ReturnedItems":  returnedItemsData,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Solicitud con Múltiples Estados - "+request.RequestNumber)
 	return mailReq.SendMailSkipTLS(templatePath, data)
 }
 
@@ -1277,6 +1747,8 @@ func (s *SupplyRequestService) sendRequestCreatedEmailToRequester(request *model
 	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
 		return fmt.Errorf("error obteniendo solicitante: %v", err)
 	}
+
+	fmt.Printf("DEBUG: Solicitante encontrado - RUT: %s, Email: %s, Nombre: %s\n", requester.RUT, requester.Email, requester.Name)
 
 	if requester.Email == "" {
 		return fmt.Errorf("el solicitante no tiene email registrado")
@@ -1387,5 +1859,370 @@ func (s *SupplyRequestService) sendRequestCreatedEmailToPavedad(request *models.
 	}
 
 	mailReq := mailer.NewRequest(emails, "Nueva Solicitud Pendiente - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestCreatedEmailToConsignation(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Consignación
+	var consignationUsers []models.User
+	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
+	}
+
+	if len(consignationUsers) == 0 {
+		// No hay usuarios Consignación, no es un error crítico
+		return nil
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range consignationUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		// Ningún usuario Consignación tiene email, no es un error crítico
+		return nil
+	}
+
+	// Obtener información del pabellón y centro médico
+	var pavilion models.Pavilion
+	s.DB.Preload("MedicalCenter").First(&pavilion, request.PavilionID)
+
+	// Obtener items de la solicitud
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ?", request.ID).Find(&items)
+
+	itemsData := []map[string]interface{}{}
+	for _, item := range items {
+		itemsData = append(itemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	// Verificar si la cirugía es urgente (menos de 48 horas)
+	hoursUntilSurgery := time.Until(request.SurgeryDatetime).Hours()
+	isUrgent := hoursUntilSurgery < 48 && hoursUntilSurgery > 0
+
+	templatePath := filepath.Join("mailer", "templates", "request_created_consignation.html")
+
+	notes := request.Notes
+	if notes == " " {
+		notes = ""
+	}
+
+	medicalCenterName := "N/A"
+	if pavilion.MedicalCenter.Name != "" {
+		medicalCenterName = pavilion.MedicalCenter.Name
+	}
+
+	data := map[string]interface{}{
+		"RequestNumber":     request.RequestNumber,
+		"RequestedByName":   request.RequestedByName,
+		"PavilionName":      pavilion.Name,
+		"MedicalCenterName": medicalCenterName,
+		"SurgeryDate":       request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"RequestDate":       request.RequestDate.Format("02/01/2006 15:04"),
+		"Items":             itemsData,
+		"TotalItems":        len(items),
+		"Notes":             notes,
+		"IsUrgent":          isUrgent,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Nueva Solicitud - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestAssignedEmailToConsignation(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Consignación
+	var consignationUsers []models.User
+	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
+	}
+
+	if len(consignationUsers) == 0 {
+		return nil
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range consignationUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		return nil
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	templatePath := filepath.Join("mailer", "templates", "request_assigned_consignation.html")
+
+	data := map[string]interface{}{
+		"RequestNumber":   request.RequestNumber,
+		"RequestedByName": request.RequestedByName,
+		"PavilionName":    pavilion.Name,
+		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"AssignedByName":  *request.AssignedByPavedadName,
+		"AssignedToName":  *request.AssignedToName,
+		"Notes":           request.Notes,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Solicitud Asignada a Bodega - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestApprovedEmailToConsignation(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Consignación
+	var consignationUsers []models.User
+	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
+	}
+
+	if len(consignationUsers) == 0 {
+		return nil
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range consignationUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		return nil
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items aprobados
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "aceptado").Find(&items)
+
+	itemsData := []map[string]interface{}{}
+	for _, item := range items {
+		itemsData = append(itemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_approved_consignation.html")
+
+	data := map[string]interface{}{
+		"RequestNumber":   request.RequestNumber,
+		"RequestedByName": request.RequestedByName,
+		"PavilionName":    pavilion.Name,
+		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ApprovedByName":  *request.AssignedToName,
+		"Items":           itemsData,
+		"Notes":           request.Notes,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Solicitud Aprobada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestReturnedEmailToConsignation(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Consignación
+	var consignationUsers []models.User
+	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
+	}
+
+	if len(consignationUsers) == 0 {
+		return nil
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range consignationUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		return nil
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items devueltos con sus comentarios
+	var items []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "devuelto").Find(&items)
+
+	returnedItems := []map[string]interface{}{}
+	for _, item := range items {
+		comments := "Sin comentarios"
+		if item.ItemNotes != nil {
+			comments = *item.ItemNotes
+		}
+		returnedItems = append(returnedItems, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Comments":   comments,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_returned_consignation.html")
+
+	data := map[string]interface{}{
+		"RequestNumber":   request.RequestNumber,
+		"RequestedByName": request.RequestedByName,
+		"PavilionName":    pavilion.Name,
+		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ReturnedByName":  *request.AssignedToName,
+		"ReturnedItems":   returnedItems,
+		"Notes":           request.Notes,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Solicitud Devuelta para Revisión - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestPartiallyApprovedEmail(request *models.SupplyRequest) error {
+	// Obtener email del solicitante
+	var requester models.User
+	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
+		return fmt.Errorf("error obteniendo solicitante: %v", err)
+	}
+
+	if requester.Email == "" {
+		return fmt.Errorf("el solicitante no tiene email registrado")
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items aprobados
+	var approvedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "aceptado").Find(&approvedItems)
+
+	// Obtener items rechazados
+	var rejectedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "rechazado").Find(&rejectedItems)
+
+	approvedItemsData := []map[string]interface{}{}
+	for _, item := range approvedItems {
+		approvedItemsData = append(approvedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	rejectedItemsData := []map[string]interface{}{}
+	for _, item := range rejectedItems {
+		comment := "Sin motivo especificado"
+		if item.ItemNotes != nil && *item.ItemNotes != "" {
+			comment = *item.ItemNotes
+		}
+		rejectedItemsData = append(rejectedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+			"Comment":    comment,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_partially_approved.html")
+
+	data := map[string]interface{}{
+		"RecipientName":  request.RequestedByName,
+		"RequestNumber":  request.RequestNumber,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ApprovedByName": *request.AssignedToName,
+		"ApprovedItems":  approvedItemsData,
+		"RejectedItems":  rejectedItemsData,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest([]string{requester.Email}, "Solicitud Parcialmente Aprobada - "+request.RequestNumber)
+	return mailReq.SendMailSkipTLS(templatePath, data)
+}
+
+func (s *SupplyRequestService) sendRequestPartiallyApprovedEmailToConsignation(request *models.SupplyRequest) error {
+	// Obtener todos los usuarios con rol Consignación
+	var consignationUsers []models.User
+	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
+	}
+
+	if len(consignationUsers) == 0 {
+		return nil
+	}
+
+	// Recopilar emails
+	var emails []string
+	for _, user := range consignationUsers {
+		if user.Email != "" {
+			emails = append(emails, user.Email)
+		}
+	}
+
+	if len(emails) == 0 {
+		return nil
+	}
+
+	// Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, request.PavilionID)
+
+	// Obtener items aprobados
+	var approvedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "aceptado").Find(&approvedItems)
+
+	// Obtener items rechazados
+	var rejectedItems []models.SupplyRequestItem
+	s.DB.Where("supply_request_id = ? AND item_status = ?", request.ID, "rechazado").Find(&rejectedItems)
+
+	approvedItemsData := []map[string]interface{}{}
+	for _, item := range approvedItems {
+		approvedItemsData = append(approvedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+		})
+	}
+
+	rejectedItemsData := []map[string]interface{}{}
+	for _, item := range rejectedItems {
+		comment := "Sin motivo especificado"
+		if item.ItemNotes != nil && *item.ItemNotes != "" {
+			comment = *item.ItemNotes
+		}
+		rejectedItemsData = append(rejectedItemsData, map[string]interface{}{
+			"SupplyName": item.SupplyName,
+			"Quantity":   item.QuantityRequested,
+			"Comment":    comment,
+		})
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "request_partially_approved_consignation.html")
+
+	data := map[string]interface{}{
+		"RequestNumber":  request.RequestNumber,
+		"RequestedByName": request.RequestedByName,
+		"PavilionName":   pavilion.Name,
+		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ApprovedByName": *request.AssignedToName,
+		"ApprovedItems":  approvedItemsData,
+		"RejectedItems":  rejectedItemsData,
+		"Notes":          request.Notes,
+	}
+
+	mailReq := mailer.NewRequest(emails, "Solicitud Parcialmente Aprobada - "+request.RequestNumber)
 	return mailReq.SendMailSkipTLS(templatePath, data)
 }

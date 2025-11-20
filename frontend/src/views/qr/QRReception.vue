@@ -297,6 +297,19 @@ const isValidQRFormat = (qrCode) => {
   return qrPattern.test(qrCode)
 }
 
+// Verificar si necesita retiro primero
+const needsPickup = (product) => {
+  if (!product || product.type !== 'medical_supply') return false
+  if (product.is_consumed) return false
+  
+  const status = product.supply_info?.Status || 
+                 product.supply_info?.status || 
+                 product.status || 
+                 product.current_status
+  
+  return status === 'pendiente_retiro'
+}
+
 // Verificar si se puede recepcionar
 const canReceive = (product) => {
   if (!product || product.type !== 'medical_supply') return false

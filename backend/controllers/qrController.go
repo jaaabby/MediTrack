@@ -750,7 +750,51 @@ func (c *QRController) TransferSupply(ctx *gin.Context) {
 	})
 }
 
+// PickupSupplyFromStore registra el retiro físico de un insumo de bodega
+// Paso 1: Cuando alguien viene a retirar físicamente el insumo
+func (c *QRController) PickupSupplyFromStore(ctx *gin.Context) {
+	var request struct {
+		QRCode  string `json:"qr_code" binding:"required"`
+		UserRUT string `json:"user_rut" binding:"required"`
+		Notes   string `json:"notes,omitempty"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos de retiro inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Validar que el QR code tenga el formato correcto
+	if !strings.HasPrefix(request.QRCode, "SUPPLY_") {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "El código QR debe ser de un insumo individual (SUPPLY_)",
+		})
+		return
+	}
+
+	// Llamar al servicio para registrar el retiro
+	result, err := c.qrService.PickupSupplyFromStore(request.QRCode, request.UserRUT, request.Notes)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al registrar retiro: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Retiro registrado exitosamente. El insumo está en camino al pabellón.",
+		Data:    result,
+	})
+}
+
 // ReceiveSupply recepciona un insumo que está en estado "en_camino_a_pabellon"
+// Paso 2: Cuando llega al pabellón y se confirma la recepción
 func (c *QRController) ReceiveSupply(ctx *gin.Context) {
 	var request struct {
 		QRCode          string `json:"qr_code" binding:"required"`

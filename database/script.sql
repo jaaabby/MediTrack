@@ -1,6 +1,13 @@
 -- Script de Poblado Completo para MediTrack
 -- Fecha: 2025-08-19
+-- Última actualización: 2025-11-19
 -- Descripción: Poblado completo de todas las tablas del sistema
+--
+-- NOTAS IMPORTANTES:
+-- - Este script crea el estado INICIAL de la base de datos
+-- - Todos los insumos comienzan en estado 'disponible'
+-- - Los estados cambian dinámicamente según las operaciones del sistema
+-- - Ver documentación de estados en la sección de medical_supply
 
 -- Poblar centros médicos
 INSERT INTO medical_center (id, name, address, phone, email) VALUES
@@ -297,6 +304,19 @@ INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code, sur
 ON CONFLICT (id) DO NOTHING;
 
 -- Poblar insumos médicos - TODOS EN ESTADO DISPONIBLE
+-- Estados posibles:
+--   'disponible': Insumo disponible en bodega para ser transferido
+--   'pendiente_retiro': Insumo preparado para retiro físico de bodega (asignado a carrito cerrado)
+--   'en_camino_a_pabellon': Insumo retirado físicamente y en tránsito a pabellón
+--   'recepcionado': Insumo recibido en pabellón, listo para ser consumido
+--   'consumido': Insumo usado en procedimiento médico
+--   'en_camino_a_bodega': Insumo siendo devuelto a bodega
+--
+-- Flujo de dos pasos para transferencias desde carrito:
+--   1. Encargado de bodega cierra carrito → insumos pasan a 'pendiente_retiro'
+--   2. Enfermera escanea para retirar → insumos pasan a 'en_camino_a_pabellon'
+--   3. Enfermera escanea al llegar → insumos pasan a 'recepcionado'
+--   4. Doctor/Enfermera consume → insumos pasan a 'consumido'
 INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, location_id) VALUES
 (1001, 1, 'SUPPLY_1_1', 'disponible', 'store', 1),
 (1001, 1, 'SUPPLY_2_1', 'disponible', 'store', 1),
@@ -482,6 +502,29 @@ INSERT INTO "user" (
 )
 ON CONFLICT (rut) DO NOTHING;
 
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id, 
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES (
+    '12121212-1',
+    'Usuario Consignación',
+    'consignacion@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'consignación',
+    1,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+)
+ON CONFLICT (rut) DO NOTHING;
+
 -- Agregar más doctores con diferentes especialidades
 -- IDs de especialidades: 1=Traumatología, 2=Cardiología, 3=Cirugía General, 4=Neurocirugía, 5=Oftalmología, 6=Otorrinolaringología, 7=Urología, 8=Ginecología, 9=Anestesiología, 10=Plástica y Reconstructiva
 INSERT INTO "user" (
@@ -602,20 +645,6 @@ INSERT INTO batch_history (date_time, change_details, previous_values, new_value
 ('2025-08-16 14:00:00', 'Cantidad actualizada', '{"amount": 10}', '{"amount": 8}', 'Encargado Bodega', 1, '11111111-1', 1)
 ON CONFLICT DO NOTHING;
 
--- Poblar información extendida de doctores
-INSERT INTO doctor_info (
-    user_rut, medical_license, specialization, specialty_id, 
-    years_of_experience, phone, is_available
-) VALUES (
-    '33333333-3', 
-    'LIC-33333333', 
-    'Cirugía General', 
-    (SELECT id FROM medical_specialty WHERE code = 'CIR_GEN'),
-    15, 
-    '+56 9 1234 5678', 
-    TRUE
-) ON CONFLICT (user_rut) DO NOTHING;
-
 -- Poblar insumos típicos por cirugía (ejemplos)
 -- Para cirugías generales - guantes y gasas típicamente requeridos
 -- Para cirugías plásticas - guantes, mascarillas y gasas
@@ -653,8 +682,8 @@ INSERT INTO supply_request (
 
 -- Insertar items de ejemplo
 INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric) VALUES 
-(1, 1001, 'Guantes', 50, FALSE),
-(1, 1002, 'Mascarillas', 100, TRUE);
+(1, 1001, 'Guantes', 2, FALSE),
+(1, 1002, 'Mascarillas', 2, TRUE);
 
 SELECT 'ID máximo actual en batch:' as info, COALESCE(MAX(id), 0) as max_id FROM batch;
 

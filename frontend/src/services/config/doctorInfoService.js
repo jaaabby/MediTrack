@@ -47,36 +47,52 @@ class DoctorInfoService {
     }
   }
 
-  async createDoctorInfo(doctorData) {
+  async createDoctor(doctorData) {
     try {
+      // Asegurar que el rol sea doctor
+      doctorData.role = 'doctor'
       const response = await this.api.post('/doctors/', doctorData)
       return response.data.data || response.data
     } catch (error) {
-      console.error('Error en createDoctorInfo:', error)
+      console.error('Error en createDoctor:', error)
       throw error
     }
   }
 
-  async updateDoctorInfo(rut, doctorData) {
+  async updateDoctor(rut, doctorData) {
     try {
+      // Asegurar que el rol sea doctor
+      doctorData.role = 'doctor'
       const response = await this.api.put(`/doctors/${rut}`, doctorData)
       return response.data.data || response.data
     } catch (error) {
-      console.error('Error en updateDoctorInfo:', error)
+      console.error('Error en updateDoctor:', error)
       throw error
     }
   }
 
-  async deleteDoctorInfo(rut) {
+  async deleteDoctor(rut) {
     try {
       const response = await this.api.delete(`/doctors/${rut}`)
       return response.data
     } catch (error) {
-      console.error('Error en deleteDoctorInfo:', error)
+      console.error('Error en deleteDoctor:', error)
       throw error
     }
+  }
+
+  // Métodos de compatibilidad (deprecated)
+  async createDoctorInfo(doctorData) {
+    return this.createDoctor(doctorData)
+  }
+
+  async updateDoctorInfo(rut, doctorData) {
+    return this.updateDoctor(rut, doctorData)
+  }
+
+  async deleteDoctorInfo(rut) {
+    return this.deleteDoctor(rut)
   }
 }
 
 export default new DoctorInfoService()
-

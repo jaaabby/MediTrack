@@ -386,6 +386,19 @@ const getMovementTitle = (movement) => {
 }
 
 const getMovementLocation = (movement) => {
+  // Si el estado es pendiente_retiro, el insumo físicamente está en bodega, no en el destino
+  if (movement.status?.toLowerCase() === 'pendiente_retiro') {
+    // Buscar la ubicación de bodega anterior en el historial
+    // O mostrar que está en bodega
+    if (movement.location && (movement.location.toLowerCase().includes('bodega') || 
+        movement.location.toLowerCase().includes('almacen') || 
+        movement.location.toLowerCase().includes('store'))) {
+      return movement.location
+    }
+    // Si no hay ubicación previa, mostrar que está en bodega
+    return 'Almacen: Bodega Principal (Pendiente de Retiro)'
+  }
+  
   if (movement.destination_name) {
     const type = movement.destination_type === 'pavilion' ? 'Pabellon' : 'Almacen'
     let location = `${type}: ${movement.destination_name}`
@@ -403,10 +416,14 @@ const getCurrentStatusLabel = () => {
   if (qrInfo.value.is_consumed) return 'Consumido'
   
   const status = qrInfo.value.supply_info?.status || qrInfo.value.status
-  switch (status) {
+  switch (status?.toLowerCase()) {
     case 'disponible': return 'Disponible'
+    case 'pendiente_retiro': return 'Pendiente de Retiro'
+    case 'en_camino_a_pabellon': return 'En Camino a Pabellón'
     case 'recepcionado': return 'Recepcionado'
     case 'transferido': return 'Transferido'
+    case 'en_camino_a_bodega': return 'En Camino a Bodega'
+    case 'consumido': return 'Consumido'
     default: return status || 'Activo'
   }
 }
@@ -417,15 +434,43 @@ const getCurrentStatusBadgeClass = () => {
   if (qrInfo.value.is_consumed) return 'bg-red-100 text-red-800'
   
   const status = qrInfo.value.supply_info?.status || qrInfo.value.status
-  switch (status) {
+  switch (status?.toLowerCase()) {
     case 'disponible': return 'bg-green-100 text-green-800'
+    case 'pendiente_retiro': return 'bg-yellow-100 text-yellow-800'
+    case 'en_camino_a_pabellon': return 'bg-orange-100 text-orange-800'
     case 'recepcionado': return 'bg-blue-100 text-blue-800'
     case 'transferido': return 'bg-purple-100 text-purple-800'
+    case 'en_camino_a_bodega': return 'bg-orange-100 text-orange-800'
+    case 'consumido': return 'bg-red-100 text-red-800'
     default: return 'bg-gray-100 text-gray-800'
   }
 }
 
 const getCurrentLocation = () => {
+  // Si el estado es pendiente_retiro, el insumo físicamente está en bodega
+  const status = qrInfo.value?.supply_info?.status || qrInfo.value?.status
+  if (status?.toLowerCase() === 'pendiente_retiro') {
+    // Buscar la última ubicación de bodega antes del movimiento a pabellón
+    const events = getAllEvents()
+    const storeLocation = events
+      .filter(e => e.event_type === 'movement' && e.location && 
+              (e.location.toLowerCase().includes('bodega') || 
+               e.location.toLowerCase().includes('almacen') ||
+               e.location.toLowerCase().includes('store')))
+      .reverse()[0]
+    
+    if (storeLocation) {
+      return storeLocation.location
+    }
+    // Si no hay ubicación de bodega previa, buscar en supply_info
+    const supplyInfo = qrInfo.value?.supply_info
+    if (supplyInfo?.location_type === 'store' || supplyInfo?.store_name) {
+      return supplyInfo.store_name || 'Bodega'
+    }
+    return 'Bodega (Pendiente de Retiro)'
+  }
+  
+  // Para otros estados, usar la lógica normal
   const events = getAllEvents()
   const lastMovement = events.find(e => e.event_type === 'movement' && e.location)
   return lastMovement?.location || 'Sin ubicacion registrada'

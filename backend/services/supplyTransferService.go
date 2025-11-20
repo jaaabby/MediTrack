@@ -191,6 +191,33 @@ func (s *SupplyTransferService) ConfirmReception(
 			return fmt.Errorf("la transferencia no está en tránsito (estado: %s)", transfer.Status)
 		}
 
+		// 1.5. Validar que la persona que recibe sea la misma que retiró físicamente
+		// La persona que sacó de bodega debe confirmar que el insumo llegó
+		if transfer.PickedUpBy == nil {
+			return fmt.Errorf("el insumo no ha sido retirado físicamente de bodega aún. Debe escanearlo primero para registrar el retiro.")
+		}
+		if *transfer.PickedUpBy != userRUT {
+			// Obtener el nombre del usuario que retiró el insumo
+			var pickedUpUser models.User
+			pickedUpUserName := "Usuario Desconocido"
+			if err := tx.Where("rut = ?", *transfer.PickedUpBy).First(&pickedUpUser).Error; err == nil {
+				pickedUpUserName = pickedUpUser.Name
+			}
+			
+			// Obtener el nombre del usuario actual si no está disponible
+			currentUserName := userName
+			if currentUserName == "" {
+				var currentUser models.User
+				if err := tx.Where("rut = ?", userRUT).First(&currentUser).Error; err == nil {
+					currentUserName = currentUser.Name
+				} else {
+					currentUserName = "Usuario Desconocido"
+				}
+			}
+			
+			return fmt.Errorf("solo la persona que retiró el insumo de bodega (%s) puede confirmar su recepción. Usted es %s", pickedUpUserName, currentUserName)
+		}
+
 		// 2. Obtener el insumo
 		if err := tx.First(&supply, transfer.MedicalSupplyID).Error; err != nil {
 			return fmt.Errorf("insumo no encontrado: %v", err)

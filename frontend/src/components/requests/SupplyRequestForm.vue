@@ -65,10 +65,41 @@
               required
               :min="minDateTime"
               class="form-input"
+              :class="{ 'border-orange-500': isUrgentRequest, 'border-red-500': isEmergencyRequest }"
+              @change="checkAdvanceNotice"
             />
             <p class="text-xs text-gray-500 mt-1">
               {{ props.editMode ? 'Fecha y hora programada para la cirugía' : 'Selecciona la fecha y hora programada para la cirugía' }}
             </p>
+            <!-- Advertencia de anticipación mínima -->
+            <div v-if="!props.editMode && advanceNoticeWarning" class="mt-2 p-2 rounded-md" 
+                 :class="advanceNoticeWarning.type === 'emergency' ? 'bg-red-50 border border-red-200' : 
+                         advanceNoticeWarning.type === 'urgent' ? 'bg-orange-50 border border-orange-200' : 
+                         'bg-yellow-50 border border-yellow-200'">
+              <div class="flex items-start gap-2">
+                <svg class="h-5 w-5 mt-0.5 flex-shrink-0" 
+                     :class="advanceNoticeWarning.type === 'emergency' ? 'text-red-600' : 
+                             advanceNoticeWarning.type === 'urgent' ? 'text-orange-600' : 
+                             'text-yellow-600'"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div class="flex-1">
+                  <p class="text-sm font-medium" 
+                     :class="advanceNoticeWarning.type === 'emergency' ? 'text-red-800' : 
+                             advanceNoticeWarning.type === 'urgent' ? 'text-orange-800' : 
+                             'text-yellow-800'">
+                    {{ advanceNoticeWarning.title }}
+                  </p>
+                  <p class="text-xs mt-1" 
+                     :class="advanceNoticeWarning.type === 'emergency' ? 'text-red-700' : 
+                             advanceNoticeWarning.type === 'urgent' ? 'text-orange-700' : 
+                             'text-yellow-700'">
+                    {{ advanceNoticeWarning.message }}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Selección de Pabellón -->
@@ -576,6 +607,94 @@ const minDateTime = computed(() => {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 })
 
+// Estado reactivo para advertencias de anticipación
+const advanceNoticeWarning = ref(null)
+
+// Constantes de anticipación
+const MINIMUM_ADVANCE_DAYS = 3
+const URGENT_HOURS = 48
+const EMERGENCY_HOURS = 12
+
+// Calcular días hasta la cirugía
+const daysUntilSurgery = computed(() => {
+  if (!requestForm.surgery_datetime) return null
+  const surgeryDate = new Date(requestForm.surgery_datetime)
+  const now = new Date()
+  const diffTime = surgeryDate - now
+  const diffDays = diffTime / (1000 * 60 * 60 * 24)
+  return diffDays
+})
+
+// Calcular horas hasta la cirugía
+const hoursUntilSurgery = computed(() => {
+  if (!requestForm.surgery_datetime) return null
+  const surgeryDate = new Date(requestForm.surgery_datetime)
+  const now = new Date()
+  const diffTime = surgeryDate - now
+  const diffHours = diffTime / (1000 * 60 * 60)
+  return diffHours
+})
+
+// Verificar si es urgente (menos de 48 horas)
+const isUrgentRequest = computed(() => {
+  const hours = hoursUntilSurgery.value
+  return hours !== null && hours > 0 && hours <= URGENT_HOURS
+})
+
+// Verificar si es emergencia (menos de 12 horas)
+const isEmergencyRequest = computed(() => {
+  const hours = hoursUntilSurgery.value
+  return hours !== null && hours > 0 && hours <= EMERGENCY_HOURS
+})
+
+// Verificar si no tiene anticipación mínima (menos de 3 días)
+const isNotProgrammed = computed(() => {
+  const days = daysUntilSurgery.value
+  return days !== null && days > 0 && days < MINIMUM_ADVANCE_DAYS
+})
+
+// Función para verificar anticipación y mostrar advertencia
+const checkAdvanceNotice = () => {
+  if (!requestForm.surgery_datetime) {
+    advanceNoticeWarning.value = null
+    return
+  }
+
+  const hours = hoursUntilSurgery.value
+  const days = daysUntilSurgery.value
+
+  if (hours === null || hours < 0) {
+    advanceNoticeWarning.value = {
+      type: 'error',
+      title: 'Fecha inválida',
+      message: 'La fecha de cirugía no puede ser en el pasado.'
+    }
+    return
+  }
+
+  if (hours <= EMERGENCY_HOURS) {
+    advanceNoticeWarning.value = {
+      type: 'emergency',
+      title: '⚠️ SOLICITUD DE EMERGENCIA',
+      message: `La cirugía está programada en menos de ${EMERGENCY_HOURS} horas. Esta solicitud será procesada con máxima prioridad.`
+    }
+  } else if (hours <= URGENT_HOURS) {
+    advanceNoticeWarning.value = {
+      type: 'urgent',
+      title: '⚠️ SOLICITUD URGENTE',
+      message: `La cirugía está programada en menos de ${URGENT_HOURS} horas. Esta solicitud será procesada con alta prioridad.`
+    }
+  } else if (days < MINIMUM_ADVANCE_DAYS) {
+    advanceNoticeWarning.value = {
+      type: 'warning',
+      title: '⚠️ Anticipación mínima no cumplida',
+      message: `Se recomienda programar con al menos ${MINIMUM_ADVANCE_DAYS} días de anticipación. Faltan ${Math.ceil(days)} día(s) hasta la cirugía. Puedes continuar, pero la solicitud será marcada como urgente.`
+    }
+  } else {
+    advanceNoticeWarning.value = null
+  }
+}
+
 // Formatear fecha para mostrar (en modo edición)
 const formatDateTimeForDisplay = (dateString) => {
   if (!dateString) return 'No especificada'
@@ -948,6 +1067,29 @@ const cancelForm = () => {
 const submitRequest = async () => {
   if (!validateForm()) {
     return
+  }
+
+  // Verificar anticipación mínima antes de enviar
+  if (!props.editMode && isNotProgrammed.value) {
+    const days = Math.ceil(daysUntilSurgery.value)
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Anticipación mínima no cumplida',
+      html: `
+        <p>La cirugía está programada en <strong>${days} día(s)</strong>, menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.</p>
+        <p class="mt-2">¿Deseas continuar con la solicitud?</p>
+        <p class="text-sm text-gray-600 mt-2">Esta solicitud será marcada como urgente y procesada con prioridad.</p>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, continuar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33'
+    })
+
+    if (!result.isConfirmed) {
+      return
+    }
   }
 
   submitting.value = true

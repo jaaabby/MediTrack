@@ -772,37 +772,46 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 				DestinationID:   pavilionID,
 				SentBy:          userRUT,
 				SentByName:      userName,
-				Status:          models.TransferStatusInTransit,
+				Status:          models.TransferStatusPending, // Pendiente hasta que se retire físicamente
 				TransferReason:  fmt.Sprintf("Transferencia desde carrito %s", cart.CartNumber),
 				SendDate:        now,
-				Notes:           fmt.Sprintf("Transferencia automática desde carrito de solicitud %s", cart.SupplyRequest.RequestNumber),
+				Notes:           fmt.Sprintf("Transferencia automática desde carrito de solicitud %s. Pendiente de retiro físico.", cart.SupplyRequest.RequestNumber),
 			}
 
 			if err := tx.Create(&transfer).Error; err != nil {
 				return fmt.Errorf("error al crear transferencia para insumo %s: %w", supply.QRCode, err)
 			}
 
-			// Actualizar ubicación del insumo y marcarlo en tránsito
-			supply.LocationType = models.SupplyLocationPavilion
-			supply.LocationID = pavilionID
-			supply.InTransit = true
+			// Actualizar ubicación del insumo - queda pendiente de retiro físico
+			// El estado será "pendiente_retiro" hasta que alguien lo escanee para retirarlo
+			// IMPORTANTE: NO cambiar location_type a pavilion hasta que se retire físicamente
+			// El insumo sigue físicamente en bodega, solo está preparado para retiro
+			// supply.LocationType = models.SupplyLocationStore // Mantener en bodega
+			// supply.LocationID = originalStoreID // Mantener ID de bodega original
+			supply.InTransit = false // No está en tránsito aún, está pendiente de retiro
 			supply.TransferDate = &now
 			supply.TransferredBy = &userRUT
-			supply.Status = models.StatusEnRouteToPavilion
+			supply.Status = models.StatusPendingPickup // Pendiente de retiro físico
 
 			if err := tx.Save(&supply).Error; err != nil {
 				return fmt.Errorf("error al actualizar insumo %s: %w", supply.QRCode, err)
 			}
 
 			// Registrar en historial
+			// IMPORTANTE: El destino es pavilion pero la ubicación actual sigue siendo store
+			// porque físicamente el insumo aún está en bodega
+			// Usar originalStoreID para registrar correctamente la bodega de origen (puede ser bodega secundaria)
+			originType := models.DestinationTypeStore
 			history := models.SupplyHistory{
 				MedicalSupplyID: supply.ID,
 				DateTime:        now,
-				Status:          models.StatusEnRouteToPavilion,
-				DestinationType: models.DestinationTypePavilion,
+				Status:          models.StatusPendingPickup,
+				DestinationType: models.DestinationTypePavilion, // Destino final
 				DestinationID:   pavilionID,
 				UserRUT:         userRUT,
-				Notes:           fmt.Sprintf("Transferido desde carrito %s al pabellón. El pabellón debe confirmar recepción.", cart.CartNumber),
+				Notes:           fmt.Sprintf("Preparado para retiro desde carrito %s. Debe ser escaneado al retirar de bodega. El insumo físicamente sigue en bodega.", cart.CartNumber),
+				OriginType:      &originType,
+				OriginID:        &originalStoreID,
 			}
 			if err := tx.Create(&history).Error; err != nil {
 				return fmt.Errorf("error registrando historial: %w", err)

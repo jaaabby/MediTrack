@@ -712,27 +712,52 @@ const formatDate = (dateString) => {
 
 // Funciones helper para estado
 const getStatusText = (status) => {
-  if (!status) return 'Desconocido'
-  const statusLabels = {
-    'disponible': 'Disponible',
-    'recepcionado': 'Recepcionado',
-    'en_camino_a_pabellon': 'En Camino a Pabellón',
-    'en_camino_a_bodega': 'En Camino a Bodega',
-    'consumido': 'Consumido'
+  if (!status) return 'Sin estado'
+  
+  const statusLower = status.toLowerCase()
+  
+  switch (statusLower) {
+    case 'disponible':
+    case 'available':
+      return 'Insumo Disponible'
+    case 'pendiente_retiro':
+      return 'Pendiente de Retiro'
+    case 'en_camino_a_pabellon':
+      return 'En Camino a Pabellón'
+    case 'recepcionado':
+    case 'received':
+      return 'Recepcionado'
+    case 'en_camino_a_bodega':
+      return 'En Camino a Bodega'
+    case 'consumido':
+    case 'consumed':
+      return 'Consumido'
+    case 'reservado':
+      return 'Reservado'
+    case 'transferido':
+      return 'Transferido'
+    default:
+      return status || 'Sin estado'
   }
-  return statusLabels[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1)
 }
 
 const getStatusClass = (status) => {
   if (!status) return 'bg-gray-100 text-gray-800'
+  const statusLower = status.toLowerCase()
   const statusColors = {
     'disponible': 'bg-green-100 text-green-800',
+    'available': 'bg-green-100 text-green-800',
+    'pendiente_retiro': 'bg-yellow-100 text-yellow-800',
     'recepcionado': 'bg-blue-100 text-blue-800',
-    'en_camino_a_pabellon': 'bg-yellow-100 text-yellow-800',
+    'received': 'bg-blue-100 text-blue-800',
+    'en_camino_a_pabellon': 'bg-orange-100 text-orange-800',
     'en_camino_a_bodega': 'bg-orange-100 text-orange-800',
-    'consumido': 'bg-red-100 text-red-800'
+    'consumido': 'bg-red-100 text-red-800',
+    'consumed': 'bg-red-100 text-red-800',
+    'reservado': 'bg-purple-100 text-purple-800',
+    'transferido': 'bg-purple-100 text-purple-800'
   }
-  return statusColors[status.toLowerCase()] || 'bg-gray-100 text-gray-800'
+  return statusColors[statusLower] || 'bg-gray-100 text-gray-800'
 }
 
 const getStatusIcon = (status) => {

@@ -171,9 +171,64 @@ func (s *SupplyRequest) GetHoursUntilSurgery() float64 {
 	return time.Until(s.SurgeryDatetime).Hours()
 }
 
+// GetDaysUntilSurgery retorna los días restantes hasta la cirugía
+func (s *SupplyRequest) GetDaysUntilSurgery() float64 {
+	return time.Until(s.SurgeryDatetime).Hours() / 24.0
+}
+
 // IsSurgeryOverdue verifica si la cirugía ya pasó
 func (s *SupplyRequest) IsSurgeryOverdue() bool {
 	return time.Now().After(s.SurgeryDatetime)
+}
+
+// IsUrgent verifica si la cirugía es urgente (menos de 48 horas)
+func (s *SupplyRequest) IsUrgent() bool {
+	hoursUntil := s.GetHoursUntilSurgery()
+	return hoursUntil > 0 && hoursUntil <= 48
+}
+
+// IsEmergency verifica si la cirugía es de emergencia (menos de 12 horas)
+func (s *SupplyRequest) IsEmergency() bool {
+	hoursUntil := s.GetHoursUntilSurgery()
+	return hoursUntil > 0 && hoursUntil <= 12
+}
+
+// IsNotProgrammed verifica si la cirugía no está programada con suficiente anticipación (menos de 3 días)
+func (s *SupplyRequest) IsNotProgrammed() bool {
+	daysUntil := s.GetDaysUntilSurgery()
+	return daysUntil > 0 && daysUntil < 3
+}
+
+// GetUrgencyLevel retorna el nivel de urgencia: "emergency", "urgent", "normal", "low"
+func (s *SupplyRequest) GetUrgencyLevel() string {
+	hoursUntil := s.GetHoursUntilSurgery()
+	if hoursUntil < 0 {
+		return "completed"
+	}
+	if hoursUntil <= 12 {
+		return "emergency"
+	}
+	if hoursUntil <= 48 {
+		return "urgent"
+	}
+	if hoursUntil <= 72 {
+		return "normal"
+	}
+	return "low"
+}
+
+// GetDaysUntilSurgeryFromRequest calcula los días desde la solicitud hasta la cirugía
+func (s *SupplyRequest) GetDaysUntilSurgeryFromRequest() float64 {
+	return s.SurgeryDatetime.Sub(s.RequestDate).Hours() / 24.0
+}
+
+// HasMinimumAdvanceNotice verifica si tiene la anticipación mínima requerida (3 días por defecto)
+func (s *SupplyRequest) HasMinimumAdvanceNotice(minDays float64) bool {
+	if minDays <= 0 {
+		minDays = 3.0 // Por defecto 3 días
+	}
+	daysUntil := s.GetDaysUntilSurgeryFromRequest()
+	return daysUntil >= minDays
 }
 
 // GenerateRequestNumber genera un número de solicitud único

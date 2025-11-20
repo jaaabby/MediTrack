@@ -810,6 +810,11 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 			"Code":         qrInfo.SupplyInfo.Code,
 			"BatchID":      qrInfo.SupplyInfo.BatchID,
 			"QRCode":       qrInfo.SupplyInfo.QRCode,
+			"Status":       qrInfo.SupplyInfo.Status,       // ✅ CAMPO CRÍTICO AGREGADO
+			"status":       qrInfo.SupplyInfo.Status,       // ✅ También en minúsculas para compatibilidad
+			"InTransit":    qrInfo.SupplyInfo.InTransit,
+			"LocationType": qrInfo.SupplyInfo.LocationType,
+			"LocationID":   qrInfo.SupplyInfo.LocationID,
 			"IsConsumed":   qrInfo.SupplyInfo.IsConsumed,
 			"LastMovement": qrInfo.SupplyInfo.LastMovement,
 			"DaysToExpire": qrInfo.SupplyInfo.DaysToExpire,
@@ -924,31 +929,36 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			return fmt.Errorf("el insumo tiene estado '%s' y no está disponible para transferencia", supply.Status)
 		}
 
-		// Determinar el estado de tránsito según el tipo de destino
-		var transitStatus string
-		switch destinationType {
-		case "pavilion":
-			transitStatus = models.StatusEnRouteToPavilion
-		case "store", "warehouse":
-			transitStatus = models.StatusEnRouteToStore
-		default:
-			transitStatus = models.StatusEnRouteToPavilion // Default
+		// Para transferencias a pabellón, el insumo queda en "pendiente_retiro"
+		// hasta que se escanee para registrar el retiro físico
+		var newStatus string
+		if destinationType == "pavilion" {
+			newStatus = models.StatusPendingPickup // Pendiente de retiro físico
+		} else {
+			// Para transferencias a bodega, mantener el flujo anterior
+			newStatus = models.StatusEnRouteToStore
 		}
 
-		// Actualizar el estado del insumo a "en tránsito"
-		if err := tx.Model(&supply).Update("status", transitStatus).Error; err != nil {
+		// Actualizar el estado del insumo
+		if err := tx.Model(&supply).Update("status", newStatus).Error; err != nil {
 			return fmt.Errorf("error actualizando estado del insumo: %v", err)
 		}
 
 		// Crear entrada en el historial de suministros para la transferencia
+		historyStatus := newStatus
+		historyNotes := fmt.Sprintf("Transferencia a %s - %s", destinationType, notes)
+		if destinationType == "pavilion" {
+			historyNotes = fmt.Sprintf("Preparado para transferencia a pabellón. Debe ser escaneado al retirar de bodega. - %s", notes)
+		}
+		
 		history := models.SupplyHistory{
 			DateTime:        time.Now(),
-			Status:          transitStatus,
+			Status:          historyStatus,
 			DestinationType: destinationType,
 			DestinationID:   destinationID,
 			MedicalSupplyID: supply.ID,
 			UserRUT:         userRUT,
-			Notes:           fmt.Sprintf("Transferencia a %s - %s", destinationType, notes),
+			Notes:           historyNotes,
 		}
 
 		if err := tx.Create(&history).Error; err != nil {
@@ -977,6 +987,12 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			userName = "Usuario Desconocido"
 		}
 
+		// Determinar el estado de la transferencia
+		transferStatus := models.TransferStatusInTransit
+		if destinationType == "pavilion" {
+			transferStatus = models.TransferStatusPending // Pendiente hasta que se retire físicamente
+		}
+
 		supplyTransfer := models.SupplyTransfer{
 			TransferCode:    transferCode,
 			QRCode:          qrCode,
@@ -987,7 +1003,7 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			DestinationID:   destinationID,
 			SentBy:          userRUT,
 			SentByName:      userName,
-			Status:          models.TransferStatusInTransit,
+			Status:          transferStatus,
 			TransferReason:  "Transferencia realizada desde escáner QR",
 			SendDate:        time.Now(),
 			Notes:           notes,
@@ -1051,7 +1067,7 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			"supply_id":          supply.ID,
 			"qr_code":            qrCode,
 			"old_status":         models.StatusAvailable,
-			"new_status":         transitStatus,
+			"new_status":         newStatus,
 			"destination_type":   destinationType,
 			"destination_id":     destinationID,
 			"user_rut":           userRUT,
@@ -1059,8 +1075,9 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			"transfer_timestamp": time.Now(),
 			"status_change": map[string]string{
 				"from": models.StatusAvailable,
-				"to":   transitStatus,
+				"to":   newStatus,
 			},
+			"requires_pickup": destinationType == "pavilion", // Indica si requiere escaneo de retiro
 		}
 
 		return nil
@@ -1073,8 +1090,213 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 	return result, nil
 }
 
+// PickupSupplyFromStore registra el retiro físico de un insumo de bodega
+// Paso 1: Cuando alguien viene a retirar físicamente el insumo
+func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) (map[string]interface{}, error) {
+	var supply models.MedicalSupply
+	var transfer models.SupplyTransfer
+	var userName string
+
+	// Obtener información del usuario
+	var user models.User
+	if err := s.DB.Where("rut = ?", userRUT).First(&user).Error; err == nil {
+		userName = user.Name
+	} else {
+		userName = "Usuario Desconocido"
+	}
+
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// 1. Buscar el insumo por QR
+		if err := tx.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+			return fmt.Errorf("insumo no encontrado con QR %s: %v", qrCode, err)
+		}
+
+		// 2. Verificar que el insumo esté en estado "pendiente_retiro"
+		if supply.Status != models.StatusPendingPickup {
+			return fmt.Errorf("el insumo debe estar en estado 'pendiente_retiro' para ser retirado, estado actual: %s", supply.Status)
+		}
+
+		// 3. Buscar la transferencia pendiente asociada a este QR
+		if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.TransferStatusPending).
+			First(&transfer).Error; err != nil {
+			return fmt.Errorf("transferencia pendiente no encontrada para QR %s: %v", qrCode, err)
+		}
+
+		// 4. Registrar quién retiró físicamente
+		now := time.Now()
+		transfer.PickedUpBy = &userRUT
+		transfer.PickedUpByName = &userName
+		transfer.PickedUpDate = &now
+		transfer.Status = models.TransferStatusInTransit
+		if notes != "" {
+			if transfer.Notes != "" {
+				transfer.Notes = transfer.Notes + "\nRetiro: " + notes
+			} else {
+				transfer.Notes = "Retiro: " + notes
+			}
+		}
+
+		if err := tx.Save(&transfer).Error; err != nil {
+			return fmt.Errorf("error al actualizar transferencia: %v", err)
+		}
+
+		// 5. Actualizar el estado del insumo a "en_camino_a_pabellon" y cambiar ubicación
+		// Ahora SÍ cambia la ubicación porque físicamente está siendo retirado
+		supply.Status = models.StatusEnRouteToPavilion
+		supply.LocationType = models.SupplyLocationPavilion
+		supply.LocationID = transfer.DestinationID
+		supply.InTransit = true
+		supply.UpdatedAt = now
+
+		if err := tx.Save(&supply).Error; err != nil {
+			return fmt.Errorf("error al actualizar estado del insumo: %v", err)
+		}
+
+		// 6. Registrar en historial
+		// IMPORTANTE: Usar OriginType y OriginID de la transferencia para registrar correctamente
+		// la bodega de origen (puede ser bodega secundaria, no necesariamente la principal)
+		originType := transfer.OriginType
+		originID := transfer.OriginID
+		history := models.SupplyHistory{
+			DateTime:        now,
+			Status:          models.StatusEnRouteToPavilion,
+			DestinationType: transfer.DestinationType,
+			DestinationID:   transfer.DestinationID,
+			MedicalSupplyID: supply.ID,
+			UserRUT:         userRUT,
+			Notes:           fmt.Sprintf("Retirado físicamente de bodega por %s. En camino a pabellón.", userName),
+			OriginType:      &originType,
+			OriginID:        &originID,
+		}
+
+		if err := tx.Create(&history).Error; err != nil {
+			return fmt.Errorf("error al crear historial de retiro: %v", err)
+		}
+
+		// 7. Retirar automáticamente todos los insumos del mismo carrito que estén pendientes de retiro
+		// Buscar el carrito asociado a este insumo
+		var assignment models.SupplyRequestQRAssignment
+		if err := tx.Where("medical_supply_id = ?", supply.ID).First(&assignment).Error; err == nil {
+			// Buscar el item del carrito asociado a esta asignación
+			var cartItem models.SupplyCartItem
+			if err := tx.Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignment.ID, true).
+				First(&cartItem).Error; err == nil {
+				// Obtener todos los items activos del carrito
+				var cartItems []models.SupplyCartItem
+				if err := tx.Where("supply_cart_id = ? AND is_active = ?", cartItem.SupplyCartID, true).
+					Preload("SupplyRequestQRAssignment").
+					Preload("SupplyRequestQRAssignment.MedicalSupply").
+					Find(&cartItems).Error; err == nil {
+
+					// Retirar todos los insumos del carrito que estén pendientes de retiro
+					retiradosCount := 0
+					for _, item := range cartItems {
+						// Saltar el insumo que ya fue retirado
+						if item.SupplyRequestQRAssignment.MedicalSupplyID == supply.ID {
+							continue
+						}
+
+						otherSupply := item.SupplyRequestQRAssignment.MedicalSupply
+
+						// Solo retirar insumos que estén pendientes de retiro y pertenezcan al mismo pabellón
+						if otherSupply.Status == models.StatusPendingPickup &&
+							!otherSupply.InTransit &&
+							otherSupply.LocationType == models.SupplyLocationStore {
+
+							// Buscar la transferencia pendiente asociada
+							var otherTransfer models.SupplyTransfer
+							if err := tx.Where("qr_code = ? AND status = ?", otherSupply.QRCode, models.TransferStatusPending).
+								First(&otherTransfer).Error; err == nil {
+
+								// Verificar que el destino sea el mismo pabellón
+								if otherTransfer.DestinationType == transfer.DestinationType &&
+									otherTransfer.DestinationID == transfer.DestinationID {
+
+									// Actualizar la transferencia con información de retiro
+									otherTransfer.Status = models.TransferStatusInTransit
+									otherTransfer.PickedUpBy = &userRUT
+									otherTransfer.PickedUpByName = &userName
+									otherTransfer.PickedUpDate = &now
+									if notes != "" {
+										if otherTransfer.Notes != "" {
+											otherTransfer.Notes = otherTransfer.Notes + "\n" + notes + " (retirado automáticamente con el carrito)"
+										} else {
+											otherTransfer.Notes = notes + " (retirado automáticamente con el carrito)"
+										}
+									} else {
+										otherTransfer.Notes = "Retirado automáticamente con otros insumos del carrito"
+									}
+
+									if err := tx.Save(&otherTransfer).Error; err != nil {
+										continue
+									}
+
+									// Actualizar el estado del insumo
+									otherSupply.Status = models.StatusEnRouteToPavilion
+									otherSupply.LocationType = models.SupplyLocationPavilion
+									otherSupply.LocationID = transfer.DestinationID
+									otherSupply.InTransit = true
+									otherSupply.UpdatedAt = now
+
+									if err := tx.Save(&otherSupply).Error; err != nil {
+										continue
+									}
+
+									// Crear historial para el retiro automático
+									// IMPORTANTE: Usar OriginType y OriginID de la transferencia para registrar correctamente
+									// la bodega de origen (puede ser bodega secundaria, no necesariamente la principal)
+									otherOriginType := otherTransfer.OriginType
+									otherOriginID := otherTransfer.OriginID
+									otherHistory := models.SupplyHistory{
+										DateTime:        now,
+										Status:          models.StatusEnRouteToPavilion,
+										DestinationType: transfer.DestinationType,
+										DestinationID:   transfer.DestinationID,
+										MedicalSupplyID: otherSupply.ID,
+										UserRUT:         userRUT,
+										Notes:           fmt.Sprintf("Retirado automáticamente con el carrito. En camino a pabellón."),
+										OriginType:      &otherOriginType,
+										OriginID:        &otherOriginID,
+									}
+
+									if err := tx.Create(&otherHistory).Error; err != nil {
+										continue
+									}
+
+									retiradosCount++
+								}
+							}
+						}
+					}
+
+					// Log de cuántos insumos adicionales fueron retirados
+					if retiradosCount > 0 {
+						fmt.Printf("✅ Retirados automáticamente %d insumos adicionales del carrito\n", retiradosCount)
+					}
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"success":            true,
+		"qr_code":            qrCode,
+		"picked_up_by":       userRUT,
+		"picked_up_by_name":  userName,
+		"new_status":         models.StatusEnRouteToPavilion,
+		"pickup_timestamp":   time.Now(),
+		"message":            "Retiro registrado exitosamente. El insumo está en camino al pabellón.",
+	}, nil
+}
+
 // ReceiveSupplyByQR recepciona un insumo que está en estado "en_camino_a_pabellon"
-// Hace exactamente lo mismo que ConfirmReception para mantener consistencia
+// Paso 2: Cuando llega al pabellón y se confirma la recepción
 func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, destinationID int, notes string) (map[string]interface{}, error) {
 	var supply models.MedicalSupply
 	var transfer models.SupplyTransfer
@@ -1104,6 +1326,28 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 		if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.TransferStatusInTransit).
 			First(&transfer).Error; err != nil {
 			return fmt.Errorf("transferencia en tránsito no encontrada para QR %s: %v", qrCode, err)
+		}
+
+		// 3.5. Validar que la persona que recibe sea la misma que retiró físicamente
+		// La persona que sacó de bodega debe confirmar que el insumo llegó
+		if transfer.PickedUpBy == nil {
+			return fmt.Errorf("el insumo no ha sido retirado físicamente de bodega aún. Debe escanearlo primero para registrar el retiro.")
+		}
+		if *transfer.PickedUpBy != userRUT {
+			// Obtener el nombre del usuario que retiró el insumo
+			var pickedUpUser models.User
+			pickedUpUserName := "Usuario Desconocido"
+			if err := tx.Where("rut = ?", *transfer.PickedUpBy).First(&pickedUpUser).Error; err == nil {
+				pickedUpUserName = pickedUpUser.Name
+			}
+			
+			// Usar el nombre del usuario actual (ya obtenido al inicio de la función)
+			currentUserName := userName
+			if currentUserName == "" {
+				currentUserName = "Usuario Desconocido"
+			}
+			
+			return fmt.Errorf("solo la persona que retiró el insumo de bodega (%s) puede confirmar su recepción. Usted es %s", pickedUpUserName, currentUserName)
 		}
 
 		// 4. Actualizar el estado de la transferencia
