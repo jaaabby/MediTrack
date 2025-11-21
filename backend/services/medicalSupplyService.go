@@ -611,10 +611,11 @@ func (s *MedicalSupplyService) sendUnconsumedSupplyAlert(supply *models.MedicalS
 	}
 
 	// Configurar el correo
-	// Leer email de destino desde variable de entorno o usar por defecto
+	// Leer email de destino desde variable de entorno
 	alertEmail := os.Getenv("ALERT_EMAIL")
 	if alertEmail == "" {
-		alertEmail = "matias.yanez@usach.cl" // Email por defecto
+		fmt.Printf("ALERT_EMAIL no configurado, no se enviará alerta para insumo %d\n", supply.ID)
+		return
 	}
 	recipients := []string{alertEmail}
 
@@ -1032,10 +1033,10 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 
 // sendAutomaticReturnSummaryEmail envía un correo con el resumen de retornos automáticos
 func (s *MedicalSupplyService) sendAutomaticReturnSummaryEmail(returnedCount int, errorCount int, returnedSupplies []map[string]interface{}) error {
-	// Leer email de destino desde variable de entorno o usar por defecto
+	// Leer email de destino desde variable de entorno
 	alertEmail := os.Getenv("ALERT_EMAIL")
 	if alertEmail == "" {
-		alertEmail = "matias.yanez@usach.cl" // Email por defecto
+		return fmt.Errorf("ALERT_EMAIL no configurado, no se puede enviar resumen de retornos automáticos")
 	}
 	recipients := []string{alertEmail}
 

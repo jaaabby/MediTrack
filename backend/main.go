@@ -105,14 +105,14 @@ func main() {
 
 	// Inicializar servicio y controlador de SupplyRequest
 	supplyRequestService := services.NewSupplyRequestService(db)
-	supplyRequestController := controllers.NewSupplyRequestController(supplyRequestService, qrService)
+	supplyRequestController := controllers.NewSupplyRequestController(supplyRequestService, qrService, userService)
 
 	// Inicializar servicio y controlador de Cart
 	cartService := services.NewCartService(db)
 	cartController := controllers.NewCartController(cartService)
 
 	// Registrar rutas de supply requests y trazabilidad QR
-	routes.SetupSupplyRequestRoutes(router, supplyRequestController)
+	routes.SetupSupplyRequestRoutes(router, supplyRequestController, secretKey)
 
 	// Registrar rutas de carritos
 	routes.SetupCartRoutes(router, cartController)

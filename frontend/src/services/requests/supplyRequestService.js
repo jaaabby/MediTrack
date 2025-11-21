@@ -463,6 +463,17 @@ class SupplyRequestService {
     }
   }
 
+  // Configurar autorización de retiro para una solicitud
+  async configurePickupAuthorization(requestId, configData) {
+    try {
+      const response = await this.api.put(`/supply-requests/${requestId}/configure-pickup`, configData)
+      return response.data
+    } catch (error) {
+      console.error('Error al configurar autorización de retiro:', error)
+      throw error
+    }
+  }
+
   // Obtener solicitudes asignadas a un encargado de bodega
   async getAssignedRequestsForWarehouseManager(warehouseManagerRut) {
     try {

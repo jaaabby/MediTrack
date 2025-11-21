@@ -2233,3 +2233,64 @@ func (s *SupplyRequestService) sendRequestPartiallyApprovedEmailToConsignation(r
 	mailReq := mailer.NewRequest(emails, "Solicitud Parcialmente Aprobada - "+request.RequestNumber)
 	return mailReq.SendMailSkipTLS(templatePath, data)
 }
+
+// ConfigurePickupAuthorization configura quién puede retirar los insumos de una solicitud
+type ConfigurePickupAuthorizationRequest struct {
+	AllowAnyoneToPickup  bool    `json:"allow_anyone_to_pickup"` // Booleano explícito, siempre debe enviarse
+	AuthorizedPickupRUT  *string `json:"authorized_pickup_rut"`
+	AuthorizedPickupName *string `json:"authorized_pickup_name"`
+	ConfiguredBy         string  `json:"configured_by"` // Se obtiene del contexto, no del request
+	ConfiguredByName     string  `json:"configured_by_name"` // Se obtiene del contexto, no del request
+}
+
+func (s *SupplyRequestService) ConfigurePickupAuthorization(requestID int, req ConfigurePickupAuthorizationRequest) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		// Verificar que la solicitud existe
+		var request models.SupplyRequest
+		if err := tx.First(&request, requestID).Error; err != nil {
+			return fmt.Errorf("solicitud no encontrada: %v", err)
+		}
+
+		// Verificar que la solicitud está asignada a un encargado de bodega
+		if request.AssignedTo == nil {
+			return fmt.Errorf("la solicitud debe estar asignada a un encargado de bodega para configurar la autorización de retiro")
+		}
+
+		// Validar que si allow_anyone_to_pickup es false, se debe proporcionar un RUT autorizado
+		if !req.AllowAnyoneToPickup {
+			if req.AuthorizedPickupRUT == nil || *req.AuthorizedPickupRUT == "" {
+				return fmt.Errorf("debe especificar el RUT de la persona autorizada cuando el retiro está restringido")
+			}
+
+			// Validar que el usuario autorizado existe
+			var authorizedUser models.User
+			if err := tx.Where("rut = ?", *req.AuthorizedPickupRUT).First(&authorizedUser).Error; err != nil {
+				return fmt.Errorf("usuario autorizado no encontrado con RUT %s: %v", *req.AuthorizedPickupRUT, err)
+			}
+
+			// Si no se proporciona el nombre, usar el nombre del usuario
+			if req.AuthorizedPickupName == nil || *req.AuthorizedPickupName == "" {
+				req.AuthorizedPickupName = &authorizedUser.Name
+			}
+		} else {
+			// Si allow_anyone_to_pickup es true, limpiar los campos de autorización
+			req.AuthorizedPickupRUT = nil
+			req.AuthorizedPickupName = nil
+		}
+
+		// Actualizar la solicitud
+		now := time.Now()
+		updates := map[string]interface{}{
+			"allow_anyone_to_pickup":  req.AllowAnyoneToPickup,
+			"authorized_pickup_rut":    req.AuthorizedPickupRUT,
+			"authorized_pickup_name":   req.AuthorizedPickupName,
+			"updated_at":               now,
+		}
+
+		if err := tx.Model(&request).Updates(updates).Error; err != nil {
+			return fmt.Errorf("error actualizando configuración de retiro: %v", err)
+		}
+
+		return nil
+	})
+}

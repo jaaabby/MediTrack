@@ -458,7 +458,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Protección específica para doctores - solo pueden acceder a rutas de solicitudes, home y perfil
+  // Protección específica para doctores - pueden acceder a rutas de solicitudes, home, QR scanner y perfil
   if (authStore.isAuthenticated && authStore.isDoctor) {
     const allowedRoutesForDoctor = [
       'Home',
@@ -467,6 +467,10 @@ router.beforeEach(async (to, from, next) => {
       'EditSupplyRequest',
       'SupplyRequestDetails', 
       'SupplyRequestSuccess',
+      'QRScanner',
+      'QRDetails',
+      'QRTraceability',
+      'QRReception',
       'Profile'
     ]
     

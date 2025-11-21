@@ -810,8 +810,8 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 			"Code":         qrInfo.SupplyInfo.Code,
 			"BatchID":      qrInfo.SupplyInfo.BatchID,
 			"QRCode":       qrInfo.SupplyInfo.QRCode,
-			"Status":       qrInfo.SupplyInfo.Status,       // ✅ CAMPO CRÍTICO AGREGADO
-			"status":       qrInfo.SupplyInfo.Status,       // ✅ También en minúsculas para compatibilidad
+			"Status":       qrInfo.SupplyInfo.Status, // ✅ CAMPO CRÍTICO AGREGADO
+			"status":       qrInfo.SupplyInfo.Status, // ✅ También en minúsculas para compatibilidad
 			"InTransit":    qrInfo.SupplyInfo.InTransit,
 			"LocationType": qrInfo.SupplyInfo.LocationType,
 			"LocationID":   qrInfo.SupplyInfo.LocationID,
@@ -950,7 +950,7 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 		if destinationType == "pavilion" {
 			historyNotes = fmt.Sprintf("Preparado para transferencia a pabellón. Debe ser escaneado al retirar de bodega. - %s", notes)
 		}
-		
+
 		history := models.SupplyHistory{
 			DateTime:        time.Now(),
 			Status:          historyStatus,
@@ -1122,6 +1122,31 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 			return fmt.Errorf("transferencia pendiente no encontrada para QR %s: %v", qrCode, err)
 		}
 
+		// 3.5. Validar quién puede retirar el insumo según la configuración de la solicitud
+		var assignment models.SupplyRequestQRAssignment
+		if err := tx.Where("qr_code = ?", qrCode).
+			Preload("SupplyRequest").
+			Order("assigned_date DESC").
+			First(&assignment).Error; err == nil {
+			// Si hay una asignación, verificar la configuración de retiro
+			request := assignment.SupplyRequest
+			if !request.AllowAnyoneToPickup {
+				// Solo una persona específica puede retirar
+				if request.AuthorizedPickupRUT == nil || *request.AuthorizedPickupRUT == "" {
+					return fmt.Errorf("la solicitud está configurada para retiro restringido, pero no se ha especificado una persona autorizada")
+				}
+				if *request.AuthorizedPickupRUT != userRUT {
+					authorizedName := "Usuario Desconocido"
+					if request.AuthorizedPickupName != nil {
+						authorizedName = *request.AuthorizedPickupName
+					}
+					return fmt.Errorf("solo %s (RUT: %s) está autorizado para retirar este insumo. Su RUT es %s", authorizedName, *request.AuthorizedPickupRUT, userRUT)
+				}
+			}
+			// Si AllowAnyoneToPickup es true, cualquiera puede retirar (no se valida)
+		}
+		// Si no hay asignación a solicitud, se permite el retiro (comportamiento anterior)
+
 		// 4. Registrar quién retiró físicamente
 		now := time.Now()
 		transfer.PickedUpBy = &userRUT
@@ -1175,11 +1200,11 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 
 		// 7. Retirar automáticamente todos los insumos del mismo carrito que estén pendientes de retiro
 		// Buscar el carrito asociado a este insumo
-		var assignment models.SupplyRequestQRAssignment
-		if err := tx.Where("medical_supply_id = ?", supply.ID).First(&assignment).Error; err == nil {
+		var cartAssignment models.SupplyRequestQRAssignment
+		if err := tx.Where("medical_supply_id = ?", supply.ID).First(&cartAssignment).Error; err == nil {
 			// Buscar el item del carrito asociado a esta asignación
 			var cartItem models.SupplyCartItem
-			if err := tx.Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignment.ID, true).
+			if err := tx.Where("supply_request_qr_assignment_id = ? AND is_active = ?", cartAssignment.ID, true).
 				First(&cartItem).Error; err == nil {
 				// Obtener todos los items activos del carrito
 				var cartItems []models.SupplyCartItem
@@ -1285,13 +1310,13 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 	}
 
 	return map[string]interface{}{
-		"success":            true,
-		"qr_code":            qrCode,
-		"picked_up_by":       userRUT,
-		"picked_up_by_name":  userName,
-		"new_status":         models.StatusEnRouteToPavilion,
-		"pickup_timestamp":   time.Now(),
-		"message":            "Retiro registrado exitosamente. El insumo está en camino al pabellón.",
+		"success":           true,
+		"qr_code":           qrCode,
+		"picked_up_by":      userRUT,
+		"picked_up_by_name": userName,
+		"new_status":        models.StatusEnRouteToPavilion,
+		"pickup_timestamp":  time.Now(),
+		"message":           "Retiro registrado exitosamente. El insumo está en camino al pabellón.",
 	}, nil
 }
 
@@ -1340,13 +1365,13 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			if err := tx.Where("rut = ?", *transfer.PickedUpBy).First(&pickedUpUser).Error; err == nil {
 				pickedUpUserName = pickedUpUser.Name
 			}
-			
+
 			// Usar el nombre del usuario actual (ya obtenido al inicio de la función)
 			currentUserName := userName
 			if currentUserName == "" {
 				currentUserName = "Usuario Desconocido"
 			}
-			
+
 			return fmt.Errorf("solo la persona que retiró el insumo de bodega (%s) puede confirmar su recepción. Usted es %s", pickedUpUserName, currentUserName)
 		}
 
@@ -2107,10 +2132,11 @@ func (s *QRService) sendUnconsumedSupplyAlert(supply *models.MedicalSupply) {
 	}
 
 	// Configurar el correo
-	// Leer email de destino desde variable de entorno o usar por defecto
+	// Leer email de destino desde variable de entorno
 	alertEmail := os.Getenv("ALERT_EMAIL")
 	if alertEmail == "" {
-		alertEmail = "matias.yanez@usach.cl" // Email por defecto
+		fmt.Printf("ALERT_EMAIL no configurado, no se enviará alerta para insumo %d\n", supply.ID)
+		return
 	}
 	recipients := []string{alertEmail}
 

@@ -14,12 +14,14 @@ import (
 type SupplyRequestController struct {
 	supplyRequestService *services.SupplyRequestService
 	qrService            *services.QRService
+	userService          *services.UserService
 }
 
-func NewSupplyRequestController(supplyRequestService *services.SupplyRequestService, qrService *services.QRService) *SupplyRequestController {
+func NewSupplyRequestController(supplyRequestService *services.SupplyRequestService, qrService *services.QRService, userService *services.UserService) *SupplyRequestController {
 	return &SupplyRequestController{
 		supplyRequestService: supplyRequestService,
 		qrService:            qrService,
+		userService:          userService,
 	}
 }
 
@@ -731,5 +733,94 @@ func (c *SupplyRequestController) ResubmitReturnedRequest(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Solicitud reenviada exitosamente",
+	})
+}
+
+// ConfigurePickupAuthorization configura quién puede retirar los insumos de una solicitud
+func (c *SupplyRequestController) ConfigurePickupAuthorization(ctx *gin.Context) {
+	// Verificar permisos - solo encargado de bodega puede configurar
+	userRUT, exists := ctx.Get("user_id")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Usuario no autenticado",
+		})
+		return
+	}
+
+	userRole, exists := ctx.Get("user_role")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Usuario no autenticado",
+		})
+		return
+	}
+
+	role, ok := userRole.(string)
+	if !ok || role != "encargado de bodega" {
+		ctx.JSON(http.StatusForbidden, response.Response{
+			Success: false,
+			Error:   "No tiene permisos para configurar autorización de retiro. Solo encargados de bodega pueden realizar esta acción",
+		})
+		return
+	}
+
+	requestID, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "ID inválido: " + err.Error(),
+		})
+		return
+	}
+
+	var req services.ConfigurePickupAuthorizationRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Obtener información del usuario desde el contexto
+	rut, ok := userRUT.(string)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error procesando información del usuario",
+		})
+		return
+	}
+
+	// Obtener el nombre del usuario desde la base de datos
+	user, err := c.userService.GetUserByRut(rut)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al obtener información del usuario: " + err.Error(),
+		})
+		return
+	}
+
+	req.ConfiguredBy = rut
+	req.ConfiguredByName = user.Name
+
+	if err := c.supplyRequestService.ConfigurePickupAuthorization(requestID, req); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al configurar autorización de retiro: " + err.Error(),
+		})
+		return
+	}
+
+	// Obtener la solicitud actualizada
+	updatedRequest, _ := c.supplyRequestService.GetSupplyRequestByID(requestID)
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Configuración de retiro actualizada exitosamente",
+		Data:    updatedRequest,
 	})
 }

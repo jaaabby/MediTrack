@@ -33,8 +33,12 @@ type SupplyRequest struct {
 	SurgeonName *string   `json:"surgeon_name"`
 	SurgeryID   *int      `json:"surgery_id"`
 	SpecialtyID *int      `json:"specialty_id"`
-	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	// Campos para control de retiro
+	AllowAnyoneToPickup  bool    `json:"allow_anyone_to_pickup" gorm:"default:true"`
+	AuthorizedPickupRUT  *string `json:"authorized_pickup_rut"`
+	AuthorizedPickupName *string `json:"authorized_pickup_name"`
+	CreatedAt            time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt            time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relaciones
 	Surgeon   *User             `json:"surgeon,omitempty" gorm:"foreignKey:SurgeonID;references:RUT"`

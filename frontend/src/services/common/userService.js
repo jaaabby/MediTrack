@@ -160,6 +160,23 @@ export const userService = {
         error: error.response?.data?.error || error.message
       }
     }
+  },
+
+  // Buscar usuarios (accesible para admin y encargado de bodega)
+  async searchUsers(searchTerm) {
+    try {
+      const response = await apiClient.get(`/v1/users/search?q=${encodeURIComponent(searchTerm)}`)
+      return {
+        success: true,
+        data: response.data.data || []
+      }
+    } catch (error) {
+      console.error('Error buscando usuarios:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      }
+    }
   }
 }
 

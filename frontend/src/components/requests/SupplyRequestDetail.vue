@@ -142,6 +142,101 @@
             </div>
           </div>
 
+          <!-- Configuración de Retiro (solo para encargado de bodega asignado) -->
+          <div v-if="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'aprobado' || request.status === 'devuelto_al_encargado') && authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut" 
+               class="bg-white rounded-lg shadow border p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Configuración de Retiro</h3>
+            <p class="text-sm text-gray-600 mb-4">Configure quién puede retirar los insumos de esta solicitud desde bodega.</p>
+            
+            <div class="space-y-4">
+              <!-- Checkbox para permitir a cualquiera -->
+              <div class="flex items-start">
+                <input
+                  type="checkbox"
+                  id="allowAnyonePickup"
+                  v-model="pickupConfig.allow_anyone_to_pickup"
+                  @change="onCheckboxChange"
+                  class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label for="allowAnyonePickup" class="ml-3 text-sm text-gray-700">
+                  <span class="font-medium">Permitir que cualquier persona retire los insumos</span>
+                  <p class="text-xs text-gray-500 mt-1">Si está marcado, cualquier persona puede venir a buscar los insumos escaneando el QR.</p>
+                </label>
+              </div>
+
+              <!-- Campos para persona específica (solo si no está marcado "cualquiera") -->
+              <div v-if="!pickupConfig.allow_anyone_to_pickup" class="border-t pt-4 space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Buscar persona autorizada <span class="text-red-500">*</span>
+                  </label>
+                  <!-- Campo de búsqueda con autocompletado -->
+                  <div class="relative">
+                    <input
+                      type="text"
+                      v-model="userSearchQuery"
+                      @input="onUserSearch"
+                      @focus="showUserSuggestions = true"
+                      @blur="handleUserSearchBlur"
+                      placeholder="Escriba el nombre o RUT de la persona..."
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <!-- Lista de sugerencias -->
+                    <div v-if="showUserSuggestions && filteredUsers.length > 0" 
+                         class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      <div
+                        v-for="user in filteredUsers"
+                        :key="user.rut"
+                        @mousedown="selectUser(user)"
+                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      >
+                        <div class="font-medium text-gray-900">{{ user.name }}</div>
+                        <div class="text-sm text-gray-500">{{ user.rut }}</div>
+                        <div v-if="user.email" class="text-xs text-gray-400">{{ user.email }}</div>
+                      </div>
+                    </div>
+                    <div v-if="showUserSuggestions && userSearchQuery && filteredUsers.length === 0" 
+                         class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-4">
+                      <p class="text-sm text-gray-500">No se encontraron usuarios</p>
+                    </div>
+                  </div>
+                  <!-- Usuario seleccionado -->
+                  <div v-if="pickupConfig.authorized_pickup_rut" class="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <p class="text-sm font-medium text-green-900">{{ pickupConfig.authorized_pickup_name || 'Usuario seleccionado' }}</p>
+                        <p class="text-xs text-green-700">{{ pickupConfig.authorized_pickup_rut }}</p>
+                      </div>
+                      <button
+                        @click="clearSelectedUser"
+                        class="text-red-600 hover:text-red-800"
+                        title="Quitar selección"
+                      >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">Solo esta persona podrá retirar los insumos de esta solicitud.</p>
+                </div>
+              </div>
+
+              <!-- Estado actual -->
+              <div v-if="request.allow_anyone_to_pickup !== undefined" class="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p class="text-sm text-gray-700">
+                  <span class="font-medium">Estado actual:</span>
+                  <span v-if="request.allow_anyone_to_pickup" class="text-green-700 ml-2">
+                    ✓ Cualquier persona puede retirar
+                  </span>
+                  <span v-else-if="request.authorized_pickup_rut" class="text-orange-700 ml-2">
+                    ✓ Solo {{ request.authorized_pickup_name || request.authorized_pickup_rut }} puede retirar
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Items solicitados -->
           <div class="bg-white rounded-lg shadow border">
             <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex items-center justify-between">
@@ -925,6 +1020,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '@/services/requests/supplyRequestService'
 import pavilionService from '@/services/config/pavilionService'
+import { userService } from '@/services/common/userService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
@@ -946,6 +1042,16 @@ const items = ref([])
 const assignments = ref([])
 const pavilions = ref([])
 const selectedQRTraceability = ref(null)
+const pickupConfig = ref({
+  allow_anyone_to_pickup: true,
+  authorized_pickup_rut: null,
+  authorized_pickup_name: null
+})
+const savingPickupConfig = ref(false)
+const userSearchQuery = ref('')
+const allUsers = ref([])
+const filteredUsers = ref([])
+const showUserSuggestions = ref(false)
 const showAssignQRModal = ref(false)
 const selectedItem = ref(null)
 const showAssignModal = ref(false)
@@ -996,6 +1102,20 @@ const loadSupplyRequest = async () => {
       request.value = result.data.request
       items.value = result.data.items || []
       assignments.value = result.data.assignments || []
+      
+      // Inicializar configuración de retiro
+      if (request.value) {
+        pickupConfig.value = {
+          allow_anyone_to_pickup: request.value.allow_anyone_to_pickup !== undefined ? request.value.allow_anyone_to_pickup : true,
+          authorized_pickup_rut: request.value.authorized_pickup_rut || null,
+          authorized_pickup_name: request.value.authorized_pickup_name || null
+        }
+        // Si hay un usuario autorizado, mostrar su nombre en el campo de búsqueda
+        if (request.value.authorized_pickup_rut && request.value.authorized_pickup_name) {
+          userSearchQuery.value = request.value.authorized_pickup_name
+        }
+      }
+      
       console.log('Solicitud cargada:', result.data)
       console.log('Estado:', request.value.status)
       console.log('Fecha de aprobación:', request.value.approval_date)
@@ -1584,6 +1704,156 @@ const confirmInputModal = () => {
     inputModalError.value = '' // Limpiar error antes de ejecutar
     inputModalCallback.value(inputModalValue.value)
     closeInputModal() // Cerrar después de ejecutar el callback
+  }
+}
+
+// Función para normalizar texto (quitar tildes y convertir a minúsculas)
+const normalizeText = (text) => {
+  if (!text) return ''
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Quitar diacríticos
+    .replace(/ñ/g, 'n')
+    .replace(/ü/g, 'u')
+}
+
+// Buscar usuarios según búsqueda (con debounce)
+let searchTimeout = null
+const onUserSearch = async () => {
+  const query = userSearchQuery.value.trim()
+  
+  // Limpiar timeout anterior
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  
+  if (!query || query.length < 2) {
+    filteredUsers.value = []
+    showUserSuggestions.value = false
+    return
+  }
+  
+  // Debounce: esperar 300ms antes de buscar
+  searchTimeout = setTimeout(async () => {
+    try {
+      const result = await userService.searchUsers(query)
+      if (result.success && result.data) {
+        filteredUsers.value = result.data.slice(0, 10) // Limitar a 10 resultados
+        showUserSuggestions.value = true
+      } else {
+        filteredUsers.value = []
+        showUserSuggestions.value = false
+      }
+    } catch (err) {
+      console.error('Error buscando usuarios:', err)
+      filteredUsers.value = []
+      showUserSuggestions.value = false
+    }
+  }, 300)
+}
+
+// Seleccionar usuario de la lista
+const selectUser = (user) => {
+  // Asegurar que allow_anyone_to_pickup esté en false cuando se selecciona un usuario
+  pickupConfig.value.allow_anyone_to_pickup = false
+  pickupConfig.value.authorized_pickup_rut = user.rut
+  pickupConfig.value.authorized_pickup_name = user.name
+  userSearchQuery.value = user.name
+  showUserSuggestions.value = false
+  // Guardar automáticamente al seleccionar
+  savePickupConfig()
+}
+
+// Limpiar usuario seleccionado
+const clearSelectedUser = () => {
+  pickupConfig.value.authorized_pickup_rut = null
+  pickupConfig.value.authorized_pickup_name = null
+  userSearchQuery.value = ''
+  showUserSuggestions.value = false
+  // Guardar automáticamente al limpiar
+  savePickupConfig()
+}
+
+// Manejar blur del campo de búsqueda
+const handleUserSearchBlur = () => {
+  // Esperar un poco antes de ocultar para permitir clicks en las sugerencias
+  setTimeout(() => {
+    showUserSuggestions.value = false
+  }, 200)
+}
+
+// Manejar cambio del checkbox (solo mostrar/ocultar campos, no guardar)
+const onCheckboxChange = () => {
+  // Si se marca "cualquiera", limpiar la selección y guardar
+  if (pickupConfig.value.allow_anyone_to_pickup) {
+    pickupConfig.value.authorized_pickup_rut = null
+    pickupConfig.value.authorized_pickup_name = null
+    userSearchQuery.value = ''
+    savePickupConfig()
+  }
+  // Si se desmarca, solo mostrar los campos (no guardar hasta que se seleccione un usuario)
+}
+
+// Guardar configuración de retiro
+const savePickupConfig = async () => {
+  if (savingPickupConfig.value) return
+  
+  // Asegurar que allow_anyone_to_pickup siempre sea un booleano explícito
+  // Si es undefined o null, usar true por defecto
+  const allowAnyone = pickupConfig.value.allow_anyone_to_pickup === false ? false : true
+  
+  // Validar que si no permite a cualquiera, debe tener un RUT
+  if (!allowAnyone && !pickupConfig.value.authorized_pickup_rut) {
+    // No mostrar error si el usuario está escribiendo
+    return
+  }
+
+  savingPickupConfig.value = true
+  try {
+    // Construir objeto de configuración con valores explícitos
+    // IMPORTANTE: Siempre incluir allow_anyone_to_pickup como booleano explícito
+    const configData = {
+      allow_anyone_to_pickup: allowAnyone, // Siempre un booleano explícito (true o false)
+      authorized_pickup_rut: allowAnyone ? null : (pickupConfig.value.authorized_pickup_rut || null),
+      authorized_pickup_name: allowAnyone ? null : (pickupConfig.value.authorized_pickup_name || null)
+    }
+    
+
+    const result = await supplyRequestService.configurePickupAuthorization(requestId.value, configData)
+    
+    if (result.success) {
+      // Actualizar la solicitud local
+      if (request.value) {
+        request.value.allow_anyone_to_pickup = configData.allow_anyone_to_pickup
+        request.value.authorized_pickup_rut = configData.authorized_pickup_rut
+        request.value.authorized_pickup_name = configData.authorized_pickup_name
+      }
+      showMessage('success', 'Configuración guardada', 'La configuración de retiro se ha actualizado correctamente')
+    } else {
+      showMessage('error', 'Error', result.error || 'No se pudo guardar la configuración')
+      // Revertir cambios
+      if (request.value) {
+        pickupConfig.value = {
+          allow_anyone_to_pickup: request.value.allow_anyone_to_pickup !== undefined ? request.value.allow_anyone_to_pickup : true,
+          authorized_pickup_rut: request.value.authorized_pickup_rut || null,
+          authorized_pickup_name: request.value.authorized_pickup_name || null
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error guardando configuración de retiro:', err)
+    showMessage('error', 'Error', err.response?.data?.error || 'Error al guardar la configuración')
+    // Revertir cambios
+    if (request.value) {
+      pickupConfig.value = {
+        allow_anyone_to_pickup: request.value.allow_anyone_to_pickup !== undefined ? request.value.allow_anyone_to_pickup : true,
+        authorized_pickup_rut: request.value.authorized_pickup_rut || null,
+        authorized_pickup_name: request.value.authorized_pickup_name || null
+      }
+    }
+  } finally {
+    savingPickupConfig.value = false
   }
 }
 

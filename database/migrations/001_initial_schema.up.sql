@@ -239,6 +239,10 @@ CREATE TABLE IF NOT EXISTS supply_request (
     surgeon_name VARCHAR(255),
     surgery_id INTEGER REFERENCES surgery(id),
     specialty_id INTEGER REFERENCES medical_specialty(id),
+    -- Campos para control de retiro
+    allow_anyone_to_pickup BOOLEAN DEFAULT TRUE,
+    authorized_pickup_rut VARCHAR(20) REFERENCES "user"(rut),
+    authorized_pickup_name VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     

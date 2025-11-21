@@ -119,6 +119,37 @@ func (c *UserController) GetAllUsers(ctx *gin.Context) {
 	})
 }
 
+// SearchUsers busca usuarios por nombre, RUT o email (accesible para admin y encargado de bodega)
+func (c *UserController) SearchUsers(ctx *gin.Context) {
+	searchTerm := ctx.Query("q")
+	if searchTerm == "" {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Término de búsqueda requerido",
+		})
+		return
+	}
+
+	users, err := c.userService.SearchUsers(searchTerm)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al buscar usuarios: " + err.Error(),
+		})
+		return
+	}
+
+	var userResponses []models.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, user.ToResponse())
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Data:    userResponses,
+	})
+}
+
 // GetUsersByRole obtiene usuarios por rol
 func (c *UserController) GetUsersByRole(ctx *gin.Context) {
 	role := ctx.Query("role")

@@ -660,6 +660,8 @@ INSERT INTO surgery_typical_supply (surgery_id, supply_code, typical_quantity, i
 ((SELECT id FROM surgery WHERE name LIKE 'REDUCCION ABIERTA%' LIMIT 1), 1005, 25, TRUE, 'Gasas para limpieza')
 ON CONFLICT (surgery_id, supply_code) DO NOTHING;
 
+-- Nota: Los campos allow_anyone_to_pickup, authorized_pickup_rut, authorized_pickup_name
+-- tienen valores por defecto (allow_anyone_to_pickup = true) y se configuran desde la interfaz
 INSERT INTO supply_request (
     request_number, pavilion_id, requested_by, requested_by_name,
     request_date, surgery_datetime, status, notes, medical_center_id,
