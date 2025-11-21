@@ -1516,9 +1516,10 @@ func (s *SupplyRequestService) sendRequestRejectedEmail(request *models.SupplyRe
 }
 
 func (s *SupplyRequestService) sendRequestRejectedEmailToConsignation(request *models.SupplyRequest) error {
-	// Obtener todos los usuarios con rol Consignación
+	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
 
@@ -1653,9 +1654,10 @@ func (s *SupplyRequestService) sendRequestMixedStatusEmail(request *models.Suppl
 }
 
 func (s *SupplyRequestService) sendRequestMixedStatusEmailToConsignation(request *models.SupplyRequest) error {
-	// Obtener todos los usuarios con rol Consignación
+	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
 
@@ -1863,9 +1865,10 @@ func (s *SupplyRequestService) sendRequestCreatedEmailToPavedad(request *models.
 }
 
 func (s *SupplyRequestService) sendRequestCreatedEmailToConsignation(request *models.SupplyRequest) error {
-	// Obtener todos los usuarios con rol Consignación
+	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
 
@@ -1937,9 +1940,10 @@ func (s *SupplyRequestService) sendRequestCreatedEmailToConsignation(request *mo
 }
 
 func (s *SupplyRequestService) sendRequestAssignedEmailToConsignation(request *models.SupplyRequest) error {
-	// Obtener todos los usuarios con rol Consignación
+	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
 
@@ -1980,9 +1984,10 @@ func (s *SupplyRequestService) sendRequestAssignedEmailToConsignation(request *m
 }
 
 func (s *SupplyRequestService) sendRequestApprovedEmailToConsignation(request *models.SupplyRequest) error {
-	// Obtener todos los usuarios con rol Consignación
+	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
 
@@ -2035,9 +2040,10 @@ func (s *SupplyRequestService) sendRequestApprovedEmailToConsignation(request *m
 }
 
 func (s *SupplyRequestService) sendRequestReturnedEmailToConsignation(request *models.SupplyRequest) error {
-	// Obtener todos los usuarios con rol Consignación
+	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
 
@@ -2155,9 +2161,10 @@ func (s *SupplyRequestService) sendRequestPartiallyApprovedEmail(request *models
 }
 
 func (s *SupplyRequestService) sendRequestPartiallyApprovedEmailToConsignation(request *models.SupplyRequest) error {
-	// Obtener todos los usuarios con rol Consignación
+	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ?", "consignación").Find(&consignationUsers).Error; err != nil {
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
 

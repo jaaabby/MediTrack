@@ -402,7 +402,7 @@ INSERT INTO "user" (
 ) VALUES (
     '11111111-1',
     'Encargado Bodega',
-    'bodega@meditrack.com',
+    'bodegacentral@meditrack.com',
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'encargado de bodega',
     1,
@@ -515,9 +515,9 @@ INSERT INTO "user" (
 ) VALUES (
     '12121212-1',
     'Usuario Consignación',
-    'consignacion@meditrack.com',
+    'bodegaconsignacion@meditrack.com',
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'consignación',
+    'encargado de bodega',
     1,
     true,
     EXTRACT(EPOCH FROM NOW()),

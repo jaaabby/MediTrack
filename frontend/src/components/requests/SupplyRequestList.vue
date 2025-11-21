@@ -699,7 +699,7 @@ const loadSupplyRequests = async () => {
     else if (authStore.isAdmin) {
       result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
     }
-    // Consignación ve todas las solicitudes (para manejo de solicitudes externas)
+    // Consignación ve todas las solicitudes (mismo comportamiento que encargado de bodega)
     else if (authStore.isConsignation) {
       result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
     }
@@ -720,7 +720,7 @@ const loadSupplyRequests = async () => {
       }
       
       // Filtrar por doctor si corresponde
-      if (authStore.canCreateRequests && !authStore.isAdmin && !authStore.isPavedad && !authStore.isWarehouseManager && !authStore.isConsignation) {
+      if (authStore.canCreateRequests && !authStore.isAdmin && !authStore.isPavedad && !authStore.isWarehouseManager) {
         const userRut = authStore.getUserRut
         requests.value = allRequests.filter(request => request.requested_by === userRut)
       } else {

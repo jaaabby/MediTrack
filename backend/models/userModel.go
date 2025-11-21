@@ -1,5 +1,7 @@
 package models
 
+import "strings"
+
 // Constantes para los roles de usuario
 const (
 	RoleAdmin        = "admin"
@@ -8,7 +10,6 @@ const (
 	RoleNurse        = "enfermera"
 	RoleDoctor       = "doctor"
 	RolePavedad      = "pavedad"
-	RoleConsignation = "consignación"
 )
 
 // User representa un usuario del sistema
@@ -17,7 +18,7 @@ type User struct {
 	Name            string            `json:"name" db:"name" gorm:"not null"`
 	Email           string            `json:"email" db:"email"`
 	Password        string            `json:"password" db:"password" gorm:"not null"`
-	Role            string            `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad', 'consignación')"`
+	Role            string            `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')"`
 	MedicalCenterID int               `json:"medical_center_id" db:"medical_center_id" gorm:"not null"`
 	MedicalCenter   *MedicalCenter    `json:"medical_center,omitempty" gorm:"foreignKey:MedicalCenterID"`
 	SpecialtyID     *int              `json:"specialty_id" db:"specialty_id"`
@@ -66,8 +67,25 @@ func (u User) IsValidRole() bool {
 		u.Role == RoleStoreManager ||
 		u.Role == RoleNurse ||
 		u.Role == RoleDoctor ||
-		u.Role == RolePavedad ||
-		u.Role == RoleConsignation
+		u.Role == RolePavedad
+}
+
+// IsConsignationWarehouse verifica si el usuario es de bodega de consignación basándose en el email
+func (u User) IsConsignationWarehouse() bool {
+	if u.Role != RoleStoreManager {
+		return false
+	}
+	emailLower := strings.ToLower(u.Email)
+	return strings.Contains(emailLower, "bodegaconsignacion") || strings.Contains(emailLower, "consignacion")
+}
+
+// IsCentralWarehouse verifica si el usuario es de bodega central basándose en el email
+func (u User) IsCentralWarehouse() bool {
+	if u.Role != RoleStoreManager {
+		return false
+	}
+	emailLower := strings.ToLower(u.Email)
+	return !strings.Contains(emailLower, "bodegaconsignacion") && !strings.Contains(emailLower, "consignacion")
 }
 
 func (u User) TableName() string {

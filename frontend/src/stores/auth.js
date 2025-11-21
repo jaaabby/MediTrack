@@ -38,8 +38,19 @@ export const useAuthStore = defineStore('auth', {
     // Verificar si es pavedad
     isPavedad: (state) => state.user?.role === 'pavedad',
     
-    // Verificar si es consignación
-    isConsignation: (state) => state.user?.role === 'consignación',
+    // Verificar si es consignación (basado en email)
+    isConsignation: (state) => {
+      if (state.user?.role !== 'encargado de bodega') return false
+      const email = (state.user?.email || '').toLowerCase()
+      return email.includes('bodegaconsignacion') || email.includes('consignacion')
+    },
+    
+    // Verificar si es bodega central (basado en email)
+    isCentralWarehouse: (state) => {
+      if (state.user?.role !== 'encargado de bodega') return false
+      const email = (state.user?.email || '').toLowerCase()
+      return !email.includes('bodegaconsignacion') && !email.includes('consignacion')
+    },
     
     // Verificar si puede crear solicitudes (solo doctor, NO enfermera ni pavedad)
     canCreateRequests: (state) => state.user?.role === 'doctor',
@@ -47,26 +58,26 @@ export const useAuthStore = defineStore('auth', {
     // Verificar si puede ver todas las solicitudes (admin o encargado de bodega)
     canViewAllRequests: (state) => ['admin', 'pavedad'].includes(state.user?.role),
     
-    // Verificar si puede aprobar/rechazar solicitudes (solo encargado de bodega)
+    // Verificar si puede aprobar/rechazar solicitudes (solo encargado de bodega - incluye consignación)
     canApproveRequests: (state) => state.user?.role === 'encargado de bodega',
     
-    // Verificar si puede gestionar inventario y QRs (admin o encargado de bodega)
+    // Verificar si puede gestionar inventario y QRs (admin o encargado de bodega - incluye consignación)
     canManageInventory: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
     
     // Verificar si puede ver inventario general (menú completo) - NO incluye enfermera
     canViewInventoryMenu: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
     
-    // Verificar si puede ver inventario de pabellones (solo lectura) - enfermera y consignación pueden ver pabellones
-    canViewPavilionInventory: (state) => ['admin', 'encargado de bodega', 'enfermera', 'consignación'].includes(state.user?.role),
+    // Verificar si puede ver inventario de pabellones (solo lectura) - enfermera y encargado de bodega pueden ver pabellones
+    canViewPavilionInventory: (state) => ['admin', 'encargado de bodega', 'enfermera'].includes(state.user?.role),
     
     // Verificar si puede ver solicitudes (todos excepto pabellón y enfermera, pavedad puede ver)
     canViewRequests: (state) => !['pabellón', 'enfermera'].includes(state.user?.role),
     
-    // Verificar si puede ver inventario (todos excepto pabellón, doctor, pavedad, enfermera y consignación)
-    canViewInventory: (state) => !['pabellón', 'doctor', 'pavedad', 'enfermera', 'consignación'].includes(state.user?.role),
+    // Verificar si puede ver inventario (todos excepto pabellón, doctor, pavedad, enfermera)
+    canViewInventory: (state) => !['pabellón', 'doctor', 'pavedad', 'enfermera'].includes(state.user?.role),
     
-    // Verificar si puede ver estadísticas (todos excepto pabellón, doctor, pavedad, enfermera y consignación)
-    canViewStatistics: (state) => !['pabellón', 'doctor', 'pavedad', 'enfermera', 'consignación'].includes(state.user?.role),
+    // Verificar si puede ver estadísticas (todos excepto pabellón, doctor, pavedad, enfermera)
+    canViewStatistics: (state) => !['pabellón', 'doctor', 'pavedad', 'enfermera'].includes(state.user?.role),
     
     // Verificar si puede ver inicio/dashboard (todos pueden ver home)
     canViewHome: (state) => true,
@@ -89,8 +100,8 @@ export const useAuthStore = defineStore('auth', {
     // Verificar si puede gestionar configuración médica (solo admin y enfermera)
     canManageMedicalConfig: (state) => ['admin', 'enfermera'].includes(state.user?.role),
     
-    // Verificar si puede gestionar configuración del sistema (admin, encargado de bodega, consignación)
-    canManageSystemConfig: (state) => ['admin', 'encargado de bodega', 'consignación'].includes(state.user?.role),
+    // Verificar si puede gestionar configuración del sistema (admin, encargado de bodega - incluye consignación)
+    canManageSystemConfig: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
     
     // Verificar si puede gestionar cirugías (solo admin y enfermera)
     canManageSurgeries: (state) => ['admin', 'enfermera'].includes(state.user?.role),
@@ -299,11 +310,17 @@ export const useAuthStore = defineStore('auth', {
         'encargado de bodega': ['Home', 'Inventory', 'InventoryDashboard', 'InventoryStore', 'InventoryPavilion', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRTransfer', 'QRReception', 'SupplyRequestList', 'SupplyRequestDetail', 'Statistics', 'Transfers', 'SupplyHistory', 'ReturnManagement', 'SupplierConfigs', 'SupplyCodes', 'Profile'],
         'enfermera': ['Home', 'PavilionInventoryView', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'QRTransfer', 'QRReception', 'Profile'],
         'doctor': ['Home', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'Profile'],
-        'pavedad': ['Home', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile'],
-        'consignación': ['Home', 'PavilionInventoryView', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'QRTransfer', 'QRReception', 'SupplyRequestList', 'SupplyRequestDetail', 'SupplierConfigManagement', 'SupplyCodeManagement', 'Profile']
+        'pavedad': ['Home', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
       }
 
-      const allowedRoutes = routePermissions[this.user.role] || []
+      // Consignación tiene las mismas rutas que encargado de bodega
+      let allowedRoutes = routePermissions[this.user.role] || []
+      
+      // Si es consignación, usar las mismas rutas que encargado de bodega
+      if (this.user.role === 'encargado de bodega' && this.isConsignation) {
+        allowedRoutes = routePermissions['encargado de bodega'] || []
+      }
+      
       return allowedRoutes.includes(routeName)
     },
 

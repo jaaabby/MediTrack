@@ -147,56 +147,8 @@
               Estadisticas
             </router-link>
 
-            <!-- Menú desplegable Configuración para consignación -->
-            <div v-if="authStore.isAuthenticated && authStore.isConsignation" class="relative">
-              <button
-                @click="configMenuOpen = !configMenuOpen"
-                class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
-                :class="{ 'bg-brand-blue-medium': ['/supplier-configs', '/supply-codes'].some(path => $route.path.startsWith(path)) }"
-              >
-                Configuración
-                <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': configMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              <!-- Dropdown menu -->
-              <div v-if="configMenuOpen" class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
-                <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Configuración del Sistema
-                </div>
-                <router-link
-                  to="/supplier-configs"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
-                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/supplier-configs' }"
-                  @click="configMenuOpen = false"
-                >
-                  <div class="flex items-center">
-                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Configuración de Proveedores
-                  </div>
-                </router-link>
-                <router-link
-                  to="/supply-codes"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
-                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/supply-codes' }"
-                  @click="configMenuOpen = false"
-                >
-                  <div class="flex items-center">
-                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    Códigos de Insumos
-                  </div>
-                </router-link>
-              </div>
-            </div>
-
             <!-- Menú desplegable Gestión -->
-            <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad && !authStore.isNurse && !authStore.isConsignation" class="relative">
+            <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad && !authStore.isNurse" class="relative">
               <button
                 @click="managementMenuOpen = !managementMenuOpen"
                 class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
@@ -570,8 +522,8 @@
           <!-- Separador -->
           <div class="border-t border-brand-blue-medium my-2"></div>
           
-          <!-- Enlace directo a Pabellones para enfermeras y consignación en menú móvil -->
-          <router-link v-if="authStore.isAuthenticated && (authStore.isNurse || authStore.isConsignation)"
+          <!-- Enlace directo a Pabellones para enfermeras en menú móvil -->
+          <router-link v-if="authStore.isAuthenticated && authStore.isNurse"
             to="/inventory/pavilion"
             @click.stop="mobileMenuOpen = false"
             class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors"
@@ -581,7 +533,7 @@
           </router-link>
           
           <!-- Sección de Gestión -->
-          <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad && !authStore.isNurse && !authStore.isConsignation" class="space-y-1">
+          <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad && !authStore.isNurse" class="space-y-1">
             <div class="text-brand-blue-light px-3 py-2 text-sm font-semibold uppercase tracking-wide">
               Gestión
             </div>
@@ -810,7 +762,6 @@ const searchQuery = ref('')
 const mobileMenuOpen = ref(false)
 const managementMenuOpen = ref(false)
 const inventoryMenuOpen = ref(false)
-const configMenuOpen = ref(false)
 
 // Inicializar autenticacion al montar el componente
 onMounted(() => {
@@ -835,7 +786,6 @@ router.afterEach(() => {
   mobileMenuOpen.value = false
   managementMenuOpen.value = false
   inventoryMenuOpen.value = false
-  configMenuOpen.value = false
 })
 
 // Metodos para futuras funcionalidades

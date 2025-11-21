@@ -551,30 +551,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Protección específica para consignación - pueden ver inventario de pabellones, usar QR, ver solicitudes y gestionar configuración
-  if (authStore.isAuthenticated && authStore.isConsignation) {
-    const allowedRoutesForConsignation = [
-      'Home',
-      'PavilionInventoryView', // Ver inventario de pabellones
-      'QRScanner',
-      'QRDetails',
-      'QRTraceability',
-      'QRConsumer',
-      'QRTransfer',
-      'QRReception',
-      'SupplyRequestList',
-      'SupplyRequestDetails',
-      'SupplierConfigManagement', // Configuración de Proveedores
-      'SupplyCodeManagement', // Códigos de Insumos
-      'Profile'
-    ]
-    
-    if (!allowedRoutesForConsignation.includes(to.name)) {
-      console.log('✗ Usuario de consignación intentando acceder a ruta no permitida:', to.name)
-      next({ name: 'Home', replace: true })
-      return
-    }
-  }
+  // Consignación ahora tiene las mismas rutas que encargado de bodega (se maneja en canAccessRoute del store)
 
   next()
 })
