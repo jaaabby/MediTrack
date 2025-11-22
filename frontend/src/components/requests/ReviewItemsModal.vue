@@ -300,12 +300,15 @@ const confirmAction = async () => {
 
     await supplyRequestService.reviewSupplyRequestItem(selectedItem.value.id, reviewData)
 
-    await Swal.fire({
+    // Mostrar notificación más rápida y sin bloquear
+    Swal.fire({
       icon: 'success',
       title: 'Item Revisado',
       text: `El insumo ha sido ${getStatusLabel(selectedAction.value).toLowerCase()}`,
-      timer: 2000,
-      showConfirmButton: false
+      timer: 1500,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
     })
 
     closeActionModal()
@@ -316,13 +319,18 @@ const confirmAction = async () => {
       item.item_status !== 'pendiente'
     )
     
+    // Siempre emitir el evento para que el componente padre pueda refrescar
+    emit('itemsReviewed')
+    
+    // Si todos los items están resueltos, cerrar el modal y recargar la página después de un breve delay
+    // para asegurar que el estado se actualice en el backend
     if (allItemsResolved) {
-      // Si todos los items están resueltos, recargar la página completa
-      window.location.reload()
-    } else {
-      // Si aún hay items pendientes, solo emitir el evento
-      emit('itemsReviewed')
+      setTimeout(() => {
+        emit('close') // Cerrar el modal principal
+        window.location.reload()
+      }, 1000)
     }
+    // Si no todos están resueltos, el modal permanece abierto para seguir revisando items
   } catch (error) {
     console.error('Error revisando item:', error)
     Swal.fire({

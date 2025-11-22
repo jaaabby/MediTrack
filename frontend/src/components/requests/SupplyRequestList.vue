@@ -711,8 +711,13 @@ const loadSupplyRequests = async () => {
       result = { success: true, data: { requests: [] } }
     }
     
-    if (result.success && result.data) {
-      let allRequests = result.data.requests || result.data || []
+    if (result.success) {
+      // Si result.success es true, tratar como éxito incluso si no hay data
+      let allRequests = []
+      
+      if (result.data) {
+        allRequests = result.data.requests || result.data || []
+      }
       
       // Asegurar que allRequests sea un array
       if (!Array.isArray(allRequests)) {
@@ -727,13 +732,19 @@ const loadSupplyRequests = async () => {
         requests.value = allRequests
       }
       
-      // Limpiar error si la carga fue exitosa
+      // Limpiar error si la carga fue exitosa (incluso si no hay solicitudes)
       error.value = null
       
       console.log('Solicitudes cargadas:', requests.value)
     } else {
+      // Solo establecer error si realmente hay un error (no solo falta de datos)
       requests.value = []
-      error.value = result.error || 'Error al cargar solicitudes'
+      // Solo establecer error si hay un mensaje de error específico
+      if (result.error && result.error !== 'No hay solicitudes' && result.error !== 'No se encontraron solicitudes') {
+        error.value = result.error
+      } else {
+        error.value = null // No hay error, solo no hay datos
+      }
     }
   } catch (err) {
     console.error('Error cargando solicitudes:', err)

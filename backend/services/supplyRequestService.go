@@ -890,6 +890,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 		// Si el item fue ACEPTADO, asignar automáticamente insumos del inventario
 		if req.ItemStatus == "aceptado" {
+			fmt.Printf("DEBUG: Item %d aceptado, cantidad solicitada: %d\n", item.ID, item.QuantityRequested)
 			// Buscar insumos disponibles con el mismo código (supply_code)
 			// FEFO (First Expired First Out): Priorizar productos próximos a vencer
 			var availableSupplies []models.MedicalSupply
@@ -994,6 +995,19 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 			// Actualizar quantity_approved del item con la cantidad asignada
 			item.QuantityApproved = &item.QuantityRequested
+			
+			// Si este item tiene cantidad >= 2, crear o actualizar el carrito
+			if item.QuantityRequested >= 2 {
+				fmt.Printf("DEBUG: Item aceptado con cantidad >= 2, creando/actualizando carrito para solicitud %d\n", item.SupplyRequestID)
+				cartService := NewCartService(tx)
+				cart, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
+				if err != nil {
+					fmt.Printf("ERROR creando/actualizando carrito: %v\n", err)
+					// No retornar error, solo loguear, para no bloquear la aceptación del item
+				} else {
+					fmt.Printf("DEBUG: Carrito creado/actualizado exitosamente con ID: %d, número: %s\n", cart.ID, cart.CartNumber)
+				}
+			}
 		}
 
 		if err := tx.Save(&item).Error; err != nil {
@@ -1129,10 +1143,35 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 			// CASOS 4, 6, 7: Hay devueltos (prioridad a devueltos)
 			} else if hasReturned > 0 {
-				request.Status = "devuelto"
+				// Si hay items aceptados, mantener el estado como parcialmente_aprobado para que el carrito se mantenga
+				if hasAccepted > 0 {
+					request.Status = "parcialmente_aprobado"
+				} else {
+					request.Status = "devuelto"
+				}
 				request.ApprovalDate = &now
 				request.ApprovedBy = &req.ReviewedBy
 				request.ApprovedByName = &req.ReviewedByName
+				
+				// Si hay items aceptados con cantidad >= 2, asegurar que el carrito exista
+				if hasAccepted > 0 {
+					var acceptedItems []models.SupplyRequestItem
+					tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "aceptado").Find(&acceptedItems)
+					for _, acceptedItem := range acceptedItems {
+						if acceptedItem.QuantityRequested >= 2 {
+							fmt.Printf("DEBUG: Hay items aceptados con cantidad >= 2, asegurando que el carrito exista para solicitud %d\n", item.SupplyRequestID)
+							cartService := NewCartService(tx)
+							cart, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
+							if err != nil {
+								fmt.Printf("ERROR creando/actualizando carrito: %v\n", err)
+								// No retornar error, solo loguear
+							} else {
+								fmt.Printf("DEBUG: Carrito creado/actualizado exitosamente con ID: %d, número: %s\n", cart.ID, cart.CartNumber)
+							}
+							break // Solo necesitamos crear el carrito una vez
+						}
+					}
+				}
 
 				// Agregar comentarios de todos los tipos de items a notes
 				var allComments string
@@ -1236,11 +1275,14 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 	})
 }
 
-// UpdatedItemRequest representa la actualización de un item devuelto
+// UpdatedItemRequest representa la actualización de un item devuelto o un nuevo item
 type UpdatedItemRequest struct {
-	ItemID   int    `json:"item_id"`
-	Quantity int    `json:"quantity"`
-	Notes    string `json:"notes"` // Nuevas observaciones del doctor sobre este item
+	ItemID     *int   `json:"item_id,omitempty"`     // Si es nil, es un nuevo item a crear
+	Quantity   int    `json:"quantity"`
+	SupplyCode *int   `json:"supply_code,omitempty"` // Código del insumo si se cambió
+	SupplyName *string `json:"supply_name,omitempty"` // Nombre del insumo si se cambió
+	IsPediatric *bool `json:"is_pediatric,omitempty"` // Si es pediátrico
+	Notes      string `json:"notes"`                  // Nuevas observaciones del doctor sobre este item
 }
 
 // ResubmitReturnedRequestData representa los datos para reenviar una solicitud
@@ -1258,18 +1300,73 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			return fmt.Errorf("solicitud no encontrada: %v", err)
 		}
 
-		// Verificar que la solicitud esté en estado devuelto
-		if request.Status != "devuelto" {
-			return fmt.Errorf("solo se pueden reenviar solicitudes devueltas")
+		// Verificar que la solicitud esté en estado devuelto o parcialmente_aprobado con items devueltos
+		if request.Status != "devuelto" && request.Status != "parcialmente_aprobado" {
+			return fmt.Errorf("solo se pueden reenviar solicitudes devueltas o parcialmente aprobadas con items devueltos")
+		}
+		
+		// Si el estado es parcialmente_aprobado, verificar que haya items devueltos
+		if request.Status == "parcialmente_aprobado" {
+			var returnedItemsCount int64
+			if err := tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", requestID, "devuelto").Count(&returnedItemsCount).Error; err != nil {
+				return fmt.Errorf("error verificando items devueltos: %v", err)
+			}
+			if returnedItemsCount == 0 {
+				return fmt.Errorf("no hay items devueltos para reenviar en esta solicitud")
+			}
 		}
 
 		// Recopilar observaciones de items para agregar a notes
 		var itemComments string
 
-		// Actualizar los items según los cambios del doctor
+		// Procesar items: actualizar existentes o crear nuevos
 		for _, updatedItem := range data.UpdatedItems {
+			// Si no tiene ItemID, es un nuevo item a crear
+			if updatedItem.ItemID == nil {
+				// Validar que tenga los datos mínimos para crear un nuevo item
+				if updatedItem.SupplyCode == nil || *updatedItem.SupplyCode == 0 {
+					continue // Saltar si no tiene código válido
+				}
+				if updatedItem.SupplyName == nil || *updatedItem.SupplyName == "" {
+					continue // Saltar si no tiene nombre
+				}
+				if updatedItem.Quantity <= 0 {
+					continue // Saltar si no tiene cantidad válida
+				}
+
+				// Crear nuevo item
+				newItem := models.SupplyRequestItem{
+					SupplyRequestID:   requestID,
+					SupplyCode:        *updatedItem.SupplyCode,
+					SupplyName:        *updatedItem.SupplyName,
+					QuantityRequested: updatedItem.Quantity,
+					IsPediatric:       false, // Por defecto
+					ItemStatus:        "pendiente",
+				}
+
+				// Si se especificó is_pediatric, usarlo
+				if updatedItem.IsPediatric != nil {
+					newItem.IsPediatric = *updatedItem.IsPediatric
+				}
+
+				// Si hay notas, agregarlas
+				if updatedItem.Notes != "" {
+					newItem.ItemNotes = &updatedItem.Notes
+					if itemComments != "" {
+						itemComments += "\n"
+					}
+					itemComments += fmt.Sprintf("Item \"%s\": %s", newItem.SupplyName, updatedItem.Notes)
+				}
+
+				if err := tx.Create(&newItem).Error; err != nil {
+					return fmt.Errorf("error creando nuevo item: %v", err)
+				}
+				continue
+			}
+
+			// Es un item existente, actualizarlo
 			var item models.SupplyRequestItem
-			if err := tx.First(&item, updatedItem.ItemID).Error; err != nil {
+			if err := tx.First(&item, *updatedItem.ItemID).Error; err != nil {
 				continue // Si no se encuentra el item, continuar
 			}
 
@@ -1278,6 +1375,19 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 				// Actualizar cantidad si se modificó
 				if updatedItem.Quantity > 0 {
 					item.QuantityRequested = updatedItem.Quantity
+				}
+
+				// Actualizar código y nombre del insumo si se cambió
+				if updatedItem.SupplyCode != nil && *updatedItem.SupplyCode > 0 {
+					item.SupplyCode = *updatedItem.SupplyCode
+				}
+				if updatedItem.SupplyName != nil && *updatedItem.SupplyName != "" {
+					item.SupplyName = *updatedItem.SupplyName
+				}
+
+				// Actualizar is_pediatric si se especificó
+				if updatedItem.IsPediatric != nil {
+					item.IsPediatric = *updatedItem.IsPediatric
 				}
 
 				// Si hay nuevas notas del doctor, agregarlas a item_notes (sin borrar las anteriores)
@@ -1291,10 +1401,15 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 					}
 
 					// Agregar al comentario de items para notes usando formato: Item "NombreItem": observación
+					// Usar el nuevo nombre si se cambió, sino el actual
+					itemName := item.SupplyName
+					if updatedItem.SupplyName != nil && *updatedItem.SupplyName != "" {
+						itemName = *updatedItem.SupplyName
+					}
 					if itemComments != "" {
 						itemComments += "\n"
 					}
-					itemComments += fmt.Sprintf("Item \"%s\": %s", item.SupplyName, updatedItem.Notes)
+					itemComments += fmt.Sprintf("Item \"%s\": %s", itemName, updatedItem.Notes)
 				}
 
 				// Resetear el estado a pendiente para que sea revisado nuevamente
@@ -1305,6 +1420,31 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 				}
 			}
 			// Los items aceptados no se tocan, se mantienen como están
+		}
+
+		// Eliminar items devueltos que no están en la lista de items actualizados
+		// (es decir, items que el doctor eliminó del formulario)
+		var allReturnedItems []models.SupplyRequestItem
+		if err := tx.Where("supply_request_id = ? AND item_status = ?", requestID, "devuelto").Find(&allReturnedItems).Error; err != nil {
+			return fmt.Errorf("error obteniendo items devueltos: %v", err)
+		}
+
+		// Crear un mapa de IDs de items actualizados para búsqueda rápida
+		updatedItemIDs := make(map[int]bool)
+		for _, updatedItem := range data.UpdatedItems {
+			if updatedItem.ItemID != nil {
+				updatedItemIDs[*updatedItem.ItemID] = true
+			}
+		}
+
+		// Eliminar items devueltos que no están en la lista de items actualizados
+		for _, returnedItem := range allReturnedItems {
+			if !updatedItemIDs[returnedItem.ID] {
+				fmt.Printf("DEBUG: Eliminando item devuelto %d (\"%s\") que no está en la lista de items actualizados\n", returnedItem.ID, returnedItem.SupplyName)
+				if err := tx.Delete(&returnedItem).Error; err != nil {
+					return fmt.Errorf("error eliminando item devuelto: %v", err)
+				}
+			}
 		}
 
 		// Agregar las nuevas observaciones del solicitante al historial
@@ -1339,6 +1479,25 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 
 		if err := tx.Save(&request).Error; err != nil {
 			return fmt.Errorf("error actualizando solicitud: %v", err)
+		}
+
+		// Verificar si hay items aceptados con cantidad >= 2 y asegurar que el carrito exista
+		var acceptedItems []models.SupplyRequestItem
+		if err := tx.Where("supply_request_id = ? AND item_status = ?", requestID, "aceptado").Find(&acceptedItems).Error; err == nil {
+			for _, acceptedItem := range acceptedItems {
+				if acceptedItem.QuantityRequested >= 2 {
+					fmt.Printf("DEBUG: Hay items aceptados con cantidad >= 2 después de reenviar, asegurando que el carrito exista para solicitud %d\n", requestID)
+					cartService := NewCartService(tx)
+					cart, err := cartService.CreateCartForRequest(requestID, "SYSTEM", "Sistema")
+					if err != nil {
+						fmt.Printf("ERROR creando/actualizando carrito después de reenviar: %v\n", err)
+						// No retornar error, solo loguear
+					} else {
+						fmt.Printf("DEBUG: Carrito creado/actualizado exitosamente después de reenviar con ID: %d, número: %s\n", cart.ID, cart.CartNumber)
+					}
+					break // Solo necesitamos crear el carrito una vez
+				}
+			}
 		}
 
 		return nil

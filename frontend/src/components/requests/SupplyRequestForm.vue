@@ -207,7 +207,11 @@
             v-for="(item, index) in requestForm.items"
             :key="index"
             class="bg-white p-3 sm:p-4 rounded-lg border relative"
-            :class="isDuplicateItem(index) ? 'border-orange-400 bg-orange-50' : 'border-gray-200'"
+            :class="{
+              'border-orange-400 bg-orange-50': isDuplicateItem(index),
+              'border-green-300 bg-green-50': props.editMode && item.item_status === 'aceptado',
+              'border-gray-200': !isDuplicateItem(index) && !(props.editMode && item.item_status === 'aceptado')
+            }"
           >
             <!-- Advertencia de duplicado -->
             <div v-if="isDuplicateItem(index)" class="mb-3 p-2 bg-orange-100 border border-orange-300 rounded-md">
@@ -218,8 +222,9 @@
                 <span class="font-medium">Este insumo está duplicado. Las cantidades se consolidarán automáticamente al enviar.</span>
               </div>
             </div>
-            <!-- Botón eliminar -->
+            <!-- Botón eliminar (solo para items no aceptados) -->
             <button
+              v-if="!props.editMode || item.item_status !== 'aceptado'"
               type="button"
               @click="removeSupplyItem(index)"
               class="absolute top-2 right-2 p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full z-10"
@@ -229,6 +234,24 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+            
+            <!-- Indicador de item aceptado (solo lectura) -->
+            <div v-if="props.editMode && item.item_status === 'aceptado'" class="absolute top-2 right-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded z-10 flex items-center gap-1">
+              <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              Aceptado (solo lectura)
+            </div>
+            
+            <!-- Mensaje informativo para items aceptados -->
+            <div v-if="props.editMode && item.item_status === 'aceptado'" class="mb-3 p-2 bg-green-50 border border-green-200 rounded-md">
+              <div class="flex items-center gap-2 text-green-800 text-xs">
+                <svg class="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                <span>Este insumo ya fue aceptado por bodega y no puede ser modificado ni eliminado.</span>
+              </div>
+            </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pr-8">
               <!-- Código del insumo -->
@@ -244,6 +267,8 @@
                   @blur="onSupplyCodeBlur(index)"
                   placeholder="Escribir código..."
                   class="form-select text-sm"
+                  :disabled="props.editMode && item.item_status === 'aceptado'"
+                  :readonly="props.editMode && item.item_status === 'aceptado'"
                 />
                 <!-- Dropdown de sugerencias por código -->
                 <div 
@@ -279,12 +304,17 @@
                   @blur="onSupplyInputBlur(index)"
                   placeholder="Escribir nombre o buscar..."
                     class="form-input flex-1"
+                    :class="{ 'bg-gray-100 cursor-not-allowed': props.editMode && item.item_status === 'aceptado' }"
                     autocomplete="off"
+                    :disabled="props.editMode && item.item_status === 'aceptado'"
+                    :readonly="props.editMode && item.item_status === 'aceptado'"
                   />
                   <button
                     type="button"
                     @click="toggleSupplyList(index)"
                     class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
+                    :class="{ 'opacity-50 cursor-not-allowed': props.editMode && item.item_status === 'aceptado' }"
+                    :disabled="props.editMode && item.item_status === 'aceptado'"
                     title="Seleccionar de lista"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,6 +364,8 @@
                   min="1"
                   placeholder="1"
                   class="form-select text-sm"
+                  :disabled="props.editMode && item.item_status === 'aceptado'"
+                  :readonly="props.editMode && item.item_status === 'aceptado'"
                 />
               </div>
             </div>
@@ -403,8 +435,10 @@
                   :id="`pediatric-${index}`"
                   v-model="item.is_pediatric"
                   class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  :disabled="props.editMode && item.item_status === 'aceptado'"
                 />
-                <label :for="`pediatric-${index}`" class="ml-2 text-xs sm:text-sm font-medium text-gray-700">
+                <label :for="`pediatric-${index}`" class="ml-2 text-xs sm:text-sm font-medium text-gray-700"
+                  :class="{ 'text-gray-400': props.editMode && item.item_status === 'aceptado' }">
                   Es insumo pediátrico
                 </label>
               </div>
@@ -813,6 +847,18 @@ const addSupplyItem = () => {
 }
 
 const removeSupplyItem = (index) => {
+  // No permitir eliminar items aceptados en modo edición
+  if (props.editMode && requestForm.items[index]?.item_status === 'aceptado') {
+    Swal.fire({
+      icon: 'warning',
+      title: 'No se puede eliminar',
+      text: 'Este insumo ya fue aceptado por bodega y no puede ser eliminado.',
+      timer: 3000,
+      showConfirmButton: false
+    })
+    return
+  }
+  
   requestForm.items.splice(index, 1)
   // También remover los estados de búsqueda correspondientes
   supplySearchTerms.value.splice(index, 1)
@@ -1139,14 +1185,39 @@ const createNewRequest = async () => {
 
 // Reenviar solicitud devuelta
 const resubmitRequest = async () => {
-  // Preparar solo los items que fueron devueltos con sus nuevas cantidades y observaciones
+  // Preparar items: los devueltos (con ID) y los nuevos (sin ID)
   const updatedItems = requestForm.items
-    .filter(item => item.item_status === 'devuelto')
-    .map(item => ({
-      item_id: item.id,
-      quantity: item.quantity_requested,
-      notes: item.resubmit_notes || '' // Nuevas observaciones del doctor sobre este item
-    }))
+    .filter(item => {
+      // Incluir items devueltos (con ID y status devuelto) o nuevos items (sin ID)
+      return (item.item_status === 'devuelto' && item.id) || (!item.id && item.supply_code && item.supply_name)
+    })
+    .map(item => {
+      const itemData = {
+        quantity: item.quantity_requested,
+        notes: item.resubmit_notes || '' // Nuevas observaciones del doctor sobre este item
+      }
+      
+      // Si tiene ID, es un item existente devuelto
+      if (item.id) {
+        itemData.item_id = item.id
+      }
+      // Si no tiene ID, es un nuevo item (se creará)
+      
+      // Incluir supply_code y supply_name si tienen valores válidos
+      if (item.supply_code && item.supply_code.toString().trim() !== '') {
+        itemData.supply_code = parseInt(item.supply_code)
+      }
+      if (item.supply_name && item.supply_name.trim() !== '') {
+        itemData.supply_name = item.supply_name.trim()
+      }
+      
+      // Incluir is_pediatric
+      if (item.is_pediatric !== undefined && item.is_pediatric !== null) {
+        itemData.is_pediatric = Boolean(item.is_pediatric)
+      }
+      
+      return itemData
+    })
   
   console.log('Reenviando solicitud con items:', updatedItems)
   console.log('Notas del solicitante:', requestForm.notes)
@@ -1231,8 +1302,13 @@ const loadRequestForEdit = async () => {
       // En modo edición, dejar las observaciones vacías para que el usuario ingrese nuevas
       requestForm.notes = ''
       
-      // Cargar tipo de cirugía
-      requestForm.surgery_id = request.surgery_id || null
+      // Cargar tipo de cirugía - convertir a número si existe
+      if (request.surgery_id !== null && request.surgery_id !== undefined) {
+        requestForm.surgery_id = parseInt(request.surgery_id)
+      } else {
+        requestForm.surgery_id = null
+      }
+      console.log('🔍 Surgery ID cargado:', requestForm.surgery_id, 'desde:', request.surgery_id)
       
       // Guardar datos originales para mostrar en modo solo lectura
       // Buscar el pabellón por ID - probar con conversión de tipos

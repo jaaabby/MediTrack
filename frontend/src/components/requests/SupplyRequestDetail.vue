@@ -422,8 +422,8 @@
             </div>
           </div>
 
-          <!-- Carrito de Insumos (solo para solicitudes aprobadas) -->
-          <div v-if="['aprobado', 'en_proceso', 'completado'].includes(request.status)">
+          <!-- Carrito de Insumos (mostrar si hay carrito o si la solicitud está aprobada) -->
+          <div v-if="['aprobado', 'en_proceso', 'completado', 'asignado_bodega', 'parcialmente_aprobado', 'devuelto_al_encargado'].includes(request.status)">
             <SupplyCart 
               :request-id="request.id"
               :can-close="authStore.canApproveRequests"
@@ -684,7 +684,7 @@
 
                 <!-- Doctor puede editar y reenviar solicitud devuelta -->
                 <button
-                  v-if="request.status === 'devuelto' && (authStore.isDoctor || authStore.isNurse) && request.requested_by === authStore.getUserRut"
+                  v-if="hasReturnedItems && (request.status === 'devuelto' || request.status === 'parcialmente_aprobado') && (authStore.isDoctor || authStore.isNurse) && request.requested_by === authStore.getUserRut"
                   @click="goToEditRequest"
                   class="w-full inline-flex items-center justify-center px-3 py-2 border border-orange-300 rounded-md text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100"
                 >
@@ -1090,6 +1090,11 @@ const qrAssignmentForm = reactive({
 // Computed
 const requestId = computed(() => parseInt(route.params.id))
 
+// Verificar si hay items devueltos en la solicitud
+const hasReturnedItems = computed(() => {
+  return items.value.some(item => item.item_status === 'devuelto')
+})
+
 // Métodos principales
 const loadSupplyRequest = async () => {
   loading.value = true
@@ -1204,6 +1209,14 @@ const openAssignModal = () => {
 
 const openReviewItemsModal = () => {
   showReviewItemsModal.value = true
+}
+
+const handleItemsReviewed = async () => {
+  // NO cerrar el modal aquí - el modal se cerrará automáticamente cuando todos los items estén resueltos
+  // Solo recargar la solicitud para obtener el estado actualizado y mostrar el carrito si se aprobó
+  await new Promise(resolve => setTimeout(resolve, 500))
+  await loadSupplyRequest()
+  console.log('Solicitud recargada después de revisar items. Estado:', request.value?.status)
 }
 
 const openEditReturnedModal = () => {

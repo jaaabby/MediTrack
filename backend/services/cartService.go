@@ -26,8 +26,16 @@ func NewCartService(db *gorm.DB) *CartService {
 // ========================
 
 func (s *CartService) CreateCartForRequest(supplyRequestID int, createdByRUT, createdByName string) (*models.SupplyCart, error) {
+	// Verificar si ya existe un carrito para esta solicitud
 	var existingCart models.SupplyCart
 	if err := s.DB.Where("supply_request_id = ?", supplyRequestID).First(&existingCart).Error; err == nil {
+		// Si ya existe, cargarlo con sus relaciones y retornarlo
+		if err := s.DB.Preload("Items.SupplyRequestQRAssignment.MedicalSupply").
+			Preload("Items.SupplyRequestQRAssignment.SupplyRequestItem.SupplyCodeInfo").
+			Preload("SupplyRequest").
+			First(&existingCart, existingCart.ID).Error; err != nil {
+			return nil, fmt.Errorf("error cargando carrito existente: %w", err)
+		}
 		return &existingCart, nil
 	}
 
@@ -44,6 +52,9 @@ func (s *CartService) CreateCartForRequest(supplyRequestID int, createdByRUT, cr
 		CreatedByName:   createdByName,
 	}
 
+	// Usar la misma transacción si s.DB ya es una transacción, o crear una nueva si no
+	// Verificar si s.DB es una transacción verificando si tiene un método específico
+	// Por ahora, usaremos s.DB directamente ya que si se pasa una transacción, debería funcionar
 	return cart, s.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(cart).Error; err != nil {
 			return fmt.Errorf("error creando carrito: %w", err)

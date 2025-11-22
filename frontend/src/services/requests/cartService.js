@@ -42,7 +42,10 @@ class CartService {
       const response = await this.api.get(`/api/carts/request/${requestId}`)
       return response.data
     } catch (error) {
-      console.error('Error al obtener carrito por solicitud:', error)
+      // No loguear error si es 404 (carrito no existe todavía, es un estado válido)
+      if (error.response?.status !== 404) {
+        console.error('Error al obtener carrito por solicitud:', error)
+      }
       throw error
     }
   }

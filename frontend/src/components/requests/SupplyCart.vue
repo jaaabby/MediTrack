@@ -1,5 +1,6 @@
 <template>
-  <div class="bg-white rounded-lg shadow-md p-6">
+  <!-- Solo mostrar si hay carrito o está cargando (para evitar parpadeo) -->
+  <div v-if="cart || loading" class="bg-white rounded-lg shadow-md p-6">
     <!-- Header del carrito -->
     <div class="flex justify-between items-center mb-6">
       <div class="flex items-center gap-3 flex-1">
@@ -297,13 +298,7 @@
     </div>
 
     <!-- Carrito no existe todavía -->
-    <div v-else-if="!cart && !error" class="text-center py-12 bg-blue-50 rounded-lg border-2 border-dashed border-blue-200">
-      <svg class="w-16 h-16 mx-auto text-blue-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-      </svg>
-      <p class="text-gray-600 text-lg font-semibold">Carrito no disponible</p>
-      <p class="text-gray-500 text-sm mt-2">El carrito se creará automáticamente cuando se asigne el primer código QR a esta solicitud</p>
-    </div>
+    <!-- No mostrar nada si no hay carrito y no está cargando -->
 
     <!-- Estado vacío -->
     <div v-else-if="cart && activeItems.length === 0" class="text-center py-12">
@@ -615,7 +610,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import cartService from '@/services/requests/cartService'
 
 const props = defineProps({
@@ -746,14 +741,14 @@ const loadCart = async () => {
       throw new Error(response.message || 'Error al cargar carrito')
     }
   } catch (err) {
-    console.error('Error al cargar carrito:', err)
-    
     // Si el error es 404 (carrito no encontrado), no es un error real
     // El carrito simplemente no existe todavía
     if (err.response?.status === 404) {
       cart.value = null
       error.value = null // No mostrar error, es un estado válido
+      // No loguear el error 404, es un estado válido
     } else {
+      console.error('Error al cargar carrito:', err)
       error.value = err.response?.data?.message || err.message || 'Error al cargar el carrito'
       emit('error', error.value)
     }
@@ -1269,6 +1264,17 @@ defineExpose({
 onMounted(() => {
   loadCart()
 })
+
+// Recargar el carrito cuando cambia el requestId
+watch(() => props.requestId, (newRequestId, oldRequestId) => {
+  if (newRequestId && newRequestId !== oldRequestId) {
+    console.log('RequestId cambió, recargando carrito:', newRequestId)
+    // Esperar un momento para que el backend procese los cambios
+    setTimeout(() => {
+      loadCart()
+    }, 1000)
+  }
+}, { immediate: false })
 </script>
 
 <style scoped>
