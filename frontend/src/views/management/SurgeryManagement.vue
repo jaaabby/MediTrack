@@ -155,7 +155,7 @@
                 <div class="text-sm font-medium text-gray-900">{{ surgery.name }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ surgery.duration }}h
+                {{ formatDuration(surgery.duration) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <span v-if="surgery.specialty" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -255,11 +255,39 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Duración (horas) <span class="text-red-500">*</span>
+                Duración <span class="text-red-500">*</span>
               </label>
-              <input v-model.number="surgeryForm.duration" type="number" step="0.5" min="0.5" 
-                class="form-input" placeholder="Ej: 2.5" required />
-              <p class="mt-1 text-xs text-gray-500">Ingrese la duración estimada en horas (mínimo 0.5)</p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Horas</label>
+                  <input 
+                    v-model.number="surgeryForm.durationHours" 
+                    type="number" 
+                    min="0" 
+                    max="24"
+                    class="form-input" 
+                    placeholder="0"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Minutos</label>
+                  <select 
+                    v-model.number="surgeryForm.durationMinutes" 
+                    class="form-input"
+                    required
+                  >
+                    <option :value="0">0 min</option>
+                    <option :value="5">5 min</option>
+                    <option :value="15">15 min</option>
+                    <option :value="30">30 min</option>
+                    <option :value="45">45 min</option>
+                  </select>
+                </div>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">
+                Duración total: {{ formatDurationFromInput(surgeryForm.durationHours, surgeryForm.durationMinutes) }}
+              </p>
             </div>
 
             <div>
@@ -421,11 +449,53 @@ const handleSearch = () => {
   }, 300)
 }
 
+// Funciones de conversión
+const decimalToHoursMinutes = (decimalHours) => {
+  if (!decimalHours || decimalHours <= 0) {
+    return { hours: 0, minutes: 0 }
+  }
+  const hours = Math.floor(decimalHours)
+  const minutes = Math.round((decimalHours - hours) * 60)
+  // Redondear minutos a los valores permitidos (0, 5, 15, 30, 45)
+  // Si está cerca de 5, usar 5; si no, redondear a múltiplos de 15
+  let roundedMinutes
+  if (minutes >= 2.5 && minutes < 10) {
+    roundedMinutes = 5
+  } else {
+    roundedMinutes = Math.round(minutes / 15) * 15
+  }
+  return { hours, minutes: roundedMinutes >= 60 ? 0 : roundedMinutes }
+}
+
+const hoursMinutesToDecimal = (hours, minutes) => {
+  return hours + (minutes / 60)
+}
+
+const formatDuration = (decimalHours) => {
+  if (!decimalHours || decimalHours <= 0) {
+    return '0h 0min'
+  }
+  const { hours, minutes } = decimalToHoursMinutes(decimalHours)
+  if (minutes === 0) {
+    return `${hours}h`
+  }
+  return `${hours}h ${minutes}min`
+}
+
+const formatDurationFromInput = (hours, minutes) => {
+  if (!hours && !minutes) return '0h 0min'
+  if (minutes === 0) {
+    return `${hours || 0}h`
+  }
+  return `${hours || 0}h ${minutes}min`
+}
+
 const openCreateModal = () => {
   isEditing.value = false
   surgeryForm.value = {
     name: '',
-    duration: 1,
+    durationHours: 1,
+    durationMinutes: 0,
     specialty_id: null
   }
   showModal.value = true
@@ -433,10 +503,12 @@ const openCreateModal = () => {
 
 const openEditModal = (surgery) => {
   isEditing.value = true
+  const { hours, minutes } = decimalToHoursMinutes(surgery.duration || 1)
   surgeryForm.value = {
     id: surgery.id,
     name: surgery.name,
-    duration: surgery.duration || 1,
+    durationHours: hours,
+    durationMinutes: minutes,
     specialty_id: surgery.specialty_id || null
   }
   showModal.value = true
@@ -459,11 +531,16 @@ const saveSurgery = async () => {
     return
   }
 
-  if (!surgeryForm.value.duration || surgeryForm.value.duration < 0.5) {
+  // Validar duración
+  const durationHours = surgeryForm.value.durationHours || 0
+  const durationMinutes = surgeryForm.value.durationMinutes || 0
+  const totalDuration = hoursMinutesToDecimal(durationHours, durationMinutes)
+  
+  if (totalDuration <= 0) {
     await Swal.fire({
       icon: 'warning',
       title: 'Duración inválida',
-      text: 'La duración debe ser al menos 0.5 horas',
+      text: 'La duración debe ser mayor a 0',
       confirmButtonText: 'Aceptar'
     })
     return
@@ -471,9 +548,12 @@ const saveSurgery = async () => {
 
   saving.value = true
   try {
+    // Convertir horas y minutos a decimal para guardar en BD
+    const durationDecimal = hoursMinutesToDecimal(durationHours, durationMinutes)
+    
     const surgeryData = {
       name: surgeryForm.value.name.trim(),
-      duration: Number(surgeryForm.value.duration),
+      duration: durationDecimal,
       specialty_id: surgeryForm.value.specialty_id || null
     }
 

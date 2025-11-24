@@ -1,7 +1,9 @@
 package services
 
 import (
+	"database/sql"
 	"meditrack/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -76,8 +78,9 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 	for rows.Next() {
 		var id, destinationID, medicalSupplyID int
 		var destinationType, status, userRut, notes string
-		var dateTime string
-		var originType, originID, confirmedBy, confirmationDate, transferNotes, supplyName, qrCode *string
+		var dateTime time.Time
+		var confirmationDate sql.NullTime
+		var originType, originID, confirmedBy, transferNotes, supplyName, qrCode *string
 		var supplyCode *int
 
 		err := rows.Scan(
@@ -90,9 +93,20 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 			return nil, err
 		}
 
+		// Formatear fecha en formato ISO 8601 con zona horaria para evitar problemas de interpretación
+		// Esto asegura que la fecha se interprete correctamente en el frontend
+		dateTimeISO := dateTime.Format(time.RFC3339)
+		
+		// También formatear confirmation_date si existe
+		var confirmationDateISO *string
+		if confirmationDate.Valid {
+			iso := confirmationDate.Time.Format(time.RFC3339)
+			confirmationDateISO = &iso
+		}
+
 		result := map[string]interface{}{
 			"id":                id,
-			"date_time":         dateTime,
+			"date_time":         dateTimeISO, // Formato ISO 8601 con zona horaria
 			"status":            status,
 			"destination_type":  destinationType,
 			"destination_id":    destinationID,
@@ -102,7 +116,7 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 			"origin_type":       originType,
 			"origin_id":         originID,
 			"confirmed_by":      confirmedBy,
-			"confirmation_date": confirmationDate,
+			"confirmation_date": confirmationDateISO,
 			"transfer_notes":    transferNotes,
 			"supply_name":       supplyName,
 			"supply_code":       supplyCode,

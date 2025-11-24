@@ -111,11 +111,20 @@ func main() {
 	cartService := services.NewCartService(db)
 	cartController := controllers.NewCartController(cartService)
 
+	// Inicializar servicio de consumo automático
+	automaticConsumptionService := services.NewAutomaticConsumptionService(db, qrService, supplyRequestService)
+	// Establecer el servicio de carritos en el servicio de consumo automático
+	automaticConsumptionService.SetCartService(cartService)
+	automaticConsumptionController := controllers.NewAutomaticConsumptionController(automaticConsumptionService)
+
 	// Registrar rutas de supply requests y trazabilidad QR
 	routes.SetupSupplyRequestRoutes(router, supplyRequestController, secretKey)
 
 	// Registrar rutas de carritos
 	routes.SetupCartRoutes(router, cartController)
+
+	// Registrar rutas de consumo automático
+	routes.SetupAutomaticConsumptionRoutes(router, automaticConsumptionController, secretKey)
 
 	// Iniciar el verificador automático de retornos a bodega en una goroutine
 	go medicalSupplyService.StartAutomaticReturnChecker()
@@ -124,6 +133,10 @@ func main() {
 	// Iniciar el verificador automático de stock bajo en una goroutine
 	go batchService.StartAutomaticLowStockChecker()
 	log.Println("✅ Iniciado verificador automático de stock bajo")
+
+	// Iniciar el verificador automático de consumo de insumos después de cirugías
+	go automaticConsumptionService.StartAutomaticConsumptionChecker()
+	log.Println("✅ Iniciado verificador automático de consumo de insumos después de cirugías")
 
 	// Iniciar servidores HTTP y HTTPS
 	log.Printf("Servidor iniciando en puerto %d (HTTP)", cfg.Server.Port)

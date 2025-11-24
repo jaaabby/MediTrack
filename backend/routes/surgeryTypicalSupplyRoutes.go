@@ -13,6 +13,7 @@ func SetupSurgeryTypicalSupplyRoutes(router *gin.RouterGroup, typicalSupplyServi
 	typicalSupplies := router.Group("/surgery-typical-supplies")
 	{
 		// Rutas específicas primero (antes de :id para evitar conflictos)
+		typicalSupplies.GET("/", typicalSupplyController.GetAllTypicalSupplies) // Obtener todos los insumos típicos
 		typicalSupplies.GET("/count", typicalSupplyController.GetTypicalSuppliesCount)
 		typicalSupplies.GET("/surgery/:surgery_id", typicalSupplyController.GetTypicalSuppliesBySurgeryID)
 		typicalSupplies.GET("/supply/:supply_code", typicalSupplyController.GetSurgeriesBySupplyCode)

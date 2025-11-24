@@ -41,16 +41,30 @@
             <h2 class="card-title">Inventario de Insumos Médicos</h2>
             <p class="text-sm text-gray-600">Total: {{ filteredSupplies.length }} lotes</p>
           </div>
-          <button v-if="authStore.canViewAllRequests"
-            class="btn-primary flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto"
-            @click="openGlobalHistoryModal">
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span class="hidden sm:inline">Historial de Movimientos</span>
-            <span class="sm:hidden">Historial</span>
-          </button>
+          <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button 
+              @click="exportToExcel" 
+              :disabled="loading || filteredSupplies.length === 0"
+              class="btn-secondary flex items-center justify-center px-3 py-2 text-sm"
+              :class="{ 'opacity-50 cursor-not-allowed': loading || filteredSupplies.length === 0 }"
+            >
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span class="hidden sm:inline">Exportar a Excel</span>
+              <span class="sm:hidden">Excel</span>
+            </button>
+            <button v-if="authStore.canViewAllRequests"
+              class="btn-primary flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto"
+              @click="openGlobalHistoryModal">
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="hidden sm:inline">Historial de Movimientos</span>
+              <span class="sm:hidden">Historial</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1285,6 +1299,7 @@ import inventoryService from '@/services/inventory/inventoryService'
 import qrService from '@/services/qr/qrService'
 import QrcodeVue from 'qrcode.vue'
 import Swal from 'sweetalert2'
+import { exportToExcel as exportExcel, formatDateForExcel } from '@/utils/excelExport'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -1998,6 +2013,29 @@ const loadInventory = async () => {
 }
 
 // Lifecycle
+const exportToExcel = () => {
+  try {
+    const columns = [
+      { key: 'batch_id', label: 'N° de Lote' },
+      { key: 'name', label: 'Nombre del Insumo' },
+      { key: 'code', label: 'Código Interno' },
+      { key: 'expiration_date', label: 'Fecha de Vencimiento', formatter: formatDateForExcel },
+      { key: 'amount', label: 'Cantidad' },
+      { key: 'supplier', label: 'Proveedor' },
+      { key: 'location_type', label: 'Tipo de Ubicación' },
+      { key: 'location_name', label: 'Ubicación' },
+      { key: 'created_at', label: 'Fecha de Creación', formatter: formatDateForExcel },
+      { key: 'updated_at', label: 'Última Actualización', formatter: formatDateForExcel }
+    ]
+    
+    exportExcel(filteredSupplies.value, columns, 'inventario_insumos')
+    showNotification('Exportación a Excel completada exitosamente', 'success')
+  } catch (error) {
+    console.error('Error al exportar:', error)
+    showNotification('Error al exportar a Excel: ' + error.message, 'error')
+  }
+}
+
 onMounted(() => {
   // Si viene con un término de búsqueda desde Home, aplicarlo
   if (route.query.search) {

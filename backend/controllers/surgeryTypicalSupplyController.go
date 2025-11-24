@@ -229,6 +229,26 @@ func (c *SurgeryTypicalSupplyController) BulkCreateSurgeryTypicalSupplies(ctx *g
 	})
 }
 
+// GetAllTypicalSupplies obtiene todos los insumos típicos
+func (c *SurgeryTypicalSupplyController) GetAllTypicalSupplies(ctx *gin.Context) {
+	typicalSupplies, err := c.typicalSupplyService.GetAllTypicalSupplies()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al obtener insumos típicos: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Data: gin.H{
+			"typical_supplies": typicalSupplies,
+			"count":            len(typicalSupplies),
+		},
+	})
+}
+
 // GetTypicalSuppliesCount obtiene el conteo total de insumos típicos
 func (c *SurgeryTypicalSupplyController) GetTypicalSuppliesCount(ctx *gin.Context) {
 	count, err := c.typicalSupplyService.GetTypicalSuppliesCount()

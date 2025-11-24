@@ -8,12 +8,25 @@
           <p class="text-gray-600 mt-1">Consulta y gestiona las transferencias realizadas desde el escáner QR</p>
           <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedTransfers.length }} transferencias</p>
         </div>
-        <router-link to="/qr" class="btn-primary flex items-center justify-center">
-          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
-          </svg>
-          Ir a Escáner QR
-        </router-link>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button 
+            @click="exportToExcel" 
+            :disabled="loading || sortedTransfers.length === 0"
+            class="btn-secondary flex items-center justify-center"
+            :class="{ 'opacity-50 cursor-not-allowed': loading || sortedTransfers.length === 0 }"
+          >
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Exportar a Excel
+          </button>
+          <router-link to="/qr" class="btn-primary flex items-center justify-center">
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
+            </svg>
+            Ir a Escáner QR
+          </router-link>
+        </div>
       </div>
     </div>
 
@@ -798,6 +811,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import supplyTransferService from '@/services/management/supplyTransferService'
+import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
+import Swal from 'sweetalert2'
 
 const transfers = ref([])
 const loading = ref(false)
@@ -1089,6 +1104,31 @@ const getNotificationClass = (type) => {
     info: 'bg-blue-50 text-blue-800 border border-blue-200'
   }
   return classes[type] || classes.info
+}
+
+const exportToExcel = () => {
+  try {
+    const columns = [
+      { key: 'transfer_code', label: 'Código de Transferencia' },
+      { key: 'qr_code', label: 'Código QR' },
+      { key: 'origin_name', label: 'Origen', formatter: (val, item) => getOriginName(item) },
+      { key: 'destination_name', label: 'Destino', formatter: (val, item) => getDestinationName(item) },
+      { key: 'status', label: 'Estado', formatter: (val) => formatStatusForExcel(val) },
+      { key: 'created_at', label: 'Fecha de Creación', formatter: formatDateForExcel },
+      { key: 'send_date', label: 'Fecha de Envío', formatter: formatDateForExcel },
+      { key: 'receive_date', label: 'Fecha de Recepción', formatter: formatDateForExcel },
+      { key: 'sent_by_name', label: 'Enviado por' },
+      { key: 'received_by_name', label: 'Recibido por' },
+      { key: 'transfer_reason', label: 'Motivo' },
+      { key: 'notes', label: 'Notas' }
+    ]
+    
+    exportExcel(sortedTransfers.value, columns, 'transferencias')
+    showNotification('Exportación a Excel completada exitosamente', 'success')
+  } catch (error) {
+    console.error('Error al exportar:', error)
+    showNotification('Error al exportar a Excel: ' + error.message, 'error')
+  }
 }
 
 onMounted(() => {

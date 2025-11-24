@@ -1404,6 +1404,24 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("error al actualizar estado del insumo: %v", err)
 		}
 
+		// 5.5. Actualizar la asignación QR a "delivered" si existe
+		if transfer.DestinationType == models.TransferLocationPavilion {
+			var assignment models.SupplyRequestQRAssignment
+			if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.AssignmentStatusAssigned).
+				First(&assignment).Error; err == nil {
+				// Actualizar asignación a entregada
+				assignment.Status = models.AssignmentStatusDelivered
+				assignment.DeliveredDate = &now
+				assignment.DeliveredBy = &userRUT
+				assignment.DeliveredByName = &userName
+				assignment.UpdatedAt = now
+				if err := tx.Save(&assignment).Error; err != nil {
+					// No fallar si no se puede actualizar la asignación, solo loguear
+					fmt.Printf("⚠️  Advertencia: No se pudo actualizar asignación QR a delivered: %v\n", err)
+				}
+			}
+		}
+
 		// 6. Actualizar inventario según el tipo de destino
 		if transfer.DestinationType == models.TransferLocationPavilion {
 			// Incrementar stock en pabellón

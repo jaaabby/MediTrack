@@ -33,9 +33,15 @@ func (ft *FlexibleTime) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
-	// Intentar diferentes formatos
-	formats := []string{
-		time.RFC3339,          // 2006-01-02T15:04:05Z07:00
+	// Intentar primero con RFC3339 (formato ISO con zona horaria)
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		ft.Time = t
+		return nil
+	}
+
+	// Si no tiene zona horaria, parsear en la zona horaria local del servidor
+	// Esto evita problemas cuando el frontend envía fechas sin zona horaria
+	formatsWithoutTZ := []string{
 		"2006-01-02T15:04:05", // 2006-01-02T15:04:05
 		"2006-01-02T15:04",    // 2006-01-02T15:04 (datetime-local)
 		"2006-01-02 15:04:05", // 2006-01-02 15:04:05
@@ -43,8 +49,9 @@ func (ft *FlexibleTime) UnmarshalJSON(b []byte) error {
 	}
 
 	var err error
-	for _, format := range formats {
-		ft.Time, err = time.Parse(format, s)
+	for _, format := range formatsWithoutTZ {
+		// Parsear en la zona horaria local del servidor
+		ft.Time, err = time.ParseInLocation(format, s, time.Local)
 		if err == nil {
 			return nil
 		}
@@ -111,11 +118,15 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 	// Validar anticipación mínima (3 días por defecto)
 	const minimumAdvanceDays = 3.0
 	requestDate := time.Now()
-	daysUntilSurgery := request.SurgeryDatetime.Time.Sub(requestDate).Hours() / 24.0
+	// Usar una tolerancia de 1 minuto para evitar problemas de zona horaria y redondeo
+	tolerance := 1 * time.Minute
+	timeUntilSurgery := request.SurgeryDatetime.Time.Sub(requestDate)
+	daysUntilSurgery := timeUntilSurgery.Hours() / 24.0
 	
 	// Permitir urgencias (menos de 3 días) pero registrar advertencia
 	isUrgent := daysUntilSurgery > 0 && daysUntilSurgery < minimumAdvanceDays
-	if daysUntilSurgery < 0 {
+	// Permitir fechas hasta 1 minuto en el pasado para tolerar problemas de zona horaria
+	if timeUntilSurgery < -tolerance {
 		return nil, fmt.Errorf("la fecha de cirugía no puede ser en el pasado")
 	}
 

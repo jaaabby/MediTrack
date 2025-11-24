@@ -9,6 +9,7 @@ import (
 	"meditrack/pkg"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -867,8 +868,23 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 		}
 
 		// Verificar que pueda ser regresado
+		// Permitir devolver insumos consumidos automáticamente
 		if supply.Status == models.StatusConsumed {
-			return fmt.Errorf("no se puede regresar un insumo consumido")
+			// Verificar si fue consumido automáticamente
+			var lastConsumptionHistory models.SupplyHistory
+			if err := tx.Where("medical_supply_id = ? AND status = ?", supply.ID, models.StatusConsumed).
+				Order("date_time DESC").
+				First(&lastConsumptionHistory).Error; err == nil {
+				// Si las notas contienen el prefijo de consumo automático, permitir devolución
+				if strings.Contains(lastConsumptionHistory.Notes, "[CONSUMO_AUTOMATICO]") {
+					// Permitir devolución de insumo consumido automáticamente
+					log.Printf("🔄 Permitiendo devolución de insumo %s consumido automáticamente", supply.QRCode)
+				} else {
+					return fmt.Errorf("no se puede regresar un insumo consumido manualmente")
+				}
+			} else {
+				return fmt.Errorf("no se puede regresar un insumo consumido")
+			}
 		}
 
 		// Obtener información del lote y bodega
@@ -941,6 +957,28 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 
 		if err := tx.Create(&historyEntry).Error; err != nil {
 			return fmt.Errorf("error creando historial: %v", err)
+		}
+
+		// Si el insumo está en un carrito, actualizar la asignación QR
+		var assignment models.SupplyRequestQRAssignment
+		if err := tx.Where("qr_code = ? AND status IN (?, ?, ?)", 
+			supply.QRCode, 
+			models.AssignmentStatusAssigned, 
+			models.AssignmentStatusDelivered,
+			models.AssignmentStatusConsumed).
+			Order("assigned_date DESC").
+			First(&assignment).Error; err == nil {
+			// Actualizar el estado de la asignación a "returned"
+			assignment.Status = models.AssignmentStatusReturned
+			if assignment.Notes != "" {
+				assignment.Notes += "\n" + notes
+			} else {
+				assignment.Notes = notes
+			}
+			if err := tx.Save(&assignment).Error; err != nil {
+				return fmt.Errorf("error actualizando asignación QR: %v", err)
+			}
+			fmt.Printf("✅ Asignación QR actualizada para insumo %s\n", supply.QRCode)
 		}
 
 		// Log para depuración

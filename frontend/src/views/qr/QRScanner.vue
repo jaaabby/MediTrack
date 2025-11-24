@@ -202,7 +202,7 @@
       </div>
 
       <!-- Acciones basadas en estado -->
-      <div v-if="scannedInfo.supply_info && !scannedInfo.is_consumed" class="p-3 sm:p-4 border-t border-gray-200">
+      <div v-if="scannedInfo.supply_info && (canBeReturnedToStore(scannedInfo) || canBeConsumed(scannedInfo) || canBeTransferred(scannedInfo) || canBePickedUp(scannedInfo) || canBeReceived(scannedInfo) || isOnRouteToStore(scannedInfo))" class="p-3 sm:p-4 border-t border-gray-200">
         <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
           <!-- NUEVA LÓGICA: Solo mostrar consumir si estado es "recepcionado" -->
           <router-link 
@@ -488,13 +488,90 @@ const canBeReceived = (info) => {
 
 const canBeReturnedToStore = (info) => {
   if (!info || info.type !== 'medical_supply') return false
-  if (info.is_consumed) return false
-  // Si está asociado a un carrito, no mostrar botón de devolver a bodega
-  if (isInCart(info)) return false
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
-  // Puede ser regresado si está recepcionado (hace tiempo sin consumir)
-  return status === 'recepcionado'
+  const locationType = info.supply_info?.LocationType || info.supply_info?.location_type || ''
+  const locationID = info.supply_info?.LocationID || info.supply_info?.location_id
+  
+  // Permitir devolver si está recepcionado (y no está en carrito, a menos que sea automático)
+  if (status === 'recepcionado') {
+    // Si está en carrito y no es consumo automático, no permitir devolver desde aquí
+    // (debe devolverse desde el carrito)
+    if (isInCart(info)) {
+      // Verificar si fue consumido automáticamente
+      const history = info.history || 
+                      info.traceability?.supply_history || 
+                      info.traceability?.history || 
+                      []
+      
+      const lastConsumption = history
+        .filter(h => {
+          const hStatus = h.status || h.Status || ''
+          return hStatus === 'consumido' || hStatus === 'consumed'
+        })
+        .sort((a, b) => {
+          const dateA = new Date(a.date_time || a.dateTime || a.DateTime || 0)
+          const dateB = new Date(b.date_time || b.dateTime || b.DateTime || 0)
+          return dateB - dateA
+        })[0]
+      
+      if (lastConsumption) {
+        const notes = lastConsumption.notes || lastConsumption.Notes || ''
+        if (notes.includes('[CONSUMO_AUTOMATICO]') || notes.includes('Consumo automático')) {
+          // Permitir devolver incluso si está en carrito si fue consumido automáticamente
+          return true
+        }
+      }
+      return false
+    }
+    return true
+  }
+  
+  // Permitir devolver si está consumido automáticamente
+  if (info.is_consumed) {
+    // Verificar si hay información de historial que indique consumo automático
+    const history = info.history || 
+                    info.traceability?.supply_history || 
+                    info.traceability?.history || 
+                    []
+    
+    console.log('🔍 Verificando consumo automático. Historial:', history.length, 'items')
+    console.log('🔍 Info completa:', info)
+    
+    const lastConsumption = history
+      .filter(h => {
+        const hStatus = h.status || h.Status || ''
+        return hStatus === 'consumido' || hStatus === 'consumed'
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.date_time || a.dateTime || a.DateTime || 0)
+        const dateB = new Date(b.date_time || b.dateTime || b.DateTime || 0)
+        return dateB - dateA
+      })[0]
+    
+    if (lastConsumption) {
+      const notes = lastConsumption.notes || lastConsumption.Notes || ''
+      console.log('📝 Notas del último consumo:', notes)
+      if (notes.includes('[CONSUMO_AUTOMATICO]') || notes.includes('Consumo automático')) {
+        console.log('✅ Insumo consumido automáticamente, puede ser devuelto')
+        return true
+      }
+    }
+    
+    // También verificar si las notas del insumo indican consumo automático
+    const supplyNotes = info.supply_info?.notes || info.notes || ''
+    if (supplyNotes.includes('[CONSUMO_AUTOMATICO]') || supplyNotes.includes('Consumo automático')) {
+      return true
+    }
+    
+    // Si está consumido y en pabellón, permitir devolverlo (asumimos que puede ser automático)
+    if (locationType === 'pavilion' && locationID) {
+      console.log('⚠️  Insumo consumido en pabellón, permitiendo devolución (puede ser automático)')
+      return true
+    }
+  }
+  
+  return false
 }
 
 const isOnRouteToStore = (info) => {
@@ -502,7 +579,13 @@ const isOnRouteToStore = (info) => {
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   // Puede confirmar llegada si está en camino a bodega
-  return status === 'en_camino_a_bodega'
+  const isOnRoute = status === 'en_camino_a_bodega'
+  console.log('🔍 Verificando si está en camino a bodega:', {
+    status,
+    isOnRoute,
+    supply_info: info.supply_info
+  })
+  return isOnRoute
 }
 
 const getStateRecommendation = (info) => {
@@ -518,9 +601,44 @@ const getStateRecommendation = (info) => {
   }
 
   if (info.is_consumed) {
+    // Verificar si fue consumido automáticamente
+    // El historial puede estar en diferentes lugares según cómo se envíe desde el backend
+    const history = info.history || 
+                    info.traceability?.supply_history || 
+                    info.traceability?.history || 
+                    []
+    
+    const lastConsumption = history
+      .filter(h => {
+        const hStatus = h.status || h.Status || ''
+        return hStatus === 'consumido' || hStatus === 'consumed'
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.date_time || a.dateTime || a.DateTime || 0)
+        const dateB = new Date(b.date_time || b.dateTime || b.DateTime || 0)
+        return dateB - dateA
+      })[0]
+    
+    const wasAutoConsumed = lastConsumption && (
+      (lastConsumption.notes || lastConsumption.Notes || '').includes('[CONSUMO_AUTOMATICO]') ||
+      (lastConsumption.notes || lastConsumption.Notes || '').includes('Consumo automático')
+    )
+    
+    // También verificar si está en pabellón (puede ser automático)
+    const locationType = info.supply_info?.LocationType || info.supply_info?.location_type || ''
+    const isInPavilion = locationType === 'pavilion'
+    
+    if (wasAutoConsumed || isInPavilion) {
+      return {
+        title: 'Insumo Consumido Automáticamente',
+        message: 'Este insumo fue marcado como consumido automáticamente después de la cirugía. Puede ser devuelto a bodega si no fue utilizado.',
+        type: 'warning'
+      }
+    }
+    
     return {
       title: 'Insumo Consumido',
-      message: 'Este insumo ya ha sido consumido. Solo puede consultar su información y trazabilidad.',
+      message: 'Este insumo ya ha sido consumido manualmente. Solo puede consultar su información y trazabilidad.',
       type: 'info'
     }
   }
@@ -769,6 +887,18 @@ const scanQRCode = async () => {
     
     // Escanear código QR
     const result = await qrService.scanQRCode(qrInput.value.trim(), scanContext)
+    
+    // Debug: verificar que el historial esté presente
+    console.log('📦 Información recibida del escaneo:', {
+      qr_code: result.qr_code,
+      is_consumed: result.is_consumed,
+      status: result.supply_info?.Status || result.supply_info?.status,
+      has_history: !!result.history,
+      history_length: result.history?.length || 0,
+      has_traceability: !!result.traceability,
+      has_supply_history: !!result.traceability?.supply_history,
+      supply_history_length: result.traceability?.supply_history?.length || 0
+    })
     
     scannedInfo.value = result
     lastScanContext.value = scanContext

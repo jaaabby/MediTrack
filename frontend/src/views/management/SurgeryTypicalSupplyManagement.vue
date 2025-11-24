@@ -169,6 +169,138 @@
       </div>
     </div>
 
+    <!-- Modal para seleccionar insumos -->
+    <Teleport to="body">
+      <div v-if="showSupplySelectionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[60]" @click.self="closeSupplySelectionModal">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] flex flex-col">
+          <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <h3 class="text-xl font-semibold text-gray-900">Seleccionar Insumos</h3>
+            <button @click="closeSupplySelectionModal" class="text-gray-400 hover:text-gray-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Búsqueda y Filtros -->
+          <div class="mb-4 space-y-3">
+            <div class="flex gap-3">
+              <div class="flex-1">
+                <input
+                  type="text"
+                  v-model="supplySearchTerm"
+                  placeholder="Buscar por nombre o código..."
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div class="w-48">
+                <select v-model="supplySortBy" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                  <option value="name">Ordenar por Nombre</option>
+                  <option value="code">Ordenar por Código</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">
+                {{ filteredAndSortedSupplies.length }} insumo(s) disponible(s)
+              </span>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  @click="selectAllFilteredSupplies"
+                  class="px-3 py-1 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Seleccionar Todos
+                </button>
+                <button
+                  type="button"
+                  @click="deselectAllSupplies"
+                  class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Deseleccionar Todos
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de insumos -->
+          <div class="flex-1 overflow-y-auto border border-gray-200 rounded-md">
+            <div v-if="loadingSupplies" class="text-center py-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p class="mt-2 text-sm text-gray-600">Cargando insumos...</p>
+            </div>
+            <div v-else-if="filteredAndSortedSupplies.length === 0" class="text-center py-8 text-gray-500">
+              <p>No se encontraron insumos</p>
+            </div>
+            <div v-else class="divide-y divide-gray-200">
+              <label
+                v-for="supply in filteredAndSortedSupplies"
+                :key="supply.code"
+                class="flex items-start p-4 hover:bg-gray-50 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  :value="supply.code"
+                  v-model="tempSelectedSupplyCodes"
+                  class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <div class="ml-3 flex-1">
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <div class="font-medium text-gray-900 text-base">{{ supply.name }}</div>
+                      <div class="mt-1 flex flex-wrap gap-3 text-sm">
+                        <div class="text-gray-600">
+                          <span class="font-medium">Código:</span> {{ supply.code }}
+                        </div>
+                        <div v-if="supply.code_supplier" class="text-gray-600">
+                          <span class="font-medium">Código Proveedor:</span> {{ supply.code_supplier }}
+                        </div>
+                        <div v-if="supply.critical_stock !== undefined && supply.critical_stock !== null" class="text-gray-600">
+                          <span class="font-medium">Stock Crítico:</span> {{ supply.critical_stock }}
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="isSupplyAlreadySelected(supply.code)" class="ml-2 flex-shrink-0">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Ya seleccionado
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Footer del modal -->
+          <div class="flex justify-between items-center mt-4 pt-4 border-t">
+            <div class="text-sm text-gray-600">
+              <span v-if="tempSelectedSupplyCodes.length > 0">
+                {{ tempSelectedSupplyCodes.length }} insumo(s) seleccionado(s)
+              </span>
+              <span v-else>Ningún insumo seleccionado</span>
+            </div>
+            <div class="flex gap-3">
+              <button
+                type="button"
+                @click="closeSupplySelectionModal"
+                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                @click="confirmSupplySelection"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                :disabled="tempSelectedSupplyCodes.length === 0"
+              >
+                Confirmar Selección ({{ tempSelectedSupplyCodes.length }})
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Modal para crear/editar -->
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click.self="closeModal">
@@ -200,43 +332,110 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Insumo <span class="text-red-500">*</span>
+                  Insumos <span class="text-red-500">*</span>
                 </label>
-                <select v-model="typicalSupplyForm.supply_code" class="form-select" required :disabled="isEditing">
-                  <option value="">Seleccione un insumo</option>
-                  <option v-for="supply in supplyCodes" :key="supply.code" :value="supply.code">
-                    {{ supply.code }} - {{ supply.name }}
-                  </option>
-                </select>
-              </div>
+                <button
+                  type="button"
+                  @click="openSupplySelectionModal"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                  :disabled="isEditing || !typicalSupplyForm.surgery_id"
+                >
+                  <span v-if="selectedSupplies.length === 0">Seleccionar Insumos</span>
+                  <span v-else>{{ selectedSupplies.length }} insumo(s) seleccionado(s)</span>
+                </button>
+                <p v-if="!typicalSupplyForm.surgery_id" class="mt-1 text-xs text-gray-500 mb-3">
+                  Primero seleccione una cirugía
+                </p>
+                <p v-else-if="selectedSupplies.length === 0" class="mt-1 text-xs text-gray-500 mb-3">
+                  Haga clic para seleccionar uno o más insumos
+                </p>
 
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Cantidad Típica <span class="text-red-500">*</span>
-                </label>
-                <input v-model.number="typicalSupplyForm.typical_quantity" type="number" min="1" 
-                  class="form-input" placeholder="Ej: 5" required />
-                <p class="mt-1 text-xs text-gray-500">Cantidad típica necesaria para esta cirugía</p>
-              </div>
+                <!-- Lista de insumos seleccionados con sus configuraciones -->
+                <div v-if="selectedSupplies.length > 0" class="space-y-4 mt-4">
+                  <div 
+                    v-for="(supply, index) in selectedSupplies" 
+                    :key="supply.code"
+                    class="p-4 bg-blue-50 border border-blue-200 rounded-lg"
+                  >
+                    <div class="flex items-start justify-between mb-3">
+                      <div class="flex-1">
+                        <div class="font-medium text-base text-gray-900">{{ supply.name }}</div>
+                        <div class="text-sm text-gray-600 mt-1">Código: {{ supply.code }}</div>
+                      </div>
+                      <button
+                        v-if="!isEditing"
+                        type="button"
+                        @click="removeSelectedSupply(index)"
+                        class="ml-2 text-red-500 hover:text-red-700 flex-shrink-0"
+                        title="Eliminar insumo"
+                      >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
 
-              <div>
-                <label class="flex items-center space-x-2">
-                  <input v-model="typicalSupplyForm.is_required" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                  <span class="text-sm font-medium text-gray-700">Insumo requerido</span>
-                </label>
-                <p class="mt-1 text-xs text-gray-500">Los insumos requeridos son obligatorios para la cirugía</p>
-              </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <!-- Cantidad Típica -->
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                          Cantidad Típica <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                          v-model.number="supply.typical_quantity" 
+                          type="number" 
+                          min="1" 
+                          class="form-input" 
+                          placeholder="Ej: 5" 
+                          required
+                          :disabled="isEditing"
+                        />
+                        <p class="mt-1 text-xs text-gray-500">Cantidad típica para este insumo</p>
+                      </div>
 
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Notas
-                </label>
-                <textarea v-model="typicalSupplyForm.notes" rows="3" class="form-input" 
-                  placeholder="Notas adicionales sobre este insumo para la cirugía"></textarea>
+                      <!-- Insumo Requerido -->
+                      <div class="flex items-end">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                          <input 
+                            v-model="supply.is_required" 
+                            type="checkbox" 
+                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            :disabled="isEditing"
+                          />
+                          <span class="text-sm font-medium text-gray-700">Insumo requerido</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- Notas por insumo -->
+                    <div class="mt-3">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Notas (opcional)
+                      </label>
+                      <textarea 
+                        v-model="supply.notes" 
+                        rows="2" 
+                        class="form-input text-sm" 
+                        placeholder="Notas específicas para este insumo..."
+                        :disabled="isEditing"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="flex justify-end space-x-3 pt-4 border-t">
                 <button type="button" @click="closeModal" class="btn-secondary">Cancelar</button>
+                <button 
+                  v-if="!isEditing" 
+                  type="button" 
+                  @click="saveTypicalSupplyAndAddAnother" 
+                  :disabled="saving" 
+                  class="btn-secondary"
+                >
+                  <span v-if="saving">Guardando...</span>
+                  <span v-else>Crear y Agregar Más</span>
+                </button>
                 <button type="submit" :disabled="saving" class="btn-primary">
                   <span v-if="saving">Guardando...</span>
                   <span v-else>{{ isEditing ? 'Actualizar' : 'Crear' }}</span>
@@ -267,6 +466,14 @@ const selectedSurgeryId = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+
+// Estados para el modal de selección de insumos
+const showSupplySelectionModal = ref(false)
+const loadingSupplies = ref(false)
+const supplySearchTerm = ref('')
+const supplySortBy = ref('name')
+const tempSelectedSupplyCodes = ref([])
+const selectedSupplies = ref([]) // Insumos seleccionados para el formulario
 
 const typicalSupplyForm = ref({
   surgery_id: '',
@@ -299,6 +506,36 @@ const filteredTypicalSupplies = computed(() => {
   return filtered
 })
 
+// Computed para filtrar y ordenar insumos en el modal de selección
+const filteredAndSortedSupplies = computed(() => {
+  let filtered = [...supplyCodes.value]
+
+  // Filtrar por búsqueda
+  if (supplySearchTerm.value.trim()) {
+    const term = supplySearchTerm.value.toLowerCase().trim()
+    filtered = filtered.filter(supply => {
+      const name = (supply.name || '').toLowerCase()
+      const code = String(supply.code || '')
+      return name.includes(term) || code.includes(term)
+    })
+  }
+
+  // Ordenar
+  if (supplySortBy.value === 'name') {
+    filtered.sort((a, b) => {
+      const nameA = (a.name || '').toLowerCase()
+      const nameB = (b.name || '').toLowerCase()
+      return nameA.localeCompare(nameB)
+    })
+  } else if (supplySortBy.value === 'code') {
+    filtered.sort((a, b) => {
+      return (a.code || 0) - (b.code || 0)
+    })
+  }
+
+  return filtered
+})
+
 // Funciones auxiliares
 const getSurgeryName = (surgeryId) => {
   const surgery = surgeries.value.find(s => s.id === surgeryId)
@@ -314,21 +551,8 @@ const loadTypicalSupplies = async () => {
   loading.value = true
   error.value = null
   try {
-    // Necesitamos cargar todas las asociaciones, pero el servicio actual solo tiene métodos por cirugía
-    // Por ahora, cargaremos todas las cirugías y luego sus insumos típicos
-    const allSurgeries = await surgeryService.getAllSurgeries()
-    
-    const allSupplies = []
-    for (const surgery of allSurgeries) {
-      try {
-        const supplies = await surgeryTypicalSupplyService.getTypicalSuppliesBySurgeryId(surgery.id)
-        allSupplies.push(...supplies.map(s => ({ ...s, surgery_id: surgery.id })))
-      } catch (err) {
-        // Ignorar errores si no hay insumos para esta cirugía
-        console.log(`No se encontraron insumos para cirugía ${surgery.id}`)
-      }
-    }
-    
+    // Usar el nuevo endpoint optimizado que obtiene todos los insumos típicos de una vez
+    const allSupplies = await surgeryTypicalSupplyService.getAllTypicalSupplies()
     typicalSupplies.value = allSupplies
   } catch (err) {
     error.value = err.message || 'Error al cargar insumos típicos'
@@ -374,6 +598,11 @@ const clearFilters = () => {
 
 const openCreateModal = () => {
   isEditing.value = false
+  resetForm()
+  showModal.value = true
+}
+
+const resetForm = () => {
   typicalSupplyForm.value = {
     surgery_id: '',
     supply_code: '',
@@ -381,7 +610,79 @@ const openCreateModal = () => {
     is_required: false,
     notes: ''
   }
-  showModal.value = true
+  selectedSupplies.value = []
+}
+
+const openSupplySelectionModal = () => {
+  if (!typicalSupplyForm.value.surgery_id) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Seleccione una cirugía',
+      text: 'Debe seleccionar una cirugía antes de elegir insumos',
+      confirmButtonText: 'Aceptar'
+    })
+    return
+  }
+  
+  // Inicializar con los insumos ya seleccionados
+  tempSelectedSupplyCodes.value = selectedSupplies.value.map(s => s.code)
+  supplySearchTerm.value = ''
+  supplySortBy.value = 'name'
+  showSupplySelectionModal.value = true
+}
+
+const closeSupplySelectionModal = () => {
+  showSupplySelectionModal.value = false
+  tempSelectedSupplyCodes.value = []
+  supplySearchTerm.value = ''
+}
+
+const confirmSupplySelection = () => {
+  // Convertir códigos seleccionados a objetos de insumos con configuración inicial
+  const newSelectedCodes = tempSelectedSupplyCodes.value.filter(code => 
+    !selectedSupplies.value.some(s => s.code === code)
+  )
+  
+  const newSupplies = newSelectedCodes
+    .map(code => {
+      const supply = supplyCodes.value.find(s => s.code === code)
+      if (supply) {
+        return {
+          ...supply,
+          typical_quantity: 1, // Valor por defecto
+          is_required: false,
+          notes: ''
+        }
+      }
+      return null
+    })
+    .filter(s => s !== null)
+  
+  // Mantener los insumos ya seleccionados y agregar los nuevos
+  selectedSupplies.value = [...selectedSupplies.value, ...newSupplies]
+  closeSupplySelectionModal()
+}
+
+const removeSelectedSupply = (index) => {
+  selectedSupplies.value.splice(index, 1)
+}
+
+const isSupplyAlreadySelected = (code) => {
+  return selectedSupplies.value.some(s => s.code === code)
+}
+
+const selectAllFilteredSupplies = () => {
+  const filteredCodes = filteredAndSortedSupplies.value.map(s => s.code)
+  // Agregar solo los que no están ya seleccionados
+  filteredCodes.forEach(code => {
+    if (!tempSelectedSupplyCodes.value.includes(code)) {
+      tempSelectedSupplyCodes.value.push(code)
+    }
+  })
+}
+
+const deselectAllSupplies = () => {
+  tempSelectedSupplyCodes.value = []
 }
 
 const openEditModal = (supply) => {
@@ -394,47 +695,55 @@ const openEditModal = (supply) => {
     is_required: supply.is_required || false,
     notes: supply.notes || ''
   }
+  
+  // En modo edición, cargar el insumo seleccionado con su configuración
+  const supplyInfo = supplyCodes.value.find(s => s.code === supply.supply_code)
+  if (supplyInfo) {
+    selectedSupplies.value = [{
+      ...supplyInfo,
+      typical_quantity: supply.typical_quantity || 1,
+      is_required: supply.is_required || false,
+      notes: supply.notes || ''
+    }]
+  } else {
+    selectedSupplies.value = []
+  }
+  
   showModal.value = true
 }
 
 const closeModal = () => {
   showModal.value = false
-  typicalSupplyForm.value = {
-    surgery_id: '',
-    supply_code: '',
-    typical_quantity: 1,
-    is_required: false,
-    notes: ''
-  }
+  resetForm()
 }
 
-const saveTypicalSupply = async () => {
-  // Validaciones
+const validateForm = () => {
   if (!typicalSupplyForm.value.surgery_id) {
+    return { valid: false, message: 'Debe seleccionar una cirugía' }
+  }
+
+  if (selectedSupplies.value.length === 0) {
+    return { valid: false, message: 'Debe seleccionar al menos un insumo' }
+  }
+
+  // Validar que cada insumo tenga una cantidad típica válida
+  for (const supply of selectedSupplies.value) {
+    if (!supply.typical_quantity || supply.typical_quantity < 1) {
+      return { valid: false, message: `El insumo "${supply.name}" debe tener una cantidad típica de al menos 1` }
+    }
+  }
+
+  return { valid: true }
+}
+
+const saveTypicalSupply = async (closeAfterSave = true) => {
+  // Validaciones
+  const validation = validateForm()
+  if (!validation.valid) {
     await Swal.fire({
       icon: 'warning',
       title: 'Campo requerido',
-      text: 'Debe seleccionar una cirugía',
-      confirmButtonText: 'Aceptar'
-    })
-    return
-  }
-
-  if (!typicalSupplyForm.value.supply_code) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'Debe seleccionar un insumo',
-      confirmButtonText: 'Aceptar'
-    })
-    return
-  }
-
-  if (!typicalSupplyForm.value.typical_quantity || typicalSupplyForm.value.typical_quantity < 1) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Cantidad inválida',
-      text: 'La cantidad típica debe ser al menos 1',
+      text: validation.message,
       confirmButtonText: 'Aceptar'
     })
     return
@@ -442,18 +751,21 @@ const saveTypicalSupply = async () => {
 
   saving.value = true
   try {
-    const supplyData = {
-      surgery_id: parseInt(typicalSupplyForm.value.surgery_id),
-      supply_code: parseInt(typicalSupplyForm.value.supply_code),
-      typical_quantity: parseInt(typicalSupplyForm.value.typical_quantity),
-      is_required: typicalSupplyForm.value.is_required || false,
-      notes: typicalSupplyForm.value.notes.trim() || null
-    }
-
     if (isEditing.value) {
+      // Modo edición: solo actualizar el insumo existente
+      const supplyData = {
+        surgery_id: parseInt(typicalSupplyForm.value.surgery_id),
+        supply_code: parseInt(typicalSupplyForm.value.supply_code),
+        typical_quantity: parseInt(typicalSupplyForm.value.typical_quantity),
+        is_required: typicalSupplyForm.value.is_required || false,
+        notes: typicalSupplyForm.value.notes.trim() || null
+      }
+      
       await surgeryTypicalSupplyService.updateTypicalSupply(typicalSupplyForm.value.id, supplyData)
       await loadTypicalSupplies()
-      closeModal()
+      if (closeAfterSave) {
+        closeModal()
+      }
       await Swal.fire({
         icon: 'success',
         title: 'Actualizado',
@@ -462,16 +774,77 @@ const saveTypicalSupply = async () => {
         showConfirmButton: false
       })
     } else {
-      await surgeryTypicalSupplyService.createTypicalSupply(supplyData)
+      // Modo creación: crear múltiples insumos si hay varios seleccionados
+      if (selectedSupplies.value.length === 0) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Seleccione insumos',
+          text: 'Debe seleccionar al menos un insumo',
+          confirmButtonText: 'Aceptar'
+        })
+        saving.value = false
+        return
+      }
+
+      const surgeryId = parseInt(typicalSupplyForm.value.surgery_id)
+
+      // Crear todas las asociaciones con sus configuraciones individuales
+      let successCount = 0
+      let errorCount = 0
+      const errors = []
+
+      for (const supply of selectedSupplies.value) {
+        try {
+          const supplyData = {
+            surgery_id: surgeryId,
+            supply_code: parseInt(supply.code),
+            typical_quantity: parseInt(supply.typical_quantity) || 1,
+            is_required: supply.is_required || false,
+            notes: (supply.notes || '').trim() || null
+          }
+          
+          await surgeryTypicalSupplyService.createTypicalSupply(supplyData)
+          successCount++
+        } catch (err) {
+          errorCount++
+          const errorMsg = err.response?.data?.error || err.message || 'Error desconocido'
+          errors.push(`${supply.name} (${supply.code}): ${errorMsg}`)
+        }
+      }
+
       await loadTypicalSupplies()
-      closeModal()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Creado',
-        text: 'Insumo típico creado exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+
+      if (errorCount === 0) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Creado',
+          html: `Se crearon exitosamente <strong>${successCount}</strong> asociación(es) de insumo(s)`,
+          timer: 2000,
+          showConfirmButton: false
+        })
+      } else {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Proceso completado con errores',
+          html: `
+            <p>Se crearon <strong>${successCount}</strong> asociación(es) exitosamente.</p>
+            <p class="mt-2">Errores (${errorCount}):</p>
+            <ul class="text-left mt-2 text-sm">
+              ${errors.map(e => `<li>${e}</li>`).join('')}
+            </ul>
+          `,
+          confirmButtonText: 'Aceptar'
+        })
+      }
+      
+      if (closeAfterSave) {
+        closeModal()
+      } else {
+        // Limpiar el formulario pero mantener la cirugía seleccionada
+        const savedSurgeryId = typicalSupplyForm.value.surgery_id
+        resetForm()
+        typicalSupplyForm.value.surgery_id = savedSurgeryId
+      }
     }
   } catch (err) {
     console.error('Error al guardar:', err)
@@ -494,6 +867,10 @@ const saveTypicalSupply = async () => {
   } finally {
     saving.value = false
   }
+}
+
+const saveTypicalSupplyAndAddAnother = async () => {
+  await saveTypicalSupply(false) // No cerrar el modal
 }
 
 const confirmDelete = async (supply) => {

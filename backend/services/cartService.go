@@ -3,7 +3,9 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log"
 	"meditrack/models"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -412,11 +414,31 @@ func (s *CartService) processItemUse(tx *gorm.DB, cart *models.SupplyCart, cartI
 
 // processItemReturn procesa la devolución de un item
 func (s *CartService) processItemReturn(tx *gorm.DB, cart *models.SupplyCart, cartItem *models.SupplyCartItem, supply *models.MedicalSupply, batch *models.Batch, userRUT, userName, reason string, now time.Time) error {
+	// Verificar si el insumo fue consumido automáticamente
+	wasAutoConsumed := false
+	if supply.Status == models.StatusConsumed {
+		var lastConsumptionHistory models.SupplyHistory
+		if err := tx.Where("medical_supply_id = ? AND status = ?", supply.ID, models.StatusConsumed).
+			Order("date_time DESC").
+			First(&lastConsumptionHistory).Error; err == nil {
+			if strings.Contains(lastConsumptionHistory.Notes, "[CONSUMO_AUTOMATICO]") {
+				wasAutoConsumed = true
+				log.Printf("🔄 Devolviendo insumo %s consumido automáticamente desde carrito", supply.QRCode)
+			}
+		}
+	}
+
 	// Actualizar asignación
+	assignmentStatus := models.AssignmentStatusReturned
+	if wasAutoConsumed {
+		// Si fue consumido automáticamente, cambiar el estado a devuelto
+		assignmentStatus = models.AssignmentStatusReturned
+	}
+	
 	if err := tx.Model(&models.SupplyRequestQRAssignment{}).
 		Where("id = ?", cartItem.SupplyRequestQRAssignmentID).
 		Updates(map[string]interface{}{
-			"status":     models.AssignmentStatusReturned,
+			"status":     assignmentStatus,
 			"notes":      reason,
 			"updated_at": now,
 		}).Error; err != nil {
@@ -459,9 +481,20 @@ func (s *CartService) processItemReturn(tx *gorm.DB, cart *models.SupplyCart, ca
 		return fmt.Errorf("error actualizando insumo: %w", err)
 	}
 
-	// Actualizar inventario de pabellón
-	if err := s.updatePavilionInventoryOnReturn(tx, oldLocationID, supply.BatchID, now); err != nil {
-		return err
+	// Actualizar inventario de pabellón (solo si no estaba consumido automáticamente)
+	if !wasAutoConsumed {
+		if err := s.updatePavilionInventoryOnReturn(tx, oldLocationID, supply.BatchID, now); err != nil {
+			return err
+		}
+	} else {
+		// Si estaba consumido automáticamente, solo actualizar contadores de devolución
+		var pavilionSummary models.PavilionInventorySummary
+		if err := tx.Where("pavilion_id = ? AND batch_id = ?", oldLocationID, supply.BatchID).
+			First(&pavilionSummary).Error; err == nil {
+			pavilionSummary.TotalReturned++
+			pavilionSummary.LastReturnedDate = &now
+			tx.Save(&pavilionSummary)
+		}
 	}
 
 	// Registrar historial

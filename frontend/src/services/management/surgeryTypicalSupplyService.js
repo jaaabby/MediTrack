@@ -27,6 +27,16 @@ class SurgeryTypicalSupplyService {
     )
   }
 
+  async getAllTypicalSupplies() {
+    try {
+      const response = await this.api.get('/surgery-typical-supplies/')
+      return response.data.data?.typical_supplies || response.data.typical_supplies || []
+    } catch (error) {
+      console.error('Error en getAllTypicalSupplies:', error)
+      throw error
+    }
+  }
+
   async getTypicalSuppliesBySurgeryId(surgeryId) {
     try {
       const response = await this.api.get(`/surgery-typical-supplies/surgery/${surgeryId}`)

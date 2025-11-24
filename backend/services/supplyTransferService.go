@@ -3,7 +3,9 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log"
 	"meditrack/models"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -330,8 +332,24 @@ func (s *SupplyTransferService) ReturnToStore(
 				return fmt.Errorf("insumo %s no está en pabellón", qrCode)
 			}
 
+			// Permitir devolver insumos consumidos automáticamente
+			// Verificar si fue consumido automáticamente revisando el historial
 			if supply.Status == models.StatusConsumed {
-				return fmt.Errorf("insumo %s ya fue consumido", qrCode)
+				// Verificar si fue consumido automáticamente
+				var lastConsumptionHistory models.SupplyHistory
+				if err := tx.Where("medical_supply_id = ? AND status = ?", supply.ID, models.StatusConsumed).
+					Order("date_time DESC").
+					First(&lastConsumptionHistory).Error; err == nil {
+					// Si las notas contienen el prefijo de consumo automático, permitir devolución
+					if strings.Contains(lastConsumptionHistory.Notes, "[CONSUMO_AUTOMATICO]") {
+						// Permitir devolución de insumo consumido automáticamente
+						log.Printf("🔄 Permitiendo devolución de insumo %s consumido automáticamente", qrCode)
+					} else {
+						return fmt.Errorf("insumo %s ya fue consumido manualmente y no puede ser devuelto", qrCode)
+					}
+				} else {
+					return fmt.Errorf("insumo %s ya fue consumido", qrCode)
+				}
 			}
 
 			// 2. Obtener información del batch
@@ -368,19 +386,31 @@ func (s *SupplyTransferService) ReturnToStore(
 				return fmt.Errorf("error al crear transferencia de devolución: %v", err)
 			}
 
-			// 4. Decrementar stock del pabellón
-			var pavilionSummary models.PavilionInventorySummary
-			if err := tx.Where("pavilion_id = ? AND batch_id = ?", pavilionID, batch.ID).
-				First(&pavilionSummary).Error; err != nil {
-				return fmt.Errorf("resumen de pabellón no encontrado: %v", err)
-			}
+			// 4. Decrementar stock del pabellón (solo si el insumo no estaba consumido)
+			// Si estaba consumido automáticamente, no estaba en el inventario disponible
+			if supply.Status != models.StatusConsumed {
+				var pavilionSummary models.PavilionInventorySummary
+				if err := tx.Where("pavilion_id = ? AND batch_id = ?", pavilionID, batch.ID).
+					First(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("resumen de pabellón no encontrado: %v", err)
+				}
 
-			pavilionSummary.CurrentAvailable--
-			pavilionSummary.TotalReturned++
-			pavilionSummary.LastReturnedDate = &now
+				pavilionSummary.CurrentAvailable--
+				pavilionSummary.TotalReturned++
+				pavilionSummary.LastReturnedDate = &now
 
-			if err := tx.Save(&pavilionSummary).Error; err != nil {
-				return fmt.Errorf("error al actualizar resumen de pabellón: %v", err)
+				if err := tx.Save(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("error al actualizar resumen de pabellón: %v", err)
+				}
+			} else {
+				// Si estaba consumido automáticamente, solo actualizar contadores de devolución
+				var pavilionSummary models.PavilionInventorySummary
+				if err := tx.Where("pavilion_id = ? AND batch_id = ?", pavilionID, batch.ID).
+					First(&pavilionSummary).Error; err == nil {
+					pavilionSummary.TotalReturned++
+					pavilionSummary.LastReturnedDate = &now
+					tx.Save(&pavilionSummary)
+				}
 			}
 
 			// 5. Incrementar stock de bodega

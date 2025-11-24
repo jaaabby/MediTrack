@@ -177,6 +177,105 @@
         </div>
       </div>
 
+      <!-- Insumos Típicos de la Cirugía -->
+      <div v-if="!props.editMode && showTypicalSupplies" class="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3">
+          <div class="flex items-center gap-2 flex-1">
+            <button
+              type="button"
+              @click="typicalSuppliesExpanded = !typicalSuppliesExpanded"
+              class="text-gray-600 hover:text-gray-900 transition-colors"
+              title="Minimizar/Maximizar"
+            >
+              <svg 
+                v-if="typicalSuppliesExpanded" 
+                class="h-5 w-5" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              <svg 
+                v-else 
+                class="h-5 w-5" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <div>
+              <h3 class="text-base sm:text-lg font-semibold text-gray-900">Insumos Típicos de esta Cirugía</h3>
+              <p v-if="typicalSuppliesExpanded" class="text-xs text-gray-600 mt-1">
+                Estos son los insumos típicamente utilizados para esta cirugía. Puedes agregarlos todos o seleccionar los que necesites.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="addAllTypicalSupplies"
+            class="btn-primary text-sm whitespace-nowrap"
+            :disabled="loadingTypicalSupplies || typicalSupplies.length === 0"
+          >
+            <svg class="h-4 w-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Agregar Todos
+          </button>
+        </div>
+
+        <div v-if="typicalSuppliesExpanded">
+          <div v-if="loadingTypicalSupplies" class="text-center py-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+            <p class="text-sm text-gray-600 mt-2">Cargando insumos típicos...</p>
+          </div>
+
+          <div v-else-if="typicalSupplies.length === 0" class="text-center py-4 text-gray-500">
+            <p class="text-sm">No hay insumos típicos configurados para esta cirugía</p>
+          </div>
+
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div
+              v-for="typicalSupply in typicalSupplies"
+              :key="typicalSupply.id"
+              class="bg-white p-3 rounded-lg border border-green-300 hover:border-green-400 transition-colors"
+            >
+              <div class="flex justify-between items-start gap-2">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-medium text-gray-900">{{ getSupplyNameForTypical(typicalSupply.supply_code) }}</span>
+                    <span v-if="typicalSupply.is_required" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Requerido
+                    </span>
+                  </div>
+                  <div class="text-sm text-gray-600 mb-2">
+                    <span class="font-medium">Código:</span> {{ typicalSupply.supply_code }}
+                  </div>
+                  <div class="text-sm text-gray-700 mb-2">
+                    <span class="font-medium">Cantidad típica:</span> {{ typicalSupply.typical_quantity || 1 }}
+                  </div>
+                  <div v-if="typicalSupply.notes" class="text-xs text-gray-500 italic">
+                    {{ typicalSupply.notes }}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  @click="addTypicalSupply(typicalSupply)"
+                  class="flex-shrink-0 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
+                  title="Agregar este insumo"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Insumos solicitados -->
       <div class="bg-blue-50 p-3 sm:p-4 rounded-lg">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-3 sm:mb-4">
@@ -588,12 +687,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '@/services/requests/supplyRequestService'
 import pavilionService from '@/services/config/pavilionService'
 import inventoryService from '@/services/inventory/inventoryService'
 import surgeryService from '@/services/management/surgeryService'
+import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
 import Swal from 'sweetalert2'
 
 // Props
@@ -629,6 +729,10 @@ const supplyListSearchTerms = ref([])
 const currentSupplyListIndex = ref(null)
 const surgeries = ref([])
 const loadingSurgeries = ref(false)
+const typicalSupplies = ref([])
+const loadingTypicalSupplies = ref(false)
+const showTypicalSupplies = ref(false)
+const typicalSuppliesExpanded = ref(true)
 
 // Fecha mínima para la cirugía (hoy)
 const minDateTime = computed(() => {
@@ -822,6 +926,37 @@ const loadSurgeries = async () => {
   }
 }
 
+const loadTypicalSupplies = async (surgeryId) => {
+  if (!surgeryId) {
+    typicalSupplies.value = []
+    showTypicalSupplies.value = false
+    return
+  }
+
+  loadingTypicalSupplies.value = true
+  try {
+    const result = await surgeryTypicalSupplyService.getTypicalSuppliesBySurgeryId(surgeryId)
+    typicalSupplies.value = result
+    showTypicalSupplies.value = result.length > 0
+  } catch (error) {
+    console.error('Error cargando insumos típicos:', error)
+    typicalSupplies.value = []
+    showTypicalSupplies.value = false
+  } finally {
+    loadingTypicalSupplies.value = false
+  }
+}
+
+// Watcher para cargar insumos típicos cuando se selecciona una cirugía
+watch(() => requestForm.surgery_id, (newSurgeryId) => {
+  if (newSurgeryId && !props.editMode) {
+    loadTypicalSupplies(newSurgeryId)
+  } else {
+    typicalSupplies.value = []
+    showTypicalSupplies.value = false
+  }
+})
+
 const loadMedicalSupplies = async () => {
   loadingSupplies.value = true
   try {
@@ -844,6 +979,137 @@ const addSupplyItem = () => {
   showCodeDropdowns.value.unshift(false)
   showSupplyListModals.value.unshift(false)
   supplyListSearchTerms.value.unshift('')
+}
+
+const addTypicalSupply = (typicalSupply) => {
+  // Verificar si el insumo ya está en la lista
+  const existingIndex = requestForm.items.findIndex(
+    item => item.supply_code && item.supply_code.toString() === typicalSupply.supply_code.toString()
+  )
+
+  if (existingIndex !== -1) {
+    // Si ya existe, actualizar la cantidad sumando la cantidad típica
+    requestForm.items[existingIndex].quantity_requested += typicalSupply.typical_quantity || 1
+    Swal.fire({
+      icon: 'info',
+      title: 'Insumo ya agregado',
+      text: `Se sumó la cantidad típica (${typicalSupply.typical_quantity || 1}) al insumo existente`,
+      timer: 2000,
+      showConfirmButton: false
+    })
+  } else {
+    // Buscar el nombre del insumo en la lista de medicalSupplies
+    const supplyInfo = medicalSupplies.value.find(s => s.code === typicalSupply.supply_code)
+    const supplyName = supplyInfo ? supplyInfo.name : `Insumo ${typicalSupply.supply_code}`
+
+    // Agregar nuevo item con la cantidad típica
+    const newItem = {
+      supply_code: typicalSupply.supply_code,
+      supply_name: supplyName,
+      quantity_requested: typicalSupply.typical_quantity || 1,
+      specifications: '',
+      is_pediatric: false,
+      special_requests: typicalSupply.notes || '',
+      urgency_level: 'normal',
+      size: '',
+      brand: ''
+    }
+    requestForm.items.unshift(newItem)
+    
+    // Inicializar estados de búsqueda
+    supplySearchTerms.value.unshift(supplyName)
+    showSupplyDropdowns.value.unshift(false)
+    showCodeDropdowns.value.unshift(false)
+    showSupplyListModals.value.unshift(false)
+    supplyListSearchTerms.value.unshift('')
+  }
+}
+
+const addAllTypicalSupplies = () => {
+  if (typicalSupplies.value.length === 0) return
+
+  // Primero, eliminar items vacíos (sin código ni nombre)
+  const itemsToRemove = []
+  requestForm.items.forEach((item, index) => {
+    if (!item.supply_code || !item.supply_name || 
+        item.supply_code === '' || item.supply_name === '') {
+      itemsToRemove.push(index)
+    }
+  })
+  
+  // Eliminar items vacíos en orden inverso para no afectar los índices
+  itemsToRemove.reverse().forEach(index => {
+    requestForm.items.splice(index, 1)
+    supplySearchTerms.value.splice(index, 1)
+    showSupplyDropdowns.value.splice(index, 1)
+    showCodeDropdowns.value.splice(index, 1)
+    showSupplyListModals.value.splice(index, 1)
+    supplyListSearchTerms.value.splice(index, 1)
+  })
+
+  let addedCount = 0
+  let updatedCount = 0
+  const newItems = []
+  const newSearchTerms = []
+  const newShowDropdowns = []
+  const newCodeDropdowns = []
+  const newShowListModals = []
+  const newListSearchTerms = []
+
+  typicalSupplies.value.forEach(typicalSupply => {
+    const existingIndex = requestForm.items.findIndex(
+      item => item.supply_code && item.supply_code.toString() === typicalSupply.supply_code.toString()
+    )
+
+    if (existingIndex !== -1) {
+      requestForm.items[existingIndex].quantity_requested += typicalSupply.typical_quantity || 1
+      updatedCount++
+    } else {
+      const supplyInfo = medicalSupplies.value.find(s => s.code === typicalSupply.supply_code)
+      const supplyName = supplyInfo ? supplyInfo.name : `Insumo ${typicalSupply.supply_code}`
+
+      const newItem = {
+        supply_code: typicalSupply.supply_code,
+        supply_name: supplyName,
+        quantity_requested: typicalSupply.typical_quantity || 1,
+        specifications: '',
+        is_pediatric: false,
+        special_requests: typicalSupply.notes || '',
+        urgency_level: 'normal',
+        size: '',
+        brand: ''
+      }
+      
+      newItems.push(newItem)
+      newSearchTerms.push(supplyName)
+      newShowDropdowns.push(false)
+      newCodeDropdowns.push(false)
+      newShowListModals.push(false)
+      newListSearchTerms.push('')
+      addedCount++
+    }
+  })
+
+  // Agregar todos los nuevos items al principio
+  if (newItems.length > 0) {
+    requestForm.items.unshift(...newItems)
+    supplySearchTerms.value.unshift(...newSearchTerms)
+    showSupplyDropdowns.value.unshift(...newShowDropdowns)
+    showCodeDropdowns.value.unshift(...newCodeDropdowns)
+    showSupplyListModals.value.unshift(...newShowListModals)
+    supplyListSearchTerms.value.unshift(...newListSearchTerms)
+  }
+
+  Swal.fire({
+    icon: 'success',
+    title: 'Insumos agregados',
+    html: `${addedCount} insumo(s) agregado(s)<br/>${updatedCount > 0 ? `${updatedCount} insumo(s) actualizado(s)` : ''}`,
+    timer: 2000,
+    showConfirmButton: false
+  })
+  
+  // Minimizar la sección después de agregar todos
+  typicalSuppliesExpanded.value = false
 }
 
 const removeSupplyItem = (index) => {
@@ -898,6 +1164,11 @@ const getFilteredSuppliesForList = (index) => {
     supply.name?.toLowerCase().includes(term) ||
     supply.code?.toString().includes(searchTerm)
   )
+}
+
+const getSupplyNameForTypical = (supplyCode) => {
+  const supply = medicalSupplies.value.find(s => s.code === supplyCode)
+  return supply ? supply.name : `Insumo ${supplyCode}`
 }
 
 const selectSupply = (index, supply) => {

@@ -7,16 +7,29 @@
           <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Solicitudes de Insumo</h1>
           <p class="mt-1 text-sm sm:text-base text-gray-600">Gestión de solicitudes con trazabilidad QR</p>
         </div>
-        <router-link
-          v-if="authStore.canCreateRequests"
-          to="/supply-requests/new"
-          class="btn-primary w-full sm:w-auto"
-        >
-          <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Nueva Solicitud
-        </router-link>
+        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <button 
+            @click="exportToExcel" 
+            :disabled="loading || filteredRequests.length === 0"
+            class="btn-secondary flex items-center justify-center"
+            :class="{ 'opacity-50 cursor-not-allowed': loading || filteredRequests.length === 0 }"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Exportar a Excel
+          </button>
+          <router-link
+            v-if="authStore.canCreateRequests"
+            to="/supply-requests/new"
+            class="btn-primary w-full sm:w-auto"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Nueva Solicitud
+          </router-link>
+        </div>
       </div>
     </div>
 
@@ -557,6 +570,7 @@ import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Swal from 'sweetalert2'
+import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -1047,6 +1061,43 @@ const getUrgencyLabel = (request) => {
 }
 
 // Lifecycle
+const exportToExcel = () => {
+  try {
+    const columns = [
+      { key: 'request_number', label: 'Número de Solicitud' },
+      { key: 'pavilion_name', label: 'Pabellón' },
+      { key: 'surgery_datetime', label: 'Fecha de Cirugía', formatter: formatDateForExcel },
+      { key: 'status', label: 'Estado', formatter: (val) => formatStatusForExcel(val) },
+      { key: 'urgency', label: 'Urgencia' },
+      { key: 'total_items', label: 'Total de Items' },
+      { key: 'created_at', label: 'Fecha de Creación', formatter: formatDateForExcel },
+      { key: 'created_by_name', label: 'Creado por' },
+      { key: 'approved_by_name', label: 'Aprobado por' },
+      { key: 'approval_date', label: 'Fecha de Aprobación', formatter: formatDateForExcel },
+      { key: 'assigned_to_name', label: 'Asignado a' },
+      { key: 'assigned_at', label: 'Fecha de Asignación', formatter: formatDateForExcel },
+      { key: 'observations', label: 'Observaciones' },
+      { key: 'rejection_reason', label: 'Motivo de Rechazo' }
+    ]
+    
+    exportExcel(filteredRequests.value, columns, 'solicitudes_insumos')
+    Swal.fire({
+      icon: 'success',
+      title: 'Exportación completada',
+      text: 'El archivo Excel se ha descargado exitosamente',
+      timer: 2000,
+      showConfirmButton: false
+    })
+  } catch (error) {
+    console.error('Error al exportar:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al exportar',
+      text: 'Ocurrió un error al exportar a Excel: ' + error.message
+    })
+  }
+}
+
 onMounted(async () => {
   await Promise.all([
     loadSupplyRequests(),

@@ -326,43 +326,55 @@
                 <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v7"/><path d="M5 10h14"/></svg>
               </div>
               <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-900 truncate">Cirugías</h3>
-              <span class="text-xs bg-brand-pink bg-opacity-20 text-brand-pink px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">{{ surgeriesWithTotals.length }}</span>
+              <span class="text-xs bg-brand-pink bg-opacity-20 text-brand-pink px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">{{ surgeryStatistics.length }}</span>
             </div>
             <div class="text-xs sm:text-sm text-gray-500 flex-shrink-0">Prom: {{ avgSurgeryDuration }}h</div>
           </div>
           <input v-model="surgerySearch" type="text" placeholder="Buscar..." class="text-xs sm:text-sm border rounded px-2 sm:px-3 py-1.5 sm:py-2 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:ring-opacity-30 w-full" />
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-          <!-- Lista cirugías -->
-          <div class="space-y-2 max-h-52 sm:max-h-60 md:max-h-80 overflow-y-auto pr-1 sm:pr-2">
+          <!-- Estadísticas por cirugía -->
+          <div class="space-y-3 max-h-52 sm:max-h-60 md:max-h-80 overflow-y-auto pr-1 sm:pr-2">
+            <div class="text-xs sm:text-sm font-semibold text-gray-900 mb-2 sticky top-0 bg-white py-1">Estadísticas por cirugía</div>
             <div
-              v-for="item in surgeriesWithTotals"
-              :key="item.surgery_id"
-              class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-              @mouseenter="(e) => showTooltip(e, item.surgery_name)"
-              @mousemove="moveTooltip"
-              @mouseleave="hideTooltip"
+              v-for="stat in surgeryStatistics"
+              :key="stat.surgery_id"
+              class="p-2 sm:p-3 bg-gray-50 rounded-lg shadow-sm"
             >
-              <div class="flex items-center min-w-0 mr-2 sm:mr-3 gap-2 sm:gap-3 flex-1">
-                <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-brand-pink bg-opacity-20 flex items-center justify-center flex-shrink-0 shadow-inner">
-                  <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 3v6a4 4 0 0 0 8 0V3"/>
-                    <path d="M4 3h4"/>
-                    <path d="M12 3h4"/>
-                    <circle cx="20" cy="10" r="2"/>
-                    <path d="M20 12v2a6 6 0 0 1-6 6h-1a3 3 0 0 1-3-3v-2"/>
-                  </svg>
+              <div class="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                  <div class="w-6 h-6 sm:w-7 sm:h-7 rounded bg-brand-pink bg-opacity-20 flex items-center justify-center flex-shrink-0 shadow-inner">
+                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2v7M5 10h14"/>
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-medium text-gray-900 truncate text-xs sm:text-sm md:text-base">{{ stat.surgery_name || 'Sin nombre' }}</div>
+                    <div class="text-xs text-gray-500">{{ stat.procedures_count }} procedimiento{{ stat.procedures_count !== 1 ? 's' : '' }}</div>
+                  </div>
                 </div>
-                <div class="min-w-0 flex-1">
-                  <div class="truncate font-medium text-gray-900 text-xs sm:text-sm md:text-base">{{ item.surgery_name }}</div>
-                  <div class="text-xs text-gray-500 truncate">{{ item.duration }}h · {{ item.total_transferred }} transf.</div>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <span class="text-xs sm:text-sm font-semibold text-gray-900">{{ stat.total_consumed }}</span>
+                  <span class="text-xs text-gray-500 hidden sm:inline">consumidos</span>
                 </div>
               </div>
-              <div class="w-16 sm:w-20 md:w-28 bg-gray-200 rounded-full h-1.5 sm:h-2 flex-shrink-0">
-                <div class="bg-brand-pink h-1.5 sm:h-2 rounded-full" :style="{ width: Math.min(100, Number(item.total_transferred || 0)) + '%' }"></div>
+              <!-- Consumo por tipo -->
+              <div v-if="stat.consumption_by_type && stat.consumption_by_type.length > 0" class="mt-2 space-y-1">
+                <div class="text-xs font-medium text-gray-700 mb-1">Consumo por tipo:</div>
+                <div v-for="(consumption, idx) in stat.consumption_by_type.slice(0, 3)" :key="idx" class="flex items-center justify-between text-xs">
+                  <span class="text-gray-600 truncate flex-1 mr-2">{{ consumption.supply_name || `Código ${consumption.supply_code}` }}</span>
+                  <span class="text-gray-900 font-medium flex-shrink-0">{{ consumption.count }}</span>
+                </div>
+                <div v-if="stat.consumption_by_type.length > 3" class="text-xs text-gray-500 italic">
+                  +{{ stat.consumption_by_type.length - 3 }} tipo{{ stat.consumption_by_type.length - 3 !== 1 ? 's' : '' }} más
+                </div>
               </div>
+              <div v-else class="text-xs text-gray-500 italic mt-1">Sin datos de consumo</div>
             </div>
-            <div v-if="surgeriesWithTotals.length === 0" class="text-xs sm:text-sm text-gray-500 text-center py-4">Sin datos de cirugías</div>
+            <div v-if="surgeryStatistics.length === 0" class="text-xs sm:text-sm text-gray-500 text-center py-4">
+              <div>Sin datos de procedimientos</div>
+              <div class="text-xs text-gray-400 mt-1">Las estadísticas aparecerán cuando haya solicitudes completadas con cirugías asociadas</div>
+            </div>
           </div>
           
           <!-- Top Insumos -->
@@ -553,6 +565,7 @@ const mainMetrics = computed(() => ({
 
 const bySurgery = ref([])
 const surgeries = ref([])
+const completedRequests = ref([])
 const avgSurgeryDuration = computed(() => {
   if (!surgeries.value.length) return 0
   const sum = surgeries.value.reduce((a, s) => a + Number(s.duration || 0), 0)
@@ -571,6 +584,89 @@ const surgeriesWithTotals = computed(() => {
   if (!surgerySearch.value) return all
   const term = surgerySearch.value.toLowerCase()
   return all.filter(x => (x.surgery_name || '').toLowerCase().includes(term))
+})
+
+// Estadísticas por cirugía: ordenadas por cantidad de procedimientos realizados
+const surgeryStatistics = computed(() => {
+  if (!completedRequests.value.length || !surgeries.value.length) return []
+  
+  // Crear mapa de cirugías por ID
+  const surgeryMap = new Map()
+  surgeries.value.forEach(s => {
+    surgeryMap.set(s.id, s.name)
+  })
+  
+  // Agrupar solicitudes completadas por surgery_id
+  const bySurgeryId = new Map()
+  completedRequests.value.forEach(req => {
+    if (!req.surgery_id) return
+    const surgeryId = req.surgery_id
+    if (!bySurgeryId.has(surgeryId)) {
+      bySurgeryId.set(surgeryId, {
+        surgery_id: surgeryId,
+        surgery_name: surgeryMap.get(surgeryId) || 'Sin nombre',
+        procedures_count: 0,
+        request_ids: [],
+        consumption_by_type: new Map()
+      })
+    }
+    const stat = bySurgeryId.get(surgeryId)
+    stat.procedures_count++
+    stat.request_ids.push(req.id)
+  })
+  
+  // Calcular consumo por tipo de insumo para cada cirugía
+  // Nota: Esto requiere datos de consumo, que podrían venir de supply_history o de los items consumidos
+  // Por ahora, usamos los items de las solicitudes como aproximación
+  const stats = Array.from(bySurgeryId.values())
+  
+  // Ordenar por cantidad de procedimientos (descendente)
+  stats.sort((a, b) => b.procedures_count - a.procedures_count)
+  
+  // Calcular total consumido (aproximación basada en items entregados)
+  stats.forEach(stat => {
+    const requestsForSurgery = completedRequests.value.filter(r => r.surgery_id === stat.surgery_id)
+    let totalConsumed = 0
+    const consumptionMap = new Map()
+    
+    // Si las solicitudes tienen items, procesarlos
+    requestsForSurgery.forEach(req => {
+      if (req.items && Array.isArray(req.items)) {
+        req.items.forEach(item => {
+          const supplyCode = item.supply_code || item.supplyCode
+          const supplyName = item.supply_name || item.supplyName || `Código ${supplyCode}`
+          const quantity = Number(item.quantity_delivered || item.quantityDelivered || item.quantity_approved || item.quantityApproved || 0)
+          
+          if (quantity > 0) {
+            totalConsumed += quantity
+            if (!consumptionMap.has(supplyCode)) {
+              consumptionMap.set(supplyCode, {
+                supply_code: supplyCode,
+                supply_name: supplyName,
+                count: 0
+              })
+            }
+            consumptionMap.get(supplyCode).count += quantity
+          }
+        })
+      }
+    })
+    
+    stat.total_consumed = totalConsumed
+    stat.consumption_by_type = Array.from(consumptionMap.values())
+      .sort((a, b) => b.count - a.count)
+  })
+  
+  // Aplicar filtro de búsqueda si existe
+  let filtered = stats
+  if (surgerySearch.value) {
+    const term = surgerySearch.value.toLowerCase()
+    filtered = stats.filter(stat => 
+      (stat.surgery_name || '').toLowerCase().includes(term)
+    )
+  }
+  
+  return filtered
 })
 
 const lowStockList = ref([])
@@ -769,6 +865,71 @@ async function loadTrend() {
   }
 }
 
+async function loadCompletedRequests() {
+  try {
+    // Obtener todas las solicitudes completadas
+    const result = await supplyRequestService.getAllSupplyRequests(1000, 0, 'completado')
+    let requests = []
+    
+    // Manejar diferentes formatos de respuesta
+    if (result && result.data) {
+      if (Array.isArray(result.data.requests)) {
+        requests = result.data.requests
+      } else if (Array.isArray(result.data)) {
+        requests = result.data
+      }
+    } else if (Array.isArray(result)) {
+      requests = result
+    }
+    
+    console.log('📊 Solicitudes completadas encontradas:', requests.length)
+    
+    // Si no hay solicitudes completadas, intentar con aprobadas también (para tener datos de prueba)
+    if (requests.length === 0) {
+      console.log('⚠️ No hay solicitudes completadas, buscando aprobadas...')
+      const approvedResult = await supplyRequestService.getAllSupplyRequests(1000, 0, 'aprobado')
+      if (approvedResult && approvedResult.data) {
+        if (Array.isArray(approvedResult.data.requests)) {
+          requests = approvedResult.data.requests.filter(r => r.surgery_id) // Solo las que tienen cirugía
+        } else if (Array.isArray(approvedResult.data)) {
+          requests = approvedResult.data.filter(r => r.surgery_id)
+        }
+      }
+      console.log('📊 Solicitudes aprobadas con cirugía:', requests.length)
+    }
+    
+    // Filtrar solo las que tienen surgery_id
+    requests = requests.filter(r => r.surgery_id)
+    console.log('📊 Solicitudes con surgery_id:', requests.length)
+    
+    // Cargar items para cada solicitud
+    const requestsWithItems = await Promise.all(
+      requests.map(async (req) => {
+        try {
+          const itemsResult = await supplyRequestService.getSupplyRequestItems(req.id)
+          const items = itemsResult.data || itemsResult.items || []
+          return {
+            ...req,
+            items: Array.isArray(items) ? items : []
+          }
+        } catch (err) {
+          console.error(`Error cargando items para solicitud ${req.id}:`, err)
+          return {
+            ...req,
+            items: []
+          }
+        }
+      })
+    )
+    
+    completedRequests.value = requestsWithItems
+    console.log('✅ Solicitudes cargadas con items:', requestsWithItems.length)
+  } catch (err) {
+    console.error('❌ Error cargando solicitudes completadas:', err)
+    completedRequests.value = []
+  }
+}
+
 async function loadMedicalMetrics() {
   try {
     const [specialties, surgeries, doctors, typicalSuppliesCount] = await Promise.all([
@@ -832,7 +993,8 @@ async function loadData() {
       loadPavilionDistribution(), 
       loadStoreDistribution(), 
       loadTopSupplies(),
-      loadMedicalMetrics()
+      loadMedicalMetrics(),
+      loadCompletedRequests()
     ])
 
     movementBars.value.consumos = Number(summary.value.total_consumed || 0)

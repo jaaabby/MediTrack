@@ -2,9 +2,24 @@
   <div class="space-y-6">
     <!-- Header -->
     <div class="bg-white rounded-lg shadow-sm border p-6">
-      <h2 class="text-2xl font-semibold text-gray-900">Historial de Insumos</h2>
-      <p class="text-gray-600 mt-1">Rastrea todos los movimientos y cambios de estado de los insumos</p>
-      <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ filteredHistory.length }} registros</p>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-900">Historial de Insumos</h2>
+          <p class="text-gray-600 mt-1">Rastrea todos los movimientos y cambios de estado de los insumos</p>
+          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ filteredHistory.length }} registros</p>
+        </div>
+        <button 
+          @click="exportToExcel" 
+          :disabled="loading || sortedHistory.length === 0"
+          class="btn-secondary flex items-center justify-center"
+          :class="{ 'opacity-50 cursor-not-allowed': loading || sortedHistory.length === 0 }"
+        >
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Exportar a Excel
+        </button>
+      </div>
     </div>
 
     <!-- Filtros -->
@@ -393,6 +408,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import supplyHistoryService from '@/services/inventory/supplyHistoryService'
+import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
+import Swal from 'sweetalert2'
 
 const history = ref([])
 const loading = ref(false)
@@ -489,7 +508,13 @@ const loadHistory = async () => {
     history.value = data
   } catch (err) {
     console.error('Error al cargar historial:', err)
-    alert('Error: ' + err.message)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al cargar historial',
+      text: err.message || 'Ocurrió un error al cargar el historial',
+      timer: 3000,
+      showConfirmButton: false
+    })
   } finally {
     loading.value = false
   }
@@ -507,7 +532,34 @@ const closeDetailsModal = () => {
 
 const formatDateTime = (date) => {
   if (!date) return 'N/A'
-  return new Date(date).toLocaleString('es-CL')
+  try {
+    // Crear objeto Date desde el string
+    // Si la fecha viene sin zona horaria, asumir que es UTC y convertir a hora local
+    let dateObj
+    if (typeof date === 'string') {
+      // Si no tiene información de zona horaria, asumir que es UTC
+      if (!date.includes('Z') && !date.includes('+') && !date.includes('-', 10)) {
+        // Formato: "2024-01-15 10:30:00" - asumir UTC
+        dateObj = new Date(date + 'Z')
+      } else {
+        dateObj = new Date(date)
+      }
+    } else {
+      dateObj = new Date(date)
+    }
+    
+    // Verificar que la fecha sea válida
+    if (isNaN(dateObj.getTime())) {
+      console.warn('Fecha inválida:', date)
+      return 'Fecha inválida'
+    }
+    
+    // Usar date-fns para formatear consistentemente con el resto de la aplicación
+    return format(dateObj, 'dd/MM/yyyy HH:mm:ss', { locale: es })
+  } catch (error) {
+    console.error('Error formateando fecha:', error, date)
+    return 'Error en fecha'
+  }
 }
 
 const formatStatus = (status) => {
@@ -542,6 +594,44 @@ const getStatusClass = (status) => {
     'reservado': 'bg-orange-100 text-orange-800'
   }
   return classes[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
+}
+
+const exportToExcel = () => {
+  try {
+    const columns = [
+      { key: 'id', label: 'ID' },
+      { key: 'supply_name', label: 'Nombre del Insumo' },
+      { key: 'medical_supply_id', label: 'ID Insumo' },
+      { key: 'qr_code', label: 'Código QR' },
+      { key: 'status', label: 'Estado', formatter: (val) => formatStatusForExcel(val) },
+      { key: 'destination_type', label: 'Tipo de Destino', formatter: (val) => formatDestinationType(val) },
+      { key: 'destination_id', label: 'ID Destino' },
+      { key: 'origin_type', label: 'Tipo de Origen', formatter: (val) => val ? formatDestinationType(val) : '' },
+      { key: 'origin_id', label: 'ID Origen' },
+      { key: 'user_rut', label: 'Usuario RUT' },
+      { key: 'date_time', label: 'Fecha y Hora', formatter: formatDateForExcel },
+      { key: 'notes', label: 'Notas' },
+      { key: 'transfer_notes', label: 'Notas de Transferencia' },
+      { key: 'confirmed_by', label: 'Confirmado por' },
+      { key: 'confirmation_date', label: 'Fecha de Confirmación', formatter: formatDateForExcel }
+    ]
+    
+    exportExcel(sortedHistory.value, columns, 'historial_insumos')
+    Swal.fire({
+      icon: 'success',
+      title: 'Exportación completada',
+      text: 'El archivo Excel se ha descargado exitosamente',
+      timer: 2000,
+      showConfirmButton: false
+    })
+  } catch (error) {
+    console.error('Error al exportar:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error al exportar',
+      text: 'Ocurrió un error al exportar a Excel: ' + error.message
+    })
+  }
 }
 
 onMounted(() => {

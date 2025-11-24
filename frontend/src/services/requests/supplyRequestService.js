@@ -254,9 +254,18 @@ class SupplyRequestService {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       surgeryDatetime = tomorrow.toISOString()
-    } else if (typeof surgeryDatetime === 'string' && !surgeryDatetime.includes('T')) {
-      // Si es un datetime-local format (YYYY-MM-DDTHH:mm), convertir a ISO
-      surgeryDatetime = new Date(surgeryDatetime).toISOString()
+    } else if (typeof surgeryDatetime === 'string') {
+      // Si es un datetime-local format (YYYY-MM-DDTHH:mm), mantenerlo sin convertir a UTC
+      // El backend lo parseará correctamente en la zona horaria local
+      if (surgeryDatetime.includes('T') && !surgeryDatetime.includes('Z') && !surgeryDatetime.includes('+')) {
+        // Es formato datetime-local, enviarlo tal cual (el backend lo parseará en zona local)
+        // No convertir a ISO para evitar problemas de zona horaria
+        surgeryDatetime = surgeryDatetime
+      } else if (!surgeryDatetime.includes('T')) {
+        // Si no tiene formato T, convertir a ISO
+        surgeryDatetime = new Date(surgeryDatetime).toISOString()
+      }
+      // Si ya es ISO con zona horaria, dejarlo tal cual
     }
     
     return {
