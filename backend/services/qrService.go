@@ -1416,7 +1416,7 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			var assignment models.SupplyRequestQRAssignment
 			if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.AssignmentStatusAssigned).
 				First(&assignment).Error; err == nil {
-				
+
 				if willBeConsumed {
 					// Si será consumido, marcar como entregado
 					assignment.Status = models.AssignmentStatusDelivered
@@ -1424,12 +1424,12 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 					// Si no será consumido, marcar como devuelto inmediatamente
 					assignment.Status = models.AssignmentStatusReturned
 				}
-				
+
 				assignment.DeliveredDate = &now
 				assignment.DeliveredBy = &userRUT
 				assignment.DeliveredByName = &userName
 				assignment.UpdatedAt = now
-				
+
 				if err := tx.Save(&assignment).Error; err != nil {
 					// No fallar si no se puede actualizar la asignación, solo loguear
 					fmt.Printf("⚠️  Advertencia: No se pudo actualizar asignación QR: %v\n", err)

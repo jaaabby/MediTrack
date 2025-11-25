@@ -836,7 +836,7 @@ func (c *QRController) ReceiveSupply(ctx *gin.Context) {
 	if request.WillBeConsumed != nil {
 		willBeConsumed = *request.WillBeConsumed
 	}
-	
+
 	// Llamar al servicio para recepcionar el insumo
 	result, err := c.qrService.ReceiveSupplyByQR(request.QRCode, request.UserRUT, request.DestinationType, request.DestinationID, request.Notes, willBeConsumed)
 	if err != nil {

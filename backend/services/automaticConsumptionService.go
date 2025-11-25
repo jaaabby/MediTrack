@@ -10,18 +10,18 @@ import (
 )
 
 type AutomaticConsumptionService struct {
-	DB                *gorm.DB
-	QRService         *QRService
+	DB                   *gorm.DB
+	QRService            *QRService
 	SupplyRequestService *SupplyRequestService
-	CartService       *CartService
+	CartService          *CartService
 }
 
 func NewAutomaticConsumptionService(db *gorm.DB, qrService *QRService, supplyRequestService *SupplyRequestService) *AutomaticConsumptionService {
 	return &AutomaticConsumptionService{
-		DB:                db,
-		QRService:         qrService,
+		DB:                   db,
+		QRService:            qrService,
 		SupplyRequestService: supplyRequestService,
-		CartService:       nil, // Se establecerá después
+		CartService:          nil, // Se establecerá después
 	}
 }
 
@@ -38,7 +38,7 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 	// Buscar solicitudes con cirugías que ya deberían haber terminado
 	// Usar una consulta SQL más eficiente que filtre directamente por fecha
 	var requests []models.SupplyRequest
-	
+
 	// Obtener todas las solicitudes con cirugías y calcular en memoria cuáles ya terminaron
 	// Nota: Esto podría optimizarse con una consulta SQL más compleja, pero por simplicidad
 	// lo hacemos así para asegurar que tenemos la información completa de la cirugía
@@ -68,17 +68,17 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 
 		// Calcular cuándo debería terminar la cirugía
 		surgeryEndTime := request.SurgeryDatetime.Add(time.Duration(request.Surgery.Duration * float64(time.Hour)))
-		
-		log.Printf("🔍 Verificando solicitud %s: cirugía programada %s, duración %.2f horas, debería terminar %s, ahora es %s", 
-			request.RequestNumber, 
+
+		log.Printf("🔍 Verificando solicitud %s: cirugía programada %s, duración %.2f horas, debería terminar %s, ahora es %s",
+			request.RequestNumber,
 			request.SurgeryDatetime.Format("2006-01-02 15:04:05"),
 			request.Surgery.Duration,
 			surgeryEndTime.Format("2006-01-02 15:04:05"),
 			now.Format("2006-01-02 15:04:05"))
-		
+
 		// Solo procesar si la cirugía ya debería haber terminado
 		if now.Before(surgeryEndTime) {
-			log.Printf("⏳ Solicitud %s: cirugía aún no ha terminado (termina en %s)", 
+			log.Printf("⏳ Solicitud %s: cirugía aún no ha terminado (termina en %s)",
 				request.RequestNumber, surgeryEndTime.Format("2006-01-02 15:04:05"))
 			continue
 		}
@@ -96,7 +96,7 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 			}).
 			Preload("MedicalSupply").
 			Find(&assignments).Error
-		
+
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("Error obteniendo asignaciones para solicitud %d: %v", request.ID, err))
 			log.Printf("❌ Error obteniendo asignaciones para solicitud %d: %v", request.ID, err)
@@ -134,20 +134,20 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 			// Solo consumir insumos en estado "recepcionado"
 			// Los que están en "disponible" ya fueron devueltos al momento de la recepción
 			if supply.Status != models.StatusReceived {
-				log.Printf("⚠️  Insumo %s (QR: %s): estado %s, esperado %s", 
+				log.Printf("⚠️  Insumo %s (QR: %s): estado %s, esperado %s",
 					supply.QRCode, supply.QRCode, supply.Status, models.StatusReceived)
 				continue
 			}
 
 			if supply.LocationType != models.SupplyLocationPavilion {
-				log.Printf("⚠️  Insumo %s (QR: %s): ubicación tipo %s, esperado %s", 
+				log.Printf("⚠️  Insumo %s (QR: %s): ubicación tipo %s, esperado %s",
 					supply.QRCode, supply.QRCode, supply.LocationType, models.SupplyLocationPavilion)
 				continue
 			}
 
 			// Verificar que el insumo esté en el pabellón correcto (el de la solicitud)
 			if supply.LocationID != request.PavilionID {
-				log.Printf("⚠️  Insumo %s (QR: %s): pabellón %d, esperado %d", 
+				log.Printf("⚠️  Insumo %s (QR: %s): pabellón %d, esperado %d",
 					supply.QRCode, supply.QRCode, supply.LocationID, request.PavilionID)
 				continue
 			}
@@ -156,13 +156,13 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 
 			// Consumir el insumo automáticamente
 			// Nota: Agregamos un prefijo especial para identificar consumo automático
-			notes := fmt.Sprintf("[CONSUMO_AUTOMATICO] Cirugía completada el %s (solicitud %s). Este insumo puede ser devuelto a bodega si no fue utilizado.", 
+			notes := fmt.Sprintf("[CONSUMO_AUTOMATICO] Cirugía completada el %s (solicitud %s). Este insumo puede ser devuelto a bodega si no fue utilizado.",
 				surgeryEndTime.Format("2006-01-02 15:04:05"), request.RequestNumber)
-			
+
 			consumptionRequest := QRConsumptionRequest{
 				QRCode:          supply.QRCode,
 				UserRUT:         "12345678-9", // Administrador del Sistema
-				DestinationType: "pavilion", // Usar string literal en lugar de constante
+				DestinationType: "pavilion",   // Usar string literal en lugar de constante
 				DestinationID:   supply.LocationID,
 				Notes:           notes,
 			}
@@ -170,7 +170,7 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 			log.Printf("🔄 Intentando consumir insumo %s (QR: %s) automáticamente", supply.QRCode, supply.QRCode)
 			_, err := s.QRService.ConsumeSupplyByQR(consumptionRequest)
 			if err != nil {
-				errorMsg := fmt.Sprintf("Error consumiendo insumo %s (QR: %s): %v", 
+				errorMsg := fmt.Sprintf("Error consumiendo insumo %s (QR: %s): %v",
 					supply.QRCode, supply.QRCode, err)
 				errors = append(errors, errorMsg)
 				log.Printf("❌ %s", errorMsg)
@@ -194,12 +194,12 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 
 		if consumedCount > 0 {
 			totalProcessed++
-			log.Printf("✅ Solicitud %s: %d insumo(s) consumido(s) automáticamente", 
+			log.Printf("✅ Solicitud %s: %d insumo(s) consumido(s) automáticamente",
 				request.RequestNumber, consumedCount)
 		}
 	}
 
-	log.Printf("✅ Procesamiento completado: %d solicitud(es) procesada(s), %d insumo(s) consumido(s)", 
+	log.Printf("✅ Procesamiento completado: %d solicitud(es) procesada(s), %d insumo(s) consumido(s)",
 		totalProcessed, totalConsumed)
 
 	if len(errors) > 0 {
@@ -233,4 +233,3 @@ func (s *AutomaticConsumptionService) StartAutomaticConsumptionChecker() {
 		}
 	}
 }
-
