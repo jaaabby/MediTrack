@@ -264,7 +264,7 @@
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                   </svg>
-                  Utilizado
+                  Consumir
                 </button>
                 <button
                   @click="handleMarkForReturn(item.id)"
@@ -274,7 +274,7 @@
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                   </svg>
-                  Devolver
+                  Devolver a bodega
                 </button>
               </div>
             </div>
@@ -805,8 +805,8 @@ const handleRemoveItem = async (itemId) => {
   
 const handleMarkAsUsed = async (itemId) => {
   openConfirmModal(
-    'Marcar como Utilizado',
-    '¿Confirma que este insumo fue utilizado?',
+    'Marcar como Consumido',
+    '¿Confirma que este insumo fue consumido?',
     async () => {
   loading.value = true
   try {
@@ -821,12 +821,12 @@ const handleMarkAsUsed = async (itemId) => {
             showMessage('info', 'Carrito Cerrado Automáticamente', 'Todos los items han sido procesados. El carrito se cerró automáticamente.')
           } else {
       emit('item-used', itemId)
-            showMessage('success', 'Éxito', 'Insumo marcado como utilizado exitosamente')
+            showMessage('success', 'Éxito', 'Insumo consumido exitosamente')
           }
     }
   } catch (err) {
-    console.error('Error al marcar item como utilizado:', err)
-        showMessage('error', 'Error', err.response?.data?.message || 'Error al marcar el item como utilizado')
+    console.error('Error al marcar item como consumido:', err)
+        showMessage('error', 'Error', err.response?.data?.message || 'Error al marcar el item como consumido')
   } finally {
     loading.value = false
   }

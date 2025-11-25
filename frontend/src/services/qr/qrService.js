@@ -1351,7 +1351,7 @@ class QRService {
   }
 
   // Recepcionar un insumo que está en estado "en_camino_a_pabellon" (Paso 2)
-  async receiveSupply(qrCode, userRUT, destinationType, destinationID, notes = '') {
+  async receiveSupply(qrCode, userRUT, destinationType, destinationID, notes = '', willBeConsumed = true) {
     try {
       // Validar que el QR code tenga el formato correcto
       if (!qrCode || !qrCode.startsWith('SUPPLY_')) {
@@ -1363,7 +1363,8 @@ class QRService {
         user_rut: userRUT,
         destination_type: destinationType,
         destination_id: destinationID,
-        notes: notes
+        notes: notes,
+        will_be_consumed: willBeConsumed
       })
 
       if (response.data.success) {

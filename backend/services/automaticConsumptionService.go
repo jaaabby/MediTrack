@@ -126,12 +126,13 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 				supply = assignment.MedicalSupply
 			}
 
-			// Verificar que el insumo no esté ya consumido
-			if supply.Status == models.StatusConsumed {
+			// Verificar que el insumo no esté ya consumido o devuelto
+			if supply.Status == models.StatusConsumed || supply.Status == models.StatusAvailable {
 				continue
 			}
 
-			// Verificar que el insumo esté en estado recepcionado y en pabellón
+			// Solo consumir insumos en estado "recepcionado"
+			// Los que están en "disponible" ya fueron devueltos al momento de la recepción
 			if supply.Status != models.StatusReceived {
 				log.Printf("⚠️  Insumo %s (QR: %s): estado %s, esperado %s", 
 					supply.QRCode, supply.QRCode, supply.Status, models.StatusReceived)

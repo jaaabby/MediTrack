@@ -813,20 +813,20 @@ const checkAdvanceNotice = () => {
   if (hours <= EMERGENCY_HOURS) {
     advanceNoticeWarning.value = {
       type: 'emergency',
-      title: '⚠️ SOLICITUD DE EMERGENCIA',
+      title: 'SOLICITUD DE EMERGENCIA',
       message: `La cirugía está programada en menos de ${EMERGENCY_HOURS} horas. Esta solicitud será procesada con máxima prioridad.`
     }
   } else if (hours <= URGENT_HOURS) {
     advanceNoticeWarning.value = {
       type: 'urgent',
-      title: '⚠️ SOLICITUD URGENTE',
+      title: 'SOLICITUD URGENTE',
       message: `La cirugía está programada en menos de ${URGENT_HOURS} horas. Esta solicitud será procesada con alta prioridad.`
     }
   } else if (days < MINIMUM_ADVANCE_DAYS) {
     advanceNoticeWarning.value = {
       type: 'warning',
-      title: '⚠️ Anticipación mínima no cumplida',
-      message: `Se recomienda programar con al menos ${MINIMUM_ADVANCE_DAYS} días de anticipación. Faltan ${Math.ceil(days)} día(s) hasta la cirugía. Puedes continuar, pero la solicitud será marcada como urgente.`
+      title: 'Anticipación recomendada',
+      message: `Se recomienda programar con al menos ${MINIMUM_ADVANCE_DAYS} días de anticipación. La solicitud será marcada como urgente.`
     }
   } else {
     advanceNoticeWarning.value = null
@@ -1391,7 +1391,7 @@ const submitRequest = async () => {
     const days = Math.ceil(daysUntilSurgery.value)
     const result = await Swal.fire({
       icon: 'warning',
-      title: 'Anticipación mínima no cumplida',
+      title: 'Anticipación recomendada',
       html: `
         <p>La cirugía está programada en <strong>${days} día(s)</strong>, menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.</p>
         <p class="mt-2">¿Deseas continuar con la solicitud?</p>

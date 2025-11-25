@@ -1322,7 +1322,8 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 
 // ReceiveSupplyByQR recepciona un insumo que está en estado "en_camino_a_pabellon"
 // Paso 2: Cuando llega al pabellón y se confirma la recepción
-func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, destinationID int, notes string) (map[string]interface{}, error) {
+// El parámetro willBeConsumed indica si el insumo será usado (true) o devuelto inmediatamente (false)
+func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, destinationID int, notes string, willBeConsumed bool) (map[string]interface{}, error) {
 	var supply models.MedicalSupply
 	var transfer models.SupplyTransfer
 	var result map[string]interface{}
@@ -1393,8 +1394,14 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("error al actualizar transferencia: %v", err)
 		}
 
-		// 5. Actualizar el estado del insumo
-		supply.Status = models.StatusReceived
+		// 5. Actualizar el estado del insumo según si será consumido o no
+		if willBeConsumed {
+			// Si será consumido, queda en estado "recepcionado" para uso posterior
+			supply.Status = models.StatusReceived
+		} else {
+			// Si no será consumido, se marca como disponible para devolución
+			supply.Status = models.StatusAvailable
+		}
 		supply.InTransit = false
 		supply.LocationType = transfer.DestinationType
 		supply.LocationID = transfer.DestinationID
@@ -1404,20 +1411,28 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("error al actualizar estado del insumo: %v", err)
 		}
 
-		// 5.5. Actualizar la asignación QR a "delivered" si existe
+		// 5.5. Actualizar la asignación QR según la acción
 		if transfer.DestinationType == models.TransferLocationPavilion {
 			var assignment models.SupplyRequestQRAssignment
 			if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.AssignmentStatusAssigned).
 				First(&assignment).Error; err == nil {
-				// Actualizar asignación a entregada
-				assignment.Status = models.AssignmentStatusDelivered
+				
+				if willBeConsumed {
+					// Si será consumido, marcar como entregado
+					assignment.Status = models.AssignmentStatusDelivered
+				} else {
+					// Si no será consumido, marcar como devuelto inmediatamente
+					assignment.Status = models.AssignmentStatusReturned
+				}
+				
 				assignment.DeliveredDate = &now
 				assignment.DeliveredBy = &userRUT
 				assignment.DeliveredByName = &userName
 				assignment.UpdatedAt = now
+				
 				if err := tx.Save(&assignment).Error; err != nil {
 					// No fallar si no se puede actualizar la asignación, solo loguear
-					fmt.Printf("⚠️  Advertencia: No se pudo actualizar asignación QR a delivered: %v\n", err)
+					fmt.Printf("⚠️  Advertencia: No se pudo actualizar asignación QR: %v\n", err)
 				}
 			}
 		}

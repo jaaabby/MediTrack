@@ -802,6 +802,7 @@ func (c *QRController) ReceiveSupply(ctx *gin.Context) {
 		DestinationType string `json:"destination_type" binding:"required"`
 		DestinationID   int    `json:"destination_id" binding:"required"`
 		Notes           string `json:"notes,omitempty"`
+		WillBeConsumed  *bool  `json:"will_be_consumed,omitempty"` // true: será consumido, false: será devuelto
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
@@ -830,8 +831,14 @@ func (c *QRController) ReceiveSupply(ctx *gin.Context) {
 		return
 	}
 
+	// Determinar si será consumido (por defecto true si no se especifica)
+	willBeConsumed := true
+	if request.WillBeConsumed != nil {
+		willBeConsumed = *request.WillBeConsumed
+	}
+	
 	// Llamar al servicio para recepcionar el insumo
-	result, err := c.qrService.ReceiveSupplyByQR(request.QRCode, request.UserRUT, request.DestinationType, request.DestinationID, request.Notes)
+	result, err := c.qrService.ReceiveSupplyByQR(request.QRCode, request.UserRUT, request.DestinationType, request.DestinationID, request.Notes, willBeConsumed)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
