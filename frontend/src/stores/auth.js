@@ -309,7 +309,7 @@ export const useAuthStore = defineStore('auth', {
         'pabellón': ['Home', 'PavilionInventoryView', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'QRTransfer', 'QRReception', 'Profile'],
         'encargado de bodega': ['Home', 'Inventory', 'InventoryDashboard', 'InventoryStore', 'InventoryPavilion', 'AddSupply', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRTransfer', 'QRReception', 'SupplyRequestList', 'SupplyRequestDetail', 'Statistics', 'Transfers', 'SupplyHistory', 'ReturnManagement', 'SupplierConfigs', 'SupplyCodes', 'Profile'],
         'enfermera': ['Home', 'PavilionInventoryView', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRConsumer', 'QRTransfer', 'QRReception', 'Profile'],
-        'doctor': ['Home', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'QRScanner', 'QRDetails', 'QRTraceability', 'QRReception', 'Profile'],
+        'doctor': ['Home', 'SupplyRequestList', 'SupplyRequestForm', 'SupplyRequestDetail', 'SupplyRequestEdit', 'QRScanner', 'QRDetails', 'QRTraceability', 'Profile'],
         'pavedad': ['Home', 'SupplyRequestList', 'SupplyRequestDetail', 'Profile']
       }
 

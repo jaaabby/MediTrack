@@ -1359,27 +1359,33 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("el insumo no ha sido retirado físicamente de bodega aún. Debe escanearlo primero para registrar el retiro.")
 		}
 
-		// 3.6. Validar que el usuario que recepciona pertenezca al pabellón de destino
+		// 3.6. Validar que solo usuarios con rol "pabellón" pueden recepcionar
 		if transfer.DestinationType == models.TransferLocationPavilion {
 			// Obtener el usuario que está recepcionando
 			var receivingUser models.User
-			if err := tx.Where("rut = ?", userRUT).First(&receivingUser).Error; err == nil {
-				// Si el usuario tiene role "pabellón", verificar que su PavilionID coincida con el destino
-				if receivingUser.Role == "pabellón" || receivingUser.Role == "pavedad" {
-					if receivingUser.PavilionID == nil {
-						return fmt.Errorf("el usuario de pabellón no tiene un pabellón asignado")
-					}
-					// Verificar que el PavilionID del usuario coincida con el destino de la transferencia
-					if *receivingUser.PavilionID != transfer.DestinationID {
-						// Obtener nombre del pabellón esperado
-						var expectedPavilion models.Pavilion
-						pavilionName := fmt.Sprintf("Pabellón %d", transfer.DestinationID)
-						if err := tx.First(&expectedPavilion, transfer.DestinationID).Error; err == nil {
-							pavilionName = expectedPavilion.Name
-						}
-						return fmt.Errorf("este insumo debe ser recepcionado por el usuario del %s. Su usuario pertenece al pabellón %d", pavilionName, *receivingUser.PavilionID)
-					}
+			if err := tx.Where("rut = ?", userRUT).First(&receivingUser).Error; err != nil {
+				return fmt.Errorf("usuario no encontrado: %v", err)
+			}
+
+			// Solo usuarios con rol "pabellón" pueden recepcionar insumos
+			if receivingUser.Role != "pabellón" {
+				return fmt.Errorf("solo usuarios con rol 'pabellón' pueden recepcionar insumos")
+			}
+
+			// Verificar que el usuario tenga un pabellón asignado
+			if receivingUser.PavilionID == nil {
+				return fmt.Errorf("el usuario de pabellón no tiene un pabellón asignado")
+			}
+
+			// Verificar que el PavilionID del usuario coincida con el destino de la transferencia
+			if *receivingUser.PavilionID != transfer.DestinationID {
+				// Obtener nombre del pabellón esperado
+				var expectedPavilion models.Pavilion
+				pavilionName := fmt.Sprintf("Pabellón %d", transfer.DestinationID)
+				if err := tx.First(&expectedPavilion, transfer.DestinationID).Error; err == nil {
+					pavilionName = expectedPavilion.Name
 				}
+				return fmt.Errorf("este insumo debe ser recepcionado por el usuario del %s. Su usuario pertenece al pabellón %d", pavilionName, *receivingUser.PavilionID)
 			}
 		}
 

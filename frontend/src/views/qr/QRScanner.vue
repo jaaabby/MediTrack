@@ -482,6 +482,9 @@ const canBeReceived = (info) => {
   if (!info || info.type !== 'medical_supply') return false
   if (info.is_consumed) return false
   
+  // Solo usuarios con rol 'pabellón' pueden recepcionar
+  if (authStore.user?.role !== 'pabellón') return false
+  
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   return status === 'en_camino_a_pabellon'
 }
