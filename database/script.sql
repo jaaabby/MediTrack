@@ -351,7 +351,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -362,6 +363,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'admin',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -373,7 +375,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -384,6 +387,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'pabellón',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -395,7 +399,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -406,6 +411,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'encargado de bodega',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -417,7 +423,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -428,6 +435,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'enfermera',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -439,7 +447,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     specialty_id,
     is_active, 
     created_at, 
@@ -451,7 +460,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    1, -- Traumatología
+    NULL, 1, -- Traumatología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -463,7 +472,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -474,6 +484,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'admin',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -485,7 +496,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -496,6 +508,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- Reemplazar con contraseña hasheada real
     'pavedad',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -508,7 +521,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -519,6 +533,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'encargado de bodega',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -533,7 +548,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     specialty_id,
     is_active, 
     created_at, 
@@ -546,7 +562,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    2, -- Cardiología
+    NULL, 2, -- Cardiología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -558,7 +574,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    4, -- Neurocirugía
+    NULL, 4, -- Neurocirugía
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -570,7 +586,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    8, -- Ginecología
+    NULL, 8, -- Ginecología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -582,7 +598,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    3, -- Cirugía General
+    NULL, 3, -- Cirugía General
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -594,7 +610,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    5, -- Oftalmología
+    NULL, 5, -- Oftalmología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -606,7 +622,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    7, -- Urología
+    NULL, 7, -- Urología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -618,7 +634,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     2,
-    10, -- Plástica y Reconstructiva
+    NULL, 10, -- Plástica y Reconstructiva
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -630,7 +646,20 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     2,
-    6, -- Otorrinolaringología
+    NULL, 6, -- Otorrinolaringología
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    'PABELLON1',
+    'Pabellón 1',
+    'pabellon1@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- Password: pabellon1
+    'pabellón',
+    1,
+    1, -- pavilion_id: Pabellón Central 01
+    NULL, -- Sin especialidad
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())

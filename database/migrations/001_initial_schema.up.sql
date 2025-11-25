@@ -72,6 +72,7 @@ CREATE TABLE "user" (
     password VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')),
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
+    pavilion_id INTEGER REFERENCES pavilion(id),
     specialty_id INTEGER REFERENCES medical_specialty(id),
     is_active BOOLEAN DEFAULT TRUE,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
@@ -80,6 +81,7 @@ CREATE TABLE "user" (
 
 CREATE INDEX idx_user_email ON "user"(email);
 CREATE INDEX idx_user_specialty ON "user"(specialty_id);
+CREATE INDEX idx_user_pavilion ON "user"(pavilion_id);
 
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,
