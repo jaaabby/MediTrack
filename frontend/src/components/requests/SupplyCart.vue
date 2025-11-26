@@ -454,23 +454,6 @@
       </div>
     </div>
 
-    <!-- Estado vacío -->
-    <div v-else-if="cart && activeItems.length === 0" class="text-center py-12">
-      <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-      </svg>
-      <p class="text-gray-600 text-lg">El carrito está vacío</p>
-      <p class="text-gray-500 text-sm mt-2">No hay items agregados a este carrito</p>
-    </div>
-
-    <!-- Error state -->
-    <div v-else-if="error" class="text-center py-12">
-      <svg class="w-16 h-16 mx-auto text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <p class="text-gray-600 text-lg">{{ error }}</p>
-    </div>
-
     <!-- Modal de operación múltiple -->
     <div v-if="showBatchOperationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -612,6 +595,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import cartService from '@/services/requests/cartService'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const props = defineProps({
   requestId: {
@@ -907,6 +893,10 @@ const canTransferToPavilion = computed(() => {
   if (!cart.value || cart.value.status !== 'active') return false
   if (activeItems.value.length === 0) return false
   
+  // Solo el encargado de bodega puede marcar como "listo para retiro"
+  const userRole = authStore.user?.role
+  if (userRole !== 'encargado de bodega') return false
+  
   // Verificar que todos los items activos estén en bodega y disponibles
   return activeItems.value.every(item => {
     const medicalSupply = item.supply_request_qr_assignment?.medical_supply
@@ -980,15 +970,15 @@ const getItemLocationStatusClass = (item) => {
 // Manejar transferencia al pabellón
 const handleTransferToPavilion = async () => {
   openConfirmModal(
-    'Transferir al Pabellón',
-    `¿Está seguro de transferir todos los items del carrito al pabellón? Esta acción marcará los insumos como en tránsito. El pabellón deberá confirmar la recepción.`,
+    'Listo para retiro',
+    `¿Está seguro de marcar este carrito como "Listo para retiro"? Esto indicará al pabellón que puede proceder a retirar los insumos.`,
     async () => {
       loading.value = true
       try {
         const response = await cartService.transferCartToPavilion(cart.value.id)
         if (response.success) {
           await loadCart() // Recargar para ver el estado actualizado
-          showMessage('success', 'Transferencia Iniciada', response.message || 'Los insumos han sido transferidos al pabellón. El pabellón debe confirmar la recepción.')
+          showMessage('success', 'Listo para retiro', response.message || 'Los insumos han sido transferidos al pabellón. El pabellón debe confirmar la recepción.')
         }
       } catch (err) {
         console.error('Error al transferir carrito:', err)

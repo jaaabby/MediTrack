@@ -574,6 +574,6 @@ func (c *CartController) TransferCartToPavilion(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Carrito transferido al pabellón exitosamente. El pabellón debe confirmar recepción.",
+		Message: "Carrito listo para retiro por el pabellón exitosamente",
 	})
 }

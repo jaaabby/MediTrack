@@ -457,25 +457,108 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 			result.Traceability = traceability
 		}
 
-		// Obtener asignación a solicitud (incluyendo consumidos, para mostrar el carrito)
+		// Obtener asignación ACTIVA basada en el carrito activo
+		// Primero buscar si existe un item de carrito ACTIVO para este QR
+		var cartItem models.SupplyCartItem
 		var assignment models.SupplyRequestQRAssignment
-		if err := s.DB.Where("qr_code = ?", qrCode).
-			Preload("SupplyRequest").
-			Preload("SupplyRequestItem").
-			Order("assigned_date DESC").
-			First(&assignment).Error; err == nil {
+
+		fmt.Printf("\n🔍 ===== DEBUG ESCANEO QR: %s =====\n", qrCode)
+
+		// Debug: Verificar TODAS las asignaciones de este QR
+		var allAssignments []models.SupplyRequestQRAssignment
+		s.DB.Where("qr_code = ?", qrCode).Order("assigned_date DESC").Find(&allAssignments)
+		fmt.Printf("📊 Total de asignaciones para este QR: %d\n", len(allAssignments))
+		for i, a := range allAssignments {
+			fmt.Printf("  [%d] ID=%d, Status=%s, RequestID=%d, AssignedDate=%s\n",
+				i+1, a.ID, a.Status, a.SupplyRequestID, a.AssignedDate.Format("2006-01-02 15:04:05"))
+		}
+
+		// Debug: Verificar TODOS los items de carrito para estas asignaciones
+		if len(allAssignments) > 0 {
+			var assignmentIDs []int
+			for _, a := range allAssignments {
+				assignmentIDs = append(assignmentIDs, a.ID)
+			}
+			var allCartItems []models.SupplyCartItem
+			s.DB.Where("supply_request_qr_assignment_id IN ?", assignmentIDs).
+				Preload("SupplyCart").
+				Order("added_at DESC").
+				Find(&allCartItems)
+			fmt.Printf("🛒 Total de items de carrito para estas asignaciones: %d\n", len(allCartItems))
+			for i, ci := range allCartItems {
+				fmt.Printf("  [%d] CartItemID=%d, AssignmentID=%d, IsActive=%v, CartNumber=%s, CartStatus=%s, AddedAt=%s\n",
+					i+1, ci.ID, ci.SupplyRequestQRAssignmentID, ci.IsActive,
+					ci.SupplyCart.CartNumber, ci.SupplyCart.Status, ci.AddedAt.Format("2006-01-02 15:04:05"))
+			}
+		}
+
+		// Buscar item de carrito activo que contenga una asignación de este QR
+		fmt.Printf("\n🔎 Buscando carrito ACTIVO específicamente...\n")
+		if err := s.DB.Table("supply_cart_item sci").
+			Select("sci.*").
+			Joins("INNER JOIN supply_request_qr_assignment srqa ON sci.supply_request_qr_assignment_id = srqa.id").
+			Joins("INNER JOIN supply_cart sc ON sci.supply_cart_id = sc.id").
+			Where("srqa.qr_code = ? AND sci.is_active = ? AND sc.status = ?",
+				qrCode, true, models.CartStatusActive).
+			Preload("SupplyCart").
+			Preload("SupplyRequestQRAssignment").
+			Preload("SupplyRequestQRAssignment.SupplyRequest").
+			Preload("SupplyRequestQRAssignment.SupplyRequestItem").
+			Order("sci.added_at DESC").
+			First(&cartItem).Error; err == nil {
+
+			// Encontramos un carrito activo con este QR
+			fmt.Printf("✅ CARRITO ACTIVO ENCONTRADO:\n")
+			fmt.Printf("   - CartNumber: %s\n", cartItem.SupplyCart.CartNumber)
+			fmt.Printf("   - CartStatus: %s\n", cartItem.SupplyCart.Status)
+			fmt.Printf("   - AssignmentID: %d\n", cartItem.SupplyRequestQRAssignmentID)
+			fmt.Printf("   - AssignmentStatus: %s\n", cartItem.SupplyRequestQRAssignment.Status)
+			fmt.Printf("   - RequestID: %d\n", cartItem.SupplyRequestQRAssignment.SupplyRequestID)
+			fmt.Printf("===== FIN DEBUG =====\n\n")
+
+			assignment = cartItem.SupplyRequestQRAssignment
+			assignment.Cart = &cartItem.SupplyCart
 			result.RequestAssignment = &assignment
 			result.SupplyRequest = &assignment.SupplyRequest
 
-			// Cargar información del carrito si esta asignación está en un carrito
-			var cartItem models.SupplyCartItem
-			if err := s.DB.Where("supply_request_qr_assignment_id = ?", assignment.ID).
-				Preload("SupplyCart").
-				Order("added_at DESC").
-				First(&cartItem).Error; err == nil {
-				assignment.Cart = &cartItem.SupplyCart
+		} else {
+			fmt.Printf("⚠️ NO se encontró carrito activo. Error: %v\n", err)
+
+			// No hay carrito activo, buscar la última asignación no devuelta
+			// IMPORTANTE: NO cargar el carrito aquí, solo la asignación
+			if err := s.DB.Where("qr_code = ? AND status != ?", qrCode, models.AssignmentStatusReturned).
+				Preload("SupplyRequest").
+				Preload("SupplyRequestItem").
+				Order("assigned_date DESC").
+				First(&assignment).Error; err == nil {
+
+				fmt.Printf("📋 ASIGNACIÓN SIN CARRITO ACTIVO:\n")
+				fmt.Printf("   - AssignmentID: %d\n", assignment.ID)
+				fmt.Printf("   - Status: %s\n", assignment.Status)
+				fmt.Printf("   - RequestID: %d\n", assignment.SupplyRequestID)
+
+				// NO cargar el carrito aquí - dejar Cart como nil
 				result.RequestAssignment = &assignment
+				result.SupplyRequest = &assignment.SupplyRequest
+
+				// Verificar explícitamente si hay algún carrito (para debug)
+				var debugCartItem models.SupplyCartItem
+				if err := s.DB.Where("supply_request_qr_assignment_id = ?", assignment.ID).
+					Preload("SupplyCart").
+					Order("added_at DESC").
+					First(&debugCartItem).Error; err == nil {
+					fmt.Printf("   ⚠️ ADVERTENCIA: Existe carrito para esta asignación:\n")
+					fmt.Printf("      - CartNumber: %s\n", debugCartItem.SupplyCart.CartNumber)
+					fmt.Printf("      - CartStatus: %s\n", debugCartItem.SupplyCart.Status)
+					fmt.Printf("      - IsActive: %v\n", debugCartItem.IsActive)
+					fmt.Printf("      - (NO se cargará porque no está activo)\n")
+				} else {
+					fmt.Printf("   ℹ️ No hay carrito asociado a esta asignación\n")
+				}
+			} else {
+				fmt.Printf("❌ No se encontró ninguna asignación activa\n")
 			}
+			fmt.Printf("===== FIN DEBUG =====\n\n")
 		}
 
 	} else if qrType == "batch" {

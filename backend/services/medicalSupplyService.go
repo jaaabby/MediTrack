@@ -961,9 +961,9 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 
 		// Si el insumo está en un carrito, actualizar la asignación QR
 		var assignment models.SupplyRequestQRAssignment
-		if err := tx.Where("qr_code = ? AND status IN (?, ?, ?)", 
-			supply.QRCode, 
-			models.AssignmentStatusAssigned, 
+		if err := tx.Where("qr_code = ? AND status IN (?, ?, ?)",
+			supply.QRCode,
+			models.AssignmentStatusAssigned,
 			models.AssignmentStatusDelivered,
 			models.AssignmentStatusConsumed).
 			Order("assigned_date DESC").
@@ -1033,11 +1033,11 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 
 			returnedCount++
 			fmt.Printf("✅ Insumo %s retornado automáticamente a bodega (%.1f horas laborales)\n", qrCode, businessHoursElapsed)
-			
+
 			// Guardar información para el correo
 			returnedSupplies = append(returnedSupplies, map[string]interface{}{
-				"SupplyName": supply["supply_name"],
-				"QRCode":     qrCode,
+				"SupplyName":  supply["supply_name"],
+				"QRCode":      qrCode,
 				"TimeElapsed": fmt.Sprintf("%.1f horas laborales", businessHoursElapsed),
 				"StoreName":   supply["store_name"],
 			})
@@ -1046,7 +1046,7 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 
 	if returnedCount > 0 {
 		fmt.Printf("📦 Procesamiento automático completado: %d insumos retornados a bodega\n", returnedCount)
-		
+
 		// Enviar correo con el resumen (en goroutine para no bloquear)
 		go func() {
 			if err := s.sendAutomaticReturnSummaryEmail(returnedCount, errorCount, returnedSupplies); err != nil {
@@ -1080,11 +1080,11 @@ func (s *MedicalSupplyService) sendAutomaticReturnSummaryEmail(returnedCount int
 
 	// Preparar datos para el correo
 	emailData := map[string]interface{}{
-		"ReturnedCount": returnedCount,
-		"ErrorCount":    errorCount,
-		"ProcessDate":  time.Now().Format("02/01/2006 15:04:05"),
+		"ReturnedCount":    returnedCount,
+		"ErrorCount":       errorCount,
+		"ProcessDate":      time.Now().Format("02/01/2006 15:04:05"),
 		"ReturnedSupplies": returnedSupplies,
-		"Date":          time.Now().Format("02/01/2006 15:04:05"),
+		"Date":             time.Now().Format("02/01/2006 15:04:05"),
 	}
 
 	request := mailer.NewRequest(recipients, fmt.Sprintf("Resumen de Retornos Automáticos - %d insumo(s) retornado(s)", returnedCount))
@@ -1219,6 +1219,15 @@ func (s *MedicalSupplyService) sendLowStockAlertForSupply(supplyCode int, availa
 // ConfirmArrivalToStore confirma la llegada de un insumo a bodega y lo cambia a estado disponible
 func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT string, notes string) error {
 	return s.DB.Transaction(func(tx *gorm.DB) error {
+		// Obtener nombre del usuario
+		var user models.User
+		var userName string
+		if err := tx.Where("rut = ?", userRUT).First(&user).Error; err == nil {
+			userName = user.Name
+		} else {
+			userName = userRUT // Fallback
+		}
+
 		// Obtener el insumo por QR
 		var supply models.MedicalSupply
 		if err := tx.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
@@ -1337,6 +1346,41 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 		batch.Amount++
 		if err := tx.Save(&batch).Error; err != nil {
 			return fmt.Errorf("error actualizando lote: %v", err)
+		}
+
+		// Marcar cualquier asignación antigua como 'returned' y desactivar items de carrito
+		var oldAssignments []models.SupplyRequestQRAssignment
+		if err := tx.Where("qr_code = ? AND status NOT IN (?, ?)", qrCode, models.AssignmentStatusReturned, models.AssignmentStatusConsumed).
+			Find(&oldAssignments).Error; err == nil {
+			for _, assignment := range oldAssignments {
+				assignment.Status = models.AssignmentStatusReturned
+				if notes != "" {
+					if assignment.Notes != "" {
+						assignment.Notes = assignment.Notes + "\n[DEVUELTO A BODEGA] " + notes
+					} else {
+						assignment.Notes = "[DEVUELTO A BODEGA] " + notes
+					}
+				}
+				if err := tx.Save(&assignment).Error; err != nil {
+					fmt.Printf("⚠️ Error actualizando asignación a 'returned': %v\n", err)
+				}
+
+				// Desactivar items de carrito asociados a esta asignación
+				now := time.Now()
+				userNamePtr := userName
+				if err := tx.Model(&models.SupplyCartItem{}).
+					Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignment.ID, true).
+					Updates(map[string]interface{}{
+						"is_active":       false,
+						"removed_at":      &now,
+						"removed_by":      &userRUT,
+						"removed_by_name": &userNamePtr,
+						"notes":           "Insumo devuelto a bodega",
+					}).Error; err != nil {
+					fmt.Printf("⚠️ Error desactivando items de carrito: %v\n", err)
+				}
+			}
+			fmt.Printf("✅ Marcadas %d asignaciones antiguas como 'returned' para QR %s\n", len(oldAssignments), qrCode)
 		}
 
 		// Cambiar estado del insumo a disponible y actualizar ubicación
