@@ -217,7 +217,7 @@
           </router-link>
           
           <!-- NUEVA LÓGICA: Solo mostrar transferir si estado es "disponible" -->
-          <router-link 
+          <!--<router-link 
             v-if="canBeTransferred(scannedInfo)"
             :to="{ name: 'QRTransfer', query: { qr: scannedInfo.qr_code } }" 
             class="btn-primary text-sm flex items-center justify-center"
@@ -226,7 +226,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
             Transferir
-          </router-link>
+          </router-link>-->
           
           <!-- NUEVA LÓGICA: Mostrar retirar si estado es "pendiente_retiro" -->
           <button 
@@ -465,6 +465,12 @@ const canBeConsumed = (info) => {
 const canBeTransferred = (info) => {
   if (!info || info.type !== 'medical_supply') return false
   if (info.is_consumed) return false
+  
+  // No mostrar el botón de transferir si el insumo pertenece a un carrito activo
+  const cart = info.request_assignment?.cart
+  if (cart && cart.status === 'active') {
+    return false
+  }
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   return status === 'disponible'
