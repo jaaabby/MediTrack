@@ -292,6 +292,7 @@
           </button>
         </div>
       </div>
+
     </div>
 
     <!-- Historial de Escaneos -->
@@ -409,6 +410,7 @@ import qrService from '@/services/qr/qrService'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import jsQR from 'jsqr'
 import QRInfoDisplay from '@/components/qr/QRInfoDisplay.vue'
+import SupplyCart from '@/components/requests/SupplyCart.vue'
 import Swal from 'sweetalert2'
 
 const router = useRouter()
@@ -442,6 +444,7 @@ const availableCarts = ref([])
 const selectedCartForAdd = ref('')
 const addingToCart = ref(false)
 const showCartSelection = ref(false)
+const cartRef = ref(null)
 
 // Variables para manejo de cámara
 let mediaStream = null
@@ -1118,8 +1121,16 @@ const returnToStore = async (qrCode) => {
     // Mostrar notificación de éxito
     showSuccessNotification('Insumo marcado como en camino a bodega. Confirme la llegada cuando el insumo llegue físicamente.')
     
-    // Volver a escanear para actualizar la información
+    // Volver a escanear para actualizar la información del insumo
     await scanQRCode()
+
+    // Refrescar el carrito asociado para mostrar el cambio de estado en tiempo real
+    if (cartRef.value?.refresh) {
+      await cartRef.value.refresh()
+    }
+
+    // Actualizar la lista de carritos disponibles (puede haberse cerrado alguno)
+    await loadAvailableCarts()
     
   } catch (err) {
     console.error('Error regresando a bodega:', err)
@@ -1157,8 +1168,16 @@ const confirmArrivalToStore = async (qrCode) => {
     // Mostrar notificación de éxito
     showSuccessNotification('Llegada a bodega confirmada exitosamente')
     
-    // Volver a escanear para actualizar la información
+    // Volver a escanear para actualizar la información del insumo
     await scanQRCode()
+
+    // Refrescar el carrito asociado (puede cerrarse si todos los items fueron procesados)
+    if (cartRef.value?.refresh) {
+      await cartRef.value.refresh()
+    }
+
+    // Actualizar la lista de carritos disponibles para evitar mostrar carritos cerrados
+    await loadAvailableCarts()
     
   } catch (err) {
     console.error('Error confirmando llegada a bodega:', err)
@@ -1193,8 +1212,21 @@ const loadAvailableCarts = async () => {
   try {
     const cartService = (await import('@/services/requests/cartService')).default
     const response = await cartService.getAllCarts(1, 100, 'active')
-    if (response.success) {
-      availableCarts.value = response.data || []
+    if (response && (response.success || response.Success)) {
+      // Normalizar distintas formas de respuesta: { success, data: { carts } } o similar
+      const data = response.data || response.Data || {}
+      let carts = []
+      if (Array.isArray(data)) {
+        carts = data
+      } else if (Array.isArray(data.carts)) {
+        carts = data.carts
+      } else if (Array.isArray(data.requests)) {
+        carts = data.requests
+      }
+      // Solo mostrar carritos realmente activos
+      availableCarts.value = carts.filter(c => c.status === 'active' || c.Status === 'active')
+    } else {
+      availableCarts.value = []
     }
   } catch (err) {
     console.error('Error cargando carritos:', err)

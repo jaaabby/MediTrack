@@ -304,12 +304,17 @@ func (s *SupplyRequestService) GetAllSupplyRequests(limit, offset int, status st
 	query.Count(&total)
 
 	// Obtener registros con paginación
-	// Ordenar por urgencia primero (urgentes primero), luego por fecha de creación
-	if err := query.Limit(limit).Offset(offset).
-		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
-		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+	// Ordenar por urgencia (emergencias primero) SOLO para solicitudes NO completadas.
+	// Las solicitudes completadas siempre van al final, independientemente de su urgencia.
+	if err := query.
+		Order(`CASE 
+			WHEN status = 'completado' THEN 3
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '12 hours' THEN 0  -- emergencia (<12h)
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '48 hours' THEN 1 -- urgentes (<48h)
+			ELSE 2
+		END`).
 		Order("surgery_datetime ASC").
-		Order("created_at DESC").
+		Limit(limit).Offset(offset).
 		Find(&requests).Error; err != nil {
 		return nil, 0, err
 	}
@@ -342,12 +347,16 @@ func (s *SupplyRequestService) GetSupplyRequestsByPavilion(pavilionID int, limit
 	query.Count(&total)
 
 	// Obtener registros
-	// Ordenar por urgencia primero (urgentes primero), luego por fecha
-	if err := query.Limit(limit).Offset(offset).
-		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
-		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+	// Ordenar por urgencia solo para solicitudes no completadas; las completadas van al final
+	if err := query.
+		Order(`CASE 
+			WHEN status = 'completado' THEN 3
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '12 hours' THEN 0
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '48 hours' THEN 1
+			ELSE 2
+		END`).
 		Order("surgery_datetime ASC").
-		Order("created_at DESC").
+		Limit(limit).Offset(offset).
 		Find(&requests).Error; err != nil {
 		return nil, 0, err
 	}
@@ -862,7 +871,14 @@ func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseM
 	var requests []models.SupplyRequest
 	// Incluir todos los estados relevantes para el encargado de bodega
 	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "devuelto_al_encargado", "completado"}).
-		Order("assigned_date DESC").
+		// Ordenar por urgencia solo para solicitudes no completadas; las completadas se van al final
+		Order(`CASE 
+			WHEN status = 'completado' THEN 3
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '12 hours' THEN 0
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '48 hours' THEN 1
+			ELSE 2
+		END`).
+		Order("surgery_datetime ASC").
 		Find(&requests).Error
 
 	if err != nil {

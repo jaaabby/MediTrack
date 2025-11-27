@@ -1638,6 +1638,8 @@ const onCartClosed = (cart) => {
   hasActiveCart.value = false
   itemsCollapsed.value = false // Expandir la sección cuando se cierra el carrito
   showMessage('success', 'Carrito cerrado', 'El carrito ha sido cerrado exitosamente')
+  // Recargar la solicitud para reflejar el nuevo estado (por ejemplo, "Completado")
+  loadSupplyRequest()
 }
 
 const onItemRemoved = (itemId) => {

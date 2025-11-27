@@ -1216,7 +1216,8 @@ func (s *MedicalSupplyService) sendLowStockAlertForSupply(supplyCode int, availa
 	return req.SendMailSkipTLS(templatePath, data)
 }
 
-// ConfirmArrivalToStore confirma la llegada de un insumo a bodega y lo cambia a estado disponible
+// ConfirmArrivalToStore confirma la llegada de un insumo a bodega y lo cambia a estado disponible.
+// Además, recepciona automáticamente otros insumos del mismo carrito que estén en camino a bodega.
 func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT string, notes string) error {
 	return s.DB.Transaction(func(tx *gorm.DB) error {
 		// Obtener nombre del usuario
@@ -1250,8 +1251,10 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			return fmt.Errorf("error obteniendo información de la bodega: %v", err)
 		}
 
-		// Buscar y actualizar la transferencia de devolución (si existe)
-		// Buscar por QR code y estado en tránsito, o por medical_supply_id si el QR no funciona
+		// ============================
+		// 1) Actualizar transferencia de devolución principal (QR escaneado)
+		// ============================
+
 		var transfer models.SupplyTransfer
 		if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.TransferStatusInTransit).
 			First(&transfer).Error; err != nil {
@@ -1266,10 +1269,10 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 				transfer.Status = models.TransferStatusReceived
 				transfer.ReceiveDate = &now
 				transfer.ReceivedBy = &userRUT
-				// Obtener nombre del usuario
-				var user models.User
-				if err := tx.Where("rut = ?", userRUT).First(&user).Error; err == nil {
-					transfer.ReceivedByName = &user.Name
+
+				var u models.User
+				if err := tx.Where("rut = ?", userRUT).First(&u).Error; err == nil {
+					transfer.ReceivedByName = &u.Name
 				}
 				if notes != "" {
 					if transfer.Notes != "" {
@@ -1290,10 +1293,10 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			transfer.Status = models.TransferStatusReceived
 			transfer.ReceiveDate = &now
 			transfer.ReceivedBy = &userRUT
-			// Obtener nombre del usuario
-			var user models.User
-			if err := tx.Where("rut = ?", userRUT).First(&user).Error; err == nil {
-				transfer.ReceivedByName = &user.Name
+
+			var u models.User
+			if err := tx.Where("rut = ?", userRUT).First(&u).Error; err == nil {
+				transfer.ReceivedByName = &u.Name
 			}
 			if notes != "" {
 				if transfer.Notes != "" {
@@ -1309,7 +1312,10 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 				transfer.TransferCode, transfer.Status)
 		}
 
-		// Actualizar inventario de bodega
+		// ============================
+		// 2) Actualizar inventario y lote para el insumo principal
+		// ============================
+
 		var storeSummary models.StoreInventorySummary
 		if err := tx.Where("store_id = ? AND batch_id = ?", store.ID, batch.ID).
 			First(&storeSummary).Error; err != nil {
@@ -1348,7 +1354,10 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			return fmt.Errorf("error actualizando lote: %v", err)
 		}
 
-		// Marcar cualquier asignación antigua como 'returned' y desactivar items de carrito
+		// ============================
+		// 3) Marcar asignaciones antiguas como 'returned' y desactivar items de carrito (QR principal)
+		// ============================
+
 		var oldAssignments []models.SupplyRequestQRAssignment
 		if err := tx.Where("qr_code = ? AND status NOT IN (?, ?)", qrCode, models.AssignmentStatusReturned, models.AssignmentStatusConsumed).
 			Find(&oldAssignments).Error; err == nil {
@@ -1383,7 +1392,10 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			fmt.Printf("✅ Marcadas %d asignaciones antiguas como 'returned' para QR %s\n", len(oldAssignments), qrCode)
 		}
 
-		// Cambiar estado del insumo a disponible y actualizar ubicación
+		// ============================
+		// 4) Cambiar estado del insumo principal y registrar historial
+		// ============================
+
 		oldStatus := supply.Status
 		supply.Status = models.StatusAvailable
 		supply.LocationType = models.SupplyLocationStore
@@ -1393,7 +1405,6 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			return fmt.Errorf("error actualizando estado del insumo: %v", err)
 		}
 
-		// Crear registro en supply_history
 		finalNotes := fmt.Sprintf("Llegada confirmada a bodega %s. %s", store.Name, notes)
 		if notes == "" {
 			finalNotes = fmt.Sprintf("Llegada confirmada a bodega %s", store.Name)
@@ -1413,9 +1424,211 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			return fmt.Errorf("error creando historial: %v", err)
 		}
 
-		// Log para depuración
 		fmt.Printf("✅ Llegada confirmada para insumo %s a bodega %s (estado: %s -> %s)\n",
 			supply.QRCode, store.Name, oldStatus, supply.Status)
+
+		// ============================
+		// 5) Recepción automática de otros insumos del mismo carrito
+		// ============================
+
+		var assignmentForCart models.SupplyRequestQRAssignment
+		if err := tx.Where("medical_supply_id = ?", supply.ID).
+			Order("assigned_date DESC").
+			First(&assignmentForCart).Error; err == nil {
+
+			var cartItem models.SupplyCartItem
+			if err := tx.Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignmentForCart.ID, true).
+				First(&cartItem).Error; err == nil {
+
+				var cartItems []models.SupplyCartItem
+				if err := tx.Where("supply_cart_id = ? AND is_active = ?", cartItem.SupplyCartID, true).
+					Preload("SupplyRequestQRAssignment").
+					Preload("SupplyRequestQRAssignment.MedicalSupply").
+					Find(&cartItems).Error; err == nil {
+
+					autoReceived := 0
+
+					for _, item := range cartItems {
+						// Saltar el insumo principal (ya procesado)
+						if item.SupplyRequestQRAssignment.MedicalSupplyID == supply.ID {
+							continue
+						}
+
+						otherSupply := item.SupplyRequestQRAssignment.MedicalSupply
+
+						// Solo procesar insumos que estén efectivamente en camino a bodega
+						if otherSupply.Status != models.StatusEnRouteToStore ||
+							!otherSupply.InTransit ||
+							otherSupply.LocationType != models.SupplyLocationStore {
+							continue
+						}
+
+						// === 5.1) Actualizar transferencia de devolución para este insumo ===
+						var otherTransfer models.SupplyTransfer
+						if err := tx.Where("qr_code = ? AND status = ?", otherSupply.QRCode, models.TransferStatusInTransit).
+							First(&otherTransfer).Error; err != nil {
+							if err := tx.Where("medical_supply_id = ? AND status = ? AND destination_type = ?",
+								otherSupply.ID, models.TransferStatusInTransit, models.TransferLocationStore).
+								Order("send_date DESC").First(&otherTransfer).Error; err != nil {
+								fmt.Printf("⚠️ No se encontró transferencia en tránsito para QR %s (carrito): %v\n", otherSupply.QRCode, err)
+							}
+						}
+
+						if otherTransfer.ID != 0 {
+							now := time.Now()
+							otherTransfer.Status = models.TransferStatusReceived
+							otherTransfer.ReceiveDate = &now
+							otherTransfer.ReceivedBy = &userRUT
+
+							var tu models.User
+							if err := tx.Where("rut = ?", userRUT).First(&tu).Error; err == nil {
+								otherTransfer.ReceivedByName = &tu.Name
+							}
+
+							autoNotes := notes
+							if autoNotes == "" {
+								autoNotes = "Recepción automática de devolución desde carrito"
+							} else {
+								autoNotes = autoNotes + " (recepción automática desde carrito)"
+							}
+
+							if otherTransfer.Notes != "" {
+								otherTransfer.Notes = otherTransfer.Notes + "\n" + autoNotes
+							} else {
+								otherTransfer.Notes = autoNotes
+							}
+
+							if err := tx.Save(&otherTransfer).Error; err != nil {
+								fmt.Printf("⚠️ Error actualizando transferencia de devolución (carrito) para QR %s: %v\n", otherSupply.QRCode, err)
+							}
+						}
+
+						// === 5.2) Actualizar inventario y lote para este insumo ===
+						var otherBatch models.Batch
+						if err := tx.First(&otherBatch, otherSupply.BatchID).Error; err != nil {
+							fmt.Printf("⚠️ Error obteniendo lote para insumo %s: %v\n", otherSupply.QRCode, err)
+							continue
+						}
+
+						var otherStore models.Store
+						if err := tx.First(&otherStore, otherBatch.StoreID).Error; err != nil {
+							fmt.Printf("⚠️ Error obteniendo bodega para insumo %s: %v\n", otherSupply.QRCode, err)
+							continue
+						}
+
+						var otherStoreSummary models.StoreInventorySummary
+						if err := tx.Where("store_id = ? AND batch_id = ?", otherStore.ID, otherBatch.ID).
+							First(&otherStoreSummary).Error; err != nil {
+							if errors.Is(err, gorm.ErrRecordNotFound) {
+								now := time.Now()
+								otherStoreSummary = models.StoreInventorySummary{
+									StoreID:          otherStore.ID,
+									BatchID:          otherBatch.ID,
+									SupplyCode:       otherSupply.Code,
+									OriginalAmount:   otherBatch.Amount,
+									CurrentInStore:   1,
+									TotalReturnedIn:  1,
+									LastReturnInDate: &now,
+								}
+								if err := tx.Create(&otherStoreSummary).Error; err != nil {
+									fmt.Printf("⚠️ Error creando resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
+									continue
+								}
+							} else {
+								fmt.Printf("⚠️ Error obteniendo resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
+								continue
+							}
+						} else {
+							now := time.Now()
+							otherStoreSummary.CurrentInStore++
+							otherStoreSummary.TotalReturnedIn++
+							otherStoreSummary.LastReturnInDate = &now
+							if err := tx.Save(&otherStoreSummary).Error; err != nil {
+								fmt.Printf("⚠️ Error actualizando resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
+								continue
+							}
+						}
+
+						otherBatch.Amount++
+						if err := tx.Save(&otherBatch).Error; err != nil {
+							fmt.Printf("⚠️ Error actualizando lote para insumo %s: %v\n", otherSupply.QRCode, err)
+							continue
+						}
+
+						// === 5.3) Marcar asignaciones antiguas y desactivar items de carrito para este QR ===
+						var otherAssignments []models.SupplyRequestQRAssignment
+						if err := tx.Where("qr_code = ? AND status NOT IN (?, ?)", otherSupply.QRCode, models.AssignmentStatusReturned, models.AssignmentStatusConsumed).
+							Find(&otherAssignments).Error; err == nil {
+							for _, a := range otherAssignments {
+								a.Status = models.AssignmentStatusReturned
+								if notes != "" {
+									if a.Notes != "" {
+										a.Notes = a.Notes + "\n[DEVUELTO A BODEGA] " + notes
+									} else {
+										a.Notes = "[DEVUELTO A BODEGA] " + notes
+									}
+								}
+								if err := tx.Save(&a).Error; err != nil {
+									fmt.Printf("⚠️ Error actualizando asignación a 'returned' para QR %s: %v\n", otherSupply.QRCode, err)
+								}
+
+								now := time.Now()
+								userNamePtr := userName
+								if err := tx.Model(&models.SupplyCartItem{}).
+									Where("supply_request_qr_assignment_id = ? AND is_active = ?", a.ID, true).
+									Updates(map[string]interface{}{
+										"is_active":       false,
+										"removed_at":      &now,
+										"removed_by":      &userRUT,
+										"removed_by_name": &userNamePtr,
+										"notes":           "Insumo devuelto a bodega (recepción automática de carrito)",
+									}).Error; err != nil {
+									fmt.Printf("⚠️ Error desactivando items de carrito para QR %s: %v\n", otherSupply.QRCode, err)
+								}
+							}
+						}
+
+						// === 5.4) Actualizar insumo y registrar historial ===
+						oldOtherStatus := otherSupply.Status
+						otherSupply.Status = models.StatusAvailable
+						otherSupply.LocationType = models.SupplyLocationStore
+						otherSupply.LocationID = otherStore.ID
+						otherSupply.InTransit = false
+						if err := tx.Save(&otherSupply).Error; err != nil {
+							fmt.Printf("⚠️ Error actualizando insumo %s: %v\n", otherSupply.QRCode, err)
+							continue
+						}
+
+						autoFinalNotes := fmt.Sprintf("Llegada confirmada a bodega %s (recepción automática desde carrito).", otherStore.Name)
+						if notes != "" {
+							autoFinalNotes = fmt.Sprintf("Llegada confirmada a bodega %s (recepción automática desde carrito). %s", otherStore.Name, notes)
+						}
+
+						history := models.SupplyHistory{
+							DateTime:        time.Now(),
+							Status:          models.StatusAvailable,
+							DestinationType: models.DestinationTypeStore,
+							DestinationID:   otherStore.ID,
+							MedicalSupplyID: otherSupply.ID,
+							UserRUT:         userRUT,
+							Notes:           autoFinalNotes,
+						}
+						if err := tx.Create(&history).Error; err != nil {
+							fmt.Printf("⚠️ Error creando historial para insumo %s: %v\n", otherSupply.QRCode, err)
+							continue
+						}
+
+						autoReceived++
+						fmt.Printf("✅ Llegada confirmada automáticamente para insumo %s (carrito) estado: %s -> %s\n",
+							otherSupply.QRCode, oldOtherStatus, otherSupply.Status)
+					}
+
+					if autoReceived > 0 {
+						fmt.Printf("✅ Recepción automática de %d insumos adicionales del mismo carrito para QR base %s\n", autoReceived, qrCode)
+					}
+				}
+			}
+		}
 
 		return nil
 	})
