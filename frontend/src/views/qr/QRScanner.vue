@@ -217,7 +217,7 @@
           </router-link>
           
           <!-- NUEVA LÓGICA: Solo mostrar transferir si estado es "disponible" -->
-          <router-link 
+          <!--<router-link 
             v-if="canBeTransferred(scannedInfo)"
             :to="{ name: 'QRTransfer', query: { qr: scannedInfo.qr_code } }" 
             class="btn-primary text-sm flex items-center justify-center"
@@ -226,7 +226,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
             Transferir
-          </router-link>
+          </router-link>-->
           
           <!-- NUEVA LÓGICA: Mostrar retirar si estado es "pendiente_retiro" -->
           <button 
@@ -292,6 +292,7 @@
           </button>
         </div>
       </div>
+
     </div>
 
     <!-- Historial de Escaneos -->
@@ -409,6 +410,7 @@ import qrService from '@/services/qr/qrService'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import jsQR from 'jsqr'
 import QRInfoDisplay from '@/components/qr/QRInfoDisplay.vue'
+import SupplyCart from '@/components/requests/SupplyCart.vue'
 import Swal from 'sweetalert2'
 
 const router = useRouter()
@@ -442,6 +444,7 @@ const availableCarts = ref([])
 const selectedCartForAdd = ref('')
 const addingToCart = ref(false)
 const showCartSelection = ref(false)
+const cartRef = ref(null)
 
 // Variables para manejo de cámara
 let mediaStream = null
@@ -466,6 +469,12 @@ const canBeTransferred = (info) => {
   if (!info || info.type !== 'medical_supply') return false
   if (info.is_consumed) return false
   
+  // No mostrar el botón de transferir si el insumo pertenece a un carrito activo
+  const cart = info.request_assignment?.cart
+  if (cart && cart.status === 'active') {
+    return false
+  }
+  
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   return status === 'disponible'
 }
@@ -481,6 +490,9 @@ const canBePickedUp = (info) => {
 const canBeReceived = (info) => {
   if (!info || info.type !== 'medical_supply') return false
   if (info.is_consumed) return false
+  
+  // Solo usuarios con rol 'pabellón' pueden recepcionar
+  if (authStore.user?.role !== 'pabellón') return false
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   return status === 'en_camino_a_pabellon'
@@ -1109,8 +1121,16 @@ const returnToStore = async (qrCode) => {
     // Mostrar notificación de éxito
     showSuccessNotification('Insumo marcado como en camino a bodega. Confirme la llegada cuando el insumo llegue físicamente.')
     
-    // Volver a escanear para actualizar la información
+    // Volver a escanear para actualizar la información del insumo
     await scanQRCode()
+
+    // Refrescar el carrito asociado para mostrar el cambio de estado en tiempo real
+    if (cartRef.value?.refresh) {
+      await cartRef.value.refresh()
+    }
+
+    // Actualizar la lista de carritos disponibles (puede haberse cerrado alguno)
+    await loadAvailableCarts()
     
   } catch (err) {
     console.error('Error regresando a bodega:', err)
@@ -1148,8 +1168,16 @@ const confirmArrivalToStore = async (qrCode) => {
     // Mostrar notificación de éxito
     showSuccessNotification('Llegada a bodega confirmada exitosamente')
     
-    // Volver a escanear para actualizar la información
+    // Volver a escanear para actualizar la información del insumo
     await scanQRCode()
+
+    // Refrescar el carrito asociado (puede cerrarse si todos los items fueron procesados)
+    if (cartRef.value?.refresh) {
+      await cartRef.value.refresh()
+    }
+
+    // Actualizar la lista de carritos disponibles para evitar mostrar carritos cerrados
+    await loadAvailableCarts()
     
   } catch (err) {
     console.error('Error confirmando llegada a bodega:', err)
@@ -1184,8 +1212,21 @@ const loadAvailableCarts = async () => {
   try {
     const cartService = (await import('@/services/requests/cartService')).default
     const response = await cartService.getAllCarts(1, 100, 'active')
-    if (response.success) {
-      availableCarts.value = response.data || []
+    if (response && (response.success || response.Success)) {
+      // Normalizar distintas formas de respuesta: { success, data: { carts } } o similar
+      const data = response.data || response.Data || {}
+      let carts = []
+      if (Array.isArray(data)) {
+        carts = data
+      } else if (Array.isArray(data.carts)) {
+        carts = data.carts
+      } else if (Array.isArray(data.requests)) {
+        carts = data.requests
+      }
+      // Solo mostrar carritos realmente activos
+      availableCarts.value = carts.filter(c => c.status === 'active' || c.Status === 'active')
+    } else {
+      availableCarts.value = []
     }
   } catch (err) {
     console.error('Error cargando carritos:', err)

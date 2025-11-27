@@ -36,7 +36,7 @@ class SupplyTransferService {
       const response = await this.api.post('/transfers/to-pavilion', transferData)
       return response.data
     } catch (error) {
-      console.error('Error al transferir a pabellón:', error)
+      console.error('Error al dejar listo para retiro:', error)
       throw error
     }
   }

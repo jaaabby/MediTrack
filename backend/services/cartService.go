@@ -28,40 +28,37 @@ func NewCartService(db *gorm.DB) *CartService {
 // ========================
 
 func (s *CartService) CreateCartForRequest(supplyRequestID int, createdByRUT, createdByName string) (*models.SupplyCart, error) {
-	// Verificar si ya existe un carrito para esta solicitud
-	var existingCart models.SupplyCart
-	if err := s.DB.Where("supply_request_id = ?", supplyRequestID).First(&existingCart).Error; err == nil {
-		// Si ya existe, cargarlo con sus relaciones y retornarlo
-		if err := s.DB.Preload("Items.SupplyRequestQRAssignment.MedicalSupply").
-			Preload("Items.SupplyRequestQRAssignment.SupplyRequestItem.SupplyCodeInfo").
-			Preload("SupplyRequest").
-			First(&existingCart, existingCart.ID).Error; err != nil {
-			return nil, fmt.Errorf("error cargando carrito existente: %w", err)
-		}
-		return &existingCart, nil
-	}
+	// Siempre trabajar en transacción para poder crear/actualizar carrito y sus items
+	cart := &models.SupplyCart{}
 
-	var request models.SupplyRequest
-	if err := s.DB.First(&request, supplyRequestID).Error; err != nil {
-		return nil, fmt.Errorf("solicitud no encontrada: %w", err)
-	}
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// 1) Obtener o crear el carrito para esta solicitud
+		if err := tx.Where("supply_request_id = ?", supplyRequestID).First(cart).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("error buscando carrito existente: %w", err)
+			}
 
-	cart := &models.SupplyCart{
-		SupplyRequestID: supplyRequestID,
-		CartNumber:      models.GenerateCartNumber(),
-		Status:          models.CartStatusActive,
-		CreatedBy:       createdByRUT,
-		CreatedByName:   createdByName,
-	}
+			// Carrito no existe, crear uno nuevo
+			var request models.SupplyRequest
+			if err := tx.First(&request, supplyRequestID).Error; err != nil {
+				return fmt.Errorf("solicitud no encontrada: %w", err)
+			}
 
-	// Usar la misma transacción si s.DB ya es una transacción, o crear una nueva si no
-	// Verificar si s.DB es una transacción verificando si tiene un método específico
-	// Por ahora, usaremos s.DB directamente ya que si se pasa una transacción, debería funcionar
-	return cart, s.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(cart).Error; err != nil {
-			return fmt.Errorf("error creando carrito: %w", err)
+			newCart := &models.SupplyCart{
+				SupplyRequestID: supplyRequestID,
+				CartNumber:      models.GenerateCartNumber(),
+				Status:          models.CartStatusActive,
+				CreatedBy:       createdByRUT,
+				CreatedByName:   createdByName,
+			}
+
+			if err := tx.Create(newCart).Error; err != nil {
+				return fmt.Errorf("error creando carrito: %w", err)
+			}
+			*cart = *newCart
 		}
 
+		// 2) Sincronizar items del carrito con TODAS las asignaciones QR "assigned" de la solicitud
 		var assignments []models.SupplyRequestQRAssignment
 		if err := tx.Where("supply_request_id = ? AND status = ?", supplyRequestID, models.AssignmentStatusAssigned).
 			Find(&assignments).Error; err != nil {
@@ -69,29 +66,57 @@ func (s *CartService) CreateCartForRequest(supplyRequestID int, createdByRUT, cr
 		}
 
 		for _, assignment := range assignments {
-			cartItem := &models.SupplyCartItem{
-				SupplyCartID:                cart.ID,
-				SupplyRequestQRAssignmentID: assignment.ID,
-				AddedBy:                     createdByRUT,
-				AddedByName:                 createdByName,
-				IsActive:                    true,
-			}
-			if err := tx.Create(cartItem).Error; err != nil {
-				return fmt.Errorf("error agregando item: %w", err)
+			var existingItem models.SupplyCartItem
+			if err := tx.Where("supply_cart_id = ? AND supply_request_qr_assignment_id = ?", cart.ID, assignment.ID).
+				First(&existingItem).Error; err != nil {
+				// No existe item para esta asignación → crearlo
+				if !errors.Is(err, gorm.ErrRecordNotFound) {
+					return fmt.Errorf("error buscando item de carrito: %w", err)
+				}
+
+				cartItem := &models.SupplyCartItem{
+					SupplyCartID:                cart.ID,
+					SupplyRequestQRAssignmentID: assignment.ID,
+					AddedBy:                     createdByRUT,
+					AddedByName:                 createdByName,
+					IsActive:                    true,
+				}
+				if err := tx.Create(cartItem).Error; err != nil {
+					return fmt.Errorf("error agregando item al carrito: %w", err)
+				}
+			} else {
+				// Ya existe item para esta asignación. Si está inactivo, reactivarlo.
+				if !existingItem.IsActive {
+					existingItem.IsActive = true
+					existingItem.RemovedAt = nil
+					existingItem.RemovedBy = nil
+					existingItem.RemovedByName = nil
+					if err := tx.Save(&existingItem).Error; err != nil {
+						return fmt.Errorf("error reactivando item de carrito: %w", err)
+					}
+				}
 			}
 		}
 
+		// 3) Cargar el carrito con relaciones para devolverlo al caller
 		return tx.Preload("Items.SupplyRequestQRAssignment.MedicalSupply").
 			Preload("Items.SupplyRequestQRAssignment.SupplyRequestItem.SupplyCodeInfo").
 			Preload("SupplyRequest").
 			First(cart, cart.ID).Error
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cart, nil
 }
 
 func (s *CartService) GetCartByRequestID(supplyRequestID int) (*models.SupplyCart, error) {
 	var cart models.SupplyCart
 	err := s.DB.Where("supply_request_id = ?", supplyRequestID).
-		Preload("Items", "is_active = ?", true).
+		// Cargar TODOS los items (activos e inactivos) para preservar el historial del carrito
+		Preload("Items").
 		Preload("Items.SupplyRequestQRAssignment.MedicalSupply").
 		Preload("Items.SupplyRequestQRAssignment.SupplyRequestItem.SupplyCodeInfo").
 		Preload("SupplyRequest").
@@ -108,7 +133,9 @@ func (s *CartService) GetCartByRequestID(supplyRequestID int) (*models.SupplyCar
 
 func (s *CartService) GetCartByID(cartID int) (*models.SupplyCart, error) {
 	var cart models.SupplyCart
-	err := s.DB.Preload("Items", "is_active = ?", true).
+	err := s.DB.
+		// Cargar TODOS los items (activos e inactivos) para preservar el historial del carrito
+		Preload("Items").
 		Preload("Items.SupplyRequestQRAssignment.MedicalSupply").
 		Preload("Items.SupplyRequestQRAssignment.SupplyRequestItem.SupplyCodeInfo").
 		Preload("SupplyRequest").
@@ -124,14 +151,25 @@ func (s *CartService) GetCartByID(cartID int) (*models.SupplyCart, error) {
 }
 
 func (s *CartService) GetCartByQRCode(qrCode string) (*models.SupplyCart, error) {
-	var assignment models.SupplyRequestQRAssignment
-	if err := s.DB.Where("qr_code = ?", qrCode).First(&assignment).Error; err != nil {
+	// Buscar un item de carrito ACTIVO cuyo QR coincida y cuyo carrito esté activo.
+	// Esto permite seguir asociando el QR a su carrito aunque la asignación esté en estado "returned",
+	// mientras el carrito siga abierto (por ejemplo, en devoluciones en tránsito a bodega).
+	var cartItem models.SupplyCartItem
+	if err := s.DB.Table("supply_cart_item sci").
+		Select("sci.*").
+		Joins("INNER JOIN supply_request_qr_assignment srqa ON sci.supply_request_qr_assignment_id = srqa.id").
+		Joins("INNER JOIN supply_cart sc ON sci.supply_cart_id = sc.id").
+		Where("srqa.qr_code = ? AND sci.is_active = ? AND sc.status = ?", qrCode, true, models.CartStatusActive).
+		Order("sci.added_at DESC").
+		First(&cartItem).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("no se encontró asignación para el código QR")
+			return nil, fmt.Errorf("no se encontró carrito activo para el código QR")
 		}
-		return nil, fmt.Errorf("error buscando asignación QR: %w", err)
+		return nil, fmt.Errorf("error buscando carrito por QR: %w", err)
 	}
-	return s.GetCartByRequestID(assignment.SupplyRequestID)
+
+	// Obtener el carrito por ID con sus relaciones
+	return s.GetCartByID(cartItem.SupplyCartID)
 }
 
 func (s *CartService) GetCartDetails(cartID int) (*models.SupplyCartDetailView, error) {
@@ -253,22 +291,41 @@ func (s *CartService) RemoveItemFromCart(cartID, itemID int, removedByRUT, remov
 }
 
 func (s *CartService) CloseCart(cartID int, closedByRUT, closedByName string) error {
-	cart, err := s.GetCartByID(cartID)
-	if err != nil {
-		return err
-	}
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		cart, err := s.GetCartByID(cartID)
+		if err != nil {
+			return err
+		}
 
-	if cart.Status == models.CartStatusClosed {
-		return fmt.Errorf("el carrito ya está cerrado")
-	}
+		if cart.Status == models.CartStatusClosed {
+			return fmt.Errorf("el carrito ya está cerrado")
+		}
 
-	now := time.Now()
-	cart.Status = models.CartStatusClosed
-	cart.ClosedAt = &now
-	cart.ClosedBy = &closedByRUT
-	cart.ClosedByName = &closedByName
+		now := time.Now()
+		cart.Status = models.CartStatusClosed
+		cart.ClosedAt = &now
+		cart.ClosedBy = &closedByRUT
+		cart.ClosedByName = &closedByName
 
-	return s.DB.Save(cart).Error
+		if err := tx.Save(cart).Error; err != nil {
+			return fmt.Errorf("error actualizando carrito: %w", err)
+		}
+
+		// Desactivar todos los items activos del carrito
+		if err := tx.Model(&models.SupplyCartItem{}).
+			Where("supply_cart_id = ? AND is_active = ?", cartID, true).
+			Updates(map[string]interface{}{
+				"is_active":       false,
+				"removed_at":      &now,
+				"removed_by":      &closedByRUT,
+				"removed_by_name": &closedByName,
+				"notes":           "Carrito cerrado",
+			}).Error; err != nil {
+			return fmt.Errorf("error desactivando items del carrito: %w", err)
+		}
+
+		return nil
+	})
 }
 
 // ========================
@@ -434,7 +491,7 @@ func (s *CartService) processItemReturn(tx *gorm.DB, cart *models.SupplyCart, ca
 		// Si fue consumido automáticamente, cambiar el estado a devuelto
 		assignmentStatus = models.AssignmentStatusReturned
 	}
-	
+
 	if err := tx.Model(&models.SupplyRequestQRAssignment{}).
 		Where("id = ?", cartItem.SupplyRequestQRAssignmentID).
 		Updates(map[string]interface{}{
@@ -630,11 +687,13 @@ func (s *CartService) checkAndAutoCloseCart(cartID int, closedByRUT, closedByNam
 		Preload("Items.SupplyRequestQRAssignment").
 		Preload("Items.SupplyRequestQRAssignment.MedicalSupply").
 		First(&cart).Error; err != nil {
+		// Si no se encuentra un carrito activo, no hay nada que cerrar automáticamente
 		return nil
 	}
 
+	// Si no quedan items activos, consideramos que todo fue procesado
 	if len(cart.Items) == 0 {
-		return nil
+		return s.forceCloseCart(&cart, closedByRUT, closedByName)
 	}
 
 	allProcessed := true
@@ -645,31 +704,78 @@ func (s *CartService) checkAndAutoCloseCart(cartID int, closedByRUT, closedByNam
 		status := item.SupplyRequestQRAssignment.Status
 		supply := item.SupplyRequestQRAssignment.MedicalSupply
 
+		// Caso 1: consumido → OK
 		if status == models.AssignmentStatusConsumed {
 			continue
-		} else if status == models.AssignmentStatusReturned {
+		}
+
+		// Caso 2: devuelto → solo OK cuando ya no está en tránsito a bodega
+		if status == models.AssignmentStatusReturned {
 			if supply.InTransit && supply.Status == models.StatusEnRouteToStore {
 				allProcessed = false
 				break
 			}
 			continue
-		} else {
-			allProcessed = false
-			break
 		}
+
+		// Cualquier otro estado implica que el carrito aún tiene trabajo pendiente
+		allProcessed = false
+		break
 	}
 
 	if allProcessed {
+		return s.forceCloseCart(&cart, closedByRUT, closedByName)
+	}
+
+	return nil
+}
+
+// forceCloseCart encapsula la lógica de cierre automático de un carrito
+func (s *CartService) forceCloseCart(cart *models.SupplyCart, closedByRUT, closedByName string) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
 		cart.Status = models.CartStatusClosed
 		cart.ClosedAt = &now
 		cart.ClosedBy = &closedByRUT
 		cart.ClosedByName = &closedByName
 		cart.Notes = "Cerrado automáticamente: todos los items procesados"
-		return s.DB.Save(&cart).Error
-	}
 
-	return nil
+		if err := tx.Save(cart).Error; err != nil {
+			return fmt.Errorf("error cerrando carrito: %w", err)
+		}
+
+		// Desactivar todos los items activos del carrito
+		if err := tx.Model(&models.SupplyCartItem{}).
+			Where("supply_cart_id = ? AND is_active = ?", cart.ID, true).
+			Updates(map[string]interface{}{
+				"is_active":       false,
+				"removed_at":      &now,
+				"removed_by":      &closedByRUT,
+				"removed_by_name": &closedByName,
+				"notes":           "Carrito cerrado automáticamente",
+			}).Error; err != nil {
+			return fmt.Errorf("error desactivando items del carrito: %w", err)
+		}
+
+		// Actualizar el estado de la solicitud asociada para indicar que el flujo de bodega terminó
+		var request models.SupplyRequest
+		if err := tx.First(&request, cart.SupplyRequestID).Error; err == nil {
+			// Solo actualizar si aún no está marcada como completada/cancelada/rechazada
+			if request.Status != models.RequestStatusCompleted &&
+				request.Status != models.RequestStatusCancelled &&
+				request.Status != models.RequestStatusRejected {
+				if err := tx.Model(&request).Updates(map[string]interface{}{
+					"status":         models.RequestStatusCompleted,
+					"completed_date": now,
+					"updated_at":     now,
+				}).Error; err != nil {
+					return fmt.Errorf("error actualizando estado de solicitud al cerrar carrito: %w", err)
+				}
+			}
+		}
+
+		return nil
+	})
 }
 
 func (s *CartService) CheckAndAutoCloseCartForSupply(supplyID int, closedByRUT, closedByName string) error {

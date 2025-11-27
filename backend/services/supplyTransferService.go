@@ -205,7 +205,7 @@ func (s *SupplyTransferService) ConfirmReception(
 			if err := tx.Where("rut = ?", *transfer.PickedUpBy).First(&pickedUpUser).Error; err == nil {
 				pickedUpUserName = pickedUpUser.Name
 			}
-			
+
 			// Obtener el nombre del usuario actual si no está disponible
 			currentUserName := userName
 			if currentUserName == "" {
@@ -216,7 +216,7 @@ func (s *SupplyTransferService) ConfirmReception(
 					currentUserName = "Usuario Desconocido"
 				}
 			}
-			
+
 			return fmt.Errorf("solo la persona que retiró el insumo de bodega (%s) puede confirmar su recepción. Usted es %s", pickedUpUserName, currentUserName)
 		}
 
@@ -433,7 +433,43 @@ func (s *SupplyTransferService) ReturnToStore(
 				return fmt.Errorf("error al actualizar lote: %v", err)
 			}
 
-			// 7. Actualizar ubicación del insumo
+			// 7. Marcar cualquier asignación antigua como 'returned' y desactivar items de carrito
+			var oldAssignments []models.SupplyRequestQRAssignment
+			if err := tx.Where("qr_code = ? AND status NOT IN (?, ?)", qrCode, models.AssignmentStatusReturned, models.AssignmentStatusConsumed).
+				Find(&oldAssignments).Error; err == nil {
+				for _, assignment := range oldAssignments {
+					assignment.Status = models.AssignmentStatusReturned
+					returnNote := fmt.Sprintf("[DEVUELTO A BODEGA] %s", reason)
+					if notes != "" {
+						returnNote = returnNote + " - " + notes
+					}
+					if assignment.Notes != "" {
+						assignment.Notes = assignment.Notes + "\n" + returnNote
+					} else {
+						assignment.Notes = returnNote
+					}
+					if err := tx.Save(&assignment).Error; err != nil {
+						log.Printf("⚠️ Error actualizando asignación a 'returned': %v\n", err)
+					}
+
+					// Desactivar items de carrito asociados a esta asignación
+					now := time.Now()
+					if err := tx.Model(&models.SupplyCartItem{}).
+						Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignment.ID, true).
+						Updates(map[string]interface{}{
+							"is_active":       false,
+							"removed_at":      &now,
+							"removed_by":      &userRUT,
+							"removed_by_name": &userName,
+							"notes":           "Insumo devuelto a bodega",
+						}).Error; err != nil {
+						log.Printf("⚠️ Error desactivando items de carrito: %v\n", err)
+					}
+				}
+				log.Printf("✅ Marcadas %d asignaciones antiguas como 'returned' para QR %s\n", len(oldAssignments), qrCode)
+			}
+
+			// 8. Actualizar ubicación del insumo
 			supply.LocationType = models.SupplyLocationStore
 			supply.LocationID = storeID
 			supply.InTransit = false
@@ -445,7 +481,7 @@ func (s *SupplyTransferService) ReturnToStore(
 				return fmt.Errorf("error al actualizar insumo: %v", err)
 			}
 
-			// 8. Registrar en historial
+			// 9. Registrar en historial
 			history := models.SupplyHistory{
 				DateTime:         now,
 				Status:           models.StatusAvailable,

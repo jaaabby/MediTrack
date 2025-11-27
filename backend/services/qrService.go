@@ -457,25 +457,108 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 			result.Traceability = traceability
 		}
 
-		// Obtener asignación a solicitud (incluyendo consumidos, para mostrar el carrito)
+		// Obtener asignación ACTIVA basada en el carrito activo
+		// Primero buscar si existe un item de carrito ACTIVO para este QR
+		var cartItem models.SupplyCartItem
 		var assignment models.SupplyRequestQRAssignment
-		if err := s.DB.Where("qr_code = ?", qrCode).
-			Preload("SupplyRequest").
-			Preload("SupplyRequestItem").
-			Order("assigned_date DESC").
-			First(&assignment).Error; err == nil {
+
+		fmt.Printf("\n🔍 ===== DEBUG ESCANEO QR: %s =====\n", qrCode)
+
+		// Debug: Verificar TODAS las asignaciones de este QR
+		var allAssignments []models.SupplyRequestQRAssignment
+		s.DB.Where("qr_code = ?", qrCode).Order("assigned_date DESC").Find(&allAssignments)
+		fmt.Printf("📊 Total de asignaciones para este QR: %d\n", len(allAssignments))
+		for i, a := range allAssignments {
+			fmt.Printf("  [%d] ID=%d, Status=%s, RequestID=%d, AssignedDate=%s\n",
+				i+1, a.ID, a.Status, a.SupplyRequestID, a.AssignedDate.Format("2006-01-02 15:04:05"))
+		}
+
+		// Debug: Verificar TODOS los items de carrito para estas asignaciones
+		if len(allAssignments) > 0 {
+			var assignmentIDs []int
+			for _, a := range allAssignments {
+				assignmentIDs = append(assignmentIDs, a.ID)
+			}
+			var allCartItems []models.SupplyCartItem
+			s.DB.Where("supply_request_qr_assignment_id IN ?", assignmentIDs).
+				Preload("SupplyCart").
+				Order("added_at DESC").
+				Find(&allCartItems)
+			fmt.Printf("🛒 Total de items de carrito para estas asignaciones: %d\n", len(allCartItems))
+			for i, ci := range allCartItems {
+				fmt.Printf("  [%d] CartItemID=%d, AssignmentID=%d, IsActive=%v, CartNumber=%s, CartStatus=%s, AddedAt=%s\n",
+					i+1, ci.ID, ci.SupplyRequestQRAssignmentID, ci.IsActive,
+					ci.SupplyCart.CartNumber, ci.SupplyCart.Status, ci.AddedAt.Format("2006-01-02 15:04:05"))
+			}
+		}
+
+		// Buscar item de carrito activo que contenga una asignación de este QR
+		fmt.Printf("\n🔎 Buscando carrito ACTIVO específicamente...\n")
+		if err := s.DB.Table("supply_cart_item sci").
+			Select("sci.*").
+			Joins("INNER JOIN supply_request_qr_assignment srqa ON sci.supply_request_qr_assignment_id = srqa.id").
+			Joins("INNER JOIN supply_cart sc ON sci.supply_cart_id = sc.id").
+			Where("srqa.qr_code = ? AND sci.is_active = ? AND sc.status = ?",
+				qrCode, true, models.CartStatusActive).
+			Preload("SupplyCart").
+			Preload("SupplyRequestQRAssignment").
+			Preload("SupplyRequestQRAssignment.SupplyRequest").
+			Preload("SupplyRequestQRAssignment.SupplyRequestItem").
+			Order("sci.added_at DESC").
+			First(&cartItem).Error; err == nil {
+
+			// Encontramos un carrito activo con este QR
+			fmt.Printf("✅ CARRITO ACTIVO ENCONTRADO:\n")
+			fmt.Printf("   - CartNumber: %s\n", cartItem.SupplyCart.CartNumber)
+			fmt.Printf("   - CartStatus: %s\n", cartItem.SupplyCart.Status)
+			fmt.Printf("   - AssignmentID: %d\n", cartItem.SupplyRequestQRAssignmentID)
+			fmt.Printf("   - AssignmentStatus: %s\n", cartItem.SupplyRequestQRAssignment.Status)
+			fmt.Printf("   - RequestID: %d\n", cartItem.SupplyRequestQRAssignment.SupplyRequestID)
+			fmt.Printf("===== FIN DEBUG =====\n\n")
+
+			assignment = cartItem.SupplyRequestQRAssignment
+			assignment.Cart = &cartItem.SupplyCart
 			result.RequestAssignment = &assignment
 			result.SupplyRequest = &assignment.SupplyRequest
 
-			// Cargar información del carrito si esta asignación está en un carrito
-			var cartItem models.SupplyCartItem
-			if err := s.DB.Where("supply_request_qr_assignment_id = ?", assignment.ID).
-				Preload("SupplyCart").
-				Order("added_at DESC").
-				First(&cartItem).Error; err == nil {
-				assignment.Cart = &cartItem.SupplyCart
+		} else {
+			fmt.Printf("⚠️ NO se encontró carrito activo. Error: %v\n", err)
+
+			// No hay carrito activo, buscar la última asignación no devuelta
+			// IMPORTANTE: NO cargar el carrito aquí, solo la asignación
+			if err := s.DB.Where("qr_code = ? AND status != ?", qrCode, models.AssignmentStatusReturned).
+				Preload("SupplyRequest").
+				Preload("SupplyRequestItem").
+				Order("assigned_date DESC").
+				First(&assignment).Error; err == nil {
+
+				fmt.Printf("📋 ASIGNACIÓN SIN CARRITO ACTIVO:\n")
+				fmt.Printf("   - AssignmentID: %d\n", assignment.ID)
+				fmt.Printf("   - Status: %s\n", assignment.Status)
+				fmt.Printf("   - RequestID: %d\n", assignment.SupplyRequestID)
+
+				// NO cargar el carrito aquí - dejar Cart como nil
 				result.RequestAssignment = &assignment
+				result.SupplyRequest = &assignment.SupplyRequest
+
+				// Verificar explícitamente si hay algún carrito (para debug)
+				var debugCartItem models.SupplyCartItem
+				if err := s.DB.Where("supply_request_qr_assignment_id = ?", assignment.ID).
+					Preload("SupplyCart").
+					Order("added_at DESC").
+					First(&debugCartItem).Error; err == nil {
+					fmt.Printf("   ⚠️ ADVERTENCIA: Existe carrito para esta asignación:\n")
+					fmt.Printf("      - CartNumber: %s\n", debugCartItem.SupplyCart.CartNumber)
+					fmt.Printf("      - CartStatus: %s\n", debugCartItem.SupplyCart.Status)
+					fmt.Printf("      - IsActive: %v\n", debugCartItem.IsActive)
+					fmt.Printf("      - (NO se cargará porque no está activo)\n")
+				} else {
+					fmt.Printf("   ℹ️ No hay carrito asociado a esta asignación\n")
+				}
+			} else {
+				fmt.Printf("❌ No se encontró ninguna asignación activa\n")
 			}
+			fmt.Printf("===== FIN DEBUG =====\n\n")
 		}
 
 	} else if qrType == "batch" {
@@ -1322,7 +1405,8 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 
 // ReceiveSupplyByQR recepciona un insumo que está en estado "en_camino_a_pabellon"
 // Paso 2: Cuando llega al pabellón y se confirma la recepción
-func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, destinationID int, notes string) (map[string]interface{}, error) {
+// El parámetro willBeConsumed indica si el insumo será usado (true) o devuelto inmediatamente (false)
+func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, destinationID int, notes string, willBeConsumed bool) (map[string]interface{}, error) {
 	var supply models.MedicalSupply
 	var transfer models.SupplyTransfer
 	var result map[string]interface{}
@@ -1353,26 +1437,39 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("transferencia en tránsito no encontrada para QR %s: %v", qrCode, err)
 		}
 
-		// 3.5. Validar que la persona que recibe sea la misma que retiró físicamente
-		// La persona que sacó de bodega debe confirmar que el insumo llegó
+		// 3.5. Validar que el insumo haya sido retirado físicamente
 		if transfer.PickedUpBy == nil {
 			return fmt.Errorf("el insumo no ha sido retirado físicamente de bodega aún. Debe escanearlo primero para registrar el retiro.")
 		}
-		if *transfer.PickedUpBy != userRUT {
-			// Obtener el nombre del usuario que retiró el insumo
-			var pickedUpUser models.User
-			pickedUpUserName := "Usuario Desconocido"
-			if err := tx.Where("rut = ?", *transfer.PickedUpBy).First(&pickedUpUser).Error; err == nil {
-				pickedUpUserName = pickedUpUser.Name
+
+		// 3.6. Validar que solo usuarios con rol "pabellón" pueden recepcionar
+		if transfer.DestinationType == models.TransferLocationPavilion {
+			// Obtener el usuario que está recepcionando
+			var receivingUser models.User
+			if err := tx.Where("rut = ?", userRUT).First(&receivingUser).Error; err != nil {
+				return fmt.Errorf("usuario no encontrado: %v", err)
 			}
 
-			// Usar el nombre del usuario actual (ya obtenido al inicio de la función)
-			currentUserName := userName
-			if currentUserName == "" {
-				currentUserName = "Usuario Desconocido"
+			// Solo usuarios con rol "pabellón" pueden recepcionar insumos
+			if receivingUser.Role != "pabellón" {
+				return fmt.Errorf("solo usuarios con rol 'pabellón' pueden recepcionar insumos")
 			}
 
-			return fmt.Errorf("solo la persona que retiró el insumo de bodega (%s) puede confirmar su recepción. Usted es %s", pickedUpUserName, currentUserName)
+			// Verificar que el usuario tenga un pabellón asignado
+			if receivingUser.PavilionID == nil {
+				return fmt.Errorf("el usuario de pabellón no tiene un pabellón asignado")
+			}
+
+			// Verificar que el PavilionID del usuario coincida con el destino de la transferencia
+			if *receivingUser.PavilionID != transfer.DestinationID {
+				// Obtener nombre del pabellón esperado
+				var expectedPavilion models.Pavilion
+				pavilionName := fmt.Sprintf("Pabellón %d", transfer.DestinationID)
+				if err := tx.First(&expectedPavilion, transfer.DestinationID).Error; err == nil {
+					pavilionName = expectedPavilion.Name
+				}
+				return fmt.Errorf("este insumo debe ser recepcionado por el usuario del %s. Su usuario pertenece al pabellón %d", pavilionName, *receivingUser.PavilionID)
+			}
 		}
 
 		// 4. Actualizar el estado de la transferencia
@@ -1393,8 +1490,14 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("error al actualizar transferencia: %v", err)
 		}
 
-		// 5. Actualizar el estado del insumo
-		supply.Status = models.StatusReceived
+		// 5. Actualizar el estado del insumo según si será consumido o no
+		if willBeConsumed {
+			// Si será consumido, queda en estado "recepcionado" para uso posterior
+			supply.Status = models.StatusReceived
+		} else {
+			// Si no será consumido, se marca como disponible para devolución
+			supply.Status = models.StatusAvailable
+		}
 		supply.InTransit = false
 		supply.LocationType = transfer.DestinationType
 		supply.LocationID = transfer.DestinationID
@@ -1404,20 +1507,28 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 			return fmt.Errorf("error al actualizar estado del insumo: %v", err)
 		}
 
-		// 5.5. Actualizar la asignación QR a "delivered" si existe
+		// 5.5. Actualizar la asignación QR según la acción
 		if transfer.DestinationType == models.TransferLocationPavilion {
 			var assignment models.SupplyRequestQRAssignment
 			if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.AssignmentStatusAssigned).
 				First(&assignment).Error; err == nil {
-				// Actualizar asignación a entregada
-				assignment.Status = models.AssignmentStatusDelivered
+
+				if willBeConsumed {
+					// Si será consumido, marcar como entregado
+					assignment.Status = models.AssignmentStatusDelivered
+				} else {
+					// Si no será consumido, marcar como devuelto inmediatamente
+					assignment.Status = models.AssignmentStatusReturned
+				}
+
 				assignment.DeliveredDate = &now
 				assignment.DeliveredBy = &userRUT
 				assignment.DeliveredByName = &userName
 				assignment.UpdatedAt = now
+
 				if err := tx.Save(&assignment).Error; err != nil {
 					// No fallar si no se puede actualizar la asignación, solo loguear
-					fmt.Printf("⚠️  Advertencia: No se pudo actualizar asignación QR a delivered: %v\n", err)
+					fmt.Printf("⚠️  Advertencia: No se pudo actualizar asignación QR: %v\n", err)
 				}
 			}
 		}

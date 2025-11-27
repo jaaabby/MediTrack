@@ -168,6 +168,113 @@
       </div>
     </div>
 
+    <!-- Formulario de Acciones para Insumo Recepcionado -->
+    <div v-if="isReceived(scannedProduct)" class="bg-white rounded-lg shadow-sm border p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+        <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Insumo Recepcionado - Seleccionar Acción
+      </h3>
+
+      <div class="space-y-6">
+        <!-- Información del Usuario -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <h4 class="text-sm font-medium text-gray-900 mb-2">Usuario</h4>
+          <p class="text-sm text-gray-600">RUT: {{ currentUser?.rut || 'No disponible' }}</p>
+          <p class="text-sm text-gray-600">Nombre: {{ currentUser?.name || 'No disponible' }}</p>
+        </div>
+
+        <!-- Selección de Acción -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            ¿Qué desea hacer con este insumo? <span class="text-red-500">*</span>
+          </label>
+          <div class="space-y-3">
+            <div class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer" 
+                 :class="{ 'border-green-500 bg-green-50': actionForm.action === 'consume' }"
+                 @click="actionForm.action = 'consume'">
+              <input 
+                type="radio" 
+                v-model="actionForm.action" 
+                value="consume"
+                class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+              />
+              <div class="ml-3">
+                <label class="text-sm font-medium text-gray-900 cursor-pointer">
+                  ✅ Consumir insumo
+                </label>
+                <p class="text-xs text-gray-500">Marcar como utilizado en la cirugía</p>
+              </div>
+            </div>
+            <div class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                 :class="{ 'border-orange-500 bg-orange-50': actionForm.action === 'return' }"
+                 @click="actionForm.action = 'return'">
+              <input 
+                type="radio" 
+                v-model="actionForm.action" 
+                value="return"
+                class="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+              />
+              <div class="ml-3">
+                <label class="text-sm font-medium text-gray-900 cursor-pointer">
+                  📦 Devolver a bodega
+                </label>
+                <p class="text-xs text-gray-500">El insumo no fue utilizado y será devuelto</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notas de la Acción -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Notas {{ actionForm.action === 'return' ? '(opcional)' : '' }}
+          </label>
+          <textarea
+            v-model="actionForm.notes"
+            rows="3"
+            :placeholder="actionForm.action === 'consume' ? 'Observaciones sobre el consumo...' : 'Motivo de la devolución...'"
+            class="form-textarea w-full"
+          ></textarea>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="flex justify-end gap-3">
+          <button
+            @click="resetForm"
+            class="btn-secondary"
+          >
+            Cancelar
+          </button>
+          <button
+            v-if="actionForm.action === 'consume'"
+            @click="consumeSupply"
+            :disabled="processing"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            <svg v-if="processing" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ processing ? 'Consumiendo...' : 'Consumir Insumo' }}
+          </button>
+          <button
+            v-if="actionForm.action === 'return'"
+            @click="returnSupply"
+            :disabled="processing"
+            class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            <svg v-if="processing" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ processing ? 'Devolviendo...' : 'Devolver a Bodega' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Success Message -->
     <div v-if="consumptionSuccess" class="bg-green-50 border border-green-200 rounded-md p-4">
       <div class="flex">
@@ -226,10 +333,17 @@ const qrInput = ref('')
 const error = ref(null)
 const scannedProduct = ref(null)
 const receiving = ref(false)
+const processing = ref(false)
 const consumptionSuccess = ref(null) // Mantenemos el nombre para conservar la alerta
 
 // Formulario de recepción simplificado
 const receptionForm = ref({
+  notes: ''
+})
+
+// Formulario de acciones para insumos recepcionados
+const actionForm = ref({
+  action: 'consume', // 'consume' o 'return'
   notes: ''
 })
 
@@ -324,6 +438,20 @@ const canReceive = (product) => {
   return status === 'en_camino_a_pabellon'
 }
 
+// Verificar si está recepcionado (para mostrar opciones de consumo/devolución)
+const isReceived = (product) => {
+  if (!product || product.type !== 'medical_supply') return false
+  if (product.is_consumed) return false
+  
+  const status = product.supply_info?.Status || 
+                 product.supply_info?.status || 
+                 product.status || 
+                 product.current_status
+  
+  console.log('isReceived: Estado encontrado:', status)
+  return status === 'recepcionado'
+}
+
 // Obtener mensaje de error para recepción
 const getReceptionErrorMessage = (product) => {
   if (!product) return ''
@@ -394,7 +522,8 @@ const receiveSupply = async () => {
       userRUT,
       'pavilion',
       pavilionId,
-      receptionForm.value.notes
+      receptionForm.value.notes,
+      true // Siempre recepcionado (el usuario decidirá después si consumir o devolver)
     )
     
     console.log('Resultado de receiveSupply:', result) // Debug
@@ -432,6 +561,105 @@ const receiveSupply = async () => {
     error.value = err.response?.data?.error || err.message || 'Error al recepcionar el insumo'
   } finally {
     receiving.value = false
+  }
+}
+
+// Consumir insumo (para insumos ya recepcionados)
+const consumeSupply = async () => {
+  if (!scannedProduct.value || !qrInput.value.trim()) return
+  
+  processing.value = true
+  error.value = null
+  consumptionSuccess.value = null
+  
+  try {
+    const userRUT = currentUser.value?.rut
+    if (!userRUT) {
+      throw new Error('No se pudo obtener el RUT del usuario')
+    }
+
+    const pavilionId = currentUser.value?.pavilion_id || 1
+
+    const result = await qrService.consumeSupply({
+      qr_code: qrInput.value.trim(),
+      user_rut: userRUT,
+      user_name: currentUser.value?.name || 'Usuario',
+      destination_type: 'pavilion',
+      destination_id: pavilionId,
+      notes: actionForm.value.notes
+    })
+    
+    if (result.success) {
+      consumptionSuccess.value = {
+        ...result,
+        qr_code: scannedProduct.value.qr_code,
+        batch_id: scannedProduct.value.supply_info?.batch?.id,
+        status_change: {
+          from: 'Recepcionado',
+          to: 'Consumido'
+        }
+      }
+      
+      resetForm()
+    } else {
+      throw new Error(result.error || 'Error al consumir el insumo')
+    }
+    
+  } catch (err) {
+    console.error('Error consuming supply:', err)
+    error.value = err.response?.data?.error || err.message || 'Error al consumir el insumo'
+  } finally {
+    processing.value = false
+  }
+}
+
+// Devolver insumo a bodega (para insumos ya recepcionados)
+const returnSupply = async () => {
+  if (!scannedProduct.value || !qrInput.value.trim()) return
+  
+  processing.value = true
+  error.value = null
+  consumptionSuccess.value = null
+  
+  try {
+    const userRUT = currentUser.value?.rut
+    if (!userRUT) {
+      throw new Error('No se pudo obtener el RUT del usuario')
+    }
+
+    // Obtener el ID de la bodega destino
+    const storeId = currentUser.value?.store_id || 1
+
+    const result = await qrService.transferSupply({
+      qr_code: qrInput.value.trim(),
+      user_rut: userRUT,
+      receiver_rut: userRUT, // Por ahora el mismo usuario
+      destination_type: 'store',
+      destination_id: storeId,
+      notes: actionForm.value.notes || 'Devolución desde pabellón'
+    })
+    
+    if (result.success || result.transfer_mode) {
+      consumptionSuccess.value = {
+        ...result,
+        qr_code: scannedProduct.value.qr_code,
+        batch_id: scannedProduct.value.supply_info?.batch?.id,
+        status_change: {
+          from: 'Recepcionado',
+          to: 'Disponible en Bodega'
+        }
+      }
+      
+      resetForm()
+    } else {
+      throw new Error(result.error || 'Error al devolver el insumo')
+    }
+    
+  } catch (err) {
+    console.error('Error returning supply:', err)
+    error.value = err.response?.data?.error || err.message || 'Error al devolver el insumo'
+  } finally {
+    processing.value = false
   }
 }
 
@@ -476,6 +704,10 @@ const getStatusBadgeClass = (product) => {
 // Limpiar formulario
 const resetForm = () => {
   receptionForm.value = {
+    notes: ''
+  }
+  actionForm.value = {
+    action: 'consume',
     notes: ''
   }
   qrInput.value = ''

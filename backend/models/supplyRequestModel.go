@@ -29,14 +29,14 @@ type SupplyRequest struct {
 	CompletedDate   *time.Time `json:"completed_date"`
 	MedicalCenterID int        `json:"medical_center_id" gorm:"not null"`
 	// Campos de médico responsable
-	SurgeonID   *string   `json:"surgeon_id"`
-	SurgeonName *string   `json:"surgeon_name"`
-	SurgeryID   *int      `json:"surgery_id"`
-	SpecialtyID *int      `json:"specialty_id"`
+	SurgeonID   *string `json:"surgeon_id"`
+	SurgeonName *string `json:"surgeon_name"`
+	SurgeryID   *int    `json:"surgery_id"`
+	SpecialtyID *int    `json:"specialty_id"`
 	// Campos para control de retiro
-	AllowAnyoneToPickup  bool    `json:"allow_anyone_to_pickup" gorm:"default:true"`
-	AuthorizedPickupRUT  *string `json:"authorized_pickup_rut"`
-	AuthorizedPickupName *string `json:"authorized_pickup_name"`
+	AllowAnyoneToPickup  bool      `json:"allow_anyone_to_pickup" gorm:"default:true"`
+	AuthorizedPickupRUT  *string   `json:"authorized_pickup_rut"`
+	AuthorizedPickupName *string   `json:"authorized_pickup_name"`
 	CreatedAt            time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt            time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
@@ -85,8 +85,11 @@ type SupplyRequestQRAssignment struct {
 	DeliveredByName     *string    `json:"delivered_by_name"`
 	Status              string     `json:"status" gorm:"not null;default:assigned"`
 	Notes               string     `json:"notes" gorm:"type:text"`
-	CreatedAt           time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt           time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// Campos para notificaciones de insumos no consumidos
+	LastNotificationSent *time.Time `json:"last_notification_sent"`
+	NotificationCount    int        `json:"notification_count" gorm:"default:0"`
+	CreatedAt            time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt            time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relaciones
 	SupplyRequest     SupplyRequest     `json:"supply_request,omitempty" gorm:"foreignKey:SupplyRequestID"`

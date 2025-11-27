@@ -122,7 +122,7 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 	tolerance := 1 * time.Minute
 	timeUntilSurgery := request.SurgeryDatetime.Time.Sub(requestDate)
 	daysUntilSurgery := timeUntilSurgery.Hours() / 24.0
-	
+
 	// Permitir urgencias (menos de 3 días) pero registrar advertencia
 	isUrgent := daysUntilSurgery > 0 && daysUntilSurgery < minimumAdvanceDays
 	// Permitir fechas hasta 1 minuto en el pasado para tolerar problemas de zona horaria
@@ -143,10 +143,10 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 		if notes == "" {
 			notes = " " // Espacio en blanco para indicar "sin observaciones"
 		}
-		
+
 		// Agregar advertencia si es urgente o no programada
 		if isUrgent {
-			warningMsg := fmt.Sprintf("\n[ADVERTENCIA: Solicitud con menos de %.0f días de anticipación - Cirugía programada para %s]", 
+			warningMsg := fmt.Sprintf("\n[ADVERTENCIA: Solicitud con menos de %.0f días de anticipación - Cirugía programada para %s]",
 				minimumAdvanceDays, request.SurgeryDatetime.Time.Format("02/01/2006 15:04"))
 			if notes == " " {
 				notes = warningMsg
@@ -214,7 +214,7 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 	// Enviar correos de notificación
 	go func() {
 		fmt.Printf("=== INICIANDO ENVÍO DE CORREOS PARA SOLICITUD %s ===\n", fullRequest.RequestNumber)
-		
+
 		// Correo al solicitante
 		fmt.Printf("Intentando enviar correo al solicitante: %s\n", fullRequest.RequestedBy)
 		if err := s.sendRequestCreatedEmailToRequester(fullRequest); err != nil {
@@ -238,7 +238,7 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 		} else {
 			fmt.Printf("✓ Correo a Consignación enviado exitosamente\n")
 		}
-		
+
 		fmt.Printf("=== FIN ENVÍO DE CORREOS PARA SOLICITUD %s ===\n", fullRequest.RequestNumber)
 	}()
 
@@ -304,12 +304,17 @@ func (s *SupplyRequestService) GetAllSupplyRequests(limit, offset int, status st
 	query.Count(&total)
 
 	// Obtener registros con paginación
-	// Ordenar por urgencia primero (urgentes primero), luego por fecha de creación
-	if err := query.Limit(limit).Offset(offset).
-		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
-		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+	// Ordenar por urgencia (emergencias primero) SOLO para solicitudes NO completadas.
+	// Las solicitudes completadas siempre van al final, independientemente de su urgencia.
+	if err := query.
+		Order(`CASE 
+			WHEN status = 'completado' THEN 3
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '12 hours' THEN 0  -- emergencia (<12h)
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '48 hours' THEN 1 -- urgentes (<48h)
+			ELSE 2
+		END`).
 		Order("surgery_datetime ASC").
-		Order("created_at DESC").
+		Limit(limit).Offset(offset).
 		Find(&requests).Error; err != nil {
 		return nil, 0, err
 	}
@@ -342,12 +347,16 @@ func (s *SupplyRequestService) GetSupplyRequestsByPavilion(pavilionID int, limit
 	query.Count(&total)
 
 	// Obtener registros
-	// Ordenar por urgencia primero (urgentes primero), luego por fecha
-	if err := query.Limit(limit).Offset(offset).
-		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
-		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
+	// Ordenar por urgencia solo para solicitudes no completadas; las completadas van al final
+	if err := query.
+		Order(`CASE 
+			WHEN status = 'completado' THEN 3
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '12 hours' THEN 0
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '48 hours' THEN 1
+			ELSE 2
+		END`).
 		Order("surgery_datetime ASC").
-		Order("created_at DESC").
+		Limit(limit).Offset(offset).
 		Find(&requests).Error; err != nil {
 		return nil, 0, err
 	}
@@ -600,12 +609,27 @@ func (s *SupplyRequestService) GetSupplyRequestItems(requestID int) ([]models.Su
 func (s *SupplyRequestService) GetSupplyRequestQRAssignments(requestID int) ([]models.SupplyRequestQRAssignment, error) {
 	var assignments []models.SupplyRequestQRAssignment
 
-	if err := s.DB.Where("supply_request_id = ?", requestID).
+	// Solo obtener asignaciones que NO estén en estado "returned"
+	if err := s.DB.Where("supply_request_id = ? AND status != ?", requestID, models.AssignmentStatusReturned).
 		Preload("SupplyRequestItem").
 		Preload("MedicalSupply").
 		Order("assigned_date DESC").
 		Find(&assignments).Error; err != nil {
 		return nil, fmt.Errorf("error obteniendo asignaciones QR: %v", err)
+	}
+
+	// Cargar información del carrito ACTIVO para cada asignación
+	for i := range assignments {
+		var cartItem models.SupplyCartItem
+		if err := s.DB.Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignments[i].ID, true).
+			Preload("SupplyCart", "status = ?", models.CartStatusActive).
+			Order("added_at DESC").
+			First(&cartItem).Error; err == nil {
+			// Solo asignar si el carrito está activo
+			if cartItem.SupplyCart.Status == models.CartStatusActive {
+				assignments[i].Cart = &cartItem.SupplyCart
+			}
+		}
 	}
 
 	return assignments, nil
@@ -847,7 +871,14 @@ func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseM
 	var requests []models.SupplyRequest
 	// Incluir todos los estados relevantes para el encargado de bodega
 	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "devuelto_al_encargado", "completado"}).
-		Order("assigned_date DESC").
+		// Ordenar por urgencia solo para solicitudes no completadas; las completadas se van al final
+		Order(`CASE 
+			WHEN status = 'completado' THEN 3
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '12 hours' THEN 0
+			WHEN surgery_datetime > NOW() AND surgery_datetime <= NOW() + INTERVAL '48 hours' THEN 1
+			ELSE 2
+		END`).
+		Order("surgery_datetime ASC").
 		Find(&requests).Error
 
 	if err != nil {
@@ -905,7 +936,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 			// Buscar insumos disponibles con el mismo código (supply_code)
 			// FEFO (First Expired First Out): Priorizar productos próximos a vencer
 			var availableSupplies []models.MedicalSupply
-			
+
 			// Buscar primero sin JOIN para asegurar que encontramos los insumos
 			// Luego intentaremos ordenar por batch si es posible
 			if err := tx.Model(&models.MedicalSupply{}).
@@ -916,7 +947,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 				Find(&availableSupplies).Error; err != nil {
 				return fmt.Errorf("error buscando insumos disponibles: %v", err)
 			}
-			
+
 			// Si encontramos insumos, intentar reordenar por fecha de vencimiento (FEFO)
 			// Esto es opcional, solo para optimizar el orden
 			if len(availableSupplies) > 0 {
@@ -925,7 +956,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 				for _, s := range availableSupplies {
 					supplyIDs = append(supplyIDs, s.ID)
 				}
-				
+
 				// Re-buscar con JOIN para ordenar por fecha de vencimiento
 				var orderedSupplies []models.MedicalSupply
 				if err := tx.Table("medical_supply ms").
@@ -948,13 +979,13 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 				tx.Model(&models.MedicalSupply{}).
 					Where("code = ?", item.SupplyCode).
 					Count(&totalCount)
-				
+
 				var availableCount int64
 				tx.Model(&models.MedicalSupply{}).
-					Where("code = ? AND status = ? AND location_type = ?", 
+					Where("code = ? AND status = ? AND location_type = ?",
 						item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
 					Count(&availableCount)
-				
+
 				return fmt.Errorf("no hay suficientes insumos disponibles. Requeridos: %d, Disponibles: %d (Total con código %d: %d, Disponibles en bodega: %d)",
 					item.QuantityRequested, len(availableSupplies), item.SupplyCode, totalCount, availableCount)
 			}
@@ -1006,7 +1037,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 			// Actualizar quantity_approved del item con la cantidad asignada
 			item.QuantityApproved = &item.QuantityRequested
-			
+
 			// Si este item tiene cantidad >= 2, crear o actualizar el carrito
 			if item.QuantityRequested >= 2 {
 				fmt.Printf("DEBUG: Item aceptado con cantidad >= 2, creando/actualizando carrito para solicitud %d\n", item.SupplyRequestID)
@@ -1036,7 +1067,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "aceptado").Count(&hasAccepted)
 			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "rechazado").Count(&hasRejected)
 			tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "devuelto").Count(&hasReturned)
-			
+
 			allAccepted = hasAccepted
 			allRejected = hasRejected
 			allReturned = hasReturned
@@ -1073,7 +1104,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 					}
 				}()
 
-			// CASO 2: Todo rechazado
+				// CASO 2: Todo rechazado
 			} else if allRejected == totalItems && hasAccepted == 0 && hasReturned == 0 {
 				request.Status = "rechazado"
 				request.ApprovalDate = &now
@@ -1114,7 +1145,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 					}
 				}()
 
-			// CASO 3: Todo devuelto
+				// CASO 3: Todo devuelto
 			} else if allReturned == totalItems && hasAccepted == 0 && hasRejected == 0 {
 				request.Status = "devuelto"
 
@@ -1152,7 +1183,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 					}
 				}()
 
-			// CASOS 4, 6, 7: Hay devueltos (prioridad a devueltos)
+				// CASOS 4, 6, 7: Hay devueltos (prioridad a devueltos)
 			} else if hasReturned > 0 {
 				// Si hay items aceptados, mantener el estado como parcialmente_aprobado para que el carrito se mantenga
 				if hasAccepted > 0 {
@@ -1163,7 +1194,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 				request.ApprovalDate = &now
 				request.ApprovedBy = &req.ReviewedBy
 				request.ApprovedByName = &req.ReviewedByName
-				
+
 				// Si hay items aceptados con cantidad >= 2, asegurar que el carrito exista
 				if hasAccepted > 0 {
 					var acceptedItems []models.SupplyRequestItem
@@ -1235,7 +1266,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 					}
 				}()
 
-			// CASO 5: Aprobados + Rechazados (sin devueltos)
+				// CASO 5: Aprobados + Rechazados (sin devueltos)
 			} else if hasAccepted > 0 && hasRejected > 0 && hasReturned == 0 {
 				request.Status = "parcialmente_aprobado"
 				request.ApprovalDate = &now
@@ -1288,12 +1319,12 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 // UpdatedItemRequest representa la actualización de un item devuelto o un nuevo item
 type UpdatedItemRequest struct {
-	ItemID     *int   `json:"item_id,omitempty"`     // Si es nil, es un nuevo item a crear
-	Quantity   int    `json:"quantity"`
-	SupplyCode *int   `json:"supply_code,omitempty"` // Código del insumo si se cambió
-	SupplyName *string `json:"supply_name,omitempty"` // Nombre del insumo si se cambió
-	IsPediatric *bool `json:"is_pediatric,omitempty"` // Si es pediátrico
-	Notes      string `json:"notes"`                  // Nuevas observaciones del doctor sobre este item
+	ItemID      *int    `json:"item_id,omitempty"` // Si es nil, es un nuevo item a crear
+	Quantity    int     `json:"quantity"`
+	SupplyCode  *int    `json:"supply_code,omitempty"`  // Código del insumo si se cambió
+	SupplyName  *string `json:"supply_name,omitempty"`  // Nombre del insumo si se cambió
+	IsPediatric *bool   `json:"is_pediatric,omitempty"` // Si es pediátrico
+	Notes       string  `json:"notes"`                  // Nuevas observaciones del doctor sobre este item
 }
 
 // ResubmitReturnedRequestData representa los datos para reenviar una solicitud
@@ -1315,7 +1346,7 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 		if request.Status != "devuelto" && request.Status != "parcialmente_aprobado" {
 			return fmt.Errorf("solo se pueden reenviar solicitudes devueltas o parcialmente aprobadas con items devueltos")
 		}
-		
+
 		// Si el estado es parcialmente_aprobado, verificar que haya items devueltos
 		if request.Status == "parcialmente_aprobado" {
 			var returnedItemsCount int64
@@ -1688,7 +1719,7 @@ func (s *SupplyRequestService) sendRequestRejectedEmail(request *models.SupplyRe
 func (s *SupplyRequestService) sendRequestRejectedEmailToConsignation(request *models.SupplyRequest) error {
 	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)",
 		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
@@ -1733,13 +1764,13 @@ func (s *SupplyRequestService) sendRequestRejectedEmailToConsignation(request *m
 	templatePath := filepath.Join("mailer", "templates", "request_rejected_consignation.html")
 
 	data := map[string]interface{}{
-		"RequestNumber":  request.RequestNumber,
+		"RequestNumber":   request.RequestNumber,
 		"RequestedByName": request.RequestedByName,
-		"PavilionName":   pavilion.Name,
-		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
-		"RejectedByName": *request.AssignedToName,
-		"RejectedItems":  rejectedItemsData,
-		"Notes":          request.Notes,
+		"PavilionName":    pavilion.Name,
+		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"RejectedByName":  *request.AssignedToName,
+		"RejectedItems":   rejectedItemsData,
+		"Notes":           request.Notes,
 	}
 
 	mailReq := mailer.NewRequest(emails, "Solicitud Rechazada - "+request.RequestNumber)
@@ -1826,7 +1857,7 @@ func (s *SupplyRequestService) sendRequestMixedStatusEmail(request *models.Suppl
 func (s *SupplyRequestService) sendRequestMixedStatusEmailToConsignation(request *models.SupplyRequest) error {
 	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)",
 		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
@@ -1898,15 +1929,15 @@ func (s *SupplyRequestService) sendRequestMixedStatusEmailToConsignation(request
 	templatePath := filepath.Join("mailer", "templates", "request_mixed_status_consignation.html")
 
 	data := map[string]interface{}{
-		"RequestNumber":  request.RequestNumber,
+		"RequestNumber":   request.RequestNumber,
 		"RequestedByName": request.RequestedByName,
-		"PavilionName":   pavilion.Name,
-		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
-		"ReviewedByName": *request.AssignedToName,
-		"ApprovedItems":  approvedItemsData,
-		"RejectedItems":  rejectedItemsData,
-		"ReturnedItems":  returnedItemsData,
-		"Notes":          request.Notes,
+		"PavilionName":    pavilion.Name,
+		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ReviewedByName":  *request.AssignedToName,
+		"ApprovedItems":   approvedItemsData,
+		"RejectedItems":   rejectedItemsData,
+		"ReturnedItems":   returnedItemsData,
+		"Notes":           request.Notes,
 	}
 
 	mailReq := mailer.NewRequest(emails, "Solicitud con Múltiples Estados - "+request.RequestNumber)
@@ -2037,7 +2068,7 @@ func (s *SupplyRequestService) sendRequestCreatedEmailToPavedad(request *models.
 func (s *SupplyRequestService) sendRequestCreatedEmailToConsignation(request *models.SupplyRequest) error {
 	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)",
 		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
@@ -2112,7 +2143,7 @@ func (s *SupplyRequestService) sendRequestCreatedEmailToConsignation(request *mo
 func (s *SupplyRequestService) sendRequestAssignedEmailToConsignation(request *models.SupplyRequest) error {
 	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)",
 		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
@@ -2156,7 +2187,7 @@ func (s *SupplyRequestService) sendRequestAssignedEmailToConsignation(request *m
 func (s *SupplyRequestService) sendRequestApprovedEmailToConsignation(request *models.SupplyRequest) error {
 	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)",
 		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
@@ -2212,7 +2243,7 @@ func (s *SupplyRequestService) sendRequestApprovedEmailToConsignation(request *m
 func (s *SupplyRequestService) sendRequestReturnedEmailToConsignation(request *models.SupplyRequest) error {
 	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)",
 		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
@@ -2333,7 +2364,7 @@ func (s *SupplyRequestService) sendRequestPartiallyApprovedEmail(request *models
 func (s *SupplyRequestService) sendRequestPartiallyApprovedEmailToConsignation(request *models.SupplyRequest) error {
 	// Obtener todos los usuarios de bodega de consignación (identificados por email)
 	var consignationUsers []models.User
-	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)", 
+	if err := s.DB.Where("role = ? AND (LOWER(email) LIKE ? OR LOWER(email) LIKE ?)",
 		"encargado de bodega", "%bodegaconsignacion%", "%consignacion%").Find(&consignationUsers).Error; err != nil {
 		return fmt.Errorf("error obteniendo usuarios Consignación: %v", err)
 	}
@@ -2390,14 +2421,14 @@ func (s *SupplyRequestService) sendRequestPartiallyApprovedEmailToConsignation(r
 	templatePath := filepath.Join("mailer", "templates", "request_partially_approved_consignation.html")
 
 	data := map[string]interface{}{
-		"RequestNumber":  request.RequestNumber,
+		"RequestNumber":   request.RequestNumber,
 		"RequestedByName": request.RequestedByName,
-		"PavilionName":   pavilion.Name,
-		"SurgeryDate":    request.SurgeryDatetime.Format("02/01/2006 15:04"),
-		"ApprovedByName": *request.AssignedToName,
-		"ApprovedItems":  approvedItemsData,
-		"RejectedItems":  rejectedItemsData,
-		"Notes":          request.Notes,
+		"PavilionName":    pavilion.Name,
+		"SurgeryDate":     request.SurgeryDatetime.Format("02/01/2006 15:04"),
+		"ApprovedByName":  *request.AssignedToName,
+		"ApprovedItems":   approvedItemsData,
+		"RejectedItems":   rejectedItemsData,
+		"Notes":           request.Notes,
 	}
 
 	mailReq := mailer.NewRequest(emails, "Solicitud Parcialmente Aprobada - "+request.RequestNumber)
@@ -2409,7 +2440,7 @@ type ConfigurePickupAuthorizationRequest struct {
 	AllowAnyoneToPickup  bool    `json:"allow_anyone_to_pickup"` // Booleano explícito, siempre debe enviarse
 	AuthorizedPickupRUT  *string `json:"authorized_pickup_rut"`
 	AuthorizedPickupName *string `json:"authorized_pickup_name"`
-	ConfiguredBy         string  `json:"configured_by"` // Se obtiene del contexto, no del request
+	ConfiguredBy         string  `json:"configured_by"`      // Se obtiene del contexto, no del request
 	ConfiguredByName     string  `json:"configured_by_name"` // Se obtiene del contexto, no del request
 }
 
@@ -2451,10 +2482,10 @@ func (s *SupplyRequestService) ConfigurePickupAuthorization(requestID int, req C
 		// Actualizar la solicitud
 		now := time.Now()
 		updates := map[string]interface{}{
-			"allow_anyone_to_pickup":  req.AllowAnyoneToPickup,
-			"authorized_pickup_rut":    req.AuthorizedPickupRUT,
-			"authorized_pickup_name":   req.AuthorizedPickupName,
-			"updated_at":               now,
+			"allow_anyone_to_pickup": req.AllowAnyoneToPickup,
+			"authorized_pickup_rut":  req.AuthorizedPickupRUT,
+			"authorized_pickup_name": req.AuthorizedPickupName,
+			"updated_at":             now,
 		}
 
 		if err := tx.Model(&request).Updates(updates).Error; err != nil {

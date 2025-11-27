@@ -98,7 +98,8 @@ func (s *SurgeryService) DeleteSurgery(id int) error {
 // SearchSurgeriesByName busca tipos de cirugía por nombre
 func (s *SurgeryService) SearchSurgeriesByName(name string) ([]models.Surgery, error) {
 	var surgeries []models.Surgery
-	if err := s.DB.Where("name ILIKE ?", "%"+name+"%").
+	if err := s.DB.Preload("Specialty").
+		Where("name ILIKE ?", "%"+name+"%").
 		Order("name ASC").
 		Find(&surgeries).Error; err != nil {
 		return nil, err

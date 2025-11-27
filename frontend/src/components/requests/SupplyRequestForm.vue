@@ -394,37 +394,23 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Nombre Insumo <span class="text-red-500">*</span>
                 </label>
-                <div class="flex gap-1">
-                  <input
-                    type="text"
-                    :value="supplySearchTerms[index] || item.supply_name"
+                <input
+                  type="text"
+                  :value="supplySearchTerms[index] || item.supply_name"
                   @input="onSupplyInputChange(index, $event.target.value)"
                   @focus="onSupplyInputFocus(index)"
                   @blur="onSupplyInputBlur(index)"
-                  placeholder="Escribir nombre o buscar..."
-                    class="form-input flex-1"
-                    :class="{ 'bg-gray-100 cursor-not-allowed': props.editMode && item.item_status === 'aceptado' }"
-                    autocomplete="off"
-                    :disabled="props.editMode && item.item_status === 'aceptado'"
-                    :readonly="props.editMode && item.item_status === 'aceptado'"
-                  />
-                  <button
-                    type="button"
-                    @click="toggleSupplyList(index)"
-                    class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
-                    :class="{ 'opacity-50 cursor-not-allowed': props.editMode && item.item_status === 'aceptado' }"
-                    :disabled="props.editMode && item.item_status === 'aceptado'"
-                    title="Seleccionar de lista"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
+                  placeholder="Escribir nombre..."
+                  class="form-select text-sm"
+                  :class="{ 'bg-gray-100 cursor-not-allowed': props.editMode && item.item_status === 'aceptado' }"
+                  autocomplete="off"
+                  :disabled="props.editMode && item.item_status === 'aceptado'"
+                  :readonly="props.editMode && item.item_status === 'aceptado'"
+                />
                 
                 <!-- Dropdown de sugerencias por nombre -->
                 <div 
-                  v-if="showSupplyDropdowns[index] && medicalSupplies.length > 0 && !showSupplyListModals[index]"
+                  v-if="showSupplyDropdowns[index] && medicalSupplies.length > 0"
                   class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
                 >
                   <div 
@@ -462,7 +448,7 @@
                   required
                   min="1"
                   placeholder="1"
-                  class="form-select text-sm"
+                  class="form-input text-sm"
                   :disabled="props.editMode && item.item_status === 'aceptado'"
                   :readonly="props.editMode && item.item_status === 'aceptado'"
                 />
@@ -813,20 +799,20 @@ const checkAdvanceNotice = () => {
   if (hours <= EMERGENCY_HOURS) {
     advanceNoticeWarning.value = {
       type: 'emergency',
-      title: '⚠️ SOLICITUD DE EMERGENCIA',
+      title: 'SOLICITUD DE EMERGENCIA',
       message: `La cirugía está programada en menos de ${EMERGENCY_HOURS} horas. Esta solicitud será procesada con máxima prioridad.`
     }
   } else if (hours <= URGENT_HOURS) {
     advanceNoticeWarning.value = {
       type: 'urgent',
-      title: '⚠️ SOLICITUD URGENTE',
+      title: 'SOLICITUD URGENTE',
       message: `La cirugía está programada en menos de ${URGENT_HOURS} horas. Esta solicitud será procesada con alta prioridad.`
     }
   } else if (days < MINIMUM_ADVANCE_DAYS) {
     advanceNoticeWarning.value = {
       type: 'warning',
-      title: '⚠️ Anticipación mínima no cumplida',
-      message: `Se recomienda programar con al menos ${MINIMUM_ADVANCE_DAYS} días de anticipación. Faltan ${Math.ceil(days)} día(s) hasta la cirugía. Puedes continuar, pero la solicitud será marcada como urgente.`
+      title: 'Anticipación recomendada',
+      message: `Se recomienda programar con al menos ${MINIMUM_ADVANCE_DAYS} días de anticipación. La solicitud será marcada como urgente.`
     }
   } else {
     advanceNoticeWarning.value = null
@@ -1002,7 +988,13 @@ const addTypicalSupply = (typicalSupply) => {
     const supplyInfo = medicalSupplies.value.find(s => s.code === typicalSupply.supply_code)
     const supplyName = supplyInfo ? supplyInfo.name : `Insumo ${typicalSupply.supply_code}`
 
-    // Agregar nuevo item con la cantidad típica
+    // Buscar si hay un item vacío (sin código y sin nombre)
+    const emptyItemIndex = requestForm.items.findIndex(
+      item => (!item.supply_code || item.supply_code === '') && 
+              (!item.supply_name || item.supply_name === '')
+    )
+
+    // Crear el nuevo item con la cantidad típica
     const newItem = {
       supply_code: typicalSupply.supply_code,
       supply_name: supplyName,
@@ -1014,14 +1006,26 @@ const addTypicalSupply = (typicalSupply) => {
       size: '',
       brand: ''
     }
-    requestForm.items.unshift(newItem)
-    
-    // Inicializar estados de búsqueda
-    supplySearchTerms.value.unshift(supplyName)
-    showSupplyDropdowns.value.unshift(false)
-    showCodeDropdowns.value.unshift(false)
-    showSupplyListModals.value.unshift(false)
-    supplyListSearchTerms.value.unshift('')
+
+    if (emptyItemIndex !== -1) {
+      // Reemplazar el item vacío
+      requestForm.items[emptyItemIndex] = newItem
+      supplySearchTerms.value[emptyItemIndex] = supplyName
+      showSupplyDropdowns.value[emptyItemIndex] = false
+      showCodeDropdowns.value[emptyItemIndex] = false
+      showSupplyListModals.value[emptyItemIndex] = false
+      supplyListSearchTerms.value[emptyItemIndex] = ''
+    } else {
+      // No hay items vacíos, agregar uno nuevo
+      requestForm.items.push(newItem)
+      
+      // Inicializar estados de búsqueda
+      supplySearchTerms.value.push(supplyName)
+      showSupplyDropdowns.value.push(false)
+      showCodeDropdowns.value.push(false)
+      showSupplyListModals.value.push(false)
+      supplyListSearchTerms.value.push('')
+    }
   }
 }
 
@@ -1391,7 +1395,7 @@ const submitRequest = async () => {
     const days = Math.ceil(daysUntilSurgery.value)
     const result = await Swal.fire({
       icon: 'warning',
-      title: 'Anticipación mínima no cumplida',
+      title: 'Anticipación recomendada',
       html: `
         <p>La cirugía está programada en <strong>${days} día(s)</strong>, menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.</p>
         <p class="mt-2">¿Deseas continuar con la solicitud?</p>

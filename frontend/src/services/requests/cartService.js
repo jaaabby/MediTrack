@@ -75,7 +75,12 @@ class CartService {
       const response = await this.api.get(`/api/carts/qr/${qrCode}`)
       return response.data
     } catch (error) {
-      console.error('Error al obtener carrito por QR:', error)
+      // Si es 404, significa que ya no hay carrito activo asociado a este QR
+      // (por ejemplo, todos los items fueron devueltos o el carrito se cerró).
+      // Es un estado válido, no lo tratamos como error de consola.
+      if (error.response?.status !== 404) {
+        console.error('Error al obtener carrito por QR:', error)
+      }
       throw error
     }
   }
