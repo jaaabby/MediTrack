@@ -1194,24 +1194,45 @@ const getUrgencyLabel = (request) => {
   return 'Completada'
 }
 
+// Extraer motivo de rechazo desde las notas
+const getRejectionReason = (request) => {
+  if (!request.notes) return ''
+  const marker = 'MOTIVO DEL RECHAZO:'
+  const idx = request.notes.indexOf(marker)
+  if (idx === -1) return ''
+  return request.notes.substring(idx + marker.length).trim()
+}
+
 // Lifecycle
 const exportToExcel = () => {
   try {
     const columns = [
       { key: 'request_number', label: 'Número de Solicitud' },
-      { key: 'pavilion_name', label: 'Pabellón' },
+      { 
+        key: 'pavilion_id', 
+        label: 'Pabellón',
+        formatter: (_, row) => getPavilionName(row.pavilion_id)
+      },
       { key: 'surgery_datetime', label: 'Fecha de Cirugía', formatter: formatDateForExcel },
       { key: 'status', label: 'Estado', formatter: (val) => formatStatusForExcel(val) },
-      { key: 'urgency', label: 'Urgencia' },
+      { 
+        key: 'urgency', 
+        label: 'Urgencia',
+        formatter: (_, row) => getUrgencyLabel(row)
+      },
       { key: 'total_items', label: 'Total de Items' },
       { key: 'created_at', label: 'Fecha de Creación', formatter: formatDateForExcel },
-      { key: 'created_by_name', label: 'Creado por' },
+      { key: 'requested_by_name', label: 'Creado por' },
       { key: 'approved_by_name', label: 'Aprobado por' },
       { key: 'approval_date', label: 'Fecha de Aprobación', formatter: formatDateForExcel },
       { key: 'assigned_to_name', label: 'Asignado a' },
-      { key: 'assigned_at', label: 'Fecha de Asignación', formatter: formatDateForExcel },
-      { key: 'observations', label: 'Observaciones' },
-      { key: 'rejection_reason', label: 'Motivo de Rechazo' }
+      { key: 'assigned_date', label: 'Fecha de Asignación', formatter: formatDateForExcel },
+      { key: 'notes', label: 'Observaciones' },
+      { 
+        key: 'rejection_reason', 
+        label: 'Motivo de Rechazo',
+        formatter: (_, row) => getRejectionReason(row)
+      }
     ]
     
     exportExcel(filteredRequests.value, columns, 'solicitudes_insumos')

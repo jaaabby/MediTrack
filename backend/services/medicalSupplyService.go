@@ -142,24 +142,37 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 	var result []map[string]interface{}
 
 	// Query que usa store_inventory_summary como fuente de verdad para consistencia
-	// Si no hay resumen, usa batch.amount como fallback
+	// y además entrega información de ubicación y timestamps para el frontend.
 	query := `
 		SELECT DISTINCT ON (b.id)
-			b.id as batch_id,
+			b.id AS batch_id,
 			b.expiration_date,
 			COALESCE(
-				(SELECT SUM(sis2.current_in_store) 
-				 FROM store_inventory_summary sis2 
-				 WHERE sis2.batch_id = b.id), 
+				(SELECT SUM(sis2.current_in_store)
+				 FROM store_inventory_summary sis2
+				 WHERE sis2.batch_id = b.id),
 				b.amount
-			) as amount,
+			) AS amount,
 			b.supplier,
 			b.store_id,
-			sc.code as supply_code,
-			sc.name as supply_name
+			sc.code AS supply_code,
+			sc.name AS supply_name,
+			COALESCE(ms.location_type, 'store') AS location_type,
+			COALESCE(ms.location_id, b.store_id) AS location_id,
+			CASE
+				WHEN COALESCE(ms.location_type, 'store') = 'store'
+					THEN st.name
+				WHEN COALESCE(ms.location_type, 'store') = 'pavilion'
+					THEN pv.name
+				ELSE st.name
+			END AS location_name,
+			MIN(ms.updated_at) OVER (PARTITION BY b.id) AS created_at,
+			MAX(ms.updated_at) OVER (PARTITION BY b.id) AS updated_at
 		FROM batch b
 		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
 		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN store st ON b.store_id = st.id
+		LEFT JOIN pavilion pv ON b.location_type = 'pavilion' AND b.location_id = pv.id
 		ORDER BY b.id, sc.code
 	`
 
@@ -170,16 +183,36 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 	defer rows.Close()
 
 	for rows.Next() {
-		var item map[string]interface{} = make(map[string]interface{})
-		var batchID int
-		var expirationDate string
-		var amount int
-		var supplier string
-		var storeID int
-		var supplyCode *int
-		var supplyName *string
+		var (
+			item           = make(map[string]interface{})
+			batchID        int
+			expirationDate string
+			amount         int
+			supplier       string
+			storeID        int
+			supplyCode     *int
+			supplyName     *string
+			locationType   string
+			locationID     int
+			locationName   *string
+			createdAt      *time.Time
+			updatedAt      *time.Time
+		)
 
-		err := rows.Scan(&batchID, &expirationDate, &amount, &supplier, &storeID, &supplyCode, &supplyName)
+		err := rows.Scan(
+			&batchID,
+			&expirationDate,
+			&amount,
+			&supplier,
+			&storeID,
+			&supplyCode,
+			&supplyName,
+			&locationType,
+			&locationID,
+			&locationName,
+			&createdAt,
+			&updatedAt,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -191,6 +224,11 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		item["store_id"] = storeID
 		item["code"] = supplyCode
 		item["name"] = supplyName
+		item["location_type"] = locationType
+		item["location_id"] = locationID
+		item["location_name"] = locationName
+		item["created_at"] = createdAt
+		item["updated_at"] = updatedAt
 
 		result = append(result, item)
 	}
