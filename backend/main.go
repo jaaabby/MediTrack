@@ -134,9 +134,9 @@ func main() {
 	go batchService.StartAutomaticLowStockChecker()
 	log.Println("✅ Iniciado verificador automático de stock bajo")
 
-	// Iniciar el verificador automático de consumo de insumos después de cirugías
+	// Iniciar el verificador de cirugías completadas (solo envía notificaciones, NO consume insumos)
 	go automaticConsumptionService.StartAutomaticConsumptionChecker()
-	log.Println("✅ Iniciado verificador automático de consumo de insumos después de cirugías")
+	log.Println("✅ Iniciado verificador de cirugías completadas y notificaciones de insumos pendientes")
 
 	// Iniciar servidores HTTP y HTTPS
 	log.Printf("Servidor iniciando en puerto %d (HTTP)", cfg.Server.Port)
