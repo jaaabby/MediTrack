@@ -63,11 +63,15 @@
             <option value="">Todos los estados</option>
             <option value="pendiente_pavedad">Pendiente Pavedad</option>
             <option value="asignado_bodega">Asignado a Bodega</option>
+            <option value="en_proceso">En Proceso</option>
+            <option value="pendiente_revision">Pendiente Revisión</option>
             <option value="devuelto">Devuelto al Solicitante</option>
             <option value="devuelto_al_encargado">Devuelto al Encargado</option>
             <option value="aprobado">Aprobado</option>
             <option value="parcialmente_aprobado">Parcialmente Aprobado</option>
             <option value="rechazado">Rechazado</option>
+            <option value="completado">Completado</option>
+            <option value="cancelado">Cancelado</option>
           </select>
         </div>
 
@@ -365,23 +369,71 @@
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Solicitud
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                @click="toggleSort('request_number')"
+              >
+                <div class="flex items-center gap-1">
+                  <span>Solicitud</span>
+                  <span v-if="sortBy === 'request_number'" class="text-gray-400 text-[10px]">
+                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </div>
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Pabellón
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                @click="toggleSort('pavilion')"
+              >
+                <div class="flex items-center gap-1">
+                  <span>Pabellón</span>
+                  <span v-if="sortBy === 'pavilion'" class="text-gray-400 text-[10px]">
+                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </div>
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Solicitante
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                @click="toggleSort('requester')"
+              >
+                <div class="flex items-center gap-1">
+                  <span>Solicitante</span>
+                  <span v-if="sortBy === 'requester'" class="text-gray-400 text-[10px]">
+                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </div>
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Estado
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                @click="toggleSort('status')"
+              >
+                <div class="flex items-center gap-1">
+                  <span>Estado</span>
+                  <span v-if="sortBy === 'status'" class="text-gray-400 text-[10px]">
+                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </div>
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fecha de Cirugía
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                @click="toggleSort('surgery_datetime')"
+              >
+                <div class="flex items-center gap-1">
+                  <span>Fecha de Cirugía</span>
+                  <span v-if="sortBy === 'surgery_datetime'" class="text-gray-400 text-[10px]">
+                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </div>
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Items
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                @click="toggleSort('items')"
+              >
+                <div class="flex items-center gap-1">
+                  <span>Items</span>
+                  <span v-if="sortBy === 'items'" class="text-gray-400 text-[10px]">
+                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </div>
               </th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Acciones
@@ -591,6 +643,10 @@ const pavilions = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 
+// Ordenamiento de tabla
+const sortBy = ref('') // 'request_number', 'pavilion', 'requester', 'status', 'surgery_datetime', 'items'
+const sortDirection = ref('asc') // 'asc' | 'desc'
+
 // Filtros
 const filters = ref({
   status: '',
@@ -602,7 +658,7 @@ const filters = ref({
 
 // Computed properties
 const filteredRequests = computed(() => {
-  let filtered = requests.value
+  let filtered = [...requests.value]
 
   // Filtrar por estado específico (del select)
   if (filters.value.status) {
@@ -649,6 +705,70 @@ const filteredRequests = computed(() => {
       request.request_number.toLowerCase().includes(search)
     )
   }
+
+  // Ordenar: si hay sortBy activo, usarlo; si no, usar orden por urgencia parecido al backend
+  filtered.sort((a, b) => {
+    const direction = sortDirection.value === 'desc' ? -1 : 1
+
+    if (sortBy.value === 'request_number') {
+      return direction * a.request_number.localeCompare(b.request_number)
+    }
+
+    if (sortBy.value === 'pavilion') {
+      return direction * getPavilionName(a.pavilion_id).localeCompare(getPavilionName(b.pavilion_id))
+    }
+
+    if (sortBy.value === 'requester') {
+      return direction * a.requested_by_name.localeCompare(b.requested_by_name)
+    }
+
+    if (sortBy.value === 'status') {
+      return direction * getStatusLabel(a.status).localeCompare(getStatusLabel(b.status))
+    }
+
+    if (sortBy.value === 'surgery_datetime') {
+      const aDate = a.surgery_datetime ? new Date(a.surgery_datetime).getTime() : Infinity
+      const bDate = b.surgery_datetime ? new Date(b.surgery_datetime).getTime() : Infinity
+      return direction * (aDate - bDate)
+    }
+
+    if (sortBy.value === 'items') {
+      const aItems = a.total_items || 0
+      const bItems = b.total_items || 0
+      return direction * (aItems - bItems)
+    }
+
+    // Orden por defecto (sin sortBy): mismas reglas que el backend
+    // 1) Completadas siempre al final
+    const aCompleted = a.status === 'completado'
+    const bCompleted = b.status === 'completado'
+    if (aCompleted !== bCompleted) {
+      return aCompleted ? 1 : -1
+    }
+
+    // 2) Emergencias (<12h) primero, luego urgentes (<48h), luego resto
+    const aHours = getHoursUntilSurgery(a.surgery_datetime)
+    const bHours = getHoursUntilSurgery(b.surgery_datetime)
+
+    const getLevel = (hours) => {
+      if (hours === null || hours < 0) return 2
+      if (hours <= 12) return 0
+      if (hours <= 48) return 1
+      return 2
+    }
+
+    const aLevel = getLevel(aHours)
+    const bLevel = getLevel(bHours)
+
+    if (aLevel !== bLevel) {
+      return aLevel - bLevel
+    }
+
+    // 3) Como desempate, ordenar por fecha de cirugía ascendente
+    const aDate = a.surgery_datetime ? new Date(a.surgery_datetime).getTime() : Infinity
+    const bDate = b.surgery_datetime ? new Date(b.surgery_datetime).getTime() : Infinity
+    return aDate - bDate
+  })
 
   return filtered
 })
@@ -819,6 +939,16 @@ const refreshRequests = () => {
   }
   // Recargar solicitudes
   loadSupplyRequests()
+}
+
+const toggleSort = (column) => {
+  if (sortBy.value === column) {
+    // Alternar asc/desc
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = column
+    sortDirection.value = 'asc'
+  }
 }
 
 const viewRequest = (id) => {
@@ -1010,11 +1140,15 @@ const getDaysUntilSurgery = (surgeryDatetime) => {
 }
 
 const isUrgent = (request) => {
+  // No marcar urgencia visual para solicitudes completadas
+  if (request.status === 'completado') return false
   const hours = getHoursUntilSurgery(request.surgery_datetime)
   return hours !== null && hours > 0 && hours <= 48
 }
 
 const isEmergency = (request) => {
+  // No marcar emergencia visual para solicitudes completadas
+  if (request.status === 'completado') return false
   const hours = getHoursUntilSurgery(request.surgery_datetime)
   return hours !== null && hours > 0 && hours <= 12
 }
@@ -1060,24 +1194,45 @@ const getUrgencyLabel = (request) => {
   return 'Completada'
 }
 
+// Extraer motivo de rechazo desde las notas
+const getRejectionReason = (request) => {
+  if (!request.notes) return ''
+  const marker = 'MOTIVO DEL RECHAZO:'
+  const idx = request.notes.indexOf(marker)
+  if (idx === -1) return ''
+  return request.notes.substring(idx + marker.length).trim()
+}
+
 // Lifecycle
 const exportToExcel = () => {
   try {
     const columns = [
       { key: 'request_number', label: 'Número de Solicitud' },
-      { key: 'pavilion_name', label: 'Pabellón' },
+      { 
+        key: 'pavilion_id', 
+        label: 'Pabellón',
+        formatter: (_, row) => getPavilionName(row.pavilion_id)
+      },
       { key: 'surgery_datetime', label: 'Fecha de Cirugía', formatter: formatDateForExcel },
       { key: 'status', label: 'Estado', formatter: (val) => formatStatusForExcel(val) },
-      { key: 'urgency', label: 'Urgencia' },
+      { 
+        key: 'urgency', 
+        label: 'Urgencia',
+        formatter: (_, row) => getUrgencyLabel(row)
+      },
       { key: 'total_items', label: 'Total de Items' },
       { key: 'created_at', label: 'Fecha de Creación', formatter: formatDateForExcel },
-      { key: 'created_by_name', label: 'Creado por' },
+      { key: 'requested_by_name', label: 'Creado por' },
       { key: 'approved_by_name', label: 'Aprobado por' },
       { key: 'approval_date', label: 'Fecha de Aprobación', formatter: formatDateForExcel },
       { key: 'assigned_to_name', label: 'Asignado a' },
-      { key: 'assigned_at', label: 'Fecha de Asignación', formatter: formatDateForExcel },
-      { key: 'observations', label: 'Observaciones' },
-      { key: 'rejection_reason', label: 'Motivo de Rechazo' }
+      { key: 'assigned_date', label: 'Fecha de Asignación', formatter: formatDateForExcel },
+      { key: 'notes', label: 'Observaciones' },
+      { 
+        key: 'rejection_reason', 
+        label: 'Motivo de Rechazo',
+        formatter: (_, row) => getRejectionReason(row)
+      }
     ]
     
     exportExcel(filteredRequests.value, columns, 'solicitudes_insumos')

@@ -139,30 +139,88 @@ func (s *BatchService) GetBatchWithSupplyInfo(id int) (map[string]interface{}, e
 }
 
 func (s *BatchService) UpdateBatch(id int, newBatch *models.Batch) (*models.Batch, error) {
-	var batch models.Batch
-	if err := s.DB.First(&batch, id).Error; err != nil {
+	var updatedBatch *models.Batch
+	var previousBatchCopy *models.Batch
+
+	// Usar transacción para mantener consistencia entre lote, insumos e inventario
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		var batch models.Batch
+		if err := tx.First(&batch, id).Error; err != nil {
+			return err
+		}
+
+		previousBatch := batch
+		amountChanged := batch.Amount != newBatch.Amount
+
+		// Actualizar campos del lote (sin tocar id/qr_code/timestamps)
+		if err := tx.Model(&batch).Omit("id", "qr_code", "created_at", "updated_at").Updates(newBatch).Error; err != nil {
+			return err
+		}
+
+		// Si cambió la cantidad del lote, ajustar inventario relacionado
+		if amountChanged {
+			diff := batch.Amount - previousBatch.Amount
+
+			// Si la cantidad aumenta, crear nuevos insumos individuales y mantener resúmenes coherentes
+			if diff > 0 && s.MedicalSupplyService != nil {
+				// Obtener código de insumo asociado al lote
+				supplyCode, err := s.getSupplyCodeByBatchID(batch.ID)
+				if err != nil {
+					return fmt.Errorf("no se pudo obtener el código de insumo para el lote %d: %v", batch.ID, err)
+				}
+
+				// Crear insumos individuales adicionales en la misma bodega
+				newSupplies, err := s.MedicalSupplyService.CreateMultipleIndividualSuppliesTx(
+					tx,
+					batch.ID,
+					supplyCode.Code,
+					diff,
+					batch.StoreID,
+				)
+				if err != nil {
+					return fmt.Errorf("error creando insumos individuales adicionales para lote %d: %v", batch.ID, err)
+				}
+
+				// Actualizar resumen de inventario de bodega usando la transacción
+				if err := s.updateStoreSummaryOnAmountChangeTx(tx, &batch, &previousBatch); err != nil {
+					return err
+				}
+
+				// Crear historial para los nuevos insumos de forma asíncrona (fuera de la transacción)
+				go s.createHistoryAsync(batch.ID, newSupplies)
+			} else {
+				// Si la cantidad disminuye o no tenemos servicio de insumos,
+				// solo ajustar el resumen de bodega para mantener contadores coherentes.
+				if err := s.updateStoreSummaryOnAmountChangeTx(tx, &batch, &previousBatch); err != nil {
+					return err
+				}
+			}
+		}
+
+		updatedBatch = &batch
+		// Guardar copia previa para historial fuera de la transacción
+		tmp := previousBatch
+		previousBatchCopy = &tmp
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
-	previousBatch := batch
-	amountChanged := batch.Amount != newBatch.Amount
-
-	if err := s.DB.Model(&batch).Omit("id", "qr_code", "created_at", "updated_at").Updates(newBatch).Error; err != nil {
-		return nil, err
-	}
-
-	if amountChanged {
-		s.updateStoreSummaryOnAmountChange(&batch, &previousBatch)
-	}
-
-	if s.BatchHistoryService != nil {
-		if err := s.BatchHistoryService.RegisterBatchUpdate(batch.ID, DefaultUserRUT, &previousBatch, &batch); err != nil {
+	// Registrar historial de cambios de lote
+	if s.BatchHistoryService != nil && previousBatchCopy != nil && updatedBatch != nil {
+		if err := s.BatchHistoryService.RegisterBatchUpdate(updatedBatch.ID, DefaultUserRUT, previousBatchCopy, updatedBatch); err != nil {
 			log.Printf("Error registrando historial: %v", err)
 		}
 	}
 
-	s.checkAndSendAlerts(&batch)
-	return &batch, nil
+	// Verificar y enviar alertas según nueva configuración del lote
+	if updatedBatch != nil {
+		s.checkAndSendAlerts(updatedBatch)
+	}
+
+	return updatedBatch, nil
 }
 
 func (s *BatchService) UpdateBatchAmount(id int, newAmount int) error {
@@ -380,6 +438,29 @@ func (s *BatchService) createStoreSummaryTx(tx *gorm.DB, batch *models.Batch, su
 	existing.CurrentInStore = batch.Amount
 	existing.OriginalAmount = batch.Amount
 	return tx.Save(&existing).Error
+}
+
+// updateStoreSummaryOnAmountChangeTx ajusta el resumen de inventario de bodega cuando cambia la cantidad del lote
+func (s *BatchService) updateStoreSummaryOnAmountChangeTx(tx *gorm.DB, newBatch, previousBatch *models.Batch) error {
+	var summary models.StoreInventorySummary
+	if err := tx.Where("batch_id = ?", newBatch.ID).First(&summary).Error; err != nil {
+		// Si no existe resumen, no forzamos su creación aquí para no alterar otros flujos
+		return nil
+	}
+
+	diff := newBatch.Amount - previousBatch.Amount
+	summary.OriginalAmount = newBatch.Amount
+	summary.CurrentInStore += diff
+
+	if summary.CurrentInStore < 0 {
+		summary.CurrentInStore = 0
+	}
+
+	if err := tx.Save(&summary).Error; err != nil {
+		log.Printf("Error actualizando resumen de bodega (tx): %v", err)
+		return err
+	}
+	return nil
 }
 
 func (s *BatchService) createHistoryAsync(batchID int, supplies []models.MedicalSupply) {

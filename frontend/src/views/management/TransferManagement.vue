@@ -1118,9 +1118,12 @@ const exportToExcel = () => {
       { key: 'send_date', label: 'Fecha de Envío', formatter: formatDateForExcel },
       { key: 'receive_date', label: 'Fecha de Recepción', formatter: formatDateForExcel },
       { key: 'sent_by_name', label: 'Enviado por' },
+      { key: 'picked_up_by_name', label: 'Retirado por' },
+      { key: 'picked_up_date', label: 'Fecha de Retiro', formatter: formatDateForExcel },
       { key: 'received_by_name', label: 'Recibido por' },
       { key: 'transfer_reason', label: 'Motivo' },
-      { key: 'notes', label: 'Notas' }
+      { key: 'notes', label: 'Notas' },
+      { key: 'rejection_reason', label: 'Motivo de Rechazo' }
     ]
     
     exportExcel(sortedTransfers.value, columns, 'transferencias')

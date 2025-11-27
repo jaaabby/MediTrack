@@ -606,14 +606,13 @@ const exportToExcel = () => {
       { key: 'status', label: 'Estado', formatter: (val) => formatStatusForExcel(val) },
       { key: 'destination_type', label: 'Tipo de Destino', formatter: (val) => formatDestinationType(val) },
       { key: 'destination_id', label: 'ID Destino' },
+      { key: 'destination_name', label: 'Nombre Destino' },
       { key: 'origin_type', label: 'Tipo de Origen', formatter: (val) => val ? formatDestinationType(val) : '' },
       { key: 'origin_id', label: 'ID Origen' },
+      { key: 'origin_name', label: 'Nombre Origen' },
       { key: 'user_rut', label: 'Usuario RUT' },
       { key: 'date_time', label: 'Fecha y Hora', formatter: formatDateForExcel },
-      { key: 'notes', label: 'Notas' },
-      { key: 'transfer_notes', label: 'Notas de Transferencia' },
-      { key: 'confirmed_by', label: 'Confirmado por' },
-      { key: 'confirmation_date', label: 'Fecha de Confirmación', formatter: formatDateForExcel }
+      { key: 'notes', label: 'Notas' }
     ]
     
     exportExcel(sortedHistory.value, columns, 'historial_insumos')

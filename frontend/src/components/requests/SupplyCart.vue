@@ -86,11 +86,16 @@
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
 
-    <!-- Items del carrito -->
-    <div v-else-if="cart && activeItems.length > 0" class="space-y-4">
+    <!-- Contenido del carrito (activo o cerrado) -->
+    <div v-else-if="cart" class="space-y-4">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-800">
-          Items en el Carrito ({{ activeItems.length }})
+          <span v-if="cart?.status === 'active'">
+            Items en el Carrito ({{ activeItems.length }})
+          </span>
+          <span v-else>
+            Items procesados ({{ processedItems.length }})
+          </span>
         </h3>
         <div class="flex gap-2">
           <!-- Botones de operación múltiple -->
@@ -295,18 +300,58 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Carrito no existe todavía -->
-    <!-- No mostrar nada si no hay carrito y no está cargando -->
+      <!-- Historial de items procesados (para carritos cerrados) -->
+      <div v-if="cart.status === 'closed' && processedItems.length > 0" class="mt-8 border-t pt-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+          Historial de Items Procesados ({{ processedItems.length }})
+        </h3>
+        <div class="grid grid-cols-1 gap-4">
+          <div
+            v-for="item in processedItems"
+            :key="item.id"
+            class="border rounded-lg p-4 bg-gray-50"
+          >
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <h4 class="font-semibold text-gray-800">
+                  {{ item.supply_request_qr_assignment?.supply_request_item?.supply_name || 'Insumo' }}
+                </h4>
+                <p class="text-sm text-gray-600">
+                  Código: {{ item.supply_request_qr_assignment?.supply_request_item?.supply_code || '-' }}
+                </p>
+              </div>
+              <span 
+                v-if="getItemStatus(item)"
+                class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
+                :class="getItemStatusClass(item)"
+              >
+                {{ getItemStatus(item) }}
+              </span>
+            </div>
+            <div class="text-xs text-gray-500 flex flex-wrap gap-4 items-center">
+              <span>
+                Agregado: {{ formatDate(item.added_at) }}
+              </span>
+              <span v-if="item.removed_at">
+                Procesado: {{ formatDate(item.removed_at) }}
+              </span>
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                Último registro: {{ getProcessedStatusLabel(item) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- Estado vacío -->
-    <div v-else-if="cart && activeItems.length === 0" class="text-center py-12">
-      <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-      </svg>
-      <p class="text-gray-600 text-lg">El carrito está vacío</p>
-      <p class="text-gray-500 text-sm mt-2">No hay items agregados a este carrito</p>
+      <!-- Estado vacío (sin items activos ni históricos) -->
+      <div v-if="activeItems.length === 0 && processedItems.length === 0" class="text-center py-12">
+        <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+        </svg>
+        <p class="text-gray-600 text-lg">El carrito está vacío</p>
+        <p class="text-gray-500 text-sm mt-2">No hay items agregados a este carrito</p>
+      </div>
     </div>
 
     <!-- Error state -->
@@ -667,6 +712,20 @@ const activeItems = computed(() => {
   return cart.value.items.filter(item => item.is_active)
 })
 
+// Items históricos (ya procesados) para mostrar también cuando el carrito está cerrado
+const processedItems = computed(() => {
+  if (!cart.value?.items) return []
+  return cart.value.items.filter(item => !item.is_active)
+})
+
+// Texto amigable para el último estado procesado del item
+const getProcessedStatusLabel = (item) => {
+  const status = item.supply_request_qr_assignment?.status
+  if (status === 'consumed') return 'consumido'
+  if (status === 'returned') return 'devuelto'
+  return 'procesado'
+}
+
 const selectableItems = computed(() => {
   // Solo items que no estén procesados Y que estén recibidos en el pabellón
   return activeItems.value.filter(item => 
@@ -855,7 +914,9 @@ const handleMarkForReturn = async (itemId) => {
 const getItemStatus = (item) => {
   const status = item.supply_request_qr_assignment?.status
   if (status === 'consumed') return '✓ Utilizado'
-  if (status === 'returned') return '↩ Para Devolver'
+  // Para estado 'returned' no mostramos texto aquí para evitar confusión;
+  // el contexto se muestra en "Último registro: devuelto" en el historial.
+  if (status === 'returned') return null
   return null
 }
 
@@ -1263,6 +1324,16 @@ watch(() => props.requestId, (newRequestId, oldRequestId) => {
     setTimeout(() => {
       loadCart()
     }, 1000)
+  }
+}, { immediate: false })
+
+// Recargar el carrito cuando cambia el qrCode (por ejemplo, al escanear otro insumo en /qr)
+watch(() => props.qrCode, (newQR, oldQR) => {
+  if (newQR && newQR !== oldQR) {
+    console.log('QR del carrito cambió, recargando carrito para QR:', newQR)
+    setTimeout(() => {
+      loadCart()
+    }, 500)
   }
 }, { immediate: false })
 </script>
