@@ -11,13 +11,32 @@
       </div>
 
       <!-- Título y mensaje -->
-      <div class="text-center mb-8">
+      <div class="text-center mb-6">
         <h1 class="text-2xl font-bold text-gray-900 mb-2">
           ¡Solicitud Creada Exitosamente!
         </h1>
         <p class="text-gray-600">
           Tu solicitud de insumos ha sido registrada correctamente en el sistema.
         </p>
+      </div>
+
+      <!-- Número de Solicitud con botón para copiar -->
+      <div v-if="requestNumber" class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-8">
+        <div class="text-center">
+          <p class="text-sm font-medium text-blue-900 mb-2">Número de Solicitud</p>
+          <div class="flex items-center justify-center gap-3">
+            <span class="text-2xl font-bold text-blue-600 font-mono">{{ requestNumber }}</span>
+            <button
+              @click="copyRequestNumber"
+              class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+              title="Copiar número de solicitud"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Información de la solicitud 
@@ -43,7 +62,7 @@
             <span class="font-medium">{{ requestData?.pavilion_name || getPavilionName(requestData?.pavilion_id) }}</span>
           </div>
         </div>
-      </div>-->
+      </div>
 
       <!-- Próximos pasos 
       <div class="bg-blue-50 rounded-lg p-4 mb-6">
@@ -112,6 +131,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '@/services/requests/supplyRequestService'
 import pavilionService from '@/services/config/pavilionService'
+import Swal from 'sweetalert2'
 
 // Props
 const props = defineProps({
@@ -131,6 +151,7 @@ const authStore = useAuthStore()
 
 const requestData = ref(null)
 const requestId = ref(null)
+const requestNumber = ref(null)
 const pavilions = ref([])
 
 // Cargar datos de la solicitud desde los parámetros de la ruta
@@ -141,6 +162,23 @@ onMounted(async () => {
   // Obtener datos de la solicitud desde el state de la navegación
   if (props.requestData || route.params.requestData) {
     requestData.value = props.requestData || route.params.requestData
+    // Extraer el número de solicitud
+    requestNumber.value = requestData.value?.request_number || 
+                          requestData.value?.request?.request_number ||
+                          requestData.value?.RequestNumber
+  }
+  
+  // Si no tenemos el número de solicitud pero tenemos el ID, cargar los datos
+  if (!requestNumber.value && requestId.value) {
+    try {
+      const response = await supplyRequestService.getSupplyRequestById(requestId.value)
+      if (response.success && response.data) {
+        requestData.value = response.data.request
+        requestNumber.value = response.data.request?.request_number
+      }
+    } catch (error) {
+      console.error('Error cargando datos de la solicitud:', error)
+    }
   }
   
   // Cargar pabellones para mostrar nombres
@@ -150,6 +188,36 @@ onMounted(async () => {
     console.error('Error cargando pabellones:', error)
   }
 })
+
+// Copiar número de solicitud al portapapeles
+const copyRequestNumber = async () => {
+  if (!requestNumber.value) return
+  
+  try {
+    await navigator.clipboard.writeText(requestNumber.value)
+    Swal.fire({
+      icon: 'success',
+      title: 'Copiado',
+      text: `Número de solicitud ${requestNumber.value} copiado al portapapeles`,
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true
+    })
+  } catch (err) {
+    console.error('Error copiando al portapapeles:', err)
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'No se pudo copiar al portapapeles',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000
+    })
+  }
+}
 
 // Métodos auxiliares
 const getPriorityLabel = (priority) => {

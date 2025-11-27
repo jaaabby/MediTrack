@@ -431,6 +431,7 @@
               @cart-loaded="onCartLoaded"
               @cart-closed="onCartClosed"
               @item-removed="onItemRemoved"
+              @transfer-to-pavilion="handleTransferCartToPavilion"
             />
           </div>
 
@@ -680,6 +681,18 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                   Revisar Insumos
+                </button>
+
+                <!-- Botón Listo para retiro (solo para encargado de bodega cuando el carrito está activo) -->
+                <button
+                  v-if="currentCart && currentCart.status === 'active' && canTransferCartToPavilion"
+                  @click="handleTransferCartToPavilion"
+                  class="w-full inline-flex items-center justify-center px-3 py-2 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                >
+                  <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Listo para retiro
                 </button>
 
                 <!-- Doctor puede editar y reenviar solicitud devuelta -->
@@ -1021,6 +1034,7 @@ import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '@/services/requests/supplyRequestService'
 import pavilionService from '@/services/config/pavilionService'
 import { userService } from '@/services/common/userService'
+import cartService from '@/services/requests/cartService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
@@ -1058,6 +1072,8 @@ const showAssignModal = ref(false)
 const showReviewItemsModal = ref(false)
 const hasActiveCart = ref(false)
 const itemsCollapsed = ref(false)
+const currentCart = ref(null)
+const canTransferCartToPavilion = ref(false)
 
 // Estados para modales personalizados
 const showConfirmModal = ref(false)
@@ -1621,6 +1637,9 @@ const getAssignmentStatusLabel = (status) => {
 // Métodos para el carrito
 const onCartLoaded = (cart) => {
   console.log('Carrito cargado:', cart)
+  currentCart.value = cart
+  canTransferCartToPavilion.value = cart?.canTransferToPavilion || false
+  
   // Si el carrito está activo, colapsar automáticamente la sección de insumos
   if (cart && cart.status === 'active') {
     hasActiveCart.value = true
@@ -1645,6 +1664,31 @@ const onCartClosed = (cart) => {
 const onItemRemoved = (itemId) => {
   console.log('Item removido del carrito:', itemId)
   showMessage('info', 'Item removido', 'El item ha sido removido del carrito')
+}
+
+const handleTransferCartToPavilion = async () => {
+  if (!currentCart.value) return
+  
+  openConfirmModal(
+    'Listo para retiro',
+    `¿Está seguro de marcar este carrito como "Listo para retiro"? Esto indicará al pabellón que puede proceder a retirar los insumos.`,
+    async () => {
+      processing.value = true
+      try {
+        const response = await cartService.transferCartToPavilion(currentCart.value.id)
+        if (response.success) {
+          showMessage('success', 'Listo para retiro', response.message || 'Los insumos han sido transferidos al pabellón. El pabellón debe confirmar la recepción.')
+          // Recargar la solicitud para actualizar el estado del carrito
+          await loadSupplyRequest()
+        }
+      } catch (err) {
+        console.error('Error al transferir carrito:', err)
+        showMessage('error', 'Error', err.response?.data?.message || 'Error al transferir el carrito al pabellón')
+      } finally {
+        processing.value = false
+      }
+    }
+  )
 }
 
 // Funciones para manejar modales
