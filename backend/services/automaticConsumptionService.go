@@ -219,7 +219,7 @@ func (s *AutomaticConsumptionService) shouldSendNotification(assignment *models.
 
 	// Obtener el intervalo de reenvío desde variable de entorno (en horas)
 	// Por defecto: 2 horas
-	resendIntervalHours := 2.0
+	resendIntervalHours := 3.0
 	if envInterval := os.Getenv("NOTIFICATION_RESEND_INTERVAL_HOURS"); envInterval != "" {
 		if parsed, err := strconv.ParseFloat(envInterval, 64); err == nil && parsed > 0 {
 			resendIntervalHours = parsed
