@@ -72,6 +72,9 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 
+	// Deshabilitar redirección automática de trailing slash para evitar problemas con CORS
+	router.RedirectTrailingSlash = false
+
 	// Middleware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -102,17 +105,26 @@ func main() {
 
 	// Inicializar servicio y controlador de SupplyRequest
 	supplyRequestService := services.NewSupplyRequestService(db)
-	supplyRequestController := controllers.NewSupplyRequestController(supplyRequestService, qrService)
+	supplyRequestController := controllers.NewSupplyRequestController(supplyRequestService, qrService, userService)
 
 	// Inicializar servicio y controlador de Cart
 	cartService := services.NewCartService(db)
 	cartController := controllers.NewCartController(cartService)
 
+	// Inicializar servicio de consumo automático
+	automaticConsumptionService := services.NewAutomaticConsumptionService(db, qrService, supplyRequestService)
+	// Establecer el servicio de carritos en el servicio de consumo automático
+	automaticConsumptionService.SetCartService(cartService)
+	automaticConsumptionController := controllers.NewAutomaticConsumptionController(automaticConsumptionService)
+
 	// Registrar rutas de supply requests y trazabilidad QR
-	routes.SetupSupplyRequestRoutes(router, supplyRequestController)
+	routes.SetupSupplyRequestRoutes(router, supplyRequestController, secretKey)
 
 	// Registrar rutas de carritos
 	routes.SetupCartRoutes(router, cartController)
+
+	// Registrar rutas de consumo automático
+	routes.SetupAutomaticConsumptionRoutes(router, automaticConsumptionController, secretKey)
 
 	// Iniciar el verificador automático de retornos a bodega en una goroutine
 	go medicalSupplyService.StartAutomaticReturnChecker()
@@ -121,6 +133,10 @@ func main() {
 	// Iniciar el verificador automático de stock bajo en una goroutine
 	go batchService.StartAutomaticLowStockChecker()
 	log.Println("✅ Iniciado verificador automático de stock bajo")
+
+	// Iniciar el verificador de cirugías completadas (solo envía notificaciones, NO consume insumos)
+	go automaticConsumptionService.StartAutomaticConsumptionChecker()
+	log.Println("✅ Iniciado verificador de cirugías completadas y notificaciones de insumos pendientes")
 
 	// Iniciar servidores HTTP y HTTPS
 	log.Printf("Servidor iniciando en puerto %d (HTTP)", cfg.Server.Port)

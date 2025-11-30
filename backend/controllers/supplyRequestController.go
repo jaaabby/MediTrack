@@ -14,12 +14,14 @@ import (
 type SupplyRequestController struct {
 	supplyRequestService *services.SupplyRequestService
 	qrService            *services.QRService
+	userService          *services.UserService
 }
 
-func NewSupplyRequestController(supplyRequestService *services.SupplyRequestService, qrService *services.QRService) *SupplyRequestController {
+func NewSupplyRequestController(supplyRequestService *services.SupplyRequestService, qrService *services.QRService, userService *services.UserService) *SupplyRequestController {
 	return &SupplyRequestController{
 		supplyRequestService: supplyRequestService,
 		qrService:            qrService,
+		userService:          userService,
 	}
 }
 
@@ -70,20 +72,11 @@ func (c *SupplyRequestController) CreateSupplyRequest(ctx *gin.Context) {
 
 // GetSupplyRequestByID obtiene una solicitud por ID
 func (c *SupplyRequestController) GetSupplyRequestByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, response.Response{
-			Success: false,
-			Error:   "ID de solicitud requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido: debe ser un número entero",
+			Error:   "ID inválido: " + err.Error(),
 		})
 		return
 	}
@@ -153,20 +146,11 @@ func (c *SupplyRequestController) GetAllSupplyRequests(ctx *gin.Context) {
 
 // GetSupplyRequestsByPavilion obtiene solicitudes por pabellón
 func (c *SupplyRequestController) GetSupplyRequestsByPavilion(ctx *gin.Context) {
-	pavilionIDStr := ctx.Param("pavilion_id")
-	if pavilionIDStr == "" {
+	pavilionID, err := strconv.Atoi(ctx.Param("pavilion_id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID de pabellón requerido",
-		})
-		return
-	}
-
-	pavilionID, err := strconv.Atoi(pavilionIDStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de pabellón inválido",
+			Error:   "ID de pabellón inválido: " + err.Error(),
 		})
 		return
 	}
@@ -189,14 +173,14 @@ func (c *SupplyRequestController) GetSupplyRequestsByPavilion(ctx *gin.Context) 
 
 	requests, total, err := c.supplyRequestService.GetSupplyRequestsByPavilion(pavilionID, limit, offset)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al obtener solicitudes del pabellón: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data: map[string]interface{}{
 			"requests":    requests,
@@ -213,7 +197,7 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 	// Verificar permisos - solo encargado de bodega puede aprobar
 	user, exists := ctx.Get("user")
 	if !exists {
-		ctx.JSON(http.StatusUnauthorized, Response{
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
 			Error:   "Usuario no autenticado",
 		})
@@ -222,7 +206,7 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 
 	userClaims, ok := user.(map[string]interface{})
 	if !ok {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error procesando información del usuario",
 		})
@@ -231,34 +215,25 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 
 	userRole, exists := userClaims["role"].(string)
 	if !exists || userRole != "encargado de bodega" {
-		ctx.JSON(http.StatusForbidden, Response{
+		ctx.JSON(http.StatusForbidden, response.Response{
 			Success: false,
 			Error:   "No tiene permisos para aprobar solicitudes. Solo encargados de bodega pueden realizar esta acción",
 		})
 		return
 	}
 
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de solicitud requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido",
+			Error:   "ID inválido: " + err.Error(),
 		})
 		return
 	}
 
 	var request services.ApproveSupplyRequestRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -266,7 +241,7 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 	}
 
 	if err := c.supplyRequestService.ApproveSupplyRequest(intID, request); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al aprobar solicitud: " + err.Error(),
 		})
@@ -277,7 +252,7 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 	updatedRequest, _ := c.supplyRequestService.GetSupplyRequestByID(intID)
 	items, _ := c.supplyRequestService.GetSupplyRequestItems(intID)
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Solicitud aprobada exitosamente",
 		Data: map[string]interface{}{
@@ -292,7 +267,7 @@ func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
 	// Verificar permisos - solo encargado de bodega puede rechazar
 	user, exists := ctx.Get("user")
 	if !exists {
-		ctx.JSON(http.StatusUnauthorized, Response{
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
 			Error:   "Usuario no autenticado",
 		})
@@ -301,7 +276,7 @@ func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
 
 	userClaims, ok := user.(map[string]interface{})
 	if !ok {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error procesando información del usuario",
 		})
@@ -310,27 +285,18 @@ func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
 
 	userRole, exists := userClaims["role"].(string)
 	if !exists || userRole != "encargado de bodega" {
-		ctx.JSON(http.StatusForbidden, Response{
+		ctx.JSON(http.StatusForbidden, response.Response{
 			Success: false,
 			Error:   "No tiene permisos para rechazar solicitudes. Solo encargados de bodega pueden realizar esta acción",
 		})
 		return
 	}
 
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de solicitud requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido",
+			Error:   "ID inválido: " + err.Error(),
 		})
 		return
 	}
@@ -342,7 +308,7 @@ func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&requestData); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -350,7 +316,7 @@ func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
 	}
 
 	if err := c.supplyRequestService.RejectSupplyRequest(intID, requestData.RejectedBy, requestData.RejectedByName, requestData.Reason); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al rechazar solicitud: " + err.Error(),
 		})
@@ -360,7 +326,7 @@ func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
 	// Obtener la solicitud actualizada
 	updatedRequest, _ := c.supplyRequestService.GetSupplyRequestByID(intID)
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Solicitud rechazada",
 		Data: map[string]interface{}{
@@ -374,7 +340,7 @@ func (c *SupplyRequestController) AssignQRToRequest(ctx *gin.Context) {
 	var request services.AssignQRToRequestRequest
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -382,7 +348,7 @@ func (c *SupplyRequestController) AssignQRToRequest(ctx *gin.Context) {
 	}
 
 	if err := c.supplyRequestService.AssignQRToRequest(request); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al asignar código QR: " + err.Error(),
 		})
@@ -392,7 +358,7 @@ func (c *SupplyRequestController) AssignQRToRequest(ctx *gin.Context) {
 	// Obtener información actualizada de la asignación
 	traceability, _ := c.supplyRequestService.GetQRTraceability(request.QRCode)
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Código QR asignado exitosamente",
 		Data: map[string]interface{}{
@@ -406,7 +372,7 @@ func (c *SupplyRequestController) AssignQRToRequest(ctx *gin.Context) {
 func (c *SupplyRequestController) GetQRTraceability(ctx *gin.Context) {
 	qrCode := ctx.Param("qr_code")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
@@ -415,14 +381,14 @@ func (c *SupplyRequestController) GetQRTraceability(ctx *gin.Context) {
 
 	traceability, err := c.supplyRequestService.GetQRTraceability(qrCode)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al obtener trazabilidad: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    traceability,
 	})
@@ -432,7 +398,7 @@ func (c *SupplyRequestController) GetQRTraceability(ctx *gin.Context) {
 func (c *SupplyRequestController) MarkQRAsDelivered(ctx *gin.Context) {
 	qrCode := ctx.Param("qr_code")
 	if qrCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Código QR requerido",
 		})
@@ -445,7 +411,7 @@ func (c *SupplyRequestController) MarkQRAsDelivered(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&requestData); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -453,7 +419,7 @@ func (c *SupplyRequestController) MarkQRAsDelivered(ctx *gin.Context) {
 	}
 
 	if err := c.supplyRequestService.MarkQRAsDelivered(qrCode, requestData.DeliveredBy, requestData.DeliveredByName); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al marcar QR como entregado: " + err.Error(),
 		})
@@ -463,7 +429,7 @@ func (c *SupplyRequestController) MarkQRAsDelivered(ctx *gin.Context) {
 	// Obtener trazabilidad actualizada
 	traceability, _ := c.supplyRequestService.GetQRTraceability(qrCode)
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "QR marcado como entregado exitosamente",
 		Data:    traceability,
@@ -472,20 +438,11 @@ func (c *SupplyRequestController) MarkQRAsDelivered(ctx *gin.Context) {
 
 // CompleteSupplyRequest marca una solicitud como completada
 func (c *SupplyRequestController) CompleteSupplyRequest(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de solicitud requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido",
+			Error:   "ID inválido: " + err.Error(),
 		})
 		return
 	}
@@ -496,7 +453,7 @@ func (c *SupplyRequestController) CompleteSupplyRequest(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&requestData); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -504,7 +461,7 @@ func (c *SupplyRequestController) CompleteSupplyRequest(ctx *gin.Context) {
 	}
 
 	if err := c.supplyRequestService.CompleteSupplyRequest(intID, requestData.CompletedBy, requestData.CompletedByName); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al completar solicitud: " + err.Error(),
 		})
@@ -514,7 +471,7 @@ func (c *SupplyRequestController) CompleteSupplyRequest(ctx *gin.Context) {
 	// Obtener la solicitud actualizada
 	updatedRequest, _ := c.supplyRequestService.GetSupplyRequestByID(intID)
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Solicitud completada exitosamente",
 		Data: map[string]interface{}{
@@ -525,33 +482,24 @@ func (c *SupplyRequestController) CompleteSupplyRequest(ctx *gin.Context) {
 
 // DeleteSupplyRequest elimina una solicitud
 func (c *SupplyRequestController) DeleteSupplyRequest(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de solicitud requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	intID, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID inválido",
+			Error:   "ID inválido: " + err.Error(),
 		})
 		return
 	}
 
 	if err := c.supplyRequestService.DeleteSupplyRequest(intID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al eliminar solicitud: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Solicitud eliminada exitosamente",
 	})
@@ -561,14 +509,14 @@ func (c *SupplyRequestController) DeleteSupplyRequest(ctx *gin.Context) {
 func (c *SupplyRequestController) GetSupplyRequestStats(ctx *gin.Context) {
 	stats, err := c.supplyRequestService.GetSupplyRequestStats()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al obtener estadísticas: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    stats,
 	})
@@ -581,7 +529,7 @@ func (c *SupplyRequestController) BulkAssignQRs(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&requestData); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -599,23 +547,23 @@ func (c *SupplyRequestController) BulkAssignQRs(ctx *gin.Context) {
 		}
 	}
 
-	response := map[string]interface{}{
+	result := map[string]interface{}{
 		"total_processed":    len(requestData.Assignments),
 		"successful_assigns": successCount,
 		"errors":             errors,
 	}
 
 	if len(errors) > 0 {
-		ctx.JSON(http.StatusPartialContent, Response{
+		ctx.JSON(http.StatusPartialContent, response.Response{
 			Success: successCount > 0,
 			Message: fmt.Sprintf("%d de %d asignaciones completadas exitosamente", successCount, len(requestData.Assignments)),
-			Data:    response,
+			Data:    result,
 		})
 	} else {
-		ctx.JSON(http.StatusOK, Response{
+		ctx.JSON(http.StatusOK, response.Response{
 			Success: true,
 			Message: "Todas las asignaciones completadas exitosamente",
-			Data:    response,
+			Data:    result,
 		})
 	}
 }
@@ -624,16 +572,16 @@ func (c *SupplyRequestController) BulkAssignQRs(ctx *gin.Context) {
 func (c *SupplyRequestController) AssignRequestToWarehouseManager(ctx *gin.Context) {
 	requestID, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID de solicitud inválido",
+			Error:   "ID de solicitud inválido: " + err.Error(),
 		})
 		return
 	}
 
 	var request services.AssignRequestToWarehouseManagerRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -641,14 +589,14 @@ func (c *SupplyRequestController) AssignRequestToWarehouseManager(ctx *gin.Conte
 	}
 
 	if err := c.supplyRequestService.AssignRequestToWarehouseManager(requestID, request); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Solicitud asignada exitosamente a encargado de bodega",
 	})
@@ -658,14 +606,14 @@ func (c *SupplyRequestController) AssignRequestToWarehouseManager(ctx *gin.Conte
 func (c *SupplyRequestController) GetPendingRequestsForPavedad(ctx *gin.Context) {
 	requests, err := c.supplyRequestService.GetPendingRequestsForPavedad()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    requests,
 	})
@@ -677,14 +625,14 @@ func (c *SupplyRequestController) GetAssignedRequestsForWarehouseManager(ctx *gi
 
 	requests, err := c.supplyRequestService.GetAssignedRequestsForWarehouseManager(warehouseManagerRut)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    requests,
 	})
@@ -695,16 +643,16 @@ func (c *SupplyRequestController) ReviewSupplyRequestItem(ctx *gin.Context) {
 	itemIDStr := ctx.Param("itemId")
 	itemID, err := strconv.Atoi(itemIDStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID de item inválido",
+			Error:   "ID de item inválido: " + err.Error(),
 		})
 		return
 	}
 
 	var req services.ReviewItemRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -712,14 +660,14 @@ func (c *SupplyRequestController) ReviewSupplyRequestItem(ctx *gin.Context) {
 	}
 
 	if err := c.supplyRequestService.ReviewSupplyRequestItem(itemID, req); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Item revisado exitosamente",
 	})
@@ -730,23 +678,23 @@ func (c *SupplyRequestController) GetSupplyRequestItemsController(ctx *gin.Conte
 	requestIDStr := ctx.Param("id")
 	requestID, err := strconv.Atoi(requestIDStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID de solicitud inválido",
+			Error:   "ID de solicitud inválido: " + err.Error(),
 		})
 		return
 	}
 
 	items, err := c.supplyRequestService.GetSupplyRequestItems(requestID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    items,
 	})
@@ -757,9 +705,9 @@ func (c *SupplyRequestController) ResubmitReturnedRequest(ctx *gin.Context) {
 	requestIDStr := ctx.Param("id")
 	requestID, err := strconv.Atoi(requestIDStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Error:   "ID de solicitud inválido",
+			Error:   "ID de solicitud inválido: " + err.Error(),
 		})
 		return
 	}
@@ -767,7 +715,7 @@ func (c *SupplyRequestController) ResubmitReturnedRequest(ctx *gin.Context) {
 	var req services.ResubmitReturnedRequestData
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
 		})
@@ -775,15 +723,104 @@ func (c *SupplyRequestController) ResubmitReturnedRequest(ctx *gin.Context) {
 	}
 
 	if err := c.supplyRequestService.ResubmitReturnedRequest(requestID, req); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Solicitud reenviada exitosamente",
+	})
+}
+
+// ConfigurePickupAuthorization configura quién puede retirar los insumos de una solicitud
+func (c *SupplyRequestController) ConfigurePickupAuthorization(ctx *gin.Context) {
+	// Verificar permisos - solo encargado de bodega puede configurar
+	userRUT, exists := ctx.Get("user_id")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Usuario no autenticado",
+		})
+		return
+	}
+
+	userRole, exists := ctx.Get("user_role")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Usuario no autenticado",
+		})
+		return
+	}
+
+	role, ok := userRole.(string)
+	if !ok || role != "encargado de bodega" {
+		ctx.JSON(http.StatusForbidden, response.Response{
+			Success: false,
+			Error:   "No tiene permisos para configurar autorización de retiro. Solo encargados de bodega pueden realizar esta acción",
+		})
+		return
+	}
+
+	requestID, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "ID inválido: " + err.Error(),
+		})
+		return
+	}
+
+	var req services.ConfigurePickupAuthorizationRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Obtener información del usuario desde el contexto
+	rut, ok := userRUT.(string)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error procesando información del usuario",
+		})
+		return
+	}
+
+	// Obtener el nombre del usuario desde la base de datos
+	user, err := c.userService.GetUserByRut(rut)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al obtener información del usuario: " + err.Error(),
+		})
+		return
+	}
+
+	req.ConfiguredBy = rut
+	req.ConfiguredByName = user.Name
+
+	if err := c.supplyRequestService.ConfigurePickupAuthorization(requestID, req); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al configurar autorización de retiro: " + err.Error(),
+		})
+		return
+	}
+
+	// Obtener la solicitud actualizada
+	updatedRequest, _ := c.supplyRequestService.GetSupplyRequestByID(requestID)
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Configuración de retiro actualizada exitosamente",
+		Data:    updatedRequest,
 	})
 }

@@ -68,11 +68,7 @@ func (s *SurgeryTypicalSupplyService) UpdateSurgeryTypicalSupply(id int, typical
 		return nil, err
 	}
 
-	existingTypicalSupply.TypicalQuantity = typicalSupply.TypicalQuantity
-	existingTypicalSupply.IsRequired = typicalSupply.IsRequired
-	existingTypicalSupply.Notes = typicalSupply.Notes
-
-	if err := s.DB.Save(&existingTypicalSupply).Error; err != nil {
+	if err := s.DB.Model(&existingTypicalSupply).Omit("id", "surgery_id", "supply_code", "created_at", "updated_at").Updates(typicalSupply).Error; err != nil {
 		return nil, err
 	}
 
@@ -89,10 +85,14 @@ func (s *SurgeryTypicalSupplyService) DeleteTypicalSuppliesBySurgeryID(surgeryID
 	return s.DB.Where("surgery_id = ?", surgeryID).Delete(&models.SurgeryTypicalSupply{}).Error
 }
 
-// GetAllTypicalSupplies obtiene todos los insumos típicos
+// GetAllTypicalSupplies obtiene todos los insumos típicos con información relacionada
 func (s *SurgeryTypicalSupplyService) GetAllTypicalSupplies() ([]models.SurgeryTypicalSupply, error) {
 	var typicalSupplies []models.SurgeryTypicalSupply
-	if err := s.DB.Find(&typicalSupplies).Error; err != nil {
+	if err := s.DB.
+		Preload("Surgery").
+		Preload("SupplyCodeInfo").
+		Order("surgery_id ASC, is_required DESC, supply_code ASC").
+		Find(&typicalSupplies).Error; err != nil {
 		return nil, err
 	}
 	return typicalSupplies, nil

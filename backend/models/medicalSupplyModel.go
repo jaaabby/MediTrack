@@ -22,6 +22,7 @@ type MedicalSupply struct {
 // Constantes para los estados de insumos médicos
 const (
 	StatusAvailable         = "disponible"
+	StatusPendingPickup     = "pendiente_retiro"      // Pendiente de retiro físico de bodega
 	StatusEnRouteToPavilion = "en_camino_a_pabellon"
 	StatusReceived          = "recepcionado"
 	StatusConsumed          = "consumido"
@@ -58,6 +59,8 @@ func (m MedicalSupply) GetStatusDescription() string {
 	switch m.Status {
 	case StatusAvailable:
 		return "Disponible"
+	case StatusPendingPickup:
+		return "Pendiente de retiro"
 	case StatusEnRouteToPavilion:
 		return "En camino a pabellón"
 	case StatusReceived:

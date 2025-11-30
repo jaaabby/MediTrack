@@ -74,11 +74,7 @@ func (s *SurgeryService) UpdateSurgery(id int, surgery *models.Surgery) (*models
 		return nil, err
 	}
 
-	existingSurgery.Name = surgery.Name
-	existingSurgery.Duration = surgery.Duration
-	existingSurgery.SpecialtyID = surgery.SpecialtyID
-
-	if err := s.DB.Save(&existingSurgery).Error; err != nil {
+	if err := s.DB.Model(&existingSurgery).Omit("id", "created_at", "updated_at").Updates(surgery).Error; err != nil {
 		return nil, err
 	}
 
@@ -102,7 +98,8 @@ func (s *SurgeryService) DeleteSurgery(id int) error {
 // SearchSurgeriesByName busca tipos de cirugía por nombre
 func (s *SurgeryService) SearchSurgeriesByName(name string) ([]models.Surgery, error) {
 	var surgeries []models.Surgery
-	if err := s.DB.Where("name ILIKE ?", "%"+name+"%").
+	if err := s.DB.Preload("Specialty").
+		Where("name ILIKE ?", "%"+name+"%").
 		Order("name ASC").
 		Find(&surgeries).Error; err != nil {
 		return nil, err

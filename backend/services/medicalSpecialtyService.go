@@ -73,12 +73,8 @@ func (s *MedicalSpecialtyService) UpdateMedicalSpecialty(id int, specialty *mode
 		return nil, err
 	}
 
-	existingSpecialty.Name = specialty.Name
-	existingSpecialty.Description = specialty.Description
-	existingSpecialty.Code = specialty.Code
-	existingSpecialty.IsActive = specialty.IsActive
-
-	if err := s.DB.Save(&existingSpecialty).Error; err != nil {
+	// Actualizar campos omitiendo ID, CreatedAt y UpdatedAt
+	if err := s.DB.Model(&existingSpecialty).Omit("id", "created_at", "updated_at").Updates(specialty).Error; err != nil {
 		return nil, err
 	}
 
@@ -91,7 +87,7 @@ func (s *MedicalSpecialtyService) DeleteMedicalSpecialty(id int) error {
 	var surgeryCount int64
 	var doctorCount int64
 	s.DB.Model(&models.Surgery{}).Where("specialty_id = ?", id).Count(&surgeryCount)
-	s.DB.Model(&models.DoctorInfo{}).Where("specialty_id = ?", id).Count(&doctorCount)
+	s.DB.Model(&models.User{}).Where("specialty_id = ? AND role = ?", id, models.RoleDoctor).Count(&doctorCount)
 
 	if surgeryCount > 0 || doctorCount > 0 {
 		// Si hay asociaciones, solo desactivar
@@ -111,13 +107,3 @@ func (s *MedicalSpecialtyService) SearchMedicalSpecialtiesByName(name string) ([
 	}
 	return specialties, nil
 }
-
-// GetMedicalSpecialtyByCode obtiene una especialidad médica por código
-func (s *MedicalSpecialtyService) GetMedicalSpecialtyByCode(code string) (*models.MedicalSpecialty, error) {
-	var specialty models.MedicalSpecialty
-	if err := s.DB.Where("code = ? AND is_active = ?", code, true).First(&specialty).Error; err != nil {
-		return nil, err
-	}
-	return &specialty, nil
-}
-

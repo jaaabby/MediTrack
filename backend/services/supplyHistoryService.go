@@ -1,7 +1,9 @@
 package services
 
 import (
+	"database/sql"
 	"meditrack/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -28,10 +30,7 @@ func (s *SupplyHistoryService) GetSupplyHistoryByID(id int) (*models.SupplyHisto
 }
 
 func (s *SupplyHistoryService) DeleteSupplyHistory(id int) error {
-	if err := s.DB.Delete(&models.SupplyHistory{}, id).Error; err != nil {
-		return err
-	}
-	return nil
+	return s.DB.Delete(&models.SupplyHistory{}, id).Error
 }
 
 func (s *SupplyHistoryService) GetAllSupplyHistories() ([]models.SupplyHistory, error) {
@@ -63,10 +62,26 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 			sh.transfer_notes,
 			sc.name as supply_name,
 			sc.code as supply_code,
-			ms.qr_code
+			ms.qr_code,
+			-- Nombre de destino según tipo
+			CASE 
+				WHEN sh.destination_type = 'store' THEN dst.name
+				WHEN sh.destination_type IN ('pavilion', 'pabellon') THEN dpv.name
+				ELSE NULL
+			END AS destination_name,
+			-- Nombre de origen según tipo
+			CASE 
+				WHEN sh.origin_type = 'store' THEN ost.name
+				WHEN sh.origin_type IN ('pavilion', 'pabellon') THEN opv.name
+				ELSE NULL
+			END AS origin_name
 		FROM supply_history sh
 		LEFT JOIN medical_supply ms ON sh.medical_supply_id = ms.id
 		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN store dst ON sh.destination_type = 'store' AND sh.destination_id = dst.id
+		LEFT JOIN pavilion dpv ON sh.destination_type IN ('pavilion', 'pabellon') AND sh.destination_id = dpv.id
+		LEFT JOIN store ost ON sh.origin_type = 'store' AND sh.origin_id = ost.id
+		LEFT JOIN pavilion opv ON sh.origin_type IN ('pavilion', 'pabellon') AND sh.origin_id = opv.id
 		ORDER BY sh.date_time DESC
 	`
 
@@ -79,8 +94,10 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 	for rows.Next() {
 		var id, destinationID, medicalSupplyID int
 		var destinationType, status, userRut, notes string
-		var dateTime string
-		var originType, originID, confirmedBy, confirmationDate, transferNotes, supplyName, qrCode *string
+		var dateTime time.Time
+		var confirmationDate sql.NullTime
+		var originType, originID, confirmedBy, transferNotes, supplyName, qrCode *string
+		var destinationName, originName *string
 		var supplyCode *int
 
 		err := rows.Scan(
@@ -88,24 +105,38 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 			&medicalSupplyID, &userRut, &notes, &originType, &originID,
 			&confirmedBy, &confirmationDate, &transferNotes,
 			&supplyName, &supplyCode, &qrCode,
+			&destinationName, &originName,
 		)
 		if err != nil {
 			return nil, err
 		}
 
+		// Formatear fecha en formato ISO 8601 con zona horaria para evitar problemas de interpretación
+		// Esto asegura que la fecha se interprete correctamente en el frontend
+		dateTimeISO := dateTime.Format(time.RFC3339)
+		
+		// También formatear confirmation_date si existe
+		var confirmationDateISO *string
+		if confirmationDate.Valid {
+			iso := confirmationDate.Time.Format(time.RFC3339)
+			confirmationDateISO = &iso
+		}
+
 		result := map[string]interface{}{
 			"id":                id,
-			"date_time":         dateTime,
+			"date_time":         dateTimeISO, // Formato ISO 8601 con zona horaria
 			"status":            status,
 			"destination_type":  destinationType,
 			"destination_id":    destinationID,
+			"destination_name":  destinationName,
 			"medical_supply_id": medicalSupplyID,
 			"user_rut":          userRut,
 			"notes":             notes,
 			"origin_type":       originType,
 			"origin_id":         originID,
+			"origin_name":       originName,
 			"confirmed_by":      confirmedBy,
-			"confirmation_date": confirmationDate,
+			"confirmation_date": confirmationDateISO,
 			"transfer_notes":    transferNotes,
 			"supply_name":       supplyName,
 			"supply_code":       supplyCode,
@@ -118,15 +149,11 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 	return results, nil
 }
 
-// Funcionalidades adicionales de la versión actual (MANTENIDAS)
 func (s *SupplyHistoryService) UpdateSupplyHistory(id int, history *models.SupplyHistory) error {
 	var existing models.SupplyHistory
 	if err := s.DB.First(&existing, id).Error; err != nil {
 		return err
 	}
-	// Actualiza los campos necesarios
-	if err := s.DB.Model(&existing).Updates(history).Error; err != nil {
-		return err
-	}
-	return nil
+	// Actualizar campos omitiendo ID y timestamps
+	return s.DB.Model(&existing).Omit("id", "created_at", "updated_at").Updates(history).Error
 }

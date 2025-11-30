@@ -689,8 +689,6 @@ func (c *QRController) GenerateSupplyQR(ctx *gin.Context) {
 
 // TransferSupply transfiere un insumo individual por su código QR
 func (c *QRController) TransferSupply(ctx *gin.Context) {
-	fmt.Printf("🎯 DEBUG - CONTROLLER TransferSupply llamado desde %s, Time=%s\n",
-		ctx.ClientIP(), time.Now().Format("2006-01-02 15:04:05.000"))
 
 	var request struct {
 		QRCode          string `json:"qr_code" binding:"required"`
@@ -752,7 +750,51 @@ func (c *QRController) TransferSupply(ctx *gin.Context) {
 	})
 }
 
+// PickupSupplyFromStore registra el retiro físico de un insumo de bodega
+// Paso 1: Cuando alguien viene a retirar físicamente el insumo
+func (c *QRController) PickupSupplyFromStore(ctx *gin.Context) {
+	var request struct {
+		QRCode  string `json:"qr_code" binding:"required"`
+		UserRUT string `json:"user_rut" binding:"required"`
+		Notes   string `json:"notes,omitempty"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos de retiro inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Validar que el QR code tenga el formato correcto
+	if !strings.HasPrefix(request.QRCode, "SUPPLY_") {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "El código QR debe ser de un insumo individual (SUPPLY_)",
+		})
+		return
+	}
+
+	// Llamar al servicio para registrar el retiro
+	result, err := c.qrService.PickupSupplyFromStore(request.QRCode, request.UserRUT, request.Notes)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al registrar retiro: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Retiro registrado exitosamente. El insumo está en camino al pabellón.",
+		Data:    result,
+	})
+}
+
 // ReceiveSupply recepciona un insumo que está en estado "en_camino_a_pabellon"
+// Paso 2: Cuando llega al pabellón y se confirma la recepción
 func (c *QRController) ReceiveSupply(ctx *gin.Context) {
 	var request struct {
 		QRCode          string `json:"qr_code" binding:"required"`
@@ -760,6 +802,7 @@ func (c *QRController) ReceiveSupply(ctx *gin.Context) {
 		DestinationType string `json:"destination_type" binding:"required"`
 		DestinationID   int    `json:"destination_id" binding:"required"`
 		Notes           string `json:"notes,omitempty"`
+		WillBeConsumed  *bool  `json:"will_be_consumed,omitempty"` // true: será consumido, false: será devuelto
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
@@ -788,8 +831,14 @@ func (c *QRController) ReceiveSupply(ctx *gin.Context) {
 		return
 	}
 
+	// Determinar si será consumido (por defecto true si no se especifica)
+	willBeConsumed := true
+	if request.WillBeConsumed != nil {
+		willBeConsumed = *request.WillBeConsumed
+	}
+
 	// Llamar al servicio para recepcionar el insumo
-	result, err := c.qrService.ReceiveSupplyByQR(request.QRCode, request.UserRUT, request.DestinationType, request.DestinationID, request.Notes)
+	result, err := c.qrService.ReceiveSupplyByQR(request.QRCode, request.UserRUT, request.DestinationType, request.DestinationID, request.Notes, willBeConsumed)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
@@ -1243,7 +1292,7 @@ func (c *QRController) ReturnSupplyToStore(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Insumo regresado a bodega exitosamente",
+		Message: "Insumo marcado como en camino a bodega. Debe confirmar la llegada cuando el insumo llegue físicamente.",
 		Data: map[string]interface{}{
 			"qr_code": request.QRCode,
 			"status":  "en_camino_a_bodega",
@@ -1326,10 +1375,7 @@ func (c *QRController) ConfirmArrivalToStore(ctx *gin.Context) {
 
 		// Verificar y cerrar el carrito si corresponde
 		if c.cartService != nil {
-			if err := c.cartService.CheckAndAutoCloseCartForSupply(supply.ID, req.UserRUT, userName); err != nil {
-				// Log del error pero no fallar la respuesta
-				fmt.Printf("⚠️ Error al verificar cierre automático del carrito: %v\n", err)
-			}
+			_ = c.cartService.CheckAndAutoCloseCartForSupply(supply.ID, req.UserRUT, userName)
 		}
 	}
 

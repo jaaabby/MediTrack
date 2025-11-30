@@ -1,6 +1,13 @@
 -- Script de Poblado Completo para MediTrack
 -- Fecha: 2025-08-19
+-- Última actualización: 2025-11-19
 -- Descripción: Poblado completo de todas las tablas del sistema
+--
+-- NOTAS IMPORTANTES:
+-- - Este script crea el estado INICIAL de la base de datos
+-- - Todos los insumos comienzan en estado 'disponible'
+-- - Los estados cambian dinámicamente según las operaciones del sistema
+-- - Ver documentación de estados en la sección de medical_supply
 
 -- Poblar centros médicos
 INSERT INTO medical_center (id, name, address, phone, email) VALUES
@@ -297,6 +304,19 @@ INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code, sur
 ON CONFLICT (id) DO NOTHING;
 
 -- Poblar insumos médicos - TODOS EN ESTADO DISPONIBLE
+-- Estados posibles:
+--   'disponible': Insumo disponible en bodega para ser transferido
+--   'pendiente_retiro': Insumo preparado para retiro físico de bodega (asignado a carrito cerrado)
+--   'en_camino_a_pabellon': Insumo retirado físicamente y en tránsito a pabellón
+--   'recepcionado': Insumo recibido en pabellón, listo para ser consumido
+--   'consumido': Insumo usado en procedimiento médico
+--   'en_camino_a_bodega': Insumo siendo devuelto a bodega
+--
+-- Flujo de dos pasos para transferencias desde carrito:
+--   1. Encargado de bodega cierra carrito → insumos pasan a 'pendiente_retiro'
+--   2. Enfermera escanea para retirar → insumos pasan a 'en_camino_a_pabellon'
+--   3. Enfermera escanea al llegar → insumos pasan a 'recepcionado'
+--   4. Doctor/Enfermera consume → insumos pasan a 'consumido'
 INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, location_id) VALUES
 (1001, 1, 'SUPPLY_1_1', 'disponible', 'store', 1),
 (1001, 1, 'SUPPLY_2_1', 'disponible', 'store', 1),
@@ -331,7 +351,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -342,6 +363,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'admin',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -353,7 +375,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -364,6 +387,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'pabellón',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -375,17 +399,19 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
 ) VALUES (
     '11111111-1',
     'Encargado Bodega',
-    'bodega@meditrack.com',
+    'bodegacentral@meditrack.com',
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'encargado de bodega',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -397,7 +423,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -408,6 +435,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'enfermera',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -419,7 +447,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     specialty_id,
     is_active, 
     created_at, 
@@ -431,7 +460,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    1, -- Traumatología
+    NULL, 1, -- Traumatología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -443,7 +472,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -454,6 +484,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'admin',
     1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -465,7 +496,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     is_active, 
     created_at, 
     updated_at
@@ -476,6 +508,32 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- Reemplazar con contraseña hasheada real
     'pavedad',
     1,
+    NULL,
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+)
+ON CONFLICT (rut) DO NOTHING;
+
+INSERT INTO "user" (
+    rut, 
+    name, 
+    email, 
+    password, 
+    role, 
+    medical_center_id,
+    pavilion_id,
+    is_active, 
+    created_at, 
+    updated_at
+) VALUES (
+    '12121212-1',
+    'Usuario Consignación',
+    'bodegaconsignacion@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
+    'encargado de bodega',
+    1,
+    NULL,
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -490,7 +548,8 @@ INSERT INTO "user" (
     email, 
     password, 
     role, 
-    medical_center_id, 
+    medical_center_id,
+    pavilion_id,
     specialty_id,
     is_active, 
     created_at, 
@@ -503,7 +562,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    2, -- Cardiología
+    NULL, 2, -- Cardiología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -515,7 +574,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    4, -- Neurocirugía
+    NULL, 4, -- Neurocirugía
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -527,7 +586,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    8, -- Ginecología
+    NULL, 8, -- Ginecología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -539,7 +598,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    3, -- Cirugía General
+    NULL, 3, -- Cirugía General
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -551,7 +610,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    5, -- Oftalmología
+    NULL, 5, -- Oftalmología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -563,7 +622,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     1,
-    7, -- Urología
+    NULL, 7, -- Urología
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -575,7 +634,7 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     2,
-    10, -- Plástica y Reconstructiva
+    NULL, 10, -- Plástica y Reconstructiva
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -587,7 +646,20 @@ INSERT INTO "user" (
     '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
     'doctor',
     2,
-    6, -- Otorrinolaringología
+    NULL, 6, -- Otorrinolaringología
+    true,
+    EXTRACT(EPOCH FROM NOW()),
+    EXTRACT(EPOCH FROM NOW())
+),
+(
+    'PABELLON1',
+    'Pabellón 1',
+    'pabellon1@meditrack.com',
+    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- Password: pabellon1
+    'pabellón',
+    1,
+    1, -- pavilion_id: Pabellón Central 01
+    NULL, -- Sin especialidad
     true,
     EXTRACT(EPOCH FROM NOW()),
     EXTRACT(EPOCH FROM NOW())
@@ -601,20 +673,6 @@ INSERT INTO batch_history (date_time, change_details, previous_values, new_value
 ('2025-08-16 13:00:00', 'Lote creado', NULL, '{"expiration_date": "2025-10-15", "amount": 8, "supplier": "Proveedor Cuatro", "store_id": 2}', 'Administrador del Sistema', 4, '12345678-9', 4),
 ('2025-08-16 14:00:00', 'Cantidad actualizada', '{"amount": 10}', '{"amount": 8}', 'Encargado Bodega', 1, '11111111-1', 1)
 ON CONFLICT DO NOTHING;
-
--- Poblar información extendida de doctores
-INSERT INTO doctor_info (
-    user_rut, medical_license, specialization, specialty_id, 
-    years_of_experience, phone, is_available
-) VALUES (
-    '33333333-3', 
-    'LIC-33333333', 
-    'Cirugía General', 
-    (SELECT id FROM medical_specialty WHERE code = 'CIR_GEN'),
-    15, 
-    '+56 9 1234 5678', 
-    TRUE
-) ON CONFLICT (user_rut) DO NOTHING;
 
 -- Poblar insumos típicos por cirugía (ejemplos)
 -- Para cirugías generales - guantes y gasas típicamente requeridos
@@ -631,6 +689,8 @@ INSERT INTO surgery_typical_supply (surgery_id, supply_code, typical_quantity, i
 ((SELECT id FROM surgery WHERE name LIKE 'REDUCCION ABIERTA%' LIMIT 1), 1005, 25, TRUE, 'Gasas para limpieza')
 ON CONFLICT (surgery_id, supply_code) DO NOTHING;
 
+-- Nota: Los campos allow_anyone_to_pickup, authorized_pickup_rut, authorized_pickup_name
+-- tienen valores por defecto (allow_anyone_to_pickup = true) y se configuran desde la interfaz
 INSERT INTO supply_request (
     request_number, pavilion_id, requested_by, requested_by_name,
     request_date, surgery_datetime, status, notes, medical_center_id,
@@ -653,8 +713,8 @@ INSERT INTO supply_request (
 
 -- Insertar items de ejemplo
 INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric) VALUES 
-(1, 1001, 'Guantes', 50, FALSE),
-(1, 1002, 'Mascarillas', 100, TRUE);
+(1, 1001, 'Guantes', 2, FALSE),
+(1, 1002, 'Mascarillas', 2, TRUE);
 
 SELECT 'ID máximo actual en batch:' as info, COALESCE(MAX(id), 0) as max_id FROM batch;
 

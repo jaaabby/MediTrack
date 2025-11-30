@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+	"meditrack/pkg/response"
 	"meditrack/services"
 	"net/http"
 	"strconv"
@@ -41,6 +43,20 @@ func parseFlexibleDateTransfer(dateStr string) (time.Time, error) {
 	return time.Time{}, lastErr
 }
 
+// getUserInfo obtiene la información del usuario del contexto
+func (c *SupplyTransferController) getUserInfo(ctx *gin.Context) (userID, userEmail string, err error) {
+	uid, exists := ctx.Get("user_id")
+	if !exists {
+		return "", "", fmt.Errorf("usuario no autenticado")
+	}
+
+	email, _ := ctx.Get("user_email")
+	if email == nil {
+		email = ""
+	}
+	return uid.(string), email.(string), nil
+}
+
 // TransferToPavilion transfiere insumos de bodega a pabellón
 func (c *SupplyTransferController) TransferToPavilion(ctx *gin.Context) {
 	var request struct {
@@ -51,45 +67,40 @@ func (c *SupplyTransferController) TransferToPavilion(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Datos inválidos",
-			Error:   err.Error(),
+			Error:   "Datos inválidos: " + err.Error(),
 		})
 		return
 	}
 
-	// Obtener información del usuario del contexto (viene del middleware de auth)
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, Response{
+	userID, userEmail, err := c.getUserInfo(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Message: "Usuario no autenticado",
+			Error:   "Usuario no autenticado",
 		})
 		return
 	}
-
-	userEmail, _ := ctx.Get("user_email")
 
 	transfers, err := c.transferService.TransferToPavilion(
 		request.QRCodes,
 		request.PavilionID,
-		userID.(string),    // UserID es el RUT
-		userEmail.(string), // Usamos email en lugar de nombre
+		userID,
+		userEmail,
 		request.Reason,
 		request.Notes,
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Error al transferir insumos",
-			Error:   err.Error(),
+			Error:   "Error al transferir insumos: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, Response{
+	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
 		Message: "Transferencia iniciada exitosamente",
 		Data: gin.H{
@@ -108,43 +119,38 @@ func (c *SupplyTransferController) ConfirmReception(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Datos inválidos",
-			Error:   err.Error(),
+			Error:   "Datos inválidos: " + err.Error(),
 		})
 		return
 	}
 
-	// Obtener información del usuario del contexto
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, Response{
+	userID, userEmail, err := c.getUserInfo(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Message: "Usuario no autenticado",
+			Error:   "Usuario no autenticado",
 		})
 		return
 	}
-
-	userEmail, _ := ctx.Get("user_email")
 
 	transfer, err := c.transferService.ConfirmReception(
 		transferCode,
-		userID.(string),
-		userEmail.(string),
+		userID,
+		userEmail,
 		request.Notes,
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Error al confirmar recepción",
-			Error:   err.Error(),
+			Error:   "Error al confirmar recepción: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Recepción confirmada exitosamente",
 		Data:    transfer,
@@ -161,45 +167,40 @@ func (c *SupplyTransferController) ReturnToStore(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Datos inválidos",
-			Error:   err.Error(),
+			Error:   "Datos inválidos: " + err.Error(),
 		})
 		return
 	}
 
-	// Obtener información del usuario del contexto
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, Response{
+	userID, userEmail, err := c.getUserInfo(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Message: "Usuario no autenticado",
+			Error:   "Usuario no autenticado",
 		})
 		return
 	}
-
-	userEmail, _ := ctx.Get("user_email")
 
 	transfers, err := c.transferService.ReturnToStore(
 		request.QRCodes,
 		request.StoreID,
-		userID.(string),
-		userEmail.(string),
+		userID,
+		userEmail,
 		request.Reason,
 		request.Notes,
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Error al devolver insumos",
-			Error:   err.Error(),
+			Error:   "Error al devolver insumos: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, Response{
+	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
 		Message: "Devolución procesada exitosamente",
 		Data: gin.H{
@@ -215,17 +216,15 @@ func (c *SupplyTransferController) GetTransferByCode(ctx *gin.Context) {
 
 	transfer, err := c.transferService.GetTransferByCode(transferCode)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
-			Message: "Transferencia no encontrada",
-			Error:   err.Error(),
+			Error:   "Transferencia no encontrada: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Transferencia encontrada",
 		Data:    transfer,
 	})
 }
@@ -292,17 +291,15 @@ func (c *SupplyTransferController) GetTransfers(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
-			Message: "Error al obtener transferencias",
-			Error:   err.Error(),
+			Error:   "Error al obtener transferencias: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Transferencias obtenidas",
 		Data: gin.H{
 			"transfers":   transfers,
 			"total":       total,
@@ -322,40 +319,37 @@ func (c *SupplyTransferController) CancelTransfer(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Datos inválidos",
-			Error:   err.Error(),
+			Error:   "Datos inválidos: " + err.Error(),
 		})
 		return
 	}
 
-	// Obtener información del usuario del contexto
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, Response{
+	userID, _, err := c.getUserInfo(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Message: "Usuario no autenticado",
+			Error:   "Usuario no autenticado",
 		})
 		return
 	}
 
 	transfer, err := c.transferService.CancelTransfer(
 		transferCode,
-		userID.(string),
+		userID,
 		request.Reason,
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Error al cancelar transferencia",
-			Error:   err.Error(),
+			Error:   "Error al cancelar transferencia: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Transferencia cancelada exitosamente",
 		Data:    transfer,

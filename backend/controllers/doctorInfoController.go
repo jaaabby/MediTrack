@@ -19,11 +19,11 @@ func NewDoctorInfoController(doctorInfoService *services.DoctorInfoService) *Doc
 	}
 }
 
-// CreateDoctorInfo crea información extendida de un doctor
-func (c *DoctorInfoController) CreateDoctorInfo(ctx *gin.Context) {
-	var doctorInfo models.DoctorInfo
+// CreateDoctor crea un nuevo usuario doctor
+func (c *DoctorInfoController) CreateDoctor(ctx *gin.Context) {
+	var doctor models.User
 
-	if err := ctx.ShouldBindJSON(&doctorInfo); err != nil {
+	if err := ctx.ShouldBindJSON(&doctor); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Message: "Datos inválidos",
@@ -32,10 +32,30 @@ func (c *DoctorInfoController) CreateDoctorInfo(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.doctorInfoService.CreateDoctorInfo(&doctorInfo); err != nil {
+	// Validar que el rol sea doctor
+	if doctor.Role != models.RoleDoctor {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Message: "El rol debe ser 'doctor'",
+		})
+		return
+	}
+
+	if err := c.doctorInfoService.CreateDoctor(&doctor); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
-			Message: "Error al crear información del doctor",
+			Message: "Error al crear doctor",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	// Recargar con relaciones
+	createdDoctor, err := c.doctorInfoService.GetDoctorByRUT(doctor.RUT)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Message: "Doctor creado pero error al cargar datos completos",
 			Error:   err.Error(),
 		})
 		return
@@ -43,13 +63,13 @@ func (c *DoctorInfoController) CreateDoctorInfo(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusCreated, Response{
 		Success: true,
-		Message: "Información del doctor creada exitosamente",
-		Data:    doctorInfo,
+		Message: "Doctor creado exitosamente",
+		Data:    createdDoctor,
 	})
 }
 
-// GetDoctorInfoByRUT obtiene información de un doctor por RUT
-func (c *DoctorInfoController) GetDoctorInfoByRUT(ctx *gin.Context) {
+// GetDoctorByRUT obtiene un doctor por RUT
+func (c *DoctorInfoController) GetDoctorByRUT(ctx *gin.Context) {
 	rut := ctx.Param("rut")
 	if rut == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
@@ -59,11 +79,11 @@ func (c *DoctorInfoController) GetDoctorInfoByRUT(ctx *gin.Context) {
 		return
 	}
 
-	doctorInfo, err := c.doctorInfoService.GetDoctorInfoByRUT(rut)
+	doctor, err := c.doctorInfoService.GetDoctorByRUT(rut)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{
 			Success: false,
-			Message: "Información del doctor no encontrada",
+			Message: "Doctor no encontrado",
 			Error:   err.Error(),
 		})
 		return
@@ -71,18 +91,18 @@ func (c *DoctorInfoController) GetDoctorInfoByRUT(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
-		Message: "Información del doctor encontrada",
-		Data:    doctorInfo,
+		Message: "Doctor encontrado",
+		Data:    doctor,
 	})
 }
 
-// GetAllDoctorInfo obtiene información de todos los doctores
-func (c *DoctorInfoController) GetAllDoctorInfo(ctx *gin.Context) {
-	doctorsInfo, err := c.doctorInfoService.GetAllDoctorInfo()
+// GetAllDoctors obtiene todos los doctores
+func (c *DoctorInfoController) GetAllDoctors(ctx *gin.Context) {
+	doctors, err := c.doctorInfoService.GetAllDoctors()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
-			Message: "Error al obtener información de doctores",
+			Message: "Error al obtener doctores",
 			Error:   err.Error(),
 		})
 		return
@@ -90,10 +110,10 @@ func (c *DoctorInfoController) GetAllDoctorInfo(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
-		Message: "Información de doctores obtenida",
+		Message: "Doctores obtenidos",
 		Data: gin.H{
-			"doctors": doctorsInfo,
-			"count":   len(doctorsInfo),
+			"doctors": doctors,
+			"count":   len(doctors),
 		},
 	})
 }
@@ -110,7 +130,7 @@ func (c *DoctorInfoController) GetDoctorsBySpecialtyID(ctx *gin.Context) {
 		return
 	}
 
-	doctorsInfo, err := c.doctorInfoService.GetDoctorsBySpecialtyID(specialtyID)
+	doctors, err := c.doctorInfoService.GetDoctorsBySpecialtyID(specialtyID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
@@ -124,8 +144,8 @@ func (c *DoctorInfoController) GetDoctorsBySpecialtyID(ctx *gin.Context) {
 		Success: true,
 		Message: "Doctores obtenidos",
 		Data: gin.H{
-			"doctors": doctorsInfo,
-			"count":   len(doctorsInfo),
+			"doctors": doctors,
+			"count":   len(doctors),
 		},
 	})
 }
@@ -148,7 +168,7 @@ func (c *DoctorInfoController) GetDoctorsPaginated(ctx *gin.Context) {
 		}
 	}
 
-	doctorsInfo, total, err := c.doctorInfoService.GetDoctorsPaginated(page, pageSize, search, specialtyID)
+	doctors, total, err := c.doctorInfoService.GetDoctorsPaginated(page, pageSize, search, specialtyID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
@@ -162,7 +182,7 @@ func (c *DoctorInfoController) GetDoctorsPaginated(ctx *gin.Context) {
 		Success: true,
 		Message: "Doctores obtenidos",
 		Data: gin.H{
-			"doctors":      doctorsInfo,
+			"doctors":      doctors,
 			"total":        total,
 			"page":         page,
 			"page_size":    pageSize,
@@ -171,8 +191,8 @@ func (c *DoctorInfoController) GetDoctorsPaginated(ctx *gin.Context) {
 	})
 }
 
-// UpdateDoctorInfo actualiza información de un doctor
-func (c *DoctorInfoController) UpdateDoctorInfo(ctx *gin.Context) {
+// UpdateDoctor actualiza información de un doctor
+func (c *DoctorInfoController) UpdateDoctor(ctx *gin.Context) {
 	rut := ctx.Param("rut")
 	if rut == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
@@ -182,8 +202,8 @@ func (c *DoctorInfoController) UpdateDoctorInfo(ctx *gin.Context) {
 		return
 	}
 
-	var doctorInfo models.DoctorInfo
-	if err := ctx.ShouldBindJSON(&doctorInfo); err != nil {
+	var doctor models.User
+	if err := ctx.ShouldBindJSON(&doctor); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Message: "Datos inválidos",
@@ -192,11 +212,11 @@ func (c *DoctorInfoController) UpdateDoctorInfo(ctx *gin.Context) {
 		return
 	}
 
-	updatedDoctorInfo, err := c.doctorInfoService.UpdateDoctorInfo(rut, &doctorInfo)
+	updatedDoctor, err := c.doctorInfoService.UpdateDoctor(rut, &doctor)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
-			Message: "Error al actualizar información del doctor",
+			Message: "Error al actualizar doctor",
 			Error:   err.Error(),
 		})
 		return
@@ -204,13 +224,13 @@ func (c *DoctorInfoController) UpdateDoctorInfo(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
-		Message: "Información del doctor actualizada exitosamente",
-		Data:    updatedDoctorInfo,
+		Message: "Doctor actualizado exitosamente",
+		Data:    updatedDoctor,
 	})
 }
 
-// DeleteDoctorInfo elimina información de un doctor
-func (c *DoctorInfoController) DeleteDoctorInfo(ctx *gin.Context) {
+// DeleteDoctor elimina (desactiva) un doctor
+func (c *DoctorInfoController) DeleteDoctor(ctx *gin.Context) {
 	rut := ctx.Param("rut")
 	if rut == "" {
 		ctx.JSON(http.StatusBadRequest, Response{
@@ -220,10 +240,10 @@ func (c *DoctorInfoController) DeleteDoctorInfo(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.doctorInfoService.DeleteDoctorInfo(rut); err != nil {
+	if err := c.doctorInfoService.DeleteDoctor(rut); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
-			Message: "Error al eliminar información del doctor",
+			Message: "Error al eliminar doctor",
 			Error:   err.Error(),
 		})
 		return
@@ -231,38 +251,45 @@ func (c *DoctorInfoController) DeleteDoctorInfo(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, Response{
 		Success: true,
-		Message: "Información del doctor eliminada exitosamente",
+		Message: "Doctor eliminado exitosamente",
 	})
 }
 
-// GetDoctorsBySpecialtyCode obtiene todos los doctores de una especialidad por código
-func (c *DoctorInfoController) GetDoctorsBySpecialtyCode(ctx *gin.Context) {
-	specialtyCode := ctx.Param("code")
-	if specialtyCode == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Message: "Código de especialidad inválido",
-		})
-		return
-	}
+// Métodos de compatibilidad con la API anterior (deprecated)
+// Estos métodos redirigen a los nuevos métodos
 
-	doctorsInfo, err := c.doctorInfoService.GetDoctorsBySpecialtyCode(specialtyCode)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
-			Success: false,
-			Message: "Error al obtener doctores de la especialidad",
-			Error:   err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, Response{
-		Success: true,
-		Message: "Doctores obtenidos",
-		Data: gin.H{
-			"doctors": doctorsInfo,
-			"count":   len(doctorsInfo),
-		},
+// CreateDoctorInfo crea información extendida de un doctor (compatibilidad)
+func (c *DoctorInfoController) CreateDoctorInfo(ctx *gin.Context) {
+	ctx.JSON(http.StatusBadRequest, Response{
+		Success: false,
+		Message: "Este endpoint está deprecado, use POST /doctors en su lugar",
 	})
 }
 
+// GetDoctorInfoByRUT obtiene información de un doctor por RUT (compatibilidad)
+func (c *DoctorInfoController) GetDoctorInfoByRUT(ctx *gin.Context) {
+	// Redirigir al nuevo método
+	c.GetDoctorByRUT(ctx)
+}
+
+// GetAllDoctorInfo obtiene información de todos los doctores (compatibilidad)
+func (c *DoctorInfoController) GetAllDoctorInfo(ctx *gin.Context) {
+	// Redirigir al nuevo método
+	c.GetAllDoctors(ctx)
+}
+
+// GetDoctorsBySpecialtyID ya está implementado arriba
+
+// GetDoctorsPaginated ya está implementado arriba
+
+// UpdateDoctorInfo actualiza información de un doctor (compatibilidad)
+func (c *DoctorInfoController) UpdateDoctorInfo(ctx *gin.Context) {
+	// Redirigir al nuevo método
+	c.UpdateDoctor(ctx)
+}
+
+// DeleteDoctorInfo elimina información de un doctor (compatibilidad)
+func (c *DoctorInfoController) DeleteDoctorInfo(ctx *gin.Context) {
+	// Redirigir al nuevo método
+	c.DeleteDoctor(ctx)
+}

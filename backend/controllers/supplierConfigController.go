@@ -20,13 +20,9 @@ func NewSupplierConfigController(supplierConfigService services.SupplierConfigSe
 
 // CreateSupplierConfig crea una nueva configuración de proveedor
 func (c *SupplierConfigController) CreateSupplierConfig(ctx *gin.Context) {
-	var configRequest struct {
-		SupplierName       string `json:"supplier_name" binding:"required"`
-		ExpirationAlertDays int    `json:"expiration_alert_days" binding:"required,min=1"`
-		Notes              string `json:"notes,omitempty"`
-	}
+	var config models.SupplierConfig
 
-	if err := ctx.ShouldBindJSON(&configRequest); err != nil {
+	if err := ctx.ShouldBindJSON(&config); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
@@ -34,10 +30,20 @@ func (c *SupplierConfigController) CreateSupplierConfig(ctx *gin.Context) {
 		return
 	}
 
-	config := models.SupplierConfig{
-		SupplierName:       configRequest.SupplierName,
-		ExpirationAlertDays: configRequest.ExpirationAlertDays,
-		Notes:              configRequest.Notes,
+	if config.SupplierName == "" {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "El nombre del proveedor es requerido",
+		})
+		return
+	}
+
+	if config.ExpirationAlertDays < 1 {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Los días de alerta deben ser mayor a 0",
+		})
+		return
 	}
 
 	if err := c.supplierConfigService.CreateSupplierConfig(&config); err != nil {
@@ -109,12 +115,8 @@ func (c *SupplierConfigController) UpdateSupplierConfig(ctx *gin.Context) {
 		return
 	}
 
-	var configRequest struct {
-		ExpirationAlertDays int    `json:"expiration_alert_days" binding:"required,min=1"`
-		Notes              string `json:"notes,omitempty"`
-	}
-
-	if err := ctx.ShouldBindJSON(&configRequest); err != nil {
+	var config models.SupplierConfig
+	if err := ctx.ShouldBindJSON(&config); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
 			Error:   "Datos inválidos: " + err.Error(),
@@ -122,9 +124,12 @@ func (c *SupplierConfigController) UpdateSupplierConfig(ctx *gin.Context) {
 		return
 	}
 
-	config := models.SupplierConfig{
-		ExpirationAlertDays: configRequest.ExpirationAlertDays,
-		Notes:              configRequest.Notes,
+	if config.ExpirationAlertDays < 1 {
+		ctx.JSON(http.StatusBadRequest, Response{
+			Success: false,
+			Error:   "Los días de alerta deben ser mayor a 0",
+		})
+		return
 	}
 
 	updatedConfig, err := c.supplierConfigService.UpdateSupplierConfig(supplierName, &config)

@@ -12,9 +12,12 @@ type SupplyTransfer struct {
 	OriginID        int        `json:"origin_id" gorm:"not null"`                   // ID de bodega o pabellón origen
 	DestinationType string     `json:"destination_type" gorm:"not null"`            // 'store' o 'pavilion'
 	DestinationID   int        `json:"destination_id" gorm:"not null"`              // ID de bodega o pabellón destino
-	SentBy          string     `json:"sent_by" gorm:"not null"`                     // RUT de quien envía
+	SentBy          string     `json:"sent_by" gorm:"not null"`                     // RUT de quien envía (encargado de bodega que prepara)
 	SentByName      string     `json:"sent_by_name" gorm:"not null"`                // Nombre de quien envía
-	ReceivedBy      *string    `json:"received_by,omitempty"`                       // RUT de quien recibe
+	PickedUpBy      *string    `json:"picked_up_by,omitempty"`                       // RUT de quien retiró físicamente de bodega
+	PickedUpByName  *string    `json:"picked_up_by_name,omitempty"`                 // Nombre de quien retiró físicamente
+	PickedUpDate    *time.Time `json:"picked_up_date,omitempty"`                    // Fecha de retiro físico
+	ReceivedBy      *string    `json:"received_by,omitempty"`                       // RUT de quien recibe en pabellón
 	ReceivedByName  *string    `json:"received_by_name,omitempty"`                  // Nombre de quien recibe
 	Status          string     `json:"status" gorm:"not null;default:'pendiente'"`  // Estado de la transferencia
 	TransferReason  string     `json:"transfer_reason" gorm:"type:text"`            // Motivo de la transferencia

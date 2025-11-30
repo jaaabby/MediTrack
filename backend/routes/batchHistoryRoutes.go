@@ -13,7 +13,7 @@ func SetupBatchHistoryRoutes(router *gin.RouterGroup, batchHistoryService servic
 	batchHistory := router.Group("/batch-history")
 	{
 		batchHistory.POST("/", batchHistoryController.CreateBatchHistory)
-		batchHistory.GET("/", batchHistoryController.GetAllBatchHistory)
+		batchHistory.GET("/", batchHistoryController.GetAllBatchHistories) // CAMBIADO: GetAllBatchHistory → GetAllBatchHistories
 		batchHistory.GET("/:id", batchHistoryController.GetBatchHistoryByID)
 		batchHistory.PUT("/:id", batchHistoryController.UpdateBatchHistory)
 		batchHistory.DELETE("/:id", batchHistoryController.DeleteBatchHistory)

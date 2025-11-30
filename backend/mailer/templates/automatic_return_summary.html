@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumen de Retornos Automáticos a Bodega</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #ff9800;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 0 0 8px 8px;
+        }
+        .summary {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .supply-item {
+            background-color: #f8f9fa;
+            border-left: 4px solid #ff9800;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #6c757d;
+            font-size: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📦 Resumen de Retornos Automáticos a Bodega</h1>
+        <p><a href="http://localhost:3000" style="color: white; text-decoration: none;">MediTrack</a></p>
+    </div>
+    
+    <div class="content">
+        <p>Hola,</p>
+        
+        <p>Se han procesado automáticamente <strong>{{.ReturnedCount}}</strong> insumo(s) que han sido retornados a bodega por permanecer más de 8 horas laborales sin consumir.</p>
+        
+        <div class="summary">
+            <h3>📊 Resumen del Procesamiento</h3>
+            <p><strong>Total de insumos retornados:</strong> {{.ReturnedCount}}</p>
+            <p><strong>Fecha y hora del procesamiento:</strong> {{.ProcessDate}}</p>
+            {{if .ErrorCount}}
+            <p><strong>Errores durante el procesamiento:</strong> <span style="color: #dc3545;">{{.ErrorCount}}</span></p>
+            {{end}}
+        </div>
+        
+        {{if .ReturnedSupplies}}
+        <div class="summary">
+            <h3>📋 Insumos Retornados</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Insumo</th>
+                        <th>Código QR</th>
+                        <th>Tiempo Sin Moverse</th>
+                        <th>Bodega Destino</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .ReturnedSupplies}}
+                    <tr>
+                        <td>{{.SupplyName}}</td>
+                        <td>{{.QRCode}}</td>
+                        <td>{{.TimeElapsed}}</td>
+                        <td>{{.StoreName}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+        
+        <div class="summary">
+            <p><strong>ℹ️ Nota:</strong> Estos insumos han sido marcados como "en camino a bodega" y deben ser confirmados cuando lleguen físicamente a la bodega.</p>
+        </div>
+        
+        <p>Puede revisar el estado de estos insumos en la sección de <a href="http://localhost:3000/return-management" style="color: #2196F3; text-decoration: none;">Gestión de Retornos a Bodega</a>.</p>
+        
+        <p>Saludos,<br>Equipo de <a href="http://localhost:3000" style="color: #2196F3; text-decoration: none;">MediTrack</a></p>
+    </div>
+    
+    <div class="footer">
+        <p>Este es un correo automático del sistema <a href="http://localhost:3000" style="color: #2196F3; text-decoration: none;">MediTrack</a>. No responda a este mensaje.</p>
+        <p>Fecha de envío: {{.Date}}</p>
+    </div>
+</body>
+</html>
+

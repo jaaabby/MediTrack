@@ -44,12 +44,11 @@ func (s *SupplierConfigService) UpdateSupplierConfig(supplierName string, config
 		return nil, err
 	}
 
-	existingConfig.ExpirationAlertDays = config.ExpirationAlertDays
-	existingConfig.Notes = config.Notes
-
-	if err := s.DB.Save(&existingConfig).Error; err != nil {
+	// Actualizar campos omitiendo SupplierName (primary key) y timestamps
+	if err := s.DB.Model(&existingConfig).Omit("supplier_name", "created_at", "updated_at").Updates(config).Error; err != nil {
 		return nil, err
 	}
+
 	return &existingConfig, nil
 }
 
