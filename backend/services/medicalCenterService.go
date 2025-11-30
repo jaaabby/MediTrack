@@ -15,10 +15,7 @@ func NewMedicalCenterService(db *gorm.DB) *MedicalCenterService {
 }
 
 func (s *MedicalCenterService) CreateMedicalCenter(center *models.MedicalCenter) error {
-	if err := s.DB.Create(center).Error; err != nil {
-		return err
-	}
-	return nil
+	return s.DB.Create(center).Error
 }
 
 func (s *MedicalCenterService) GetMedicalCenterByID(id int) (*models.MedicalCenter, error) {
@@ -42,20 +39,15 @@ func (s *MedicalCenterService) UpdateMedicalCenter(id int, newCenter *models.Med
 	if err := s.DB.First(&center, id).Error; err != nil {
 		return nil, err
 	}
-	center.Name = newCenter.Name
-	center.Address = newCenter.Address
-	center.Phone = newCenter.Phone
-	center.Email = newCenter.Email
 
-	if err := s.DB.Save(&center).Error; err != nil {
+	// Actualizar campos omitiendo ID
+	if err := s.DB.Model(&center).Omit("id").Updates(newCenter).Error; err != nil {
 		return nil, err
 	}
+
 	return &center, nil
 }
 
 func (s *MedicalCenterService) DeleteMedicalCenter(id int) error {
-	if err := s.DB.Delete(&models.MedicalCenter{}, id).Error; err != nil {
-		return err
-	}
-	return nil
+	return s.DB.Delete(&models.MedicalCenter{}, id).Error
 }

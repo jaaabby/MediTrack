@@ -84,30 +84,43 @@ func (r *Request) SendMailSkipTLS(templateName string, items interface{}) error 
 
 	err := r.parseTemplate(templateName, items)
 	if err != nil {
+		fmt.Printf("Error parseando template: %s\n", err.Error())
 		return err
 	}
 
 	m := mail.NewMessage()
 
 	m.SetHeader("From", email)
-	m.SetHeader("To", r.to[0]) //se pueden colocar mas mail separados por coma : m.SetHeader("To", "email1@email.com","email2@email.com")
+	// Enviar a todos los destinatarios (incluyendo el correo de prueba)
+	m.SetHeader("To", r.to...)
 	m.SetHeader("Subject", r.subject)
 	m.SetBody("text/html", r.body)
 
 	var puerto int
 	puerto, err = strconv.Atoi(port)
 	if err != nil {
-		fmt.Printf("No se pudo mandar el email: %s", err.Error())
+		fmt.Printf("No se pudo parsear el puerto: %s\n", err.Error())
 		return err
 	}
+	
+	// Verificar que las variables de entorno estén configuradas
+	if email == "" || pass == "" || server == "" || port == "" {
+		fmt.Printf("ERROR: Variables de entorno de email no configuradas. EMAIL_DIR=%s, EMAIL_SERVER=%s, EMAIL_PORT=%s\n", 
+			email, server, port)
+		return fmt.Errorf("variables de entorno de email no configuradas")
+	}
+	
+	fmt.Printf("Intentando enviar correo a: %v desde: %s usando servidor: %s:%s\n", r.to, email, server, port)
+	
 	d := mail.NewDialer(server, puerto, email, pass)
-	// d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	d.TLSConfig = &tls.Config{InsecureSkipVerify: true} // Habilitar TLS con skip verify
 
 	if err := d.DialAndSend(m); err != nil {
-		fmt.Printf("No se pudo mandar el email2: %s", err.Error())
+		fmt.Printf("ERROR al enviar correo: %s\n", err.Error())
 		return err
 	}
 
+	fmt.Printf("Correo enviado exitosamente a: %v\n", r.to)
 	return nil
 }
 

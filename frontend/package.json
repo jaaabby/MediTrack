@@ -27,7 +27,8 @@
     "sweetalert2": "^11.23.0",
     "vue": "^3.3.8",
     "vue-chartjs": "^5.2.0",
-    "vue-router": "^4.2.5"
+    "vue-router": "^4.2.5",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
@@ -36,6 +37,7 @@
     "@vue/eslint-config-prettier": "^9.0.0",
     "@vue/test-utils": "^2.4.3",
     "autoprefixer": "^10.4.21",
+    "baseline-browser-mapping": "^2.8.29",
     "eslint": "^8.54.0",
     "eslint-plugin-vue": "^9.18.1",
     "jsdom": "^23.0.1",

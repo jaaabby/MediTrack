@@ -62,16 +62,7 @@ func (c *MedicalSupplyController) CreateMedicalSupply(ctx *gin.Context) {
 }
 
 func (c *MedicalSupplyController) GetMedicalSupplyByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de insumo médico requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
@@ -80,7 +71,7 @@ func (c *MedicalSupplyController) GetMedicalSupplyByID(ctx *gin.Context) {
 		return
 	}
 
-	supply, err := c.medicalSupplyService.GetMedicalSupplyByID(intID)
+	supply, err := c.medicalSupplyService.GetMedicalSupplyByID(id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{
 			Success: false,
@@ -112,16 +103,7 @@ func (c *MedicalSupplyController) GetAllMedicalSupplies(ctx *gin.Context) {
 }
 
 func (c *MedicalSupplyController) UpdateMedicalSupply(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de insumo médico requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
@@ -166,9 +148,7 @@ func (c *MedicalSupplyController) UpdateMedicalSupply(ctx *gin.Context) {
 		}
 	}
 
-	supply.ID = intID
-
-	updatedSupply, err := c.medicalSupplyService.UpdateMedicalSupply(intID, &supply)
+	updatedSupply, err := c.medicalSupplyService.UpdateMedicalSupply(id, &supply)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
@@ -185,16 +165,7 @@ func (c *MedicalSupplyController) UpdateMedicalSupply(ctx *gin.Context) {
 }
 
 func (c *MedicalSupplyController) DeleteMedicalSupply(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "ID de insumo médico requerido",
-		})
-		return
-	}
-
-	intID, err := strconv.Atoi(id)
+	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{
 			Success: false,
@@ -203,7 +174,7 @@ func (c *MedicalSupplyController) DeleteMedicalSupply(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.medicalSupplyService.DeleteMedicalSupply(intID); err != nil {
+	if err := c.medicalSupplyService.DeleteMedicalSupply(id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
 			Error:   "Error al eliminar insumo médico: " + err.Error(),

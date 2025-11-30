@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"meditrack/models"
+	"meditrack/pkg/response"
 	"meditrack/services"
 	"net/http"
 	"strconv"
@@ -24,24 +25,22 @@ func (c *SurgeryController) CreateSurgery(ctx *gin.Context) {
 	var surgery models.Surgery
 
 	if err := ctx.ShouldBindJSON(&surgery); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Datos inválidos",
-			Error:   err.Error(),
+			Error:   "Datos inválidos: " + err.Error(),
 		})
 		return
 	}
 
 	if err := c.surgeryService.CreateSurgery(&surgery); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
-			Message: "Error al crear tipo de cirugía",
-			Error:   err.Error(),
+			Error:   "Error al crear tipo de cirugía: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, Response{
+	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
 		Message: "Tipo de cirugía creado exitosamente",
 		Data:    surgery,
@@ -52,27 +51,24 @@ func (c *SurgeryController) CreateSurgery(ctx *gin.Context) {
 func (c *SurgeryController) GetSurgeryByID(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "ID inválido",
-			Error:   err.Error(),
+			Error:   "ID inválido: " + err.Error(),
 		})
 		return
 	}
 
 	surgery, err := c.surgeryService.GetSurgeryByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
-			Message: "Tipo de cirugía no encontrado",
-			Error:   err.Error(),
+			Error:   "Tipo de cirugía no encontrado: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Tipo de cirugía encontrado",
 		Data:    surgery,
 	})
 }
@@ -81,17 +77,15 @@ func (c *SurgeryController) GetSurgeryByID(ctx *gin.Context) {
 func (c *SurgeryController) GetAllSurgeries(ctx *gin.Context) {
 	surgeries, err := c.surgeryService.GetAllSurgeries()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
-			Message: "Error al obtener tipos de cirugía",
-			Error:   err.Error(),
+			Error:   "Error al obtener tipos de cirugía: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Tipos de cirugía obtenidos",
 		Data: gin.H{
 			"surgeries": surgeries,
 			"count":     len(surgeries),
@@ -111,17 +105,15 @@ func (c *SurgeryController) GetSurgeriesPaginated(ctx *gin.Context) {
 
 	surgeries, total, err := c.surgeryService.GetSurgeriesPaginated(page, pageSize, search)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
-			Message: "Error al obtener tipos de cirugía",
-			Error:   err.Error(),
+			Error:   "Error al obtener tipos de cirugía: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Tipos de cirugía obtenidos",
 		Data: gin.H{
 			"surgeries":   surgeries,
 			"total":       total,
@@ -136,30 +128,27 @@ func (c *SurgeryController) GetSurgeriesPaginated(ctx *gin.Context) {
 func (c *SurgeryController) UpdateSurgery(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "ID inválido",
-			Error:   err.Error(),
+			Error:   "ID inválido: " + err.Error(),
 		})
 		return
 	}
 
 	var surgery models.Surgery
 	if err := ctx.ShouldBindJSON(&surgery); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Datos inválidos",
-			Error:   err.Error(),
+			Error:   "Datos inválidos: " + err.Error(),
 		})
 		return
 	}
 
 	updatedSurgery, err := c.surgeryService.UpdateSurgery(id, &surgery)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
-			Message: "Error al actualizar tipo de cirugía",
-			Error:   err.Error(),
+			Error:   "Error al actualizar tipo de cirugía: " + err.Error(),
 		})
 		return
 	}
@@ -167,15 +156,14 @@ func (c *SurgeryController) UpdateSurgery(ctx *gin.Context) {
 	// Recargar con relaciones
 	updatedSurgery, err = c.surgeryService.GetSurgeryByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
-			Message: "Error al obtener cirugía actualizada",
-			Error:   err.Error(),
+			Error:   "Error al obtener cirugía actualizada: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Tipo de cirugía actualizado exitosamente",
 		Data:    updatedSurgery,
@@ -186,24 +174,22 @@ func (c *SurgeryController) UpdateSurgery(ctx *gin.Context) {
 func (c *SurgeryController) DeleteSurgery(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "ID inválido",
-			Error:   err.Error(),
+			Error:   "ID inválido: " + err.Error(),
 		})
 		return
 	}
 
 	if err := c.surgeryService.DeleteSurgery(id); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
-			Message: "Error al eliminar tipo de cirugía",
-			Error:   err.Error(),
+			Error:   "Error al eliminar tipo de cirugía: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Tipo de cirugía eliminado exitosamente",
 	})
@@ -213,26 +199,24 @@ func (c *SurgeryController) DeleteSurgery(ctx *gin.Context) {
 func (c *SurgeryController) SearchSurgeries(ctx *gin.Context) {
 	name := ctx.Query("name")
 	if name == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
-			Message: "Parámetro 'name' es requerido",
+			Error:   "Parámetro 'name' es requerido",
 		})
 		return
 	}
 
 	surgeries, err := c.surgeryService.SearchSurgeriesByName(name)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
-			Message: "Error al buscar tipos de cirugía",
-			Error:   err.Error(),
+			Error:   "Error al buscar tipos de cirugía: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Búsqueda completada",
 		Data: gin.H{
 			"surgeries": surgeries,
 			"count":     len(surgeries),

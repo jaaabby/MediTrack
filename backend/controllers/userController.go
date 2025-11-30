@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"meditrack/models"
+	"meditrack/pkg/response"
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
@@ -33,7 +34,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&userRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de usuario inválidos: " + err.Error(),
 		})
@@ -43,7 +44,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	// Validar rol
 	tempUser := models.User{Role: userRequest.Role}
 	if !tempUser.IsValidRole() {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Rol inválido. Roles permitidos: admin, pabellón, encargado de bodega, enfermera, doctor, pavedad",
 		})
@@ -62,14 +63,14 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	}
 
 	if err := c.userService.CreateUser(&user); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al crear usuario: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, Response{
+	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
 		Message: "Usuario creado exitosamente",
 		Data:    user.ToResponse(),
@@ -79,24 +80,17 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 // GetUserByID obtiene un usuario por ID
 func (c *UserController) GetUserByID(ctx *gin.Context) {
 	rut := ctx.Param("id")
-	if rut == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "RUT de usuario requerido",
-		})
-		return
-	}
 
 	user, err := c.userService.GetUserByRut(rut)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   "Usuario no encontrado: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    user.ToResponse(),
 	})
@@ -106,7 +100,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 func (c *UserController) GetAllUsers(ctx *gin.Context) {
 	users, err := c.userService.GetAllUsers()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al obtener usuarios: " + err.Error(),
 		})
@@ -119,7 +113,38 @@ func (c *UserController) GetAllUsers(ctx *gin.Context) {
 		userResponses = append(userResponses, user.ToResponse())
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Data:    userResponses,
+	})
+}
+
+// SearchUsers busca usuarios por nombre, RUT o email (accesible para admin y encargado de bodega)
+func (c *UserController) SearchUsers(ctx *gin.Context) {
+	searchTerm := ctx.Query("q")
+	if searchTerm == "" {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Término de búsqueda requerido",
+		})
+		return
+	}
+
+	users, err := c.userService.SearchUsers(searchTerm)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al buscar usuarios: " + err.Error(),
+		})
+		return
+	}
+
+	var userResponses []models.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, user.ToResponse())
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    userResponses,
 	})
@@ -129,7 +154,7 @@ func (c *UserController) GetAllUsers(ctx *gin.Context) {
 func (c *UserController) GetUsersByRole(ctx *gin.Context) {
 	role := ctx.Query("role")
 	if role == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Rol requerido",
 		})
@@ -138,7 +163,7 @@ func (c *UserController) GetUsersByRole(ctx *gin.Context) {
 
 	user := models.User{Role: role}
 	if !user.IsValidRole() {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Rol inválido",
 		})
@@ -147,7 +172,7 @@ func (c *UserController) GetUsersByRole(ctx *gin.Context) {
 
 	users, err := c.userService.GetUsersByRole(role)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al obtener usuarios: " + err.Error(),
 		})
@@ -159,7 +184,7 @@ func (c *UserController) GetUsersByRole(ctx *gin.Context) {
 		userResponses = append(userResponses, user.ToResponse())
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    userResponses,
 	})
@@ -168,13 +193,6 @@ func (c *UserController) GetUsersByRole(ctx *gin.Context) {
 // UpdateUser actualiza un usuario existente
 func (c *UserController) UpdateUser(ctx *gin.Context) {
 	rut := ctx.Param("id")
-	if rut == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "RUT de usuario requerido",
-		})
-		return
-	}
 
 	var userRequest struct {
 		Name            string `json:"name"`
@@ -186,7 +204,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&userRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de usuario inválidos: " + err.Error(),
 		})
@@ -197,7 +215,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 	if userRequest.Role != "" {
 		user := models.User{Role: userRequest.Role}
 		if !user.IsValidRole() {
-			ctx.JSON(http.StatusBadRequest, Response{
+			ctx.JSON(http.StatusBadRequest, response.Response{
 				Success: false,
 				Error:   "Rol inválido. Roles permitidos: admin, pabellón, encargado de bodega",
 			})
@@ -221,14 +239,14 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 	updatedUser, err := c.userService.UpdateUser(rut, &user)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al actualizar usuario: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Usuario actualizado exitosamente",
 		Data:    updatedUser.ToResponse(),
@@ -238,23 +256,16 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 // DeleteUser elimina un usuario
 func (c *UserController) DeleteUser(ctx *gin.Context) {
 	rut := ctx.Param("id")
-	if rut == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "RUT de usuario requerido",
-		})
-		return
-	}
 
 	if err := c.userService.DeleteUser(rut); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al eliminar usuario: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Usuario eliminado exitosamente",
 	})
@@ -263,23 +274,16 @@ func (c *UserController) DeleteUser(ctx *gin.Context) {
 // DeactivateUser desactiva un usuario
 func (c *UserController) DeactivateUser(ctx *gin.Context) {
 	rut := ctx.Param("id")
-	if rut == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "RUT de usuario requerido",
-		})
-		return
-	}
 
 	if err := c.userService.DeactivateUser(rut); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al desactivar usuario: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Usuario desactivado exitosamente",
 	})
@@ -288,23 +292,16 @@ func (c *UserController) DeactivateUser(ctx *gin.Context) {
 // ActivateUser activa un usuario
 func (c *UserController) ActivateUser(ctx *gin.Context) {
 	rut := ctx.Param("id")
-	if rut == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "RUT de usuario requerido",
-		})
-		return
-	}
 
 	if err := c.userService.ActivateUser(rut); err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
+		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al activar usuario: " + err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Usuario activado exitosamente",
 	})
@@ -313,22 +310,23 @@ func (c *UserController) ActivateUser(ctx *gin.Context) {
 func (c *UserController) GetUserProfileByEmail(ctx *gin.Context) {
 	email := ctx.Query("email")
 	if email == "" {
-		ctx.JSON(http.StatusBadRequest, Response{
+		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Email requerido",
 		})
 		return
 	}
 
-	user, err := c.userService.GetUserProfileByEmail(email)
+	user, err := c.userService.GetUserByEmail(email)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, Response{
+		ctx.JSON(http.StatusNotFound, response.Response{
 			Success: false,
 			Error:   "Usuario no encontrado: " + err.Error(),
 		})
+		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
+	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Data:    user.ToResponse(),
 	})

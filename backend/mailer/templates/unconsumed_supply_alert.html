@@ -56,14 +56,22 @@
 </head>
 <body>
     <div class="header">
-        <h1>🚨 Alerta de Insumo No Consumido</h1>
+        {{if .IsReminder}}
+        <h1>🔔 RECORDATORIO #{{.NotificationNumber}} - Insumo Sin Consumir ni Devolver</h1>
+        {{else}}
+        <h1>🚨 Insumo Sin Consumir ni Devolver</h1>
+        {{end}}
         <p><a href="http://localhost:3000" style="color: white; text-decoration: none;">MediTrack</a></p>
     </div>
     
     <div class="content">
         <p>Hola,</p>
         
-        <p>Se ha detectado que el siguiente insumo médico ha permanecido en estado "Recepcionado" por más de 12 horas sin ser consumido o devuelto a la bodega:</p>
+        {{if .IsReminder}}
+        <p><strong style="color: #dc3545;">Este es el recordatorio #{{.NotificationNumber}}.</strong> La cirugía asociada a la solicitud <strong>{{.RequestNumber}}</strong> ha finalizado hace <strong>{{.HoursElapsed}} horas</strong>. El siguiente insumo médico <strong style="color: #dc3545;">AÚN NO ha sido consumido ni devuelto a bodega</strong>:</p>
+        {{else}}
+        <p>La cirugía asociada a la solicitud <strong>{{.RequestNumber}}</strong> ha finalizado. El siguiente insumo médico <strong style="color: #dc3545;">NO ha sido consumido ni devuelto a bodega</strong> y permanece en estado "Recepcionado":</p>
+        {{end}}
         
         <div class="product-info">
             <h3>Información del Insumo</h3>
@@ -71,28 +79,36 @@
             <p><strong>Nombre del Insumo:</strong> {{.SupplyName}}</p>
             <p><strong>Código Interno:</strong> {{.SupplyCode}}</p>
             <p><strong>Código QR:</strong> {{.QRCode}}</p>
-            <p><strong>Número de Lote:</strong> {{.BatchID}}</p>
+            <p><strong>ID de Lote:</strong> {{.BatchID}}</p>
             <p><strong>Estado Actual:</strong> <span style="color: #dc3545; font-weight: bold;">Recepcionado</span></p>
         </div>
         
         <div class="time-info">
-            <h3>⏰ Información de Tiempo</h3>
-            <p><strong>Fecha de Recepción:</strong> {{.ReceivedAt}}</p>
-            <p><strong>Horas Transcurridas:</strong> <span style="color: #dc3545; font-weight: bold;">{{.HoursElapsed}}</span> horas</p>
-            <p><strong>Límite de Tiempo:</strong> 12 horas</p>
+            <h3>⏰ Información de Cirugía y Tiempo</h3>
+            <p><strong>Número de Solicitud:</strong> {{.RequestNumber}}</p>
+            <p><strong>Fecha de Cirugía:</strong> {{.SurgeryDate}}</p>
+            <p><strong>Última Actualización:</strong> {{.ReceivedAt}}</p>
+            <p><strong>Horas desde fin de cirugía:</strong> <span style="color: #dc3545; font-weight: bold;">{{.HoursElapsed}}</span> horas</p>
+            {{if .IsReminder}}
+            <p><strong>Número de Recordatorios Enviados:</strong> <span style="color: #dc3545; font-weight: bold;">{{.NotificationNumber}}</span></p>
+            {{end}}
         </div>
         
         <div class="alert">
-            <p><strong>⚠️ Acción Requerida:</strong></p>
+            <p><strong>⚠️ Acción Requerida Inmediata:</strong></p>
+            <p style="margin-bottom: 15px;">Este insumo <strong>NO ha sido consumido NI devuelto a bodega</strong>. Por favor:</p>
             <ul>
-                <li>Verificar el estado actual del insumo</li>
-                <li>Consumir el insumo si ya fue utilizado</li>
-                <li>Devolver a la bodega si no fue necesario</li>
-                <li>Actualizar el estado en el sistema</li>
+                <li>Verificar si el insumo fue utilizado durante la cirugía</li>
+                <li><strong>CONSUMIR el insumo</strong> si ya fue utilizado en la cirugía</li>
+                <li><strong>DEVOLVER a bodega</strong> si NO fue utilizado</li>
+                <li>Actualizar el estado en el sistema <strong>lo antes posible</strong></li>
             </ul>
+            <p style="margin-top: 15px; color: #856404; background-color: #fff3cd; padding: 10px; border-radius: 4px;">
+                <strong>⏰ Importante:</strong> Los insumos deben ser consumidos o devueltos inmediatamente después de finalizar la cirugía para mantener un inventario preciso.
+            </p>
         </div>
         
-        <p>Por favor, tome las medidas necesarias para gestionar este insumo médico de manera apropiada.</p>
+        <p><strong>Este insumo requiere atención inmediata.</strong> Por favor, tome las medidas necesarias para consumir o devolver el insumo a bodega.</p>
         
         <p>Saludos,<br>Equipo de <a href="http://localhost:3000" style="color: #2196F3; text-decoration: none;">MediTrack</a></p>
     </div>

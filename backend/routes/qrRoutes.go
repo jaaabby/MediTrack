@@ -67,7 +67,8 @@ func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medica
 		qr.POST("/transfer", qrController.TransferSupply)
 
 		// Recepcionar un insumo que está en camino al pabellón
-		qr.POST("/receive", qrController.ReceiveSupply)
+		qr.POST("/pickup", qrController.PickupSupplyFromStore) // Paso 1: Retiro físico de bodega
+		qr.POST("/receive", qrController.ReceiveSupply)        // Paso 2: Recepción en pabellón
 
 		// === FUNCIONALIDADES DE RETORNO A BODEGA ===
 

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"meditrack/pkg/response"
 	"meditrack/services"
 	"net/http"
 	"strconv"
@@ -21,7 +22,7 @@ func NewInventoryController(inventoryService *services.InventoryService) *Invent
 
 // Helper function to send success response
 func sendSuccess(ctx *gin.Context, status int, message string, data interface{}) {
-	ctx.JSON(status, Response{
+	ctx.JSON(status, response.Response{
 		Success: true,
 		Message: message,
 		Data:    data,
@@ -30,11 +31,33 @@ func sendSuccess(ctx *gin.Context, status int, message string, data interface{})
 
 // Helper function to send error response
 func sendError(ctx *gin.Context, status int, message string, err string) {
-	ctx.JSON(status, Response{
+	ctx.JSON(status, response.Response{
 		Success: false,
 		Message: message,
 		Error:   err,
 	})
+}
+
+// parseIntQuery parsea un parámetro de query como entero opcional
+func parseIntQuery(ctx *gin.Context, paramName string) (*int, error) {
+	valueStr := ctx.Query(paramName)
+	if valueStr == "" {
+		return nil, nil
+	}
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return nil, err
+	}
+	return &value, nil
+}
+
+// parseStringQuery parsea un parámetro de query como string opcional
+func parseStringQuery(ctx *gin.Context, paramName string) *string {
+	value := ctx.Query(paramName)
+	if value == "" {
+		return nil
+	}
+	return &value
 }
 
 // Helper function to parse date with multiple formats
@@ -64,31 +87,10 @@ func (c *InventoryController) GetStoreInventory(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "20"))
 
-	var storeID *int
-	if sidStr := ctx.Query("store_id"); sidStr != "" {
-		if sid, err := strconv.Atoi(sidStr); err == nil {
-			storeID = &sid
-		}
-	}
-
-	var surgeryID *int
-	if surgIDStr := ctx.Query("surgery_id"); surgIDStr != "" {
-		if surgID, err := strconv.Atoi(surgIDStr); err == nil {
-			surgeryID = &surgID
-		}
-	}
-
-	var supplyCode *int
-	if scStr := ctx.Query("supply_code"); scStr != "" {
-		if sc, err := strconv.Atoi(scStr); err == nil {
-			supplyCode = &sc
-		}
-	}
-
-	var supplier *string
-	if sup := ctx.Query("supplier"); sup != "" {
-		supplier = &sup
-	}
+	storeID, _ := parseIntQuery(ctx, "store_id")
+	surgeryID, _ := parseIntQuery(ctx, "surgery_id")
+	supplyCode, _ := parseIntQuery(ctx, "supply_code")
+	supplier := parseStringQuery(ctx, "supplier")
 
 	nearExpiration := ctx.Query("near_expiration") == "true"
 	lowStock := ctx.Query("low_stock") == "true"
@@ -105,41 +107,39 @@ func (c *InventoryController) GetStoreInventory(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Response{
-			Success: false,
-			Message: "Error al obtener inventario de bodega",
-			Error:   err.Error(),
-		})
+		sendError(ctx, http.StatusInternalServerError, "Error al obtener inventario de bodega", err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Response{
-		Success: true,
-		Message: "Inventario de bodega obtenido",
-		Data: gin.H{
-			"inventory":   inventory,
-			"total":       total,
-			"page":        page,
-			"page_size":   pageSize,
-			"total_pages": (int(total) + pageSize - 1) / pageSize,
-		},
+	sendSuccess(ctx, http.StatusOK, "Inventario de bodega obtenido", gin.H{
+		"inventory":   inventory,
+		"total":       total,
+		"page":        page,
+		"page_size":   pageSize,
+		"total_pages": (int(total) + pageSize - 1) / pageSize,
 	})
+}
+
+// parseIDFromParam parsea el ID del parámetro de la URL
+func (c *InventoryController) parseIDFromParam(ctx *gin.Context, paramName string) (int, error) {
+	id := ctx.Param(paramName)
+	intID, err := strconv.Atoi(id)
+	if err != nil {
+		return 0, err
+	}
+	return intID, nil
 }
 
 // GetPavilionInventory obtiene el inventario de un pabellón
 func (c *InventoryController) GetPavilionInventory(ctx *gin.Context) {
-	pavilionID, err := strconv.Atoi(ctx.Param("pavilion_id"))
+	pavilionID, err := c.parseIDFromParam(ctx, "pavilion_id")
 	if err != nil {
 		sendError(ctx, http.StatusBadRequest, "ID de pabellón inválido", err.Error())
 		return
 	}
 
 	includeInTransit := ctx.Query("include_in_transit") == "true"
-
-	var supplier *string
-	if sup := ctx.Query("supplier"); sup != "" {
-		supplier = &sup
-	}
+	supplier := parseStringQuery(ctx, "supplier")
 
 	inventory, err := c.inventoryService.GetPavilionInventory(pavilionID, includeInTransit, supplier)
 	if err != nil {
@@ -159,17 +159,8 @@ func (c *InventoryController) GetMovementHistory(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "20"))
 
-	var locationType *string
-	if lt := ctx.Query("location_type"); lt != "" {
-		locationType = &lt
-	}
-
-	var locationID *int
-	if lidStr := ctx.Query("location_id"); lidStr != "" {
-		if lid, err := strconv.Atoi(lidStr); err == nil {
-			locationID = &lid
-		}
-	}
+	locationType := parseStringQuery(ctx, "location_type")
+	locationID, _ := parseIntQuery(ctx, "location_id")
 
 	var startDate *time.Time
 	if sdStr := ctx.Query("start_date"); sdStr != "" {
@@ -185,10 +176,7 @@ func (c *InventoryController) GetMovementHistory(ctx *gin.Context) {
 		}
 	}
 
-	var movementType *string
-	if mt := ctx.Query("movement_type"); mt != "" {
-		movementType = &mt
-	}
+	movementType := parseStringQuery(ctx, "movement_type")
 
 	history, total, err := c.inventoryService.GetMovementHistory(
 		locationType,
@@ -227,12 +215,7 @@ func (c *InventoryController) SyncInventory(ctx *gin.Context) {
 
 // GetInventorySummary obtiene un resumen general del inventario
 func (c *InventoryController) GetInventorySummary(ctx *gin.Context) {
-	var medicalCenterID *int
-	if mcidStr := ctx.Query("medical_center_id"); mcidStr != "" {
-		if mcid, err := strconv.Atoi(mcidStr); err == nil {
-			medicalCenterID = &mcid
-		}
-	}
+	medicalCenterID, _ := parseIntQuery(ctx, "medical_center_id")
 
 	summary, err := c.inventoryService.GetInventorySummary(medicalCenterID)
 	if err != nil {
@@ -245,12 +228,7 @@ func (c *InventoryController) GetInventorySummary(ctx *gin.Context) {
 
 // GetInventoryBySurgeryType obtiene inventario agrupado por tipo de cirugía
 func (c *InventoryController) GetInventoryBySurgeryType(ctx *gin.Context) {
-	var storeID *int
-	if sidStr := ctx.Query("store_id"); sidStr != "" {
-		if sid, err := strconv.Atoi(sidStr); err == nil {
-			storeID = &sid
-		}
-	}
+	storeID, _ := parseIntQuery(ctx, "store_id")
 
 	inventory, err := c.inventoryService.GetInventoryBySurgeryType(storeID)
 	if err != nil {

@@ -2,14 +2,16 @@ package routes
 
 import (
 	"meditrack/controllers"
+	"meditrack/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
 // SetupSupplyRequestRoutes configura las rutas para solicitudes de insumo con trazabilidad QR
-func SetupSupplyRequestRoutes(router *gin.Engine, supplyRequestController *controllers.SupplyRequestController) {
+func SetupSupplyRequestRoutes(router *gin.Engine, supplyRequestController *controllers.SupplyRequestController, secretKey string) {
 	// Grupo de rutas para solicitudes de insumo
 	supplyRequestGroup := router.Group("/api/v1/supply-requests")
+	supplyRequestGroup.Use(middleware.AuthMiddleware(secretKey)) // Aplicar autenticación a todas las rutas
 	{
 		// CRUD básico de solicitudes
 		supplyRequestGroup.POST("", supplyRequestController.CreateSupplyRequest)
@@ -32,6 +34,9 @@ func SetupSupplyRequestRoutes(router *gin.Engine, supplyRequestController *contr
 		// Ruta para reenviar solicitudes devueltas
 		supplyRequestGroup.PUT("/:id/resubmit", supplyRequestController.ResubmitReturnedRequest)
 
+		// Ruta para configurar autorización de retiro (solo encargado de bodega)
+		supplyRequestGroup.PUT("/:id/configure-pickup", supplyRequestController.ConfigurePickupAuthorization)
+
 		// Rutas por pabellón
 		supplyRequestGroup.GET("/pavilion/:pavilion_id", supplyRequestController.GetSupplyRequestsByPavilion)
 
@@ -41,6 +46,7 @@ func SetupSupplyRequestRoutes(router *gin.Engine, supplyRequestController *contr
 
 	// Grupo de rutas para asignación de QR
 	qrAssignmentGroup := router.Group("/api/v1/qr-assignments")
+	qrAssignmentGroup.Use(middleware.AuthMiddleware(secretKey)) // Aplicar autenticación
 	{
 		// Asignación individual y en lote
 		qrAssignmentGroup.POST("", supplyRequestController.AssignQRToRequest)
@@ -52,6 +58,7 @@ func SetupSupplyRequestRoutes(router *gin.Engine, supplyRequestController *contr
 
 	// Grupo de rutas para trazabilidad QR
 	traceabilityGroup := router.Group("/api/v1/traceability")
+	traceabilityGroup.Use(middleware.AuthMiddleware(secretKey)) // Aplicar autenticación
 	{
 		// Trazabilidad específica
 		traceabilityGroup.GET("/qr/:qr_code", supplyRequestController.GetQRTraceability)

@@ -29,12 +29,16 @@ type SupplyRequest struct {
 	CompletedDate   *time.Time `json:"completed_date"`
 	MedicalCenterID int        `json:"medical_center_id" gorm:"not null"`
 	// Campos de médico responsable
-	SurgeonID   *string   `json:"surgeon_id"`
-	SurgeonName *string   `json:"surgeon_name"`
-	SurgeryID   *int      `json:"surgery_id"`
-	SpecialtyID *int      `json:"specialty_id"`
-	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	SurgeonID   *string `json:"surgeon_id"`
+	SurgeonName *string `json:"surgeon_name"`
+	SurgeryID   *int    `json:"surgery_id"`
+	SpecialtyID *int    `json:"specialty_id"`
+	// Campos para control de retiro
+	AllowAnyoneToPickup  bool      `json:"allow_anyone_to_pickup" gorm:"default:true"`
+	AuthorizedPickupRUT  *string   `json:"authorized_pickup_rut"`
+	AuthorizedPickupName *string   `json:"authorized_pickup_name"`
+	CreatedAt            time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt            time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relaciones
 	Surgeon   *User             `json:"surgeon,omitempty" gorm:"foreignKey:SurgeonID;references:RUT"`
@@ -81,8 +85,11 @@ type SupplyRequestQRAssignment struct {
 	DeliveredByName     *string    `json:"delivered_by_name"`
 	Status              string     `json:"status" gorm:"not null;default:assigned"`
 	Notes               string     `json:"notes" gorm:"type:text"`
-	CreatedAt           time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt           time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// Campos para notificaciones de insumos no consumidos
+	LastNotificationSent *time.Time `json:"last_notification_sent"`
+	NotificationCount    int        `json:"notification_count" gorm:"default:0"`
+	CreatedAt            time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt            time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relaciones
 	SupplyRequest     SupplyRequest     `json:"supply_request,omitempty" gorm:"foreignKey:SupplyRequestID"`
@@ -171,9 +178,64 @@ func (s *SupplyRequest) GetHoursUntilSurgery() float64 {
 	return time.Until(s.SurgeryDatetime).Hours()
 }
 
+// GetDaysUntilSurgery retorna los días restantes hasta la cirugía
+func (s *SupplyRequest) GetDaysUntilSurgery() float64 {
+	return time.Until(s.SurgeryDatetime).Hours() / 24.0
+}
+
 // IsSurgeryOverdue verifica si la cirugía ya pasó
 func (s *SupplyRequest) IsSurgeryOverdue() bool {
 	return time.Now().After(s.SurgeryDatetime)
+}
+
+// IsUrgent verifica si la cirugía es urgente (menos de 48 horas)
+func (s *SupplyRequest) IsUrgent() bool {
+	hoursUntil := s.GetHoursUntilSurgery()
+	return hoursUntil > 0 && hoursUntil <= 48
+}
+
+// IsEmergency verifica si la cirugía es de emergencia (menos de 12 horas)
+func (s *SupplyRequest) IsEmergency() bool {
+	hoursUntil := s.GetHoursUntilSurgery()
+	return hoursUntil > 0 && hoursUntil <= 12
+}
+
+// IsNotProgrammed verifica si la cirugía no está programada con suficiente anticipación (menos de 3 días)
+func (s *SupplyRequest) IsNotProgrammed() bool {
+	daysUntil := s.GetDaysUntilSurgery()
+	return daysUntil > 0 && daysUntil < 3
+}
+
+// GetUrgencyLevel retorna el nivel de urgencia: "emergency", "urgent", "normal", "low"
+func (s *SupplyRequest) GetUrgencyLevel() string {
+	hoursUntil := s.GetHoursUntilSurgery()
+	if hoursUntil < 0 {
+		return "completed"
+	}
+	if hoursUntil <= 12 {
+		return "emergency"
+	}
+	if hoursUntil <= 48 {
+		return "urgent"
+	}
+	if hoursUntil <= 72 {
+		return "normal"
+	}
+	return "low"
+}
+
+// GetDaysUntilSurgeryFromRequest calcula los días desde la solicitud hasta la cirugía
+func (s *SupplyRequest) GetDaysUntilSurgeryFromRequest() float64 {
+	return s.SurgeryDatetime.Sub(s.RequestDate).Hours() / 24.0
+}
+
+// HasMinimumAdvanceNotice verifica si tiene la anticipación mínima requerida (3 días por defecto)
+func (s *SupplyRequest) HasMinimumAdvanceNotice(minDays float64) bool {
+	if minDays <= 0 {
+		minDays = 3.0 // Por defecto 3 días
+	}
+	daysUntil := s.GetDaysUntilSurgeryFromRequest()
+	return daysUntil >= minDays
 }
 
 // GenerateRequestNumber genera un número de solicitud único

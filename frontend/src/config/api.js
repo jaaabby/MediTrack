@@ -45,23 +45,31 @@ export function getApiBaseUrl() {
   const hostname = window.location.hostname // 'localhost' o la IP
   const port = window.location.port || (protocol === 'https:' ? '3443' : '3000')
   
-  // Determinar el puerto del backend basado en el protocolo
-  // Si estamos en HTTPS (desde el celular), el backend también debe estar en HTTPS
-  const backendPort = protocol === 'https:' ? 8443 : 8080
-  const backendProtocol = protocol === 'https:' ? 'https' : 'http'
+  // En localhost, siempre usar HTTP primero (puerto 8080)
+  // Esto es más común en desarrollo local
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  
+  let backendPort = 8080
+  let backendProtocol = 'http'
+  
+  // Si NO estamos en localhost, usar el mismo protocolo que el frontend
+  if (!isLocalhost) {
+    backendPort = protocol === 'https:' ? 8443 : 8080
+    backendProtocol = protocol === 'https:' ? 'https' : 'http'
+  }
   
   // Construir la URL de la API
-  // Si estamos en localhost, usar localhost; si no, usar el mismo hostname
-  const apiHost = hostname === 'localhost' || hostname === '127.0.0.1' 
-    ? 'localhost' 
-    : hostname
+  const apiHost = isLocalhost ? 'localhost' : hostname
   
   const apiUrl = `${backendProtocol}://${apiHost}:${backendPort}/api/v1`
   
   console.log('🔧 API URL detectada automáticamente (desarrollo):', apiUrl)
-  console.log('   Protocolo:', protocol)
+  console.log('   Protocolo frontend:', protocol)
   console.log('   Hostname:', hostname)
-  console.log('   Puerto:', port)
+  console.log('   Puerto frontend:', port)
+  console.log('   Es localhost:', isLocalhost)
+  console.log('   Backend protocol:', backendProtocol)
+  console.log('   Backend port:', backendPort)
   
   return apiUrl
 }

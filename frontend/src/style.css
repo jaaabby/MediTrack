@@ -2,13 +2,27 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* Importar fuentes */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Importar fuentes personalizadas - Akzidenz Grotesk */
+@font-face {
+  font-family: 'Akzidenz Grotesk';
+  src: url('@/assets/fonts/Akzidenz-Grotesk-BQ-Light-Extended_2826.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Akzidenz Grotesk';
+  src: url('@/assets/fonts/Akzidenz-Grotesk-BQ-Light-Extended-Italic_2825.ttf') format('truetype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
 
 /* Estilos base personalizados */
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Akzidenz Grotesk', 'Inter', system-ui, sans-serif;
   }
   
   body {
@@ -20,36 +34,36 @@
 @layer components {
   /* Botones */
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+    @apply bg-brand-blue-dark hover:bg-brand-blue-medium text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-blue-light focus:ring-offset-2 flex items-center justify-center;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center justify-center;
   }
   
   .btn-success {
-    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
+    @apply bg-brand-green hover:bg-opacity-90 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 flex items-center justify-center;
   }
   
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+    @apply bg-brand-pink hover:bg-opacity-90 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:ring-offset-2 flex items-center justify-center;
   }
   
   /* Campos de formulario */
   .form-input {
-    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-colors duration-200;
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-brand-blue-dark focus:ring-brand-blue-dark sm:text-sm transition-colors duration-200;
   }
   
   .form-select {
-    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-colors duration-200;
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-brand-blue-dark focus:ring-brand-blue-dark sm:text-sm transition-colors duration-200;
   }
   
   .form-checkbox {
-    @apply h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-colors duration-200;
+    @apply h-4 w-4 text-brand-blue-dark focus:ring-brand-blue-dark border-gray-300 rounded transition-colors duration-200;
   }
   
   .form-radio {
-    @apply h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 transition-colors duration-200;
+    @apply h-4 w-4 text-brand-blue-dark focus:ring-brand-blue-dark border-gray-300 transition-colors duration-200;
   }
   
   /* Tarjetas */
@@ -67,11 +81,11 @@
   
   /* Navegación */
   .nav-link {
-    @apply text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
+    @apply text-gray-600 hover:text-brand-blue-dark px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
   }
   
   .nav-link-active {
-    @apply text-blue-600 bg-blue-50 px-3 py-2 rounded-md text-sm font-medium;
+    @apply text-brand-blue-dark bg-brand-blue-light bg-opacity-20 px-3 py-2 rounded-md text-sm font-medium;
   }
   
   /* Tabla */
@@ -117,12 +131,12 @@
   }
   
   .badge-info {
-    @apply bg-blue-100 text-blue-800;
+    @apply bg-brand-blue-light bg-opacity-30 text-brand-blue-dark;
   }
   
   /* Loading spinner */
   .spinner {
-    @apply animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600;
+    @apply animate-spin rounded-full h-4 w-4 border-b-2 border-brand-blue-dark;
   }
   
   /* Transiciones */
@@ -173,18 +187,18 @@
   
   /* Gradientes personalizados */
   .bg-gradient-medical {
-    background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, #0C70CD 0%, #2B88D0 50%, #31CDE3 100%);
   }
   
   .bg-gradient-success {
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    background: linear-gradient(135deg, #B0F2B4 0%, #90e895 100%);
   }
   
   .bg-gradient-warning {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    background: linear-gradient(135deg, #FA92B9 0%, #f57ba8 100%);
   }
   
   .bg-gradient-danger {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    background: linear-gradient(135deg, #FA92B9 0%, #e87ba0 100%);
   }
 } 

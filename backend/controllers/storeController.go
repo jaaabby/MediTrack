@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"fmt"
 	"meditrack/models"
 	"meditrack/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,23 +18,16 @@ func NewStoreController(storeService services.StoreService) *StoreController {
 }
 
 func (c *StoreController) CreateStore(ctx *gin.Context) {
-	var storeRequest struct {
-		Name            string `json:"name"`
-		Type            string `json:"type"`
-		MedicalCenterID int    `json:"medical_center_id"`
-	}
+	var store models.Store
 
-	if err := ctx.ShouldBindJSON(&storeRequest); err != nil {
+	if err := ctx.ShouldBindJSON(&store); err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
 
-	// Crear modelo sin ID
-	store := models.Store{
-		Name:            storeRequest.Name,
-		Type:            storeRequest.Type,
-		MedicalCenterID: storeRequest.MedicalCenterID,
-		// ID se auto-generará
+	if store.Name == "" {
+		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "El nombre es requerido"})
+		return
 	}
 
 	if err := c.storeService.CreateStore(&store); err != nil {
@@ -45,13 +38,12 @@ func (c *StoreController) CreateStore(ctx *gin.Context) {
 }
 
 func (c *StoreController) GetStoreByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	store, err := c.storeService.GetStoreByID(intID)
+	store, err := c.storeService.GetStoreByID(id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, Response{Success: false, Error: "Store no encontrado: " + err.Error()})
 		return
@@ -69,9 +61,8 @@ func (c *StoreController) GetAllStores(ctx *gin.Context) {
 }
 
 func (c *StoreController) UpdateStore(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
@@ -80,22 +71,21 @@ func (c *StoreController) UpdateStore(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "Datos inválidos: " + err.Error()})
 		return
 	}
-	store.ID = intID
-	if _, err := c.storeService.UpdateStore(intID, &store); err != nil {
+	updatedStore, err := c.storeService.UpdateStore(id, &store)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al actualizar store: " + err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Store actualizado", Data: store})
+	ctx.JSON(http.StatusOK, Response{Success: true, Message: "Store actualizado", Data: updatedStore})
 }
 
 func (c *StoreController) DeleteStore(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var intID int
-	if _, err := fmt.Sscanf(id, "%d", &intID); err != nil {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID inválido: " + err.Error()})
 		return
 	}
-	if err := c.storeService.DeleteStore(intID); err != nil {
+	if err := c.storeService.DeleteStore(id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al eliminar store: " + err.Error()})
 		return
 	}

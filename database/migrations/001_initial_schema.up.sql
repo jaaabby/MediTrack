@@ -72,6 +72,7 @@ CREATE TABLE "user" (
     password VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')),
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
+    pavilion_id INTEGER REFERENCES pavilion(id),
     specialty_id INTEGER REFERENCES medical_specialty(id),
     is_active BOOLEAN DEFAULT TRUE,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
@@ -80,6 +81,7 @@ CREATE TABLE "user" (
 
 CREATE INDEX idx_user_email ON "user"(email);
 CREATE INDEX idx_user_specialty ON "user"(specialty_id);
+CREATE INDEX idx_user_pavilion ON "user"(pavilion_id);
 
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,
@@ -93,7 +95,7 @@ CREATE TABLE medical_supply (
     in_transit BOOLEAN DEFAULT FALSE,
     transfer_date TIMESTAMP,
     transferred_by VARCHAR(20) REFERENCES "user"(rut),
-    CONSTRAINT chk_medical_supply_status CHECK (status IN ('disponible', 'en_camino_a_pabellon', 'recepcionado', 'consumido', 'en_camino_a_bodega'))
+    CONSTRAINT chk_medical_supply_status CHECK (status IN ('disponible', 'pendiente_retiro', 'en_camino_a_pabellon', 'recepcionado', 'consumido', 'en_camino_a_bodega'))
 );
 
 CREATE INDEX idx_medical_supply_status ON medical_supply(status);
@@ -239,6 +241,10 @@ CREATE TABLE IF NOT EXISTS supply_request (
     surgeon_name VARCHAR(255),
     surgery_id INTEGER REFERENCES surgery(id),
     specialty_id INTEGER REFERENCES medical_specialty(id),
+    -- Campos para control de retiro
+    allow_anyone_to_pickup BOOLEAN DEFAULT TRUE,
+    authorized_pickup_rut VARCHAR(20) REFERENCES "user"(rut),
+    authorized_pickup_name VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
@@ -316,6 +322,8 @@ CREATE TABLE IF NOT EXISTS supply_request_qr_assignment (
     delivered_by_name VARCHAR(255),
     status VARCHAR(20) NOT NULL DEFAULT 'assigned',
     notes TEXT,
+    last_notification_sent TIMESTAMP WITH TIME ZONE,
+    notification_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
@@ -333,6 +341,7 @@ CREATE INDEX idx_qr_assignment_medical_supply ON supply_request_qr_assignment(me
 CREATE INDEX idx_qr_assignment_status ON supply_request_qr_assignment(status);
 CREATE INDEX idx_qr_assignment_assigned_date ON supply_request_qr_assignment(assigned_date);
 CREATE INDEX idx_qr_assignment_assigned_by ON supply_request_qr_assignment(assigned_by);
+CREATE INDEX idx_assignment_notification ON supply_request_qr_assignment(last_notification_sent);
 
 CREATE OR REPLACE FUNCTION update_supply_request_updated_at()
 RETURNS TRIGGER AS $$
@@ -599,6 +608,9 @@ CREATE TABLE IF NOT EXISTS supply_transfer (
     destination_id INTEGER NOT NULL,
     sent_by VARCHAR(20) NOT NULL REFERENCES "user"(rut),
     sent_by_name VARCHAR(255) NOT NULL,
+    picked_up_by VARCHAR(20) REFERENCES "user"(rut),
+    picked_up_by_name VARCHAR(255),
+    picked_up_date TIMESTAMP WITH TIME ZONE,
     received_by VARCHAR(20) REFERENCES "user"(rut),
     received_by_name VARCHAR(255),
     status VARCHAR(50) NOT NULL DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'en_transito', 'recibido', 'rechazado', 'cancelado')),
@@ -613,6 +625,7 @@ CREATE TABLE IF NOT EXISTS supply_transfer (
 
 CREATE INDEX idx_supply_transfer_qr_code ON supply_transfer(qr_code);
 CREATE INDEX idx_supply_transfer_medical_supply ON supply_transfer(medical_supply_id);
+CREATE INDEX idx_supply_transfer_picked_up_by ON supply_transfer(picked_up_by);
 CREATE INDEX idx_supply_transfer_status ON supply_transfer(status);
 CREATE INDEX idx_supply_transfer_origin ON supply_transfer(origin_type, origin_id);
 CREATE INDEX idx_supply_transfer_destination ON supply_transfer(destination_type, destination_id);
@@ -726,29 +739,6 @@ CREATE INDEX idx_surgery_typical_supply_code ON surgery_typical_supply(supply_co
 CREATE INDEX idx_surgery_typical_supply_required ON surgery_typical_supply(is_required);
 
 -- =======================
--- TABLA DE INFORMACIÓN EXTENDIDA DE DOCTORES
--- =======================
-CREATE TABLE IF NOT EXISTS doctor_info (
-    user_rut VARCHAR(20) PRIMARY KEY REFERENCES "user"(rut) ON DELETE CASCADE,
-    medical_license VARCHAR(100),
-    license_expiration_date DATE,
-    specialization VARCHAR(255),
-    specialty_id INTEGER REFERENCES medical_specialty(id),
-    years_of_experience INTEGER,
-    phone VARCHAR(50),
-    emergency_contact VARCHAR(255),
-    emergency_phone VARCHAR(50),
-    is_available BOOLEAN DEFAULT TRUE,
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_doctor_info_specialty ON doctor_info(specialty_id);
-CREATE INDEX idx_doctor_info_available ON doctor_info(is_available);
-CREATE INDEX idx_doctor_info_license ON doctor_info(medical_license);
-
--- =======================
 -- TRIGGERS PARA CONFIGURACIÓN MÉDICA
 -- =======================
 CREATE OR REPLACE FUNCTION update_medical_specialty_updated_at()
@@ -776,19 +766,6 @@ CREATE TRIGGER trg_update_surgery_typical_supply_updated_at
     BEFORE UPDATE ON surgery_typical_supply
     FOR EACH ROW
     EXECUTE FUNCTION update_surgery_typical_supply_updated_at();
-
-CREATE OR REPLACE FUNCTION update_doctor_info_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_update_doctor_info_updated_at
-    BEFORE UPDATE ON doctor_info
-    FOR EACH ROW
-    EXECUTE FUNCTION update_doctor_info_updated_at();
 
 -- =======================
 -- TABLA DE CONFIGURACIÓN DE PROVEEDORES PARA ALERTAS DE VENCIMIENTO

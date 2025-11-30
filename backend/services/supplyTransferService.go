@@ -3,7 +3,9 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log"
 	"meditrack/models"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -191,6 +193,33 @@ func (s *SupplyTransferService) ConfirmReception(
 			return fmt.Errorf("la transferencia no está en tránsito (estado: %s)", transfer.Status)
 		}
 
+		// 1.5. Validar que la persona que recibe sea la misma que retiró físicamente
+		// La persona que sacó de bodega debe confirmar que el insumo llegó
+		if transfer.PickedUpBy == nil {
+			return fmt.Errorf("el insumo no ha sido retirado físicamente de bodega aún. Debe escanearlo primero para registrar el retiro.")
+		}
+		if *transfer.PickedUpBy != userRUT {
+			// Obtener el nombre del usuario que retiró el insumo
+			var pickedUpUser models.User
+			pickedUpUserName := "Usuario Desconocido"
+			if err := tx.Where("rut = ?", *transfer.PickedUpBy).First(&pickedUpUser).Error; err == nil {
+				pickedUpUserName = pickedUpUser.Name
+			}
+
+			// Obtener el nombre del usuario actual si no está disponible
+			currentUserName := userName
+			if currentUserName == "" {
+				var currentUser models.User
+				if err := tx.Where("rut = ?", userRUT).First(&currentUser).Error; err == nil {
+					currentUserName = currentUser.Name
+				} else {
+					currentUserName = "Usuario Desconocido"
+				}
+			}
+
+			return fmt.Errorf("solo la persona que retiró el insumo de bodega (%s) puede confirmar su recepción. Usted es %s", pickedUpUserName, currentUserName)
+		}
+
 		// 2. Obtener el insumo
 		if err := tx.First(&supply, transfer.MedicalSupplyID).Error; err != nil {
 			return fmt.Errorf("insumo no encontrado: %v", err)
@@ -303,8 +332,24 @@ func (s *SupplyTransferService) ReturnToStore(
 				return fmt.Errorf("insumo %s no está en pabellón", qrCode)
 			}
 
+			// Permitir devolver insumos consumidos automáticamente
+			// Verificar si fue consumido automáticamente revisando el historial
 			if supply.Status == models.StatusConsumed {
-				return fmt.Errorf("insumo %s ya fue consumido", qrCode)
+				// Verificar si fue consumido automáticamente
+				var lastConsumptionHistory models.SupplyHistory
+				if err := tx.Where("medical_supply_id = ? AND status = ?", supply.ID, models.StatusConsumed).
+					Order("date_time DESC").
+					First(&lastConsumptionHistory).Error; err == nil {
+					// Si las notas contienen el prefijo de consumo automático, permitir devolución
+					if strings.Contains(lastConsumptionHistory.Notes, "[CONSUMO_AUTOMATICO]") {
+						// Permitir devolución de insumo consumido automáticamente
+						log.Printf("🔄 Permitiendo devolución de insumo %s consumido automáticamente", qrCode)
+					} else {
+						return fmt.Errorf("insumo %s ya fue consumido manualmente y no puede ser devuelto", qrCode)
+					}
+				} else {
+					return fmt.Errorf("insumo %s ya fue consumido", qrCode)
+				}
 			}
 
 			// 2. Obtener información del batch
@@ -341,19 +386,31 @@ func (s *SupplyTransferService) ReturnToStore(
 				return fmt.Errorf("error al crear transferencia de devolución: %v", err)
 			}
 
-			// 4. Decrementar stock del pabellón
-			var pavilionSummary models.PavilionInventorySummary
-			if err := tx.Where("pavilion_id = ? AND batch_id = ?", pavilionID, batch.ID).
-				First(&pavilionSummary).Error; err != nil {
-				return fmt.Errorf("resumen de pabellón no encontrado: %v", err)
-			}
+			// 4. Decrementar stock del pabellón (solo si el insumo no estaba consumido)
+			// Si estaba consumido automáticamente, no estaba en el inventario disponible
+			if supply.Status != models.StatusConsumed {
+				var pavilionSummary models.PavilionInventorySummary
+				if err := tx.Where("pavilion_id = ? AND batch_id = ?", pavilionID, batch.ID).
+					First(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("resumen de pabellón no encontrado: %v", err)
+				}
 
-			pavilionSummary.CurrentAvailable--
-			pavilionSummary.TotalReturned++
-			pavilionSummary.LastReturnedDate = &now
+				pavilionSummary.CurrentAvailable--
+				pavilionSummary.TotalReturned++
+				pavilionSummary.LastReturnedDate = &now
 
-			if err := tx.Save(&pavilionSummary).Error; err != nil {
-				return fmt.Errorf("error al actualizar resumen de pabellón: %v", err)
+				if err := tx.Save(&pavilionSummary).Error; err != nil {
+					return fmt.Errorf("error al actualizar resumen de pabellón: %v", err)
+				}
+			} else {
+				// Si estaba consumido automáticamente, solo actualizar contadores de devolución
+				var pavilionSummary models.PavilionInventorySummary
+				if err := tx.Where("pavilion_id = ? AND batch_id = ?", pavilionID, batch.ID).
+					First(&pavilionSummary).Error; err == nil {
+					pavilionSummary.TotalReturned++
+					pavilionSummary.LastReturnedDate = &now
+					tx.Save(&pavilionSummary)
+				}
 			}
 
 			// 5. Incrementar stock de bodega
@@ -376,7 +433,43 @@ func (s *SupplyTransferService) ReturnToStore(
 				return fmt.Errorf("error al actualizar lote: %v", err)
 			}
 
-			// 7. Actualizar ubicación del insumo
+			// 7. Marcar cualquier asignación antigua como 'returned' y desactivar items de carrito
+			var oldAssignments []models.SupplyRequestQRAssignment
+			if err := tx.Where("qr_code = ? AND status NOT IN (?, ?)", qrCode, models.AssignmentStatusReturned, models.AssignmentStatusConsumed).
+				Find(&oldAssignments).Error; err == nil {
+				for _, assignment := range oldAssignments {
+					assignment.Status = models.AssignmentStatusReturned
+					returnNote := fmt.Sprintf("[DEVUELTO A BODEGA] %s", reason)
+					if notes != "" {
+						returnNote = returnNote + " - " + notes
+					}
+					if assignment.Notes != "" {
+						assignment.Notes = assignment.Notes + "\n" + returnNote
+					} else {
+						assignment.Notes = returnNote
+					}
+					if err := tx.Save(&assignment).Error; err != nil {
+						log.Printf("⚠️ Error actualizando asignación a 'returned': %v\n", err)
+					}
+
+					// Desactivar items de carrito asociados a esta asignación
+					now := time.Now()
+					if err := tx.Model(&models.SupplyCartItem{}).
+						Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignment.ID, true).
+						Updates(map[string]interface{}{
+							"is_active":       false,
+							"removed_at":      &now,
+							"removed_by":      &userRUT,
+							"removed_by_name": &userName,
+							"notes":           "Insumo devuelto a bodega",
+						}).Error; err != nil {
+						log.Printf("⚠️ Error desactivando items de carrito: %v\n", err)
+					}
+				}
+				log.Printf("✅ Marcadas %d asignaciones antiguas como 'returned' para QR %s\n", len(oldAssignments), qrCode)
+			}
+
+			// 8. Actualizar ubicación del insumo
 			supply.LocationType = models.SupplyLocationStore
 			supply.LocationID = storeID
 			supply.InTransit = false
@@ -388,7 +481,7 @@ func (s *SupplyTransferService) ReturnToStore(
 				return fmt.Errorf("error al actualizar insumo: %v", err)
 			}
 
-			// 8. Registrar en historial
+			// 9. Registrar en historial
 			history := models.SupplyHistory{
 				DateTime:         now,
 				Status:           models.StatusAvailable,

@@ -36,6 +36,7 @@ func SetupUserRoutes(router *gin.RouterGroup, userService services.UserService, 
 		adminStoreRoutes.Use(middleware.RequireAdminOrStoreManager())
 		{
 			adminStoreRoutes.PUT("/:id", userController.UpdateUser)
+			adminStoreRoutes.GET("/search", userController.SearchUsers)
 		}
 
 		// Rutas para todos los usuarios autenticados
