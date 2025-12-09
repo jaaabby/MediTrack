@@ -46,8 +46,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Poblar bodegas
 INSERT INTO store (id, name, type, medical_center_id) VALUES
-(1, 'Bodega Principal', 'central', 1),
-(2, 'Bodega Secundaria', 'secundaria', 2)
+(1, 'Bodega Central', 'central', 1),
+(2, 'Bodega Consignación', 'consignacion', 2)
 ON CONFLICT (id) DO NOTHING;
 
 -- Poblar códigos de insumos

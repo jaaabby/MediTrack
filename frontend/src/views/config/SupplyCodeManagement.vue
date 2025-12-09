@@ -295,6 +295,7 @@
 import { ref, computed, onMounted } from 'vue'
 import supplyCodeService from '@/services/config/supplyCodeService'
 import inventoryService from '@/services/inventory/inventoryService'
+import { useNotification } from '@/composables/useNotification'
 import Swal from 'sweetalert2'
 
 const supplyCodes = ref([])
@@ -304,6 +305,7 @@ const searchTerm = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 // Estado de ordenamiento
 const sortKey = ref('code')
@@ -513,32 +515,16 @@ const saveSupplyCode = async () => {
         code_supplier: supplyCodeForm.value.code_supplier,
         critical_stock: supplyCodeForm.value.critical_stock
       })
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Código actualizado!',
-        text: 'El código de insumo ha sido actualizado exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('El código de insumo ha sido actualizado exitosamente.')
     } else {
       await supplyCodeService.createSupplyCode(supplyCodeForm.value)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Código creado!',
-        text: 'El código de insumo ha sido creado exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('El código de insumo ha sido creado exitosamente.')
     }
     closeModal()
     await loadSupplyCodes()
   } catch (err) {
     const errorMessage = err.response?.data?.error || err.message || 'Error al guardar el código de insumo'
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: errorMessage
-    })
+    showError(errorMessage)
   } finally {
     saving.value = false
   }
@@ -600,21 +586,11 @@ const confirmDelete = async (supplyCode) => {
   if (result.isConfirmed) {
     try {
       await supplyCodeService.deleteSupplyCode(supplyCode.code)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Código eliminado!',
-        text: 'El código de insumo ha sido eliminado exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('El código de insumo ha sido eliminado exitosamente.')
       await loadSupplyCodes()
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar el código de insumo'
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: errorMessage
-      })
+      showError(errorMessage)
     }
   }
 }

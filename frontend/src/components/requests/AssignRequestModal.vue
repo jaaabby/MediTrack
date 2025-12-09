@@ -123,9 +123,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/composables/useNotification'
 import userService from '@/services/common/userService'
 import supplyRequestService from '@/services/requests/supplyRequestService'
-import Swal from 'sweetalert2'
 
 const props = defineProps({
   show: {
@@ -141,6 +141,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'assigned'])
 
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado
 const loading = ref(false)
@@ -223,14 +224,7 @@ const handleAssign = async () => {
 
     await supplyRequestService.assignRequestToWarehouseManager(props.request.id, assignmentData)
 
-    // Mostrar mensaje de éxito
-    await Swal.fire({
-      icon: 'success',
-      title: 'Solicitud Asignada',
-      text: `La solicitud ha sido asignada exitosamente a ${selectedManager.name}`,
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess(`La solicitud ha sido asignada exitosamente a ${selectedManager.name}`)
 
     emit('assigned')
     closeModal()
@@ -239,13 +233,9 @@ const handleAssign = async () => {
     window.location.reload()
   } catch (error) {
     console.error('Error asignando solicitud:', error)
-    errorMessage.value = error.response?.data?.error || error.message || 'Error al asignar la solicitud'
-    
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: errorMessage.value
-    })
+    const errorMsg = error.response?.data?.error || error.message || 'Error al asignar la solicitud'
+    errorMessage.value = errorMsg
+    showError(errorMsg)
   } finally {
     loading.value = false
   }

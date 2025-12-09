@@ -283,10 +283,12 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { format, formatDistanceToNow, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
 
 const route = useRoute()
 const router = useRouter()
+const { success: showSuccess, error: showError } = useNotification()
 
 const props = defineProps({
   qrCode: {
@@ -339,7 +341,9 @@ const loadTraceability = async () => {
     qrInfo.value = qrData
     
   } catch (err) {
-    error.value = err.message || 'Error al cargar la trazabilidad'
+    const errorMessage = err.message || 'Error al cargar la trazabilidad'
+    error.value = errorMessage
+    showError(errorMessage)
     console.error('Error cargando trazabilidad:', err)
   } finally {
     loading.value = false
@@ -698,32 +702,38 @@ const formatRelativeTime = (dateString) => {
 }
 
 const exportTraceability = () => {
-  const data = {
-    qr_code: qrCode.value,
-    export_date: new Date().toISOString(),
-    product_info: qrInfo.value,
-    traceability_data: traceabilityData.value,
-    events: getAllEvents(),
-    summary: {
-      total_events: getAllEvents().length,
-      total_scans: getEventCount('scan'),
-      total_movements: getEventCount('movement'),
-      locations_visited: getLocationCount(),
-      users_involved: getUserCount(),
-      current_status: getCurrentStatusLabel(),
-      time_in_system: getTimeInSystem()
+  try {
+    const data = {
+      qr_code: qrCode.value,
+      export_date: new Date().toISOString(),
+      product_info: qrInfo.value,
+      traceability_data: traceabilityData.value,
+      events: getAllEvents(),
+      summary: {
+        total_events: getAllEvents().length,
+        total_scans: getEventCount('scan'),
+        total_movements: getEventCount('movement'),
+        locations_visited: getLocationCount(),
+        users_involved: getUserCount(),
+        current_status: getCurrentStatusLabel(),
+        time_in_system: getTimeInSystem()
+      }
     }
-  }
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `trazabilidad-${qrCode.value}-${format(new Date(), 'yyyy-MM-dd')}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `trazabilidad-${qrCode.value}-${format(new Date(), 'yyyy-MM-dd')}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showSuccess('Trazabilidad exportada exitosamente')
+  } catch (err) {
+    console.error('Error al exportar trazabilidad:', err)
+    showError('Error al exportar la trazabilidad')
+  }
 }
 
 const printTraceability = () => {

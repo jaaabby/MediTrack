@@ -388,7 +388,6 @@
                           class="form-input" 
                           placeholder="Ej: 5" 
                           required
-                          :disabled="isEditing"
                         />
                         <p class="mt-1 text-xs text-gray-500">Cantidad típica para este insumo</p>
                       </div>
@@ -400,7 +399,6 @@
                             v-model="supply.is_required" 
                             type="checkbox" 
                             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            :disabled="isEditing"
                           />
                           <span class="text-sm font-medium text-gray-700">Insumo requerido</span>
                         </label>
@@ -417,7 +415,6 @@
                         rows="2" 
                         class="form-input text-sm" 
                         placeholder="Notas específicas para este insumo..."
-                        :disabled="isEditing"
                       ></textarea>
                     </div>
                   </div>
@@ -454,7 +451,10 @@ import { ref, computed, onMounted } from 'vue'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
 import surgeryService from '@/services/management/surgeryService'
 import supplyCodeService from '@/services/config/supplyCodeService'
+import { useNotification } from '@/composables/useNotification'
 import Swal from 'sweetalert2'
+
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 const typicalSupplies = ref([])
 const surgeries = ref([])
@@ -615,12 +615,7 @@ const resetForm = () => {
 
 const openSupplySelectionModal = () => {
   if (!typicalSupplyForm.value.surgery_id) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Seleccione una cirugía',
-      text: 'Debe seleccionar una cirugía antes de elegir insumos',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('Debe seleccionar una cirugía antes de elegir insumos')
     return
   }
   
@@ -740,12 +735,7 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
   // Validaciones
   const validation = validateForm()
   if (!validation.valid) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: validation.message,
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning(validation.message)
     return
   }
 
@@ -753,12 +743,15 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
   try {
     if (isEditing.value) {
       // Modo edición: solo actualizar el insumo existente
+      // Tomar los valores desde selectedSupplies que es donde el usuario edita
+      const editedSupply = selectedSupplies.value[0]
+      
       const supplyData = {
         surgery_id: parseInt(typicalSupplyForm.value.surgery_id),
         supply_code: parseInt(typicalSupplyForm.value.supply_code),
-        typical_quantity: parseInt(typicalSupplyForm.value.typical_quantity),
-        is_required: typicalSupplyForm.value.is_required || false,
-        notes: typicalSupplyForm.value.notes.trim() || null
+        typical_quantity: parseInt(editedSupply.typical_quantity),
+        is_required: editedSupply.is_required || false,
+        notes: (editedSupply.notes || '').trim() || null
       }
       
       await surgeryTypicalSupplyService.updateTypicalSupply(typicalSupplyForm.value.id, supplyData)
@@ -766,13 +759,7 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
       if (closeAfterSave) {
         closeModal()
       }
-      await Swal.fire({
-        icon: 'success',
-        title: 'Actualizado',
-        text: 'Insumo típico actualizado exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Insumo típico actualizado exitosamente')
     } else {
       // Modo creación: crear múltiples insumos si hay varios seleccionados
       if (selectedSupplies.value.length === 0) {
@@ -815,26 +802,9 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
       await loadTypicalSupplies()
 
       if (errorCount === 0) {
-        await Swal.fire({
-          icon: 'success',
-          title: 'Creado',
-          html: `Se crearon exitosamente <strong>${successCount}</strong> asociación(es) de insumo(s)`,
-          timer: 2000,
-          showConfirmButton: false
-        })
+        showSuccess(`${successCount} insumo(s) asociado(s) exitosamente`)
       } else {
-        await Swal.fire({
-          icon: 'warning',
-          title: 'Proceso completado con errores',
-          html: `
-            <p>Se crearon <strong>${successCount}</strong> asociación(es) exitosamente.</p>
-            <p class="mt-2">Errores (${errorCount}):</p>
-            <ul class="text-left mt-2 text-sm">
-              ${errors.map(e => `<li>${e}</li>`).join('')}
-            </ul>
-          `,
-          confirmButtonText: 'Aceptar'
-        })
+        showWarning(`Se crearon ${successCount} asociación(es), pero ${errorCount} fallaron. Errores: ${errors.join('; ')}`)
       }
       
       if (closeAfterSave) {
@@ -858,12 +828,7 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
       errorMessage = err.message
     }
 
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error al guardar',
-      text: errorMessage,
-      confirmButtonText: 'Aceptar'
-    })
+    showError('Error al guardar: ' + errorMessage)
   } finally {
     saving.value = false
   }
@@ -893,21 +858,10 @@ const confirmDelete = async (supply) => {
     try {
       await surgeryTypicalSupplyService.deleteTypicalSupply(supply.id)
       await loadTypicalSupplies()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Eliminado',
-        text: 'Asociación eliminada exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Asociación eliminada exitosamente')
     } catch (err) {
       console.error('Error al eliminar:', err)
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Error al eliminar: ' + (err.response?.data?.error || err.message),
-        confirmButtonText: 'Aceptar'
-      })
+      showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
     }
   }
 }

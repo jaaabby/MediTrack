@@ -183,8 +183,8 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/composables/useNotification'
 import supplyRequestService from '@/services/requests/supplyRequestService'
-import Swal from 'sweetalert2'
 
 const props = defineProps({
   show: {
@@ -200,6 +200,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'itemsReviewed'])
 
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado
 const loading = ref(false)
@@ -300,16 +301,7 @@ const confirmAction = async () => {
 
     await supplyRequestService.reviewSupplyRequestItem(selectedItem.value.id, reviewData)
 
-    // Mostrar notificación más rápida y sin bloquear
-    Swal.fire({
-      icon: 'success',
-      title: 'Item Revisado',
-      text: `El insumo ha sido ${getStatusLabel(selectedAction.value).toLowerCase()}`,
-      timer: 1500,
-      showConfirmButton: false,
-      toast: true,
-      position: 'top-end'
-    })
+    showSuccess(`El insumo ha sido ${getStatusLabel(selectedAction.value).toLowerCase()}`)
 
     closeActionModal()
     await loadItems() // Recargar items
@@ -333,11 +325,7 @@ const confirmAction = async () => {
     // Si no todos están resueltos, el modal permanece abierto para seguir revisando items
   } catch (error) {
     console.error('Error revisando item:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: error.response?.data?.error || error.message || 'Error al revisar el item'
-    })
+    showError(error.response?.data?.error || error.message || 'Error al revisar el item')
   } finally {
     loading.value = false
   }

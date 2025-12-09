@@ -639,10 +639,12 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useNotification } from '@/composables/useNotification'
 import cartService from '@/services/requests/cartService'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError, info: showInfo, warning: showWarning } = useNotification()
 
 const props = defineProps({
   requestId: {
@@ -1259,9 +1261,16 @@ const closeMessageModal = () => {
 }
 
 const showMessage = (type, title, message) => {
-  // Convertir 'warning' a 'info' si no está soportado
-  const modalType = type === 'warning' ? 'info' : type
-  openMessageModal(modalType, title, message)
+  // Usar el sistema unificado de notificaciones
+  if (type === 'success') {
+    showSuccess(message)
+  } else if (type === 'error') {
+    showError(message)
+  } else if (type === 'warning') {
+    showWarning(message)
+  } else {
+    showInfo(message)
+  }
 }
 
 const openInputModal = (title, label, placeholder, callback) => {

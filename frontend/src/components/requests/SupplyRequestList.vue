@@ -621,11 +621,12 @@ import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import Swal from 'sweetalert2'
+import { useNotification } from '@/composables/useNotification'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado del modal de asignación
 const showAssignModal = ref(false)
@@ -637,7 +638,6 @@ const selectedRequestForReview = ref(null)
 
 // Estado reactivo
 const loading = ref(false)
-const error = ref(null)
 const requests = ref([])
 const pavilions = ref([])
 const currentPage = ref(1)
@@ -815,7 +815,6 @@ const stats = computed(() => {
 // Métodos
 const loadSupplyRequests = async () => {
   loading.value = true
-  error.value = null
 
   try {
     let result
@@ -866,23 +865,18 @@ const loadSupplyRequests = async () => {
         requests.value = allRequests
       }
       
-      // Limpiar error si la carga fue exitosa (incluso si no hay solicitudes)
-      error.value = null
-      
       console.log('Solicitudes cargadas:', requests.value)
     } else {
       // Solo establecer error si realmente hay un error (no solo falta de datos)
       requests.value = []
-      // Solo establecer error si hay un mensaje de error específico
+      // Solo mostrar error si hay un mensaje de error específico
       if (result.error && result.error !== 'No hay solicitudes' && result.error !== 'No se encontraron solicitudes') {
-        error.value = result.error
-      } else {
-        error.value = null // No hay error, solo no hay datos
+        showError(result.error)
       }
     }
   } catch (err) {
     console.error('Error cargando solicitudes:', err)
-    error.value = 'Error al conectar con el servidor'
+    showError('Error al conectar con el servidor')
     requests.value = []
   } finally {
     loading.value = false
@@ -965,22 +959,12 @@ const approveRequest = async (id) => {
     
     await supplyRequestService.approveSupplyRequest(id, approvalData)
     
-    await Swal.fire({
-      icon: 'success',
-      title: 'Solicitud Aprobada',
-      text: 'La solicitud ha sido aprobada exitosamente',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess('La solicitud ha sido aprobada exitosamente')
     
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error aprobando solicitud:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al aprobar la solicitud',
-      text: err.response?.data?.error || err.message
-    })
+    showError(err.response?.data?.error || err.message || 'Error al aprobar la solicitud')
   }
 }
 
@@ -1008,22 +992,12 @@ const rejectRequest = async (id) => {
     
     await supplyRequestService.rejectSupplyRequest(id, rejectionData)
     
-    await Swal.fire({
-      icon: 'success',
-      title: 'Solicitud Rechazada',
-      text: 'La solicitud ha sido rechazada',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess('La solicitud ha sido rechazada')
     
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error rechazando solicitud:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al rechazar la solicitud',
-      text: err.response?.data?.error || err.message
-    })
+    showError(err.response?.data?.error || err.message || 'Error al rechazar la solicitud')
   }
 }
 
@@ -1236,20 +1210,10 @@ const exportToExcel = () => {
     ]
     
     exportExcel(filteredRequests.value, columns, 'solicitudes_insumos')
-    Swal.fire({
-      icon: 'success',
-      title: 'Exportación completada',
-      text: 'El archivo Excel se ha descargado exitosamente',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess('El archivo Excel se ha descargado exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al exportar',
-      text: 'Ocurrió un error al exportar a Excel: ' + error.message
-    })
+    showError('Ocurrió un error al exportar a Excel: ' + error.message)
   }
 }
 

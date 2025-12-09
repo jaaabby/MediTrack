@@ -438,28 +438,6 @@
         </router-link>
       </div>
     </div>
-
-    <!-- Mensaje de Error -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
-      <div class="flex items-start">
-        <div class="flex-shrink-0">
-          <svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <div class="ml-3 flex-1">
-          <h3 class="text-lg font-medium text-red-800">Error al crear el lote</h3>
-          <div class="mt-2 text-sm text-red-700">
-            <p>{{ error }}</p>
-          </div>
-          <div class="mt-4">
-            <button @click="clearError" class="btn-secondary text-sm">
-              Intentar de Nuevo
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -469,52 +447,54 @@ import { ref, onMounted, computed } from 'vue'
 import qrService from '@/services/qr/qrService'
 import inventoryService from '@/services/inventory/inventoryService'
 import storeService from '@/services/inventory/storeService'
+import { useNotification } from '@/composables/useNotification'
+
+const { success: showSuccess, error: showError } = useNotification()
 
 // Validación de formularios
 const validateForm = () => {
   // Validar supplyForm
   if (!supplyForm.value.code || isNaN(parseInt(supplyForm.value.code))) {
-    error.value = 'El código del insumo es obligatorio y debe ser numérico.'
+    showError('El código del insumo es obligatorio y debe ser numérico.')
     return false
   }
   if (!supplyForm.value.name || supplyForm.value.name.trim() === '') {
-    error.value = 'El nombre del insumo es obligatorio.'
+    showError('El nombre del insumo es obligatorio.')
     return false
   }
   if (!supplyForm.value.codeSupplier || isNaN(parseInt(supplyForm.value.codeSupplier))) {
-    error.value = 'El código de proveedor es obligatorio y debe ser numérico.'
+    showError('El código de proveedor es obligatorio y debe ser numérico.')
     return false
   }
   // Validar batchForm
   if (!batchForm.value.expirationDate) {
-    error.value = 'La fecha de vencimiento es obligatoria.'
+    showError('La fecha de vencimiento es obligatoria.')
     return false
   }
   if (!batchForm.value.amount || isNaN(parseInt(batchForm.value.amount)) || parseInt(batchForm.value.amount) < 1) {
-    error.value = 'La cantidad debe ser un número mayor a 0.'
+    showError('La cantidad debe ser un número mayor a 0.')
     return false
   }
   if (!batchForm.value.supplier || batchForm.value.supplier.trim() === '') {
-    error.value = 'El proveedor es obligatorio.'
+    showError('El proveedor es obligatorio.')
     return false
   }
   if (!batchForm.value.expirationAlertDays || isNaN(parseInt(batchForm.value.expirationAlertDays)) || parseInt(batchForm.value.expirationAlertDays) < 1) {
-    error.value = 'Los días de alerta deben ser un número mayor a 0.'
+    showError('Los días de alerta deben ser un número mayor a 0.')
     return false
   }
   if (!batchForm.value.storeId || batchForm.value.storeId === '') {
-    error.value = 'Debe seleccionar un almacén.'
+    showError('Debe seleccionar un almacén.')
     return false
   }
   
   // Verificar que el almacén seleccionado exista en la lista
   const selectedStore = stores.value.find(s => s.id === parseInt(batchForm.value.storeId))
   if (!selectedStore) {
-    error.value = 'Debe seleccionar un almacén válido.'
+    showError('Debe seleccionar un almacén válido.')
     return false
   }
   
-  error.value = null
   return true
 }
 
@@ -585,15 +565,15 @@ const createSupply = async () => {
       
       console.log(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales`)
       
-      error.value = null
+      showSuccess(`Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales`)
       await loadBatchQRImage()
     } else {
-      error.value = result.error || 'Error desconocido al crear el lote'
+      showError(result.error || 'Error desconocido al crear el lote')
     }
 
   } catch (err) {
     console.error('Error creating supply:', err)
-    error.value = err.message || 'Error de conexión al crear el lote'
+    showError(err.message || 'Error de conexión al crear el lote')
   } finally {
     creating.value = false
   }
@@ -672,7 +652,6 @@ const createAnother = () => {
   generatedSupplies.value = null
   batchQRImage.value = null
   showAllQRs.value = false
-  error.value = null
   
   supplyForm.value = {
     code: '',
@@ -690,10 +669,6 @@ const createAnother = () => {
   }
   storeSearch.value = ''
   showStoreOptions.value = false
-}
-
-const clearError = () => {
-  error.value = null
 }
 
 // Computed para almacenes filtrados
@@ -718,7 +693,7 @@ const loadStores = async () => {
     stores.value = storesList || []
   } catch (err) {
     console.error('Error al cargar almacenes:', err)
-    error.value = 'Error al cargar la lista de almacenes. Por favor, recarga la página.'
+    showError('Error al cargar la lista de almacenes. Por favor, recarga la página.')
   } finally {
     loadingStores.value = false
   }

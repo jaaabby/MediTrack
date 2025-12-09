@@ -1023,6 +1023,7 @@ import pavilionService from '@/services/config/pavilionService'
 import { userService } from '@/services/common/userService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useNotification } from '@/composables/useNotification'
 import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
 import QrcodeVue from 'qrcode.vue'
@@ -1031,6 +1032,7 @@ import SupplyCart from '@/components/requests/SupplyCart.vue'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError, info: showInfo } = useNotification()
 
 // Estado reactivo
 const loading = ref(false)
@@ -1684,7 +1686,14 @@ const closeMessageModal = () => {
 }
 
 const showMessage = (type, title, message) => {
-  openMessageModal(type, title, message)
+  // Usar el sistema unificado de notificaciones
+  if (type === 'success') {
+    showSuccess(message)
+  } else if (type === 'error') {
+    showError(message)
+  } else {
+    showInfo(message)
+  }
 }
 
 const openInputModal = (title, label, placeholder, callback, confirmText = 'Confirmar') => {

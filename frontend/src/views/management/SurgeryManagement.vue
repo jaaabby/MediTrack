@@ -322,7 +322,10 @@
 import { ref, computed, onMounted } from 'vue'
 import surgeryService from '@/services/management/surgeryService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
+import { useNotification } from '@/composables/useNotification'
 import Swal from 'sweetalert2'
+
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 const surgeries = ref([])
 const specialties = ref([])
@@ -522,12 +525,7 @@ const closeModal = () => {
 const saveSurgery = async () => {
   // Validaciones
   if (!surgeryForm.value.name || !surgeryForm.value.name.trim()) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'El nombre del tipo de cirugía es obligatorio',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('El nombre del tipo de cirugía es obligatorio')
     return
   }
 
@@ -537,12 +535,7 @@ const saveSurgery = async () => {
   const totalDuration = hoursMinutesToDecimal(durationHours, durationMinutes)
   
   if (totalDuration <= 0) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Duración inválida',
-      text: 'La duración debe ser mayor a 0',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('La duración debe ser mayor a 0')
     return
   }
 
@@ -561,24 +554,12 @@ const saveSurgery = async () => {
       await surgeryService.updateSurgery(surgeryForm.value.id, surgeryData)
       await loadSurgeries()
       closeModal()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Actualizado',
-        text: 'Tipo de cirugía actualizado exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Tipo de cirugía actualizado exitosamente')
     } else {
       await surgeryService.createSurgery(surgeryData)
       await loadSurgeries()
       closeModal()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Creado',
-        text: 'Tipo de cirugía creado exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Tipo de cirugía creado exitosamente')
     }
   } catch (err) {
     console.error('Error al guardar:', err)
@@ -592,12 +573,7 @@ const saveSurgery = async () => {
       errorMessage = err.message
     }
 
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error al guardar',
-      text: errorMessage,
-      confirmButtonText: 'Aceptar'
-    })
+    showError('Error al guardar: ' + errorMessage)
   } finally {
     saving.value = false
   }
@@ -620,21 +596,10 @@ const confirmDelete = async (surgery) => {
     try {
       await surgeryService.deleteSurgery(surgery.id)
       await loadSurgeries()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Eliminado',
-        text: 'Tipo de cirugía eliminado exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Tipo de cirugía eliminado exitosamente')
     } catch (err) {
       console.error('Error al eliminar:', err)
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Error al eliminar: ' + (err.response?.data?.error || err.message),
-        confirmButtonText: 'Aceptar'
-      })
+      showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
     }
   }
 }

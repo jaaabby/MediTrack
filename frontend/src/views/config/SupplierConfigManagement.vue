@@ -268,6 +268,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import supplierConfigService from '@/services/config/supplierConfigService'
+import { useNotification } from '@/composables/useNotification'
 import Swal from 'sweetalert2'
 
 const configs = ref([])
@@ -277,6 +278,7 @@ const searchTerm = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 // Estado de ordenamiento
 const sortKey = ref('supplier_name')
@@ -412,32 +414,16 @@ const saveConfig = async () => {
         expiration_alert_days: configForm.value.expiration_alert_days,
         notes: configForm.value.notes
       })
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Configuración actualizada!',
-        text: 'La configuración del proveedor ha sido actualizada exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('La configuración del proveedor ha sido actualizada exitosamente.')
     } else {
       await supplierConfigService.createSupplierConfig(configForm.value)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Configuración creada!',
-        text: 'La configuración del proveedor ha sido creada exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('La configuración del proveedor ha sido creada exitosamente.')
     }
     closeModal()
     await loadConfigs()
   } catch (err) {
     const errorMessage = err.response?.data?.error || err.message || 'Error al guardar la configuración'
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: errorMessage
-    })
+    showError(errorMessage)
   } finally {
     saving.value = false
   }
@@ -458,21 +444,11 @@ const confirmDelete = async (config) => {
   if (result.isConfirmed) {
     try {
       await supplierConfigService.deleteSupplierConfig(config.supplier_name)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Configuración eliminada!',
-        text: 'La configuración ha sido eliminada exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('La configuración ha sido eliminada exitosamente.')
       await loadConfigs()
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar la configuración'
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: errorMessage
-      })
+      showError(errorMessage)
     }
   }
 }

@@ -148,7 +148,7 @@
             </router-link>
 
             <!-- Menú desplegable Gestión -->
-            <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad && !authStore.isNurse" class="relative">
+            <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad && !authStore.isNurse && !authStore.isPavilionUser" class="relative">
               <button
                 @click="managementMenuOpen = !managementMenuOpen"
                 class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
@@ -533,7 +533,7 @@
           </router-link>
           
           <!-- Sección de Gestión -->
-          <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad && !authStore.isNurse" class="space-y-1">
+          <div v-if="authStore.isAuthenticated && !authStore.isDoctor && !authStore.isPavedad && !authStore.isNurse && !authStore.isPavilionUser" class="space-y-1">
             <div class="text-brand-blue-light px-3 py-2 text-sm font-semibold uppercase tracking-wide">
               Gestión
             </div>
@@ -778,10 +778,8 @@
     <!-- Padding para la navegacion inferior en moviles -->
     <div v-if="authStore.isAuthenticated && $route.name !== 'Login' && $route.name !== 'Register'" class="h-20 md:hidden"></div>
 
-    <!-- Toast/Notificacion global (futuro) -->
-    <!-- <div v-if="globalNotification" class="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50">
-      {{ globalNotification }}
-    </div> -->
+    <!-- Sistema de notificaciones global -->
+    <NotificationContainer />
   </div>
 </template>
 
@@ -789,6 +787,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import NotificationContainer from '@/components/common/NotificationContainer.vue'
 import logoImage from '@/assets/images/MEDITRACK_LOGO.svg'
 
 const router = useRouter()

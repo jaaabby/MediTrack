@@ -362,42 +362,6 @@
     </div>
   </div>
 
-  <!-- Sistema de Notificaciones -->
-  <div v-if="notification" class="fixed top-4 right-4 left-4 sm:left-auto z-50 max-w-sm sm:w-full">
-    <div :class="[
-      'rounded-lg p-3 sm:p-4 shadow-lg border transition-all duration-300',
-      notification.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-    ]">
-      <div class="flex items-start">
-        <div class="flex-shrink-0">
-          <svg v-if="notification.type === 'success'" class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-          </svg>
-          <svg v-else class="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-          </svg>
-        </div>
-        <div class="ml-2 sm:ml-3 flex-1 min-w-0">
-          <p :class="[
-            'text-xs sm:text-sm font-medium break-words',
-            notification.type === 'success' ? 'text-green-800' : 'text-red-800'
-          ]">
-            {{ notification.message }}
-          </p>
-        </div>
-        <div class="ml-2 sm:ml-4 flex-shrink-0">
-          <button @click="closeNotification" :class="[
-            'rounded-md inline-flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2',
-            notification.type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-500' : 'text-red-500 hover:text-red-600 focus:ring-red-500'
-          ]">
-            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script setup>
@@ -406,16 +370,17 @@ import { useRouter, useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import jsQR from 'jsqr'
 import QRInfoDisplay from '@/components/qr/QRInfoDisplay.vue'
 import SupplyCart from '@/components/requests/SupplyCart.vue'
-import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Referencias DOM
 const videoElement = ref(null)
@@ -1078,7 +1043,7 @@ const pickupSupply = async (qrCode) => {
     
     if (result.success) {
       // Mostrar notificación de éxito
-      showSuccessNotification('Retiro registrado exitosamente. El insumo está en camino al pabellón.')
+      showSuccess('Retiro registrado exitosamente. El insumo está en camino al pabellón.')
       
       // Recargar la información del insumo
       qrInput.value = qrCode
@@ -1119,7 +1084,7 @@ const returnToStore = async (qrCode) => {
     )
     
     // Mostrar notificación de éxito
-    showSuccessNotification('Insumo marcado como en camino a bodega. Confirme la llegada cuando el insumo llegue físicamente.')
+    showSuccess('Insumo marcado como en camino a bodega. Confirme la llegada cuando el insumo llegue físicamente.')
     
     // Volver a escanear para actualizar la información del insumo
     await scanQRCode()
@@ -1166,7 +1131,7 @@ const confirmArrivalToStore = async (qrCode) => {
     )
     
     // Mostrar notificación de éxito
-    showSuccessNotification('Llegada a bodega confirmada exitosamente')
+    showSuccess('Llegada a bodega confirmada exitosamente')
     
     // Volver a escanear para actualizar la información del insumo
     await scanQRCode()
@@ -1277,7 +1242,7 @@ const addScannedSupplyToCart = async () => {
     await supplyRequestService.assignQRToRequest(assignmentData)
     
     // Mostrar notificación de éxito
-    showSuccessNotification(`Insumo agregado al carrito ${cart.cart_number} exitosamente`)
+    showSuccess(`Insumo agregado al carrito ${cart.cart_number} exitosamente`)
     
     // Limpiar selección y reescanear
     selectedCartForAdd.value = ''
@@ -1286,44 +1251,14 @@ const addScannedSupplyToCart = async () => {
   } catch (err) {
     console.error('Error agregando al carrito:', err)
     const errorMsg = err.response?.data?.error || err.message || 'Error al agregar el insumo al carrito'
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: errorMsg
-    })
+    showError(errorMsg)
   } finally {
     addingToCart.value = false
   }
 }
 
 // ===== SISTEMA DE NOTIFICACIONES =====
-const notification = ref(null)
-
-const showSuccessNotification = (message) => {
-  notification.value = {
-    type: 'success',
-    message: message,
-    visible: true
-  }
-  setTimeout(() => {
-    notification.value = null
-  }, 4000)
-}
-
-const showErrorNotification = (message) => {
-  notification.value = {
-    type: 'error',
-    message: message,
-    visible: true
-  }
-  setTimeout(() => {
-    notification.value = null
-  }, 5000)
-}
-
-const closeNotification = () => {
-  notification.value = null
-}
+// Usa el sistema unificado de notificaciones a través de useNotification()
 
 // ===== FUNCIONES AUXILIARES =====
 const formatDate = (dateString) => {

@@ -355,13 +355,6 @@
       </div>
     </div>
 
-    <!-- Toast Notification -->
-    <transition name="fade">
-      <div v-if="toast.show" class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-        {{ toast.message }}
-      </div>
-    </transition>
-
     <!-- Área de impresión (oculta) -->
     <div ref="printArea" class="print-only">
       <div class="print-qr-card">
@@ -414,6 +407,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qr/qrService'
+import { useNotification } from '@/composables/useNotification'
+
+const { success: showSuccess, error: showError, info: showInfo } = useNotification()
 
 const route = useRoute()
 const router = useRouter()
@@ -428,13 +424,6 @@ const error = ref(null)
 const historyLoading = ref(false)
 const historyError = ref(null)
 const historyData = ref([])
-
-// Toast notification
-const toast = ref({ show: false, message: '' })
-function showToast(msg, duration = 2500) {
-  toast.value = { show: true, message: msg }
-  setTimeout(() => { toast.value.show = false }, duration)
-}
 
 // Computed
 const qrCode = computed(() => route.params.qrCode || route.params.qrcode)
@@ -528,7 +517,7 @@ const loadHistory = async () => {
 
 const refreshData = async () => {
   await loadQRInfo()
-  showToast('Datos actualizados')
+  showInfo('Datos actualizados')
 }
 
 // Métodos de acción
@@ -544,10 +533,10 @@ const downloadQR = async () => {
   if (!qrInfo.value?.qr_code) return
   try {
     await qrService.downloadQRImage(qrInfo.value.qr_code, 'high')
-    showToast('QR descargado correctamente')
+    showSuccess('QR descargado correctamente')
   } catch (error) {
     console.error('Error downloading QR:', error)
-    showToast('Error al descargar el código QR')
+    showError('Error al descargar el código QR')
   }
 }
 
@@ -560,7 +549,7 @@ const printQRCode = () => {
   window.print()
   document.body.innerHTML = originalContent
   window.location.reload()
-  showToast('Etiqueta enviada a impresión')
+  showInfo('Etiqueta enviada a impresión')
 }
 
 const shareQR = async () => {
@@ -572,7 +561,7 @@ const shareQR = async () => {
   if (navigator.share) {
     try {
       await navigator.share(shareData)
-      showToast('Enlace compartido correctamente')
+      showInfo('Enlace compartido correctamente')
     } catch (error) {
       await copyToClipboard(window.location.href)
     }
@@ -584,9 +573,9 @@ const shareQR = async () => {
 const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(text)
-    showToast('Enlace copiado al portapapeles')
+    showSuccess('Enlace copiado al portapapeles')
   } catch (error) {
-    showToast('No se pudo copiar el enlace')
+    showError('No se pudo copiar el enlace')
   }
 }
 
@@ -601,11 +590,11 @@ const viewBatch = (batchId) => {
 const syncBatch = async () => {
   try {
     await qrService.syncBatchAmounts()
-    showToast('Lote sincronizado correctamente')
+    showInfo('Lote sincronizado correctamente')
     await refreshData()
   } catch (error) {
     console.error('Error syncing batch:', error)
-    showToast('Error al sincronizar el lote')
+    showError('Error al sincronizar el lote')
   }
 }
 
@@ -626,7 +615,7 @@ const generateReport = () => {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
-  showToast('Reporte detallado generado y descargado')
+  showSuccess('Reporte detallado generado y descargado')
 }
 
 // Utilidades

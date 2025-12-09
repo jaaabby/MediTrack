@@ -297,6 +297,7 @@ import { ref, computed, onMounted } from 'vue'
 import doctorInfoService from '@/services/config/doctorInfoService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import medicalCenterService from '@/services/config/medicalCenterService'
+import { useNotification } from '@/composables/useNotification'
 import Swal from 'sweetalert2'
 
 const doctors = ref([])
@@ -309,6 +310,7 @@ const selectedSpecialtyId = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 // Estado de paginación
 const currentPage = ref(1)
@@ -472,64 +474,34 @@ const closeModal = () => {
 const saveDoctor = async () => {
   // Validaciones
   if (!doctorForm.value.rut || !doctorForm.value.rut.trim()) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'El RUT es obligatorio',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('El RUT es obligatorio')
     return
   }
 
   if (!doctorForm.value.name || !doctorForm.value.name.trim()) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'El nombre es obligatorio',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('El nombre es obligatorio')
     return
   }
 
   if (!doctorForm.value.email || !doctorForm.value.email.trim()) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'El email es obligatorio',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('El email es obligatorio')
     return
   }
 
   if (!isEditing.value && (!doctorForm.value.password || !doctorForm.value.password.trim())) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'La contraseña es obligatoria para nuevos doctores',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('La contraseña es obligatoria para nuevos doctores')
     return
   }
 
   if (!doctorForm.value.medical_center_id) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'Debe seleccionar un centro médico',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('Debe seleccionar un centro médico')
     return
   }
 
   // Validar formato de RUT (básico)
   const rutRegex = /^\d{7,8}-[\dkK]$/
   if (!rutRegex.test(doctorForm.value.rut.trim())) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'RUT inválido',
-      text: 'El RUT debe tener el formato 12345678-9',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('El RUT debe tener el formato 12345678-9')
     return
   }
 
@@ -550,24 +522,12 @@ const saveDoctor = async () => {
       await doctorInfoService.createDoctor(doctorData)
       await loadDoctors()
       closeModal()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Creado',
-        text: 'Doctor registrado exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Doctor registrado exitosamente')
     } else {
       await doctorInfoService.updateDoctor(doctorForm.value.rut, doctorData)
       await loadDoctors()
       closeModal()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Actualizado',
-        text: 'Doctor actualizado exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Doctor actualizado exitosamente')
     }
   } catch (err) {
     console.error('Error al guardar:', err)
@@ -581,12 +541,7 @@ const saveDoctor = async () => {
       errorMessage = err.message
     }
 
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error al guardar',
-      text: errorMessage,
-      confirmButtonText: 'Aceptar'
-    })
+    showError(errorMessage)
   } finally {
     saving.value = false
   }
@@ -611,21 +566,10 @@ const confirmDelete = async (doctor) => {
     try {
       await doctorInfoService.deleteDoctor(doctor.rut)
       await loadDoctors()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Eliminado',
-        text: 'Doctor eliminado (desactivado) exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Doctor eliminado (desactivado) exitosamente')
     } catch (err) {
       console.error('Error al eliminar:', err)
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Error al eliminar: ' + (err.response?.data?.error || err.message),
-        confirmButtonText: 'Aceptar'
-      })
+      showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
     }
   }
 }

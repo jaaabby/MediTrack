@@ -289,6 +289,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
+import { useNotification } from '@/composables/useNotification'
 import Swal from 'sweetalert2'
 
 const specialties = ref([])
@@ -298,6 +299,7 @@ const searchTerm = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 // Estado de ordenamiento
 const sortKey = ref('id')
@@ -428,12 +430,7 @@ const closeModal = () => {
 const saveSpecialty = async () => {
   // Validaciones
   if (!specialtyForm.value.name || !specialtyForm.value.name.trim()) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: 'El nombre de la especialidad es obligatorio',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('El nombre de la especialidad es obligatorio')
     return
   }
 
@@ -450,24 +447,12 @@ const saveSpecialty = async () => {
       await medicalSpecialtyService.updateSpecialty(specialtyForm.value.id, specialtyData)
       await loadSpecialties()
       closeModal()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Actualizado',
-        text: 'Especialidad médica actualizada exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Especialidad médica actualizada exitosamente')
     } else {
       await medicalSpecialtyService.createSpecialty(specialtyData)
       await loadSpecialties()
       closeModal()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Creado',
-        text: 'Especialidad médica creada exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Especialidad médica creada exitosamente')
     }
   } catch (err) {
     console.error('Error al guardar:', err)
@@ -481,12 +466,7 @@ const saveSpecialty = async () => {
       errorMessage = err.message
     }
 
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error al guardar',
-      text: errorMessage,
-      confirmButtonText: 'Aceptar'
-    })
+    showError(errorMessage)
   } finally {
     saving.value = false
   }
@@ -509,21 +489,10 @@ const confirmDelete = async (specialty) => {
     try {
       await medicalSpecialtyService.deleteSpecialty(specialty.id)
       await loadSpecialties()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Eliminado',
-        text: 'Especialidad médica eliminada exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Especialidad médica eliminada exitosamente')
     } catch (err) {
       console.error('Error al eliminar:', err)
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Error al eliminar: ' + (err.response?.data?.error || err.message),
-        confirmButtonText: 'Aceptar'
-      })
+      showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
     }
   }
 }

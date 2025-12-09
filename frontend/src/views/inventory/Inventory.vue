@@ -1239,30 +1239,6 @@
         </div>
       </div>
 
-      <!-- Sistema de notificaciones -->
-      <div v-if="notification.show" class="fixed top-4 right-4 left-4 sm:left-auto z-50 mx-auto sm:mx-0 max-w-sm">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 rounded-lg shadow-lg text-white"
-          :class="notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center flex-1 min-w-0">
-              <svg v-if="notification.type === 'success'" class="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" fill="none"
-                stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <svg v-else class="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span class="font-medium text-sm sm:text-base truncate">{{ notification.message }}</span>
-            </div>
-            <button @click="hideNotification" class="ml-3 sm:ml-4 text-white hover:text-gray-200 flex-shrink-0">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
 
       <!-- Paginación -->
       <div class="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4">
@@ -1300,9 +1276,11 @@ import qrService from '@/services/qr/qrService'
 import QrcodeVue from 'qrcode.vue'
 import Swal from 'sweetalert2'
 import { exportToExcel as exportExcel, formatDateForExcel } from '@/utils/excelExport'
+import { useNotification } from '@/composables/useNotification'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado reactivo
 const supplies = ref([])
@@ -1348,12 +1326,7 @@ const selectedSupplyForHistory = ref(null)
 const batchDetailsCurrentPage = ref(1)
 const batchDetailsItemsPerPage = 5 // Constante, no ref
 
-// Estado de notificación
-const notification = ref({
-  show: false,
-  message: '',
-  type: 'info' // 'success', 'error', 'info'
-})
+// Sistema de notificaciones unificado - usa useNotification()
 
 // Computed properties
 const filteredSupplies = computed(() => {
@@ -1759,11 +1732,11 @@ const saveEdit = async () => {
 
     // Cerrar el modal y mostrar mensaje de éxito
     closeEditModal()
-    showNotification('Lote actualizado exitosamente', 'success')
+    showSuccess('Lote actualizado exitosamente')
 
   } catch (error) {
     console.error('Error al actualizar lote:', error)
-    showNotification('Error al actualizar el lote: ' + (error.response?.data?.error || error.message), 'error')
+    showError('Error al actualizar el lote: ' + (error.response?.data?.error || error.message))
   } finally {
     saving.value = false
   }
@@ -1780,28 +1753,25 @@ const deleteSupply = async (supply) => {
   if (result.isConfirmed) {
     try {
       await inventoryService.deleteBatch(supply.batch_id)
-      showNotification('Lote eliminado exitosamente', 'success')
+      showSuccess('Lote eliminado exitosamente')
       await loadInventory()
     } catch (error) {
       console.error('Error al eliminar lote:', error)
-      showNotification('Error al eliminar el lote: ' + (error.response?.data?.error || error.message), 'error')
+      showError('Error al eliminar el lote: ' + (error.response?.data?.error || error.message))
     }
   }
 }
 
+// Funciones de notificación - usa el sistema unificado
+const { info: showInfo } = useNotification()
 const showNotification = (message, type = 'info') => {
-  notification.value = {
-    show: true,
-    message: message,
-    type: type
+  if (type === 'success') {
+    showSuccess(message)
+  } else if (type === 'error') {
+    showError(message)
+  } else {
+    showInfo(message)
   }
-  setTimeout(() => {
-    notification.value.show = false
-  }, 3000) // 3 segundos de duración
-}
-
-const hideNotification = () => {
-  notification.value.show = false
 }
 
 // Modal de detalles de lote
@@ -1861,9 +1831,9 @@ const getQrDataUrl = (code) => {
 const handleDownloadQR = async (qrCode) => {
   try {
     await qrService.downloadQRImage(qrCode, 'normal')
-    showNotification('QR descargado correctamente', 'success')
+    showSuccess('QR descargado correctamente')
   } catch (error) {
-    showNotification('Error al descargar el QR', 'error')
+    showError('Error al descargar el QR')
   }
 }
 
@@ -2029,10 +1999,10 @@ const exportToExcel = () => {
     ]
     
     exportExcel(filteredSupplies.value, columns, 'inventario_insumos')
-    showNotification('Exportación a Excel completada exitosamente', 'success')
+    showSuccess('Exportación a Excel completada exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)
-    showNotification('Error al exportar a Excel: ' + error.message, 'error')
+    showError('Error al exportar a Excel: ' + error.message)
   }
 }
 

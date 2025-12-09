@@ -265,7 +265,10 @@ import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
+import { useNotification } from '@/composables/useNotification'
 import Swal from 'sweetalert2'
+
+const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 
 const router = useRouter()
 
@@ -366,11 +369,7 @@ const processAutomaticReturns = async () => {
   try {
     const result = await returnToBodegaService.processAutomaticReturns()
     
-    Swal.fire({
-      icon: 'success',
-      title: 'Proceso completado',
-      text: result.message
-    })
+    showSuccess(result.message)
     
     // Recargar datos
     await refreshData()
@@ -380,12 +379,7 @@ const processAutomaticReturns = async () => {
     const errorMessage = err.response?.data?.error || err.message || 'Error al procesar retornos automáticos'
     error.value = errorMessage
     
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al procesar retornos',
-      text: errorMessage,
-      confirmButtonText: 'Aceptar'
-    })
+    showError(errorMessage)
   } finally {
     processingReturns.value = false
   }
@@ -412,11 +406,7 @@ const returnIndividualSupply = async (supply) => {
       `Retorno manual - ${formatBusinessHours(supply.businessHoursElapsed || 0)} sin moverse`
     )
     
-    Swal.fire({
-      icon: 'success',
-      title: 'Éxito',
-      text: 'Insumo regresado a bodega exitosamente'
-    })
+    showSuccess('Insumo regresado a bodega exitosamente')
     
     // Recargar datos
     await refreshData()

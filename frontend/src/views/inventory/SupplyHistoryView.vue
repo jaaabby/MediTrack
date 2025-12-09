@@ -411,13 +411,14 @@ import supplyHistoryService from '@/services/inventory/supplyHistoryService'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import Swal from 'sweetalert2'
+import { useNotification } from '@/composables/useNotification'
 
 const history = ref([])
 const loading = ref(false)
 const searchTerm = ref('')
 const showDetailsModal = ref(false)
 const selectedItem = ref(null)
+const { success: showSuccess, error: showError } = useNotification()
 
 const filters = ref({
   from_date: '',
@@ -508,13 +509,7 @@ const loadHistory = async () => {
     history.value = data
   } catch (err) {
     console.error('Error al cargar historial:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al cargar historial',
-      text: err.message || 'Ocurrió un error al cargar el historial',
-      timer: 3000,
-      showConfirmButton: false
-    })
+    showError(err.message || 'Ocurrió un error al cargar el historial')
   } finally {
     loading.value = false
   }
@@ -616,20 +611,10 @@ const exportToExcel = () => {
     ]
     
     exportExcel(sortedHistory.value, columns, 'historial_insumos')
-    Swal.fire({
-      icon: 'success',
-      title: 'Exportación completada',
-      text: 'El archivo Excel se ha descargado exitosamente',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess('El archivo Excel se ha descargado exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al exportar',
-      text: 'Ocurrió un error al exportar a Excel: ' + error.message
-    })
+    showError('Ocurrió un error al exportar a Excel: ' + error.message)
   }
 }
 
