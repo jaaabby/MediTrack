@@ -452,7 +452,6 @@ import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSup
 import surgeryService from '@/services/management/surgeryService'
 import supplyCodeService from '@/services/config/supplyCodeService'
 import { useNotification } from '@/composables/useNotification'
-import Swal from 'sweetalert2'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
@@ -763,12 +762,7 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
     } else {
       // Modo creación: crear múltiples insumos si hay varios seleccionados
       if (selectedSupplies.value.length === 0) {
-        await Swal.fire({
-          icon: 'warning',
-          title: 'Seleccione insumos',
-          text: 'Debe seleccionar al menos un insumo',
-          confirmButtonText: 'Aceptar'
-        })
+        showWarning('Debe seleccionar al menos un insumo')
         saving.value = false
         return
       }
@@ -842,27 +836,17 @@ const confirmDelete = async (supply) => {
   const surgeryName = getSurgeryName(supply.surgery_id)
   const supplyName = getSupplyName(supply.supply_code)
   
-  const result = await Swal.fire({
-    title: '¿Estás seguro?',
-    html: `¿Deseas eliminar la asociación entre <strong>"${surgeryName}"</strong> y <strong>"${supplyName}"</strong>?<br><small class="text-gray-600">Esta acción no se puede deshacer.</small>`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#dc2626',
-    cancelButtonColor: '#6b7280',
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true
-  })
+  if (!confirm(`¿Deseas eliminar la asociación entre "${surgeryName}" y "${supplyName}"?\n\nEsta acción no se puede deshacer.`)) {
+    return
+  }
 
-  if (result.isConfirmed) {
-    try {
-      await surgeryTypicalSupplyService.deleteTypicalSupply(supply.id)
-      await loadTypicalSupplies()
-      showSuccess('Asociación eliminada exitosamente')
-    } catch (err) {
-      console.error('Error al eliminar:', err)
-      showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
-    }
+  try {
+    await surgeryTypicalSupplyService.deleteTypicalSupply(supply.id)
+    await loadTypicalSupplies()
+    showSuccess('Asociación eliminada exitosamente')
+  } catch (err) {
+    console.error('Error al eliminar:', err)
+    showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
   }
 }
 

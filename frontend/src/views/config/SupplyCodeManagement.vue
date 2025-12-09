@@ -296,7 +296,6 @@ import { ref, computed, onMounted } from 'vue'
 import supplyCodeService from '@/services/config/supplyCodeService'
 import inventoryService from '@/services/inventory/inventoryService'
 import { useNotification } from '@/composables/useNotification'
-import Swal from 'sweetalert2'
 
 const supplyCodes = ref([])
 const loading = ref(false)
@@ -450,34 +449,15 @@ const openEditModal = async (supplyCode) => {
   const isCritical = isStockCritical(currentStock, supplyCode.critical_stock)
   
   if (isCritical) {
-    const result = await Swal.fire({
-      title: '⚠️ Advertencia: Stock Crítico',
-      html: `
-        <div class="text-left">
-          <p class="mb-3">Este código de insumo tiene <strong>stock crítico</strong>:</p>
-          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-3">
-            <div class="flex items-center mb-2">
-              <svg class="h-5 w-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span class="font-semibold text-red-800">Stock Actual: ${currentStock}</span>
-            </div>
-            <div class="text-sm text-red-700">
-              <p>Stock Crítico: ${supplyCode.critical_stock}</p>
-              <p class="mt-1">¿Estás seguro de que deseas editar este código?</p>
-            </div>
-          </div>
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, continuar',
-      cancelButtonText: 'Cancelar',
-      customClass: {
-        popup: 'text-left'
-      }
+    if (!confirm(`ADVERTENCIA: Stock Crítico\n\nEste código de insumo tiene stock crítico:\n\nStock Actual: ${currentStock}\nStock Crítico: ${supplyCode.critical_stock}\n\n¿Estás seguro de que deseas editar este código?`)) {
+      return
+    }
+  }
+  
+  isEditing.value = true
+  supplyCodeForm.value = { ...supplyCode }
+  showModal.value = true
+}
     })
     
     if (!result.isConfirmed) {
@@ -535,63 +515,25 @@ const confirmDelete = async (supplyCode) => {
   const currentStock = await getCurrentStock(supplyCode.code)
   const isCritical = isStockCritical(currentStock, supplyCode.critical_stock)
   
-  let result
+  let confirmMessage
   
   if (isCritical) {
-    // Mostrar advertencia de stock crítico
-    result = await Swal.fire({
-      title: '⚠️ Advertencia: Stock Crítico',
-      html: `
-        <div class="text-left">
-          <p class="mb-3">Este código de insumo tiene <strong>stock crítico</strong>:</p>
-          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-3">
-            <div class="flex items-center mb-2">
-              <svg class="h-5 w-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span class="font-semibold text-red-800">Stock Actual: ${currentStock}</span>
-            </div>
-            <div class="text-sm text-red-700">
-              <p>Stock Crítico: ${supplyCode.critical_stock}</p>
-              <p class="mt-2 font-semibold">¿Estás seguro de que deseas eliminar este código?</p>
-              <p class="mt-1 text-xs">Esta acción no se puede deshacer.</p>
-            </div>
-          </div>
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar',
-      customClass: {
-        popup: 'text-left'
-      }
-    })
+    confirmMessage = `ADVERTENCIA: Stock Crítico\n\nEste código de insumo tiene stock crítico:\n\nStock Actual: ${currentStock}\nStock Crítico: ${supplyCode.critical_stock}\n\n¿Estás seguro de que deseas eliminar este código?\n\nEsta acción no se puede deshacer.`
   } else {
-    // Mostrar confirmación normal
-    result = await Swal.fire({
-      title: '¿Eliminar código de insumo?',
-      text: `¿Estás seguro de que deseas eliminar el código "${supplyCode.code} - ${supplyCode.name}"?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
-    })
+    confirmMessage = `¿Estás seguro de que deseas eliminar el código "${supplyCode.code} - ${supplyCode.name}"?\n\nEsta acción no se puede deshacer.`
   }
 
-  if (result.isConfirmed) {
-    try {
-      await supplyCodeService.deleteSupplyCode(supplyCode.code)
-      showSuccess('El código de insumo ha sido eliminado exitosamente.')
-      await loadSupplyCodes()
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar el código de insumo'
-      showError(errorMessage)
-    }
+  if (!confirm(confirmMessage)) {
+    return
+  }
+
+  try {
+    await supplyCodeService.deleteSupplyCode(supplyCode.code)
+    showSuccess('El código de insumo ha sido eliminado exitosamente.')
+    await loadSupplyCodes()
+  } catch (err) {
+    const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar el código de insumo'
+    showError(errorMessage)
   }
 }
 

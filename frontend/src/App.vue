@@ -305,6 +305,25 @@
                     Códigos de Insumos
                   </div>
                 </router-link>
+                
+                <!-- Separador -->
+                <div v-if="authStore.isAdmin" class="border-t border-gray-200 my-1"></div>
+                
+                <!-- Gestión de Usuarios (solo admin) -->
+                <router-link
+                  v-if="authStore.isAdmin"
+                  to="/users"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/users' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    Gestión de Usuarios
+                  </div>
+                </router-link>
               </div>
             </div>
           </nav>
@@ -638,6 +657,23 @@
               :class="{ 'bg-brand-blue-dark': $route.path === '/supply-codes' }"
             >
               Códigos de Insumos
+            </router-link>
+            
+            <!-- Separador -->
+            <div v-if="authStore.isAdmin" class="border-t border-brand-blue-medium my-2"></div>
+            
+            <div v-if="authStore.isAdmin" class="text-brand-blue-light px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+              Administración
+            </div>
+            
+            <router-link
+              v-if="authStore.isAdmin"
+              to="/users"
+              @click.stop="mobileMenuOpen = false"
+              class="text-white hover:text-brand-blue-light block px-3 py-2 rounded-md text-base font-medium transition-colors pl-6"
+              :class="{ 'bg-brand-blue-dark': $route.path === '/users' }"
+            >
+              Gestión de Usuarios
             </router-link>
           </div>
 

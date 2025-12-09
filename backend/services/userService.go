@@ -11,7 +11,7 @@ import (
 func removeAccents(s string) string {
 	// Primero normalizar a NFD (descomponer caracteres con acentos)
 	t := strings.ToLower(s)
-	
+
 	// Reemplazar caracteres acentuados manualmente
 	replacements := map[rune]rune{
 		'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
@@ -20,7 +20,7 @@ func removeAccents(s string) string {
 		'â': 'a', 'ê': 'e', 'î': 'i', 'ô': 'o', 'û': 'u',
 		'ñ': 'n', 'ç': 'c',
 	}
-	
+
 	var result strings.Builder
 	for _, r := range t {
 		if replacement, ok := replacements[r]; ok {
@@ -62,7 +62,35 @@ func (s *UserService) UpdateUser(rut string, newUser *models.User) (*models.User
 		return nil, err
 	}
 
-	if err := s.DB.Model(&user).Omit("rut", "created_at", "updated_at").Updates(newUser).Error; err != nil {
+	// Usar Updates para campos generales, pero Update individual para is_active
+	// porque Updates ignora valores zero (false)
+	updates := map[string]interface{}{
+		"name":              newUser.Name,
+		"email":             newUser.Email,
+		"role":              newUser.Role,
+		"medical_center_id": newUser.MedicalCenterID,
+		"is_active":         newUser.IsActive, // Explícitamente actualizar is_active
+	}
+
+	// Actualizar campos opcionales
+	if newUser.PavilionID != nil {
+		updates["pavilion_id"] = newUser.PavilionID
+	}
+	if newUser.SpecialtyID != nil {
+		updates["specialty_id"] = newUser.SpecialtyID
+	}
+
+	// Solo actualizar password si no está vacío
+	if newUser.Password != "" {
+		updates["password"] = newUser.Password
+	}
+
+	if err := s.DB.Model(&user).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+
+	// Recargar el usuario actualizado
+	if err := s.DB.First(&user, "rut = ?", rut).Error; err != nil {
 		return nil, err
 	}
 
@@ -110,13 +138,13 @@ func (s *UserService) ActivateUser(rut string) error {
 // SearchUsers busca usuarios por nombre, RUT o email (insensible a tildes y mayúsculas)
 func (s *UserService) SearchUsers(searchTerm string) ([]models.User, error) {
 	var users []models.User
-	
+
 	// Normalizar el término de búsqueda (quitar tildes y convertir a minúsculas)
 	normalizedSearch := removeAccents(strings.TrimSpace(searchTerm))
 	if normalizedSearch == "" {
 		return []models.User{}, nil
 	}
-	
+
 	// Obtener todos los usuarios activos (limitamos a 200 para no sobrecargar)
 	if err := s.DB.Where("is_active = ?", true).
 		Order("name ASC").
@@ -124,26 +152,25 @@ func (s *UserService) SearchUsers(searchTerm string) ([]models.User, error) {
 		Find(&users).Error; err != nil {
 		return nil, err
 	}
-	
+
 	// Filtrar en memoria comparando versiones normalizadas
 	var filteredUsers []models.User
 	for _, user := range users {
 		normalizedName := removeAccents(user.Name)
 		normalizedRut := removeAccents(user.RUT)
 		normalizedEmail := removeAccents(user.Email)
-		
+
 		if strings.Contains(normalizedName, normalizedSearch) ||
 			strings.Contains(normalizedRut, normalizedSearch) ||
 			strings.Contains(normalizedEmail, normalizedSearch) {
 			filteredUsers = append(filteredUsers, user)
 		}
-		
+
 		// Limitar a 50 resultados
 		if len(filteredUsers) >= 50 {
 			break
 		}
 	}
-	
+
 	return filteredUsers, nil
 }
-

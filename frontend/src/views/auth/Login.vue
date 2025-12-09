@@ -91,16 +91,6 @@
             {{ isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
           </button>
         </div>
-
-        <!-- Enlace al registro -->
-        <div class="text-center">
-          <router-link
-            to="/register"
-            class="text-sm text-brand-blue-dark hover:text-brand-blue-medium font-medium"
-          >
-            ¿No tienes cuenta? Regístrate
-          </router-link>
-        </div>
       </form>
     </div>
   </div>

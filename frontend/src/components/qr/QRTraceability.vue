@@ -994,7 +994,6 @@ const printTraceability = () => {
     doc.setFontSize(7)
     doc.setTextColor(107, 114, 128)
     doc.text('ESTADO ACTUAL', margin + 5, yPos)
-    doc.text('UBICACION', margin + 5 + colWidth, yPos)
     
     yPos += 5
     doc.setFont('helvetica', 'normal')

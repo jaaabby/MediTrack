@@ -1180,15 +1180,9 @@ const returnToStore = async (qrCode) => {
   if (!qrCode || returningToStore.value) return
   
   // Confirmar la acción
-  const result = await Swal.fire({
-    title: '¿Está seguro de que desea regresar este insumo a bodega?',
-    html: 'Esta acción cambiará el estado del insumo a <b>en_camino_a_bodega</b>. Deberá confirmar la llegada cuando el insumo llegue físicamente a bodega.',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, marcar como en camino',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
+  if (!confirm('¿Está seguro de que desea regresar este insumo a bodega?\n\nEsta acción cambiará el estado del insumo a "en_camino_a_bodega". Deberá confirmar la llegada cuando el insumo llegue físicamente a bodega.')) {
+    return
+  }
   
   returningToStore.value = true
   error.value = null
@@ -1226,15 +1220,9 @@ const confirmArrivalToStore = async (qrCode) => {
   if (!qrCode || confirmingArrival.value) return
   
   // Confirmar la acción
-  const result = await Swal.fire({
-    title: '¿Confirma que este insumo ha llegado a bodega?',
-    html: 'Esta acción cambiará el estado del insumo a <b>disponible</b> y será registrada en el historial de trazabilidad.',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, confirmar',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
+  if (!confirm('¿Confirma que este insumo ha llegado a bodega?\n\nEsta acción cambiará el estado del insumo a "disponible" y será registrada en el historial de trazabilidad.')) {
+    return
+  }
   
   confirmingArrival.value = true
   error.value = null
@@ -1279,15 +1267,9 @@ const markAsReadyForPickup = async (info) => {
   }
   
   // Confirmar la acción
-  const result = await Swal.fire({
-    title: 'Listo para retiro',
-    html: `¿Está seguro de marcar el carrito <b>${cart.cart_number}</b> como "Listo para retiro"?<br><br>Esto indicará al pabellón que puede proceder a retirar los insumos.`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, marcar como listo',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
+  if (!confirm(`¿Está seguro de marcar el carrito ${cart.cart_number} como "Listo para retiro"?\n\nEsto indicará al pabellón que puede proceder a retirar los insumos.`)) {
+    return
+  }
   
   markingAsReady.value = true
   error.value = null
@@ -1297,7 +1279,7 @@ const markAsReadyForPickup = async (info) => {
     const response = await cartService.transferCartToPavilion(cart.id)
     
     if (response.success) {
-      showSuccessNotification('Carrito marcado como listo para retiro exitosamente')
+      showSuccess('Carrito marcado como listo para retiro exitosamente')
       
       // Volver a escanear para actualizar la información del insumo
       await scanQRCode()
@@ -1310,7 +1292,7 @@ const markAsReadyForPickup = async (info) => {
   } catch (err) {
     console.error('Error marcando como listo para retiro:', err)
     error.value = err.response?.data?.message || err.message || 'Error al marcar como listo para retiro'
-    showErrorNotification(error.value)
+    showError(error.value)
   } finally {
     markingAsReady.value = false
   }

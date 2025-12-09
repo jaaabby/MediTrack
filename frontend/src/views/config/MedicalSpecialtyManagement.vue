@@ -290,7 +290,6 @@
 import { ref, computed, onMounted } from 'vue'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
-import Swal from 'sweetalert2'
 
 const specialties = ref([])
 const loading = ref(false)
@@ -473,27 +472,17 @@ const saveSpecialty = async () => {
 }
 
 const confirmDelete = async (specialty) => {
-  const result = await Swal.fire({
-    title: '¿Estás seguro?',
-    html: `¿Deseas eliminar la especialidad <strong>"${specialty.name}"</strong>?<br><small class="text-gray-600">Esta acción no se puede deshacer.</small>`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#dc2626',
-    cancelButtonColor: '#6b7280',
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true
-  })
+  if (!confirm(`¿Deseas eliminar la especialidad "${specialty.name}"?\n\nEsta acción no se puede deshacer.`)) {
+    return
+  }
 
-  if (result.isConfirmed) {
-    try {
-      await medicalSpecialtyService.deleteSpecialty(specialty.id)
-      await loadSpecialties()
-      showSuccess('Especialidad médica eliminada exitosamente')
-    } catch (err) {
-      console.error('Error al eliminar:', err)
-      showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
-    }
+  try {
+    await medicalSpecialtyService.deleteSpecialty(specialty.id)
+    await loadSpecialties()
+    showSuccess('Especialidad médica eliminada exitosamente')
+  } catch (err) {
+    console.error('Error al eliminar:', err)
+    showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
   }
 }
 

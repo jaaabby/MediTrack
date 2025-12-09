@@ -269,7 +269,6 @@
 import { ref, computed, onMounted } from 'vue'
 import supplierConfigService from '@/services/config/supplierConfigService'
 import { useNotification } from '@/composables/useNotification'
-import Swal from 'sweetalert2'
 
 const configs = ref([])
 const loading = ref(false)
@@ -430,26 +429,17 @@ const saveConfig = async () => {
 }
 
 const confirmDelete = async (config) => {
-  const result = await Swal.fire({
-    title: '¿Eliminar configuración?',
-    text: `¿Estás seguro de que deseas eliminar la configuración para "${config.supplier_name}"?`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#3085d6',
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar'
-  })
+  if (!confirm(`¿Estás seguro de que deseas eliminar la configuración para "${config.supplier_name}"?`)) {
+    return
+  }
 
-  if (result.isConfirmed) {
-    try {
-      await supplierConfigService.deleteSupplierConfig(config.supplier_name)
-      showSuccess('La configuración ha sido eliminada exitosamente.')
-      await loadConfigs()
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar la configuración'
-      showError(errorMessage)
-    }
+  try {
+    await supplierConfigService.deleteSupplierConfig(config.supplier_name)
+    showSuccess('La configuración ha sido eliminada exitosamente.')
+    await loadConfigs()
+  } catch (err) {
+    const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar la configuración'
+    showError(errorMessage)
   }
 }
 

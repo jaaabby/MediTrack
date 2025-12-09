@@ -969,19 +969,12 @@ const approveRequest = async (id) => {
 }
 
 const rejectRequest = async (id) => {
-  const { value: reason } = await Swal.fire({
-    title: 'Motivo del rechazo',
-    input: 'text',
-    inputLabel: 'Ingrese el motivo del rechazo:',
-    inputPlaceholder: 'Motivo...',
-    showCancelButton: true,
-    confirmButtonText: 'Rechazar',
-    cancelButtonText: 'Cancelar',
-    inputValidator: (value) => {
-      if (!value) return 'Debe ingresar un motivo';
-    }
-  })
-  if (!reason) return
+  // Usar prompt nativo o crear un modal personalizado
+  const reason = prompt('Ingrese el motivo del rechazo:')
+  if (!reason || !reason.trim()) {
+    showError('Debe ingresar un motivo para rechazar la solicitud')
+    return
+  }
 
   try {
     const rejectionData = {

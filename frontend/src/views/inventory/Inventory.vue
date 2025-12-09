@@ -1274,7 +1274,6 @@ import { es } from 'date-fns/locale'
 import inventoryService from '@/services/inventory/inventoryService'
 import qrService from '@/services/qr/qrService'
 import QrcodeVue from 'qrcode.vue'
-import Swal from 'sweetalert2'
 import { exportToExcel as exportExcel, formatDateForExcel } from '@/utils/excelExport'
 import { useNotification } from '@/composables/useNotification'
 
@@ -1623,12 +1622,7 @@ const viewMovementDetails = (movement) => {
     detailsText += `\nDetalles adicionales:\n${JSON.stringify(movement.details, null, 2)}`
   }
 
-  Swal.fire({
-    title: 'Detalles del Movimiento',
-    html: `<pre class="text-left text-xs">${detailsText}</pre>`,
-    icon: 'info',
-    confirmButtonText: 'Cerrar'
-  })
+  alert(`Detalles del Movimiento\n\n${detailsText}`)
 }
 
 // Función para obtener la descripción del estado en español
@@ -1684,11 +1678,7 @@ const closeEditModal = () => {
 
 const saveEdit = async () => {
   if (!editingSupply.value.batch_id) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'ID de lote no encontrado'
-    })
+    showError('ID de lote no encontrado')
     return
   }
 
@@ -1743,21 +1733,17 @@ const saveEdit = async () => {
 }
 
 const deleteSupply = async (supply) => {
-  const result = await Swal.fire({
-    title: `¿Está seguro de que desea eliminar el lote de ${supply.name}?`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-  })
-  if (result.isConfirmed) {
-    try {
-      await inventoryService.deleteBatch(supply.batch_id)
-      showSuccess('Lote eliminado exitosamente')
-      await loadInventory()
-    } catch (error) {
-      console.error('Error al eliminar lote:', error)
-      showError('Error al eliminar el lote: ' + (error.response?.data?.error || error.message))
+  if (!confirm(`¿Está seguro de que desea eliminar el lote de ${supply.name}?`)) {
+    return
+  }
+  
+  try {
+    await inventoryService.deleteBatch(supply.batch_id)
+    showSuccess('Lote eliminado exitosamente')
+    await loadInventory()
+  } catch (error) {
+    console.error('Error al eliminar lote:', error)
+    showError('Error al eliminar el lote: ' + (error.response?.data?.error || error.message))
     }
   }
 }
@@ -1841,11 +1827,7 @@ const handleDownloadQR = async (qrCode) => {
 const openGlobalHistoryModal = () => {
   // Verificar permisos - solo admin y encargado de bodega pueden ver historial
   if (!authStore.canViewAllRequests) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Permiso denegado',
-      text: 'No tienes permisos para ver el historial de movimientos del inventario'
-    })
+    showError('No tienes permisos para ver el historial de movimientos del inventario')
     return
   }
 
@@ -1904,11 +1886,7 @@ const loadGlobalHistory = async () => {
 const viewSupply = (supply) => {
   // Verificar permisos - solo admin y encargado de bodega pueden ver historial
   if (!authStore.canViewAllRequests) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Permiso denegado',
-      text: 'No tienes permisos para ver el historial de movimientos del inventario'
-    })
+    showError('No tienes permisos para ver el historial de movimientos del inventario')
     return
   }
 

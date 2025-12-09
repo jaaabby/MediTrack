@@ -298,7 +298,6 @@ import doctorInfoService from '@/services/config/doctorInfoService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import medicalCenterService from '@/services/config/medicalCenterService'
 import { useNotification } from '@/composables/useNotification'
-import Swal from 'sweetalert2'
 
 const doctors = ref([])
 const specialties = ref([])
@@ -550,27 +549,17 @@ const saveDoctor = async () => {
 const confirmDelete = async (doctor) => {
   const doctorName = doctor.name || doctor.rut
   
-  const result = await Swal.fire({
-    title: '¿Estás seguro?',
-    html: `¿Deseas eliminar (desactivar) al doctor <strong>"${doctorName}"</strong>?<br><small class="text-gray-600">El doctor será desactivado y no podrá iniciar sesión.</small>`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#dc2626',
-    cancelButtonColor: '#6b7280',
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true
-  })
+  if (!confirm(`¿Deseas eliminar (desactivar) al doctor "${doctorName}"?\n\nEl doctor será desactivado y no podrá iniciar sesión.`)) {
+    return
+  }
 
-  if (result.isConfirmed) {
-    try {
-      await doctorInfoService.deleteDoctor(doctor.rut)
-      await loadDoctors()
-      showSuccess('Doctor eliminado (desactivado) exitosamente')
-    } catch (err) {
-      console.error('Error al eliminar:', err)
-      showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
-    }
+  try {
+    await doctorInfoService.deleteDoctor(doctor.rut)
+    await loadDoctors()
+    showSuccess('Doctor eliminado (desactivado) exitosamente')
+  } catch (err) {
+    console.error('Error al eliminar:', err)
+    showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
   }
 }
 

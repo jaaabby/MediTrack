@@ -681,7 +681,6 @@ import inventoryService from '@/services/inventory/inventoryService'
 import surgeryService from '@/services/management/surgeryService'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
 import { useNotification } from '@/composables/useNotification'
-import Swal from 'sweetalert2'
 
 // Props
 const props = defineProps({
@@ -1370,22 +1369,7 @@ const submitRequest = async () => {
   // Verificar anticipación mínima antes de enviar
   if (!props.editMode && isNotProgrammed.value) {
     const days = Math.ceil(daysUntilSurgery.value)
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: 'Anticipación recomendada',
-      html: `
-        <p>La cirugía está programada en <strong>${days} día(s)</strong>, menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.</p>
-        <p class="mt-2">¿Deseas continuar con la solicitud?</p>
-        <p class="text-sm text-gray-600 mt-2">Esta solicitud será marcada como urgente y procesada con prioridad.</p>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Sí, continuar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33'
-    })
-
-    if (!result.isConfirmed) {
+    if (!confirm(`La cirugía está programada en ${days} día(s), menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.\n\n¿Deseas continuar con la solicitud?\n\nEsta solicitud será marcada como urgente y procesada con prioridad.`)) {
       return
     }
   }

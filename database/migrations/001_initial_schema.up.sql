@@ -109,12 +109,16 @@ CREATE TABLE supply_history (
     medical_supply_id INTEGER NOT NULL REFERENCES medical_supply(id) ON DELETE CASCADE,
     user_rut VARCHAR(20) NOT NULL REFERENCES "user"(rut),
     notes TEXT,
+    location TEXT,
     origin_type VARCHAR(50),
     origin_id INTEGER,
     confirmed_by VARCHAR(20) REFERENCES "user"(rut),
     confirmation_date TIMESTAMP,
     transfer_notes TEXT
 );
+
+CREATE INDEX idx_supply_history_location ON supply_history(location);
+COMMENT ON COLUMN supply_history.location IS 'Ubicación legible del evento (ej: "Pabellon: Pabellón Central 01 (Centro Médico Principal)")';
 
 CREATE TABLE batch_history (
     id SERIAL PRIMARY KEY,

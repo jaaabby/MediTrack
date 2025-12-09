@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"bytes"
+	"io"
+	"log"
 	"net/http"
 
 	"meditrack/models"
@@ -8,6 +11,7 @@ import (
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserController maneja las peticiones HTTP relacionadas con usuarios
@@ -31,15 +35,26 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		Password        string `json:"password" binding:"required,min=6"`
 		Role            string `json:"role" binding:"required"`
 		MedicalCenterID int    `json:"medical_center_id" binding:"required"`
+		PavilionID      *int   `json:"pavilion_id"`
+		SpecialtyID     *int   `json:"specialty_id"`
 	}
 
+	// Log del body recibido
+	bodyBytes, _ := ctx.GetRawData()
+	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	log.Printf("📝 CreateUser - Body recibido: %s", string(bodyBytes))
+
 	if err := ctx.ShouldBindJSON(&userRequest); err != nil {
+		log.Printf("❌ Error en binding JSON: %v", err)
 		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de usuario inválidos: " + err.Error(),
 		})
 		return
 	}
+
+	log.Printf("✅ Datos parseados correctamente - RUT: %s, Role: %s, PavilionID: %v, SpecialtyID: %v",
+		userRequest.RUT, userRequest.Role, userRequest.PavilionID, userRequest.SpecialtyID)
 
 	// Validar rol
 	tempUser := models.User{Role: userRequest.Role}
@@ -51,15 +66,33 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
+	// Hashear la contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRequest.Password), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al procesar contraseña: " + err.Error(),
+		})
+		return
+	}
+
 	// Crear modelo
 	user := models.User{
 		RUT:             userRequest.RUT,
 		Name:            userRequest.Name,
 		Email:           userRequest.Email,
-		Password:        userRequest.Password,
+		Password:        string(hashedPassword),
 		Role:            userRequest.Role,
 		MedicalCenterID: userRequest.MedicalCenterID,
 		IsActive:        true,
+	}
+
+	// Asignar campos opcionales
+	if userRequest.PavilionID != nil {
+		user.PavilionID = userRequest.PavilionID
+	}
+	if userRequest.SpecialtyID != nil {
+		user.SpecialtyID = userRequest.SpecialtyID
 	}
 
 	if err := c.userService.CreateUser(&user); err != nil {
@@ -200,6 +233,8 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		Password        string `json:"password"`
 		Role            string `json:"role"`
 		MedicalCenterID int    `json:"medical_center_id"`
+		PavilionID      *int   `json:"pavilion_id"`
+		SpecialtyID     *int   `json:"specialty_id"`
 		IsActive        *bool  `json:"is_active"`
 	}
 
@@ -223,14 +258,36 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		}
 	}
 
+	// Hashear la contraseña si se proporciona
+	passwordToSave := userRequest.Password
+	if userRequest.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRequest.Password), bcrypt.DefaultCost)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, response.Response{
+				Success: false,
+				Error:   "Error al procesar contraseña: " + err.Error(),
+			})
+			return
+		}
+		passwordToSave = string(hashedPassword)
+	}
+
 	// Crear usuario para actualización
 	user := models.User{
 		RUT:             rut,
 		Name:            userRequest.Name,
 		Email:           userRequest.Email,
-		Password:        userRequest.Password,
+		Password:        passwordToSave,
 		Role:            userRequest.Role,
 		MedicalCenterID: userRequest.MedicalCenterID,
+	}
+
+	// Asignar campos opcionales
+	if userRequest.PavilionID != nil {
+		user.PavilionID = userRequest.PavilionID
+	}
+	if userRequest.SpecialtyID != nil {
+		user.SpecialtyID = userRequest.SpecialtyID
 	}
 
 	if userRequest.IsActive != nil {

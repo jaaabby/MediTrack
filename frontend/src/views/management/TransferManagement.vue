@@ -776,7 +776,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import supplyTransferService from '@/services/management/supplyTransferService'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
-import Swal from 'sweetalert2'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 

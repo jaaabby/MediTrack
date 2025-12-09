@@ -266,7 +266,6 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import { useNotification } from '@/composables/useNotification'
-import Swal from 'sweetalert2'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 
@@ -353,15 +352,9 @@ const refreshData = async () => {
 const processAutomaticReturns = async () => {
   if (criticalSupplies.value.length === 0) return
   
-  const result = await Swal.fire({
-    title: `¿Está seguro de que desea procesar automáticamente ${criticalSupplies.value.length} retornos?`,
-    text: 'Esta acción regresará todos los insumos críticos (15+ días) a bodega.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, procesar',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
+  if (!confirm(`¿Está seguro de que desea procesar automáticamente ${criticalSupplies.value.length} retornos?\n\nEsta acción regresará todos los insumos críticos (15+ días) a bodega.`)) {
+    return
+  }
   
   processingReturns.value = true
   error.value = null
@@ -388,15 +381,9 @@ const processAutomaticReturns = async () => {
 const returnIndividualSupply = async (supply) => {
   if (returningSupplies.value[supply.qrCode]) return
   
-  const result = await Swal.fire({
-    title: `¿Regresar ${supply.name} a bodega?`,
-    html: `QR: ${supply.qrCode}<br>Tiempo sin moverse: ${formatBusinessHours(supply.businessHoursElapsed || 0)}`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, regresar',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
+  if (!confirm(`¿Regresar ${supply.name} a bodega?\n\nQR: ${supply.qrCode}\nTiempo sin moverse: ${formatBusinessHours(supply.businessHoursElapsed || 0)}`)) {
+    return
+  }
   
   returningSupplies.value[supply.qrCode] = true
   

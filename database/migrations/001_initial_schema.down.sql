@@ -100,6 +100,9 @@ DROP INDEX IF EXISTS idx_supply_transfer_qr_code;
 -- Índices de medical_supply
 DROP INDEX IF EXISTS idx_medical_supply_status;
 
+-- Índices de supply_history
+DROP INDEX IF EXISTS idx_supply_history_location;
+
 -- Índices de qr_scan_event
 DROP INDEX IF EXISTS idx_qr_scan_event_session;
 DROP INDEX IF EXISTS idx_qr_scan_event_qr_time;
