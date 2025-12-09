@@ -195,6 +195,7 @@ DROP TABLE IF EXISTS batch CASCADE;
 DROP TABLE IF EXISTS supply_code CASCADE;
 
 -- Tablas de configuración médica
+DROP TABLE IF EXISTS doctor_info CASCADE;
 DROP TABLE IF EXISTS surgery_typical_supply CASCADE;
 DROP TABLE IF EXISTS medical_specialty CASCADE;
 
