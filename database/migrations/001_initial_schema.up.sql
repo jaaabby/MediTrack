@@ -322,6 +322,8 @@ CREATE TABLE IF NOT EXISTS supply_request_qr_assignment (
     delivered_by_name VARCHAR(255),
     status VARCHAR(20) NOT NULL DEFAULT 'assigned',
     notes TEXT,
+    last_notification_sent TIMESTAMP WITH TIME ZONE,
+    notification_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
@@ -339,6 +341,7 @@ CREATE INDEX idx_qr_assignment_medical_supply ON supply_request_qr_assignment(me
 CREATE INDEX idx_qr_assignment_status ON supply_request_qr_assignment(status);
 CREATE INDEX idx_qr_assignment_assigned_date ON supply_request_qr_assignment(assigned_date);
 CREATE INDEX idx_qr_assignment_assigned_by ON supply_request_qr_assignment(assigned_by);
+CREATE INDEX idx_assignment_notification ON supply_request_qr_assignment(last_notification_sent);
 
 CREATE OR REPLACE FUNCTION update_supply_request_updated_at()
 RETURNS TRIGGER AS $$

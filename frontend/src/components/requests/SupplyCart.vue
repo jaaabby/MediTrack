@@ -35,17 +35,6 @@
         >
           {{ getStatusLabel(cart?.status) }}
         </span>
-        <button
-          v-if="cart?.status === 'active' && canTransferToPavilion"
-          @click="handleTransferToPavilion"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          :disabled="loading"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Listo para retiro
-        </button>
         <!--<button
           v-if="cart?.status === 'active' && canClose"
           @click="handleCloseCart"
@@ -681,7 +670,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['cart-loaded', 'cart-closed', 'item-removed', 'item-used', 'item-returned', 'add-item', 'error'])
+const emit = defineEmits(['cart-loaded', 'cart-closed', 'item-removed', 'item-used', 'item-returned', 'add-item', 'error', 'transfer-to-pavilion'])
 
 const cart = ref(null)
 const loading = ref(false)
@@ -1032,25 +1021,7 @@ const getItemLocationStatusClass = (item) => {
 
 // Manejar transferencia al pabellón
 const handleTransferToPavilion = async () => {
-  openConfirmModal(
-    'Listo para retiro',
-    `¿Está seguro de marcar este carrito como "Listo para retiro"? Esto indicará al pabellón que puede proceder a retirar los insumos.`,
-    async () => {
-      loading.value = true
-      try {
-        const response = await cartService.transferCartToPavilion(cart.value.id)
-        if (response.success) {
-          await loadCart() // Recargar para ver el estado actualizado
-          showMessage('success', 'Listo para retiro', response.message || 'Los insumos han sido transferidos al pabellón. El pabellón debe confirmar la recepción.')
-        }
-      } catch (err) {
-        console.error('Error al transferir carrito:', err)
-        showMessage('error', 'Error', err.response?.data?.message || 'Error al transferir el carrito al pabellón')
-      } finally {
-        loading.value = false
-      }
-    }
-  )
+  emit('transfer-to-pavilion', cart.value.id)
 }
 
 // Funciones de selección múltiple
@@ -1318,8 +1289,19 @@ const refresh = () => {
 // Exponer método para uso externo
 defineExpose({
   refresh,
-  loadCart
+  loadCart,
+  canTransferToPavilion
 })
+
+// Emitir cambios en el estado del carrito para que el padre pueda mostrar el botón
+watch(cart, (newCart) => {
+  if (newCart) {
+    emit('cart-loaded', {
+      ...newCart,
+      canTransferToPavilion: canTransferToPavilion.value
+    })
+  }
+}, { deep: true })
 
 onMounted(() => {
   loadCart()

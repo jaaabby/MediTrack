@@ -124,6 +124,18 @@ const routes = [
     }
   },
 
+  // NUEVA RUTA: Retiro de insumos desde bodega
+  {
+    path: '/qr-pickup',
+    name: 'QRPickup',
+    component: () => import('@/views/qr/QRPickup.vue'),
+    meta: {
+      title: 'Retirar Insumo - MediTrack',
+      description: 'Retirar insumos médicos desde bodega con estado "pendiente_retiro"',
+      requiresAuth: true
+    }
+  },
+
   // NUEVA RUTA: Gestión de Retornos a Bodega
   {
     path: '/return-management',
@@ -471,6 +483,7 @@ router.beforeEach(async (to, from, next) => {
       'QRDetails',
       'QRTraceability',
       'QRReception',
+      'QRPickup',
       'Profile'
     ]
     
@@ -508,6 +521,7 @@ router.beforeEach(async (to, from, next) => {
       'QRConsumer',
       'QRTransfer',
       'QRReception',
+      'QRPickup',
       'Profile'
     ]
     
@@ -529,6 +543,7 @@ router.beforeEach(async (to, from, next) => {
       'QRConsumer',
       'QRTransfer',
       'QRReception',
+      'QRPickup',
       'Profile'
     ]
     

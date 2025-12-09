@@ -85,8 +85,11 @@ type SupplyRequestQRAssignment struct {
 	DeliveredByName     *string    `json:"delivered_by_name"`
 	Status              string     `json:"status" gorm:"not null;default:assigned"`
 	Notes               string     `json:"notes" gorm:"type:text"`
-	CreatedAt           time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt           time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// Campos para notificaciones de insumos no consumidos
+	LastNotificationSent *time.Time `json:"last_notification_sent"`
+	NotificationCount    int        `json:"notification_count" gorm:"default:0"`
+	CreatedAt            time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt            time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relaciones
 	SupplyRequest     SupplyRequest     `json:"supply_request,omitempty" gorm:"foreignKey:SupplyRequestID"`

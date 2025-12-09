@@ -203,7 +203,7 @@
       </div>
 
       <!-- Acciones basadas en estado -->
-      <div v-if="scannedInfo.supply_info && (canBeReturnedToStore(scannedInfo) || canBeConsumed(scannedInfo) || canBeTransferred(scannedInfo) || canBePickedUp(scannedInfo) || canBeReceived(scannedInfo) || isOnRouteToStore(scannedInfo))" class="p-3 sm:p-4 border-t border-gray-200">
+      <div v-if="scannedInfo.supply_info && (canBeReturnedToStore(scannedInfo) || canBeConsumed(scannedInfo) || canBeTransferred(scannedInfo) || canBePickedUp(scannedInfo) || canBeReceived(scannedInfo) || isOnRouteToStore(scannedInfo) || canBeMarkedAsReadyForPickup(scannedInfo))" class="p-3 sm:p-4 border-t border-gray-200">
         <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
           <!-- NUEVA LÓGICA: Solo mostrar consumir si estado es "recepcionado" -->
           <router-link 
@@ -230,21 +230,16 @@
           </router-link>-->
           
           <!-- NUEVA LÓGICA: Mostrar retirar si estado es "pendiente_retiro" -->
-          <button 
+          <router-link 
             v-if="canBePickedUp(scannedInfo)"
-            @click="pickupSupply(scannedInfo.qr_code)"
-            :disabled="pickingUp"
+            :to="{ name: 'QRPickup', query: { qr: scannedInfo.qr_code } }" 
             class="btn-primary text-sm flex items-center justify-center"
           >
-            <svg v-if="pickingUp" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
-            {{ pickingUp ? 'Registrando retiro...' : 'Retirar de Bodega' }}
-          </button>
+            Retirar de Bodega
+          </router-link>
           
           <!-- NUEVA LÓGICA: Solo mostrar recepcionar si estado es "en_camino_a_pabellon" -->
           <router-link 
@@ -257,6 +252,23 @@
             </svg>
             Recepcionar
           </router-link>
+          
+          <!-- Botón Listo para retiro (encargado de bodega marca insumos del carrito) -->
+          <button 
+            v-if="canBeMarkedAsReadyForPickup(scannedInfo)"
+            @click="markAsReadyForPickup(scannedInfo)"
+            :disabled="markingAsReady"
+            class="btn-success text-sm flex items-center justify-center"
+          >
+            <svg v-if="markingAsReady" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {{ markingAsReady ? 'Procesando...' : 'Listo para retiro' }}
+          </button>
           
           <!-- NUEVA LÓGICA: Botón rojo para regresar a bodega -->
           <button 
@@ -404,6 +416,7 @@ const detecting = ref(false)
 const returningToStore = ref(false)
 const confirmingArrival = ref(false)
 const pickingUp = ref(false)
+const markingAsReady = ref(false)
 
 // Estado del carrito
 const availableCarts = ref([])
@@ -450,7 +463,76 @@ const canBePickedUp = (info) => {
   if (info.is_consumed) return false
   
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
-  return status === 'pendiente_retiro'
+  if (status !== 'pendiente_retiro') return false
+  
+  // Verificar configuración de autorización de retiro
+  const request = info.supply_request || info.request_assignment?.supply_request
+  if (request) {
+    // Si allow_anyone_to_pickup es false, verificar que el usuario actual sea el autorizado
+    if (request.allow_anyone_to_pickup === false) {
+      const authorizedRUT = request.authorized_pickup_rut
+      const currentUserRUT = authStore.user?.rut
+      
+      console.log('🔒 Verificando autorización de retiro:', {
+        allow_anyone: request.allow_anyone_to_pickup,
+        authorized_rut: authorizedRUT,
+        current_user_rut: currentUserRUT,
+        is_authorized: authorizedRUT === currentUserRUT
+      })
+      
+      // Solo mostrar el botón si el RUT del usuario actual coincide con el autorizado
+      if (authorizedRUT && authorizedRUT !== currentUserRUT) {
+        return false
+      }
+    }
+  }
+  
+  return true
+}
+
+const canBeMarkedAsReadyForPickup = (info) => {
+  console.log('🔍 INICIO verificación canBeMarkedAsReadyForPickup:', {
+    has_info: !!info,
+    type: info?.type,
+    is_consumed: info?.is_consumed,
+    user_role: authStore.user?.role
+  })
+  
+  if (!info || info.type !== 'medical_supply') return false
+  if (info.is_consumed) return false
+  
+  // Solo encargados de bodega pueden marcar como listo para retiro
+  if (authStore.user?.role !== 'encargado de bodega') {
+    console.log('❌ Usuario no es encargado de bodega:', authStore.user?.role)
+    return false
+  }
+  
+  const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
+  const locationType = info.supply_info?.LocationType || info.supply_info?.location_type || ''
+  
+  // El insumo debe estar en bodega y disponible
+  // Verificar si está en un carrito activo
+  const cart = info.request_assignment?.cart || info.request_assignment?.Cart
+  const cartStatus = cart?.status || cart?.Status
+  const hasActiveCart = cart && (cartStatus === 'active' || cartStatus === 'Active')
+  
+  console.log('🔍 Verificando si puede marcar como listo para retiro:', {
+    user_role: authStore.user?.role,
+    status,
+    locationType,
+    has_request_assignment: !!info.request_assignment,
+    has_cart: !!cart,
+    cart_status: cartStatus,
+    hasActiveCart,
+    condition_1: hasActiveCart,
+    condition_2: status === 'disponible',
+    condition_3: locationType === 'store' || locationType === '',
+    result: hasActiveCart && status === 'disponible'
+  })
+  
+  // Si está en un carrito activo y disponible, permitir marcar como listo
+  // El locationType puede estar vacío cuando el insumo está asignado a un carrito
+  return hasActiveCart && status === 'disponible'
 }
 
 const canBeReceived = (info) => {
@@ -875,11 +957,19 @@ const scanQRCode = async () => {
       history_length: result.history?.length || 0,
       has_traceability: !!result.traceability,
       has_supply_history: !!result.traceability?.supply_history,
-      supply_history_length: result.traceability?.supply_history?.length || 0
+      supply_history_length: result.traceability?.supply_history?.length || 0,
+      has_request_assignment: !!result.request_assignment,
+      request_assignment_cart: result.request_assignment?.cart,
+      request_assignment_Cart: result.request_assignment?.Cart,
     })
     
     scannedInfo.value = result
     lastScanContext.value = scanContext
+    
+    // Debug: verificar inmediatamente después de asignar
+    console.log('🔍 Verificando canBeMarkedAsReadyForPickup después de escanear:', {
+      result: canBeMarkedAsReadyForPickup(scannedInfo.value)
+    })
     
     // Añadir al historial
     addToHistory(qrInput.value.trim(), result.type, result, scanContext)
@@ -1175,6 +1265,54 @@ const confirmArrivalToStore = async (qrCode) => {
     error.value = err.message || 'Error al confirmar llegada a bodega'
   } finally {
     confirmingArrival.value = false
+  }
+}
+
+// ===== FUNCIÓN: MARCAR COMO LISTO PARA RETIRO =====
+const markAsReadyForPickup = async (info) => {
+  if (!info || markingAsReady.value) return
+  
+  const cart = info.request_assignment?.cart
+  if (!cart) {
+    error.value = 'No se encontró el carrito asociado'
+    return
+  }
+  
+  // Confirmar la acción
+  const result = await Swal.fire({
+    title: 'Listo para retiro',
+    html: `¿Está seguro de marcar el carrito <b>${cart.cart_number}</b> como "Listo para retiro"?<br><br>Esto indicará al pabellón que puede proceder a retirar los insumos.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, marcar como listo',
+    cancelButtonText: 'Cancelar',
+  })
+  if (!result.isConfirmed) return
+  
+  markingAsReady.value = true
+  error.value = null
+  
+  try {
+    const cartService = (await import('@/services/requests/cartService')).default
+    const response = await cartService.transferCartToPavilion(cart.id)
+    
+    if (response.success) {
+      showSuccessNotification('Carrito marcado como listo para retiro exitosamente')
+      
+      // Volver a escanear para actualizar la información del insumo
+      await scanQRCode()
+      
+      // Refrescar el carrito asociado
+      if (cartRef.value?.refresh) {
+        await cartRef.value.refresh()
+      }
+    }
+  } catch (err) {
+    console.error('Error marcando como listo para retiro:', err)
+    error.value = err.response?.data?.message || err.message || 'Error al marcar como listo para retiro'
+    showErrorNotification(error.value)
+  } finally {
+    markingAsReady.value = false
   }
 }
 

@@ -3,7 +3,11 @@ package services
 import (
 	"fmt"
 	"log"
+	"meditrack/mailer"
 	"meditrack/models"
+	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
@@ -30,10 +34,10 @@ func (s *AutomaticConsumptionService) SetCartService(cartService *CartService) {
 	s.CartService = cartService
 }
 
-// ProcessAutomaticConsumption procesa el consumo automático de insumos para cirugías completadas
+// ProcessAutomaticConsumption verifica cirugías completadas y envía notificaciones para insumos pendientes
 func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 	now := time.Now()
-	log.Printf("🔄 Iniciando procesamiento de consumo automático de insumos - %s", now.Format("2006-01-02 15:04:05"))
+	log.Printf("🔄 Verificando cirugías completadas y notificaciones pendientes - %s", now.Format("2006-01-02 15:04:05"))
 
 	// Buscar solicitudes con cirugías que ya deberían haber terminado
 	// Usar una consulta SQL más eficiente que filtre directamente por fecha
@@ -110,8 +114,8 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 			continue
 		}
 
-		// Procesar cada asignación
-		consumedCount := 0
+		// Procesar cada asignación - SOLO NOTIFICAR, NO CONSUMIR
+		notifiedCount := 0
 		for _, assignment := range assignments {
 			// Cargar el insumo médico
 			var supply models.MedicalSupply
@@ -131,8 +135,7 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 				continue
 			}
 
-			// Solo consumir insumos en estado "recepcionado"
-			// Los que están en "disponible" ya fueron devueltos al momento de la recepción
+			// Solo notificar insumos en estado "recepcionado"
 			if supply.Status != models.StatusReceived {
 				log.Printf("⚠️  Insumo %s (QR: %s): estado %s, esperado %s",
 					supply.QRCode, supply.QRCode, supply.Status, models.StatusReceived)
@@ -152,54 +155,48 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 				continue
 			}
 
-			log.Printf("✅ Insumo %s (QR: %s) cumple condiciones para consumo automático", supply.QRCode, supply.QRCode)
-
-			// Consumir el insumo automáticamente
-			// Nota: Agregamos un prefijo especial para identificar consumo automático
-			notes := fmt.Sprintf("[CONSUMO_AUTOMATICO] Cirugía completada el %s (solicitud %s). Este insumo puede ser devuelto a bodega si no fue utilizado.",
-				surgeryEndTime.Format("2006-01-02 15:04:05"), request.RequestNumber)
-
-			consumptionRequest := QRConsumptionRequest{
-				QRCode:          supply.QRCode,
-				UserRUT:         "12345678-9", // Administrador del Sistema
-				DestinationType: "pavilion",   // Usar string literal en lugar de constante
-				DestinationID:   supply.LocationID,
-				Notes:           notes,
+			// Verificar si debemos enviar notificación según el intervalo configurado
+			shouldNotify, isFirstNotification := s.shouldSendNotification(&assignment, surgeryEndTime)
+			if !shouldNotify {
+				log.Printf("⏭️  Insumo %s: notificación ya enviada recientemente", supply.QRCode)
+				continue
 			}
 
-			log.Printf("🔄 Intentando consumir insumo %s (QR: %s) automáticamente", supply.QRCode, supply.QRCode)
-			_, err := s.QRService.ConsumeSupplyByQR(consumptionRequest)
-			if err != nil {
-				errorMsg := fmt.Sprintf("Error consumiendo insumo %s (QR: %s): %v",
-					supply.QRCode, supply.QRCode, err)
+			if isFirstNotification {
+				log.Printf("📧 Insumo %s (QR: %s) requiere atención - cirugía completada (primera notificación)", supply.QRCode, supply.QRCode)
+			} else {
+				log.Printf("🔔 Insumo %s (QR: %s) - enviando recordatorio (notificación #%d)", supply.QRCode, assignment.NotificationCount+1)
+			}
+
+			// Enviar notificación por correo en lugar de consumir automáticamente
+			if err := s.sendUnconsumedSupplyAlert(request, supply, surgeryEndTime, assignment.NotificationCount+1); err != nil {
+				errorMsg := fmt.Sprintf("Error enviando notificación para insumo %s: %v", supply.QRCode, err)
 				errors = append(errors, errorMsg)
 				log.Printf("❌ %s", errorMsg)
 				continue
 			}
 
-			log.Printf("✅ Insumo %s (QR: %s) consumido exitosamente", supply.QRCode, supply.QRCode)
-
-			// Verificar y cerrar el carrito automáticamente si todos los insumos fueron consumidos
-			if s.CartService != nil {
-				if err := s.CartService.CheckAndAutoCloseCartForSupply(supply.ID, "12345678-9", "Sistema Automático"); err != nil {
-					log.Printf("⚠️  Error verificando cierre automático de carrito para insumo %s: %v", supply.QRCode, err)
-				} else {
-					log.Printf("✅ Verificado cierre automático de carrito para insumo %s", supply.QRCode)
-				}
+			// Actualizar el registro de notificación
+			now := time.Now()
+			assignment.LastNotificationSent = &now
+			assignment.NotificationCount++
+			if err := s.DB.Save(&assignment).Error; err != nil {
+				log.Printf("⚠️  Error actualizando registro de notificación: %v", err)
 			}
 
-			consumedCount++
+			log.Printf("✅ Notificación enviada para insumo %s (QR: %s)", supply.QRCode, supply.QRCode)
+			notifiedCount++
 			totalConsumed++
 		}
 
-		if consumedCount > 0 {
+		if notifiedCount > 0 {
 			totalProcessed++
-			log.Printf("✅ Solicitud %s: %d insumo(s) consumido(s) automáticamente",
-				request.RequestNumber, consumedCount)
+			log.Printf("📨 Solicitud %s: %d notificación(es) enviada(s)",
+				request.RequestNumber, notifiedCount)
 		}
 	}
 
-	log.Printf("✅ Procesamiento completado: %d solicitud(es) procesada(s), %d insumo(s) consumido(s)",
+	log.Printf("✅ Procesamiento completado: %d solicitud(es) procesada(s), %d notificación(es) enviada(s)",
 		totalProcessed, totalConsumed)
 
 	if len(errors) > 0 {
@@ -212,7 +209,100 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 	return nil
 }
 
-// StartAutomaticConsumptionChecker inicia un verificador que ejecuta el consumo automático periódicamente
+// shouldSendNotification determina si se debe enviar una notificación según el intervalo configurado
+// Retorna (debeEnviar, esPrimeraNotificacion)
+func (s *AutomaticConsumptionService) shouldSendNotification(assignment *models.SupplyRequestQRAssignment, surgeryEndTime time.Time) (bool, bool) {
+	// Si nunca se ha enviado notificación, enviar inmediatamente después de que termine la cirugía
+	if assignment.LastNotificationSent == nil {
+		return true, true
+	}
+
+	// Obtener el intervalo de reenvío desde variable de entorno (en horas)
+	// Por defecto: 2 horas
+	resendIntervalHours := 3.0
+	if envInterval := os.Getenv("NOTIFICATION_RESEND_INTERVAL_HOURS"); envInterval != "" {
+		if parsed, err := strconv.ParseFloat(envInterval, 64); err == nil && parsed > 0 {
+			resendIntervalHours = parsed
+		}
+	}
+
+	// Calcular cuánto tiempo ha pasado desde la última notificación
+	timeSinceLastNotification := time.Since(*assignment.LastNotificationSent)
+	resendInterval := time.Duration(resendIntervalHours * float64(time.Hour))
+
+	// Enviar si ha pasado el intervalo configurado
+	shouldSend := timeSinceLastNotification >= resendInterval
+
+	return shouldSend, false
+}
+
+// sendUnconsumedSupplyAlert envía una notificación por correo para un insumo no consumido
+func (s *AutomaticConsumptionService) sendUnconsumedSupplyAlert(request models.SupplyRequest, supply models.MedicalSupply, surgeryEndTime time.Time, notificationNumber int) error {
+	// Cargar el usuario solicitante
+	var requester models.User
+	if err := s.DB.First(&requester, "rut = ?", request.RequestedBy).Error; err != nil {
+		return fmt.Errorf("error cargando usuario solicitante: %v", err)
+	}
+
+	// Cargar información del batch con el código de insumo
+	var batch models.Batch
+	if err := s.DB.First(&batch, supply.BatchID).Error; err != nil {
+		log.Printf("⚠️  No se pudo cargar información del lote: %v", err)
+	}
+
+	// Cargar información del código de insumo
+	var supplyCode models.SupplyCode
+	if err := s.DB.First(&supplyCode, supply.Code).Error; err != nil {
+		log.Printf("⚠️  No se pudo cargar información del código de insumo: %v", err)
+	}
+
+	// Calcular horas transcurridas desde el fin de la cirugía
+	hoursElapsed := time.Since(surgeryEndTime).Hours()
+
+	// Preparar datos para el template
+	data := struct {
+		SupplyID           int
+		SupplyName         string
+		SupplyCode         int
+		QRCode             string
+		BatchID            int
+		ReceivedAt         string
+		HoursElapsed       string
+		Date               string
+		RequestNumber      string
+		SurgeryDate        string
+		NotificationNumber int
+		IsReminder         bool
+	}{
+		SupplyID:           supply.ID,
+		SupplyName:         supplyCode.Name,
+		SupplyCode:         supply.Code,
+		QRCode:             supply.QRCode,
+		BatchID:            batch.ID,
+		ReceivedAt:         supply.UpdatedAt.Format("2006-01-02 15:04:05"),
+		HoursElapsed:       fmt.Sprintf("%.2f", hoursElapsed),
+		Date:               time.Now().Format("2006-01-02 15:04:05"),
+		RequestNumber:      request.RequestNumber,
+		SurgeryDate:        request.SurgeryDatetime.Format("2006-01-02 15:04:05"),
+		NotificationNumber: notificationNumber,
+		IsReminder:         notificationNumber > 1,
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "unconsumed_supply_alert.html")
+	subject := "🚨 Insumo Pendiente de Consumo/Devolución - " + request.RequestNumber
+	if notificationNumber > 1 {
+		subject = fmt.Sprintf("🔔 RECORDATORIO #%d - Insumo Pendiente - %s", notificationNumber, request.RequestNumber)
+	}
+	mailReq := mailer.NewRequest([]string{requester.Email}, subject)
+
+	if err := mailReq.SendMailSkipTLS(templatePath, data); err != nil {
+		return fmt.Errorf("error enviando correo: %v", err)
+	}
+
+	return nil
+}
+
+// StartAutomaticConsumptionChecker inicia un verificador que verifica cirugías completadas y envía notificaciones
 func (s *AutomaticConsumptionService) StartAutomaticConsumptionChecker() {
 	// Ejecutar cada 5 minutos
 	ticker := time.NewTicker(5 * time.Minute)
@@ -220,16 +310,16 @@ func (s *AutomaticConsumptionService) StartAutomaticConsumptionChecker() {
 
 	// Ejecutar inmediatamente al inicio
 	go func() {
-		log.Println("🔄 Ejecutando consumo automático inicial...")
+		log.Println("🔄 Ejecutando verificación inicial de cirugías completadas...")
 		if err := s.ProcessAutomaticConsumption(); err != nil {
-			log.Printf("❌ Error en consumo automático inicial: %v", err)
+			log.Printf("❌ Error en verificación inicial: %v", err)
 		}
 	}()
 
 	// Ejecutar periódicamente
 	for range ticker.C {
 		if err := s.ProcessAutomaticConsumption(); err != nil {
-			log.Printf("❌ Error en consumo automático: %v", err)
+			log.Printf("❌ Error en verificación de cirugías: %v", err)
 		}
 	}
 }

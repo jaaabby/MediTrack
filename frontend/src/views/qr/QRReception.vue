@@ -154,7 +154,7 @@
         <!-- Botón de Recepción -->
         <div class="flex justify-end">
           <button
-            @click="receiveSupply"
+            @click="confirmReception"
             :disabled="receiving"
             class="btn-primary"
           >
@@ -275,7 +275,92 @@
       </div>
     </div>
 
+    <!-- Success Message -->
+    <div v-if="consumptionSuccess" class="bg-green-50 border border-green-200 rounded-md p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-green-800">Recepción Exitosa</h3>
+          <div class="mt-2 text-sm text-green-700">
+            El insumo ha sido recepcionado correctamente y está listo para uso.
+            <div v-if="consumptionSuccess.status_change" class="mt-1 text-xs text-green-600">
+              Estado cambiado de "{{ consumptionSuccess.status_change.from }}" a "{{ consumptionSuccess.status_change.to }}"
+            </div>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <!--<button @click="resetForm" class="btn-primary text-sm">
+              Recepcionar Otro Insumo
+            </button>-->
+            <router-link to="/qr" class="btn-secondary text-sm">
+              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              Volver al Scanner
+            </router-link>
+            <router-link v-if="consumptionSuccess.qr_code" :to="`/qr/${consumptionSuccess.qr_code}/traceability`" class="btn-secondary text-sm">
+              Ver Trazabilidad
+            </router-link>
+            <router-link v-if="consumptionSuccess.batch_id" :to="`/batch/${consumptionSuccess.batch_id}/history`"
+              class="btn-secondary text-sm">
+              Ver Historial del Lote
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <!-- Modal de Confirmación de Recepción -->
+    <div v-if="showReceptionConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+      <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6">
+          <div class="flex items-start mb-4">
+            <div class="flex-shrink-0">
+              <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div class="ml-3 flex-1">
+              <h3 class="text-lg font-medium text-gray-900">
+                Confirmar Recepción de Insumo
+              </h3>
+              <div class="mt-2 text-sm text-gray-500">
+                <p>¿Está seguro de que desea marcar este insumo como recepcionado?</p>
+                <div class="mt-3 bg-gray-50 rounded-lg p-3">
+                  <p class="font-medium text-gray-900">{{ 
+                    scannedProduct?.supply_code?.name || 
+                    scannedProduct?.supply_info?.SupplyCode?.name || 
+                    scannedProduct?.supply_info?.name || 
+                    'Insumo' 
+                  }}</p>
+                  <p class="text-xs text-gray-600 mt-1">QR: {{ scannedProduct?.qr_code }}</p>
+                </div>
+                <p class="mt-3 text-yellow-700 font-medium">
+                  Una vez recepcionado, deberá decidir si consumirlo o devolverlo a bodega.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-3 mt-6">
+            <button
+              @click="showReceptionConfirmModal = false"
+              class="flex-1 btn-secondary"
+            >
+              Cancelar
+            </button>
+            <button
+              @click="proceedWithReception"
+              class="flex-1 btn-primary"
+            >
+              Sí, Recepcionar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -301,6 +386,7 @@ const scannedProduct = ref(null)
 const receiving = ref(false)
 const processing = ref(false)
 const consumptionSuccess = ref(null) // Mantenemos el nombre para conservar la alerta
+const showReceptionConfirmModal = ref(false)
 
 // Formulario de recepción simplificado
 const receptionForm = ref({
@@ -456,6 +542,17 @@ const getStatusText = (status) => {
     'transferido': 'Transferido'
   }
   return statusMap[status] || status || 'Desconocido'
+}
+
+// Mostrar modal de confirmación
+const confirmReception = () => {
+  showReceptionConfirmModal.value = true
+}
+
+// Proceder con la recepción después de confirmar
+const proceedWithReception = () => {
+  showReceptionConfirmModal.value = false
+  receiveSupply()
 }
 
 // Recepcionar insumo
