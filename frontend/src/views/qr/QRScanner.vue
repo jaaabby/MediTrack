@@ -155,6 +155,7 @@
         @view-details="viewDetails"
         @view-batch="viewBatch"
         @consume-supply="consumeSupply"
+        @qr-updated="refreshScannedInfo"
       />
       
       <!-- Gestión del Carrito -->
@@ -921,6 +922,31 @@ const isValidQRFormat = (qrCode) => {
 const quickRescan = (qrCode) => {
   qrInput.value = qrCode
   scanQRCode()
+}
+
+// Función para refrescar la información del QR escaneado (sin cambiar el input)
+const refreshScannedInfo = async () => {
+  if (!scannedInfo.value || !scannedInfo.value.qr_code) return
+  
+  try {
+    // Crear contexto de escaneo
+    const scanContext = buildScanContext()
+    
+    // Re-escanear el código QR actual para obtener información actualizada
+    const result = await qrService.scanQRCode(scannedInfo.value.qr_code, scanContext)
+    
+    console.log('🔄 Información del QR actualizada:', {
+      qr_code: result.qr_code,
+      status: result.supply_info?.Status || result.supply_info?.status
+    })
+    
+    scannedInfo.value = result
+    lastScanContext.value = scanContext
+    
+  } catch (err) {
+    console.error('Error al refrescar información del QR:', err)
+    // No mostrar error al usuario, solo loguear
+  }
 }
 
 // ===== FUNCIONES DE HISTORIAL =====

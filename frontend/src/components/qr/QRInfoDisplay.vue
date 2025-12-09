@@ -151,6 +151,8 @@
               :default-collapsed="true"
               @cart-loaded="onCartLoaded"
               @cart-closed="onCartClosed"
+              @item-used="onItemUsed"
+              @item-returned="onItemReturned"
               @error="onCartError"
             />
           </div>
@@ -213,7 +215,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['consume-supply', 'mark-as-delivered'])
+const emit = defineEmits(['consume-supply', 'mark-as-delivered', 'qr-updated'])
 
 // Registrar el componente QR
 defineExpose({ QrcodeVue })
@@ -253,10 +255,24 @@ const onCartLoaded = (cart) => {
 
 const onCartClosed = (cart) => {
   console.log('Carrito cerrado en QRInfoDisplay:', cart)
+  // Emitir evento para que el padre recargue la información del QR
+  emit('qr-updated')
 }
 
 const onCartError = (error) => {
   console.log('No se encontró carrito para este QR (puede ser normal):', error)
+}
+
+const onItemUsed = () => {
+  console.log('Item usado en carrito')
+  // Emitir evento para que el padre recargue la información del QR
+  emit('qr-updated')
+}
+
+const onItemReturned = () => {
+  console.log('Item devuelto desde carrito')
+  // Emitir evento para que el padre recargue la información del QR
+  emit('qr-updated')
 }
 
 // Cargar información de trazabilidad si está habilitada
