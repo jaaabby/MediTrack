@@ -82,6 +82,7 @@
                 muted 
                 playsinline
                 class="w-full h-full object-cover"
+                :style="shouldMirrorVideo ? { transform: 'scaleX(-1)' } : {}"
               ></video>
               
               <div class="absolute inset-0 flex items-center justify-center">
@@ -411,6 +412,8 @@ const cameraActive = ref(false)
 const cameraStarting = ref(false)
 const cameraError = ref(null)
 const detecting = ref(false)
+const isFrontCamera = ref(false)
+const isMobileDevice = ref(false)
 
 // Estado del retorno a bodega
 const returningToStore = ref(false)
@@ -428,6 +431,22 @@ const cartRef = ref(null)
 // Variables para manejo de cámara
 let mediaStream = null
 let animationFrameId = null
+
+// Computed para determinar si se debe aplicar efecto espejo
+const shouldMirrorVideo = computed(() => {
+  // Aplicar espejo si:
+  // 1. Es cámara delantera (user) en celular
+  // 2. Es cámara de computador (cualquier cámara en desktop)
+  // NO aplicar espejo si:
+  // - Es cámara trasera (environment) en celular
+  if (isFrontCamera.value && isMobileDevice.value) {
+    return true // Cámara delantera en celular: sí espejo
+  }
+  if (!isMobileDevice.value) {
+    return true // Cámara de computador: sí espejo
+  }
+  return false // Cámara trasera en celular: no espejo
+})
 
 // Computed properties
 const currentUser = computed(() => authStore.user)
@@ -806,22 +825,68 @@ const getRecommendationIcon = (info) => {
 }
 
 // ===== FUNCIONES DE CÁMARA =====
+// Detectar si es dispositivo móvil
+const detectMobileDevice = () => {
+  const userAgent = navigator.userAgent || navigator.vendor || window.opera
+  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase())
+  const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  return isMobile || hasTouchScreen
+}
+
 const startCameraScanner = async () => {
   if (cameraActive.value) return
   
   cameraStarting.value = true
   cameraError.value = null
   
+  // Detectar tipo de dispositivo
+  isMobileDevice.value = detectMobileDevice()
+  
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ 
+    // Intentar primero con cámara trasera (environment)
+    let constraints = { 
       video: { 
         facingMode: 'environment',
         width: { ideal: 1280 },
         height: { ideal: 720 }
       } 
-    })
+    }
+    
+    let stream = null
+    let isFront = false
+    
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints)
+      isFront = false // Cámara trasera
+    } catch (envError) {
+      // Si falla con environment, intentar con user (delantera)
+      console.log('No se pudo acceder a cámara trasera, intentando con delantera...')
+      constraints.video.facingMode = 'user'
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints)
+        isFront = true // Cámara delantera
+      } catch (userError) {
+        // Si ambas fallan, intentar sin especificar facingMode
+        delete constraints.video.facingMode
+        stream = await navigator.mediaDevices.getUserMedia(constraints)
+        // Intentar detectar si es delantera o trasera
+        const track = stream.getVideoTracks()[0]
+        const settings = track.getSettings()
+        isFront = settings.facingMode === 'user' || !settings.facingMode
+      }
+    }
+    
+    // Detectar tipo de cámara desde el stream
+    if (stream) {
+      const track = stream.getVideoTracks()[0]
+      const settings = track.getSettings()
+      if (settings.facingMode) {
+        isFront = settings.facingMode === 'user'
+      }
+    }
     
     mediaStream = stream
+    isFrontCamera.value = isFront
     cameraActive.value = true
     
     // Esperar a que el elemento video esté disponible
@@ -866,11 +931,17 @@ const startQRDetection = () => {
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
       
-      // Aplicar transformación espejo al canvas para que coincida con la vista del video
-      context.save()
-      context.scale(-1, 1)
-      context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height)
-      context.restore()
+      // Aplicar transformación espejo al canvas solo si el video también tiene espejo
+      // Esto asegura que el QR se detecte correctamente
+      if (shouldMirrorVideo.value) {
+        context.save()
+        context.scale(-1, 1)
+        context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height)
+        context.restore()
+      } else {
+        // Sin espejo, dibujar normal
+        context.drawImage(video, 0, 0, canvas.width, canvas.height)
+      }
       
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
       const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
