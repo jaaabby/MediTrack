@@ -458,22 +458,6 @@ const openEditModal = async (supplyCode) => {
   supplyCodeForm.value = { ...supplyCode }
   showModal.value = true
 }
-    })
-    
-    if (!result.isConfirmed) {
-      return // Cancelar si el usuario no confirma
-    }
-  }
-  
-  isEditing.value = true
-  supplyCodeForm.value = {
-    code: supplyCode.code,
-    name: supplyCode.name,
-    code_supplier: supplyCode.code_supplier,
-    critical_stock: supplyCode.critical_stock
-  }
-  showModal.value = true
-}
 
 const closeModal = () => {
   showModal.value = false

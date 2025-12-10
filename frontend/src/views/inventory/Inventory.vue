@@ -1744,7 +1744,6 @@ const deleteSupply = async (supply) => {
   } catch (error) {
     console.error('Error al eliminar lote:', error)
     showError('Error al eliminar el lote: ' + (error.response?.data?.error || error.message))
-    }
   }
 }
 
