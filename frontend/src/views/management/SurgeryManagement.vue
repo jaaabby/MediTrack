@@ -323,8 +323,10 @@ import { ref, computed, onMounted } from 'vue'
 import surgeryService from '@/services/management/surgeryService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
+const { confirmDanger } = useAlert()
 
 const surgeries = ref([])
 const specialties = ref([])
@@ -579,7 +581,11 @@ const saveSurgery = async () => {
 }
 
 const confirmDelete = async (surgery) => {
-  if (!confirm(`¿Deseas eliminar el tipo de cirugía "${surgery.name}"?\n\nEsta acción no se puede deshacer.`)) {
+  const confirmed = await confirmDanger(
+    `¿Deseas eliminar el tipo de cirugía "${surgery.name}"?\n\nEsta acción no se puede deshacer.`,
+    'Confirmar eliminación'
+  )
+  if (!confirmed) {
     return
   }
 

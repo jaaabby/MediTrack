@@ -266,8 +266,10 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
+const { confirm } = useAlert()
 
 const router = useRouter()
 
@@ -352,7 +354,11 @@ const refreshData = async () => {
 const processAutomaticReturns = async () => {
   if (criticalSupplies.value.length === 0) return
   
-  if (!confirm(`¿Está seguro de que desea procesar automáticamente ${criticalSupplies.value.length} retornos?\n\nEsta acción regresará todos los insumos críticos (15+ días) a bodega.`)) {
+  const confirmed = await confirm(
+    `¿Está seguro de que desea procesar automáticamente ${criticalSupplies.value.length} retornos?\n\nEsta acción regresará todos los insumos críticos (15+ días) a bodega.`,
+    'Procesar retornos automáticos'
+  )
+  if (!confirmed) {
     return
   }
   
@@ -381,7 +387,11 @@ const processAutomaticReturns = async () => {
 const returnIndividualSupply = async (supply) => {
   if (returningSupplies.value[supply.qrCode]) return
   
-  if (!confirm(`¿Regresar ${supply.name} a bodega?\n\nQR: ${supply.qrCode}\nTiempo sin moverse: ${formatBusinessHours(supply.businessHoursElapsed || 0)}`)) {
+  const confirmed = await confirm(
+    `¿Regresar ${supply.name} a bodega?\n\nQR: ${supply.qrCode}\nTiempo sin moverse: ${formatBusinessHours(supply.businessHoursElapsed || 0)}`,
+    'Confirmar retorno'
+  )
+  if (!confirmed) {
     return
   }
   

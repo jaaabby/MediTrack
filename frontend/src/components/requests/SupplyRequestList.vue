@@ -622,11 +622,13 @@ import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { success: showSuccess, error: showError } = useNotification()
+const { prompt } = useAlert()
 
 // Estado del modal de asignación
 const showAssignModal = ref(false)
@@ -969,10 +971,21 @@ const approveRequest = async (id) => {
 }
 
 const rejectRequest = async (id) => {
-  // Usar prompt nativo o crear un modal personalizado
-  const reason = prompt('Ingrese el motivo del rechazo:')
-  if (!reason || !reason.trim()) {
-    showError('Debe ingresar un motivo para rechazar la solicitud')
+  const reason = await prompt(
+    'Ingrese el motivo del rechazo:',
+    'Rechazar Solicitud',
+    {
+      placeholder: 'Motivo del rechazo...',
+      inputType: 'textarea',
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return 'Debe ingresar un motivo para rechazar la solicitud'
+        }
+        return null
+      }
+    }
+  )
+  if (!reason) {
     return
   }
 
@@ -1171,7 +1184,7 @@ const getRejectionReason = (request) => {
 }
 
 // Lifecycle
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'request_number', label: 'Número de Solicitud' },
@@ -1202,7 +1215,7 @@ const exportToExcel = () => {
       }
     ]
     
-    exportExcel(filteredRequests.value, columns, 'solicitudes_insumos')
+    await exportExcel(filteredRequests.value, columns, 'solicitudes_insumos')
     showSuccess('El archivo Excel se ha descargado exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)

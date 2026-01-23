@@ -269,9 +269,11 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qr/qrService'
 import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/composables/useNotification'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado reactivo
 const qrInput = ref('')
@@ -493,15 +495,20 @@ const consumeProduct = async () => {
         batch_history_updated: true
       }
 
+      // Mostrar notificación de éxito
+      showSuccess('Insumo consumido correctamente')
+
       // Limpiar producto escaneado pero mantener el mensaje de éxito visible
       scannedProduct.value = null
       qrInput.value = ''
       selectedConsumptionPurpose.value = ''
     } else {
       error.value = result.error || 'Error al consumir el insumo'
+      showError(result.error || 'Error al consumir el insumo')
     }
   } catch (err) {
     error.value = err.message || 'Error al consumir el insumo'
+    showError(err.message || 'Error al consumir el insumo')
     console.error('Error al consumir:', err)
   } finally {
     consuming.value = false
@@ -563,18 +570,4 @@ const resetForm = () => {
 }
 </script>
 
-<style scoped>
-.form-input {
-  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500;
-}
-
-.form-select {
-  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500;
-}
-
-.form-textarea {
-  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500;
-}
-
-/* Usar clases de botones de style.css global */
-</style>
+<!-- Los estilos .form-input, .form-select y .form-textarea están definidos globalmente en style.css -->

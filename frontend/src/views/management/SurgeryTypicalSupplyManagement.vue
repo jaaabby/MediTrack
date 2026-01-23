@@ -452,8 +452,10 @@ import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSup
 import surgeryService from '@/services/management/surgeryService'
 import supplyCodeService from '@/services/config/supplyCodeService'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
+const { confirmDanger } = useAlert()
 
 const typicalSupplies = ref([])
 const surgeries = ref([])
@@ -836,7 +838,11 @@ const confirmDelete = async (supply) => {
   const surgeryName = getSurgeryName(supply.surgery_id)
   const supplyName = getSupplyName(supply.supply_code)
   
-  if (!confirm(`¿Deseas eliminar la asociación entre "${surgeryName}" y "${supplyName}"?\n\nEsta acción no se puede deshacer.`)) {
+  const confirmed = await confirmDanger(
+    `¿Deseas eliminar la asociación entre "${surgeryName}" y "${supplyName}"?\n\nEsta acción no se puede deshacer.`,
+    'Confirmar eliminación'
+  )
+  if (!confirmed) {
     return
   }
 

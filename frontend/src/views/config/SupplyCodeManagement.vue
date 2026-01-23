@@ -296,6 +296,10 @@ import { ref, computed, onMounted } from 'vue'
 import supplyCodeService from '@/services/config/supplyCodeService'
 import inventoryService from '@/services/inventory/inventoryService'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
+
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
+const { confirm, confirmDanger } = useAlert()
 
 const supplyCodes = ref([])
 const loading = ref(false)
@@ -304,7 +308,6 @@ const searchTerm = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
-const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 // Estado de ordenamiento
 const sortKey = ref('code')
@@ -449,7 +452,12 @@ const openEditModal = async (supplyCode) => {
   const isCritical = isStockCritical(currentStock, supplyCode.critical_stock)
   
   if (isCritical) {
-    if (!confirm(`ADVERTENCIA: Stock Crítico\n\nEste código de insumo tiene stock crítico:\n\nStock Actual: ${currentStock}\nStock Crítico: ${supplyCode.critical_stock}\n\n¿Estás seguro de que deseas editar este código?`)) {
+    const confirmed = await confirm(
+      `Este código de insumo tiene stock crítico:\n\nStock Actual: ${currentStock}\nStock Crítico: ${supplyCode.critical_stock}\n\n¿Estás seguro de que deseas editar este código?`,
+      'ADVERTENCIA: Stock Crítico',
+      { icon: 'warning' }
+    )
+    if (!confirmed) {
       return
     }
   }
@@ -507,7 +515,8 @@ const confirmDelete = async (supplyCode) => {
     confirmMessage = `¿Estás seguro de que deseas eliminar el código "${supplyCode.code} - ${supplyCode.name}"?\n\nEsta acción no se puede deshacer.`
   }
 
-  if (!confirm(confirmMessage)) {
+  const confirmed = await confirmDanger(confirmMessage, 'Confirmar eliminación')
+  if (!confirmed) {
     return
   }
 

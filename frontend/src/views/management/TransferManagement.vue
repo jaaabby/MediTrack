@@ -1052,7 +1052,7 @@ const showNotification = (message, type = 'info') => {
   }
 }
 
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'transfer_code', label: 'Código de Transferencia' },
@@ -1072,7 +1072,7 @@ const exportToExcel = () => {
       { key: 'rejection_reason', label: 'Motivo de Rechazo' }
     ]
     
-    exportExcel(sortedTransfers.value, columns, 'transferencias')
+    await exportExcel(sortedTransfers.value, columns, 'transferencias')
     showNotification('Exportación a Excel completada exitosamente', 'success')
   } catch (error) {
     console.error('Error al exportar:', error)

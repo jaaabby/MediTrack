@@ -681,6 +681,7 @@ import inventoryService from '@/services/inventory/inventoryService'
 import surgeryService from '@/services/management/surgeryService'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 
 // Props
 const props = defineProps({
@@ -700,6 +701,7 @@ const emit = defineEmits(['success', 'cancel', 'error'])
 // Stores
 const authStore = useAuthStore()
 const { success: showSuccess, error: showError, info: showInfo, warning: showWarning } = useNotification()
+const { confirm } = useAlert()
 
 // Estado reactivo
 const submitting = ref(false)
@@ -1369,7 +1371,11 @@ const submitRequest = async () => {
   // Verificar anticipación mínima antes de enviar
   if (!props.editMode && isNotProgrammed.value) {
     const days = Math.ceil(daysUntilSurgery.value)
-    if (!confirm(`La cirugía está programada en ${days} día(s), menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.\n\n¿Deseas continuar con la solicitud?\n\nEsta solicitud será marcada como urgente y procesada con prioridad.`)) {
+    const confirmed = await confirm(
+      `La cirugía está programada en ${days} día(s), menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.\n\n¿Deseas continuar con la solicitud?\n\nEsta solicitud será marcada como urgente y procesada con prioridad.`,
+      'Advertencia: Fecha cercana'
+    )
+    if (!confirmed) {
       return
     }
   }

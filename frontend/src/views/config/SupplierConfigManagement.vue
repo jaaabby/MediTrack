@@ -269,6 +269,10 @@
 import { ref, computed, onMounted } from 'vue'
 import supplierConfigService from '@/services/config/supplierConfigService'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
+
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
+const { confirmDanger } = useAlert()
 
 const configs = ref([])
 const loading = ref(false)
@@ -277,7 +281,6 @@ const searchTerm = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
-const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 // Estado de ordenamiento
 const sortKey = ref('supplier_name')
@@ -429,7 +432,11 @@ const saveConfig = async () => {
 }
 
 const confirmDelete = async (config) => {
-  if (!confirm(`¿Estás seguro de que deseas eliminar la configuración para "${config.supplier_name}"?`)) {
+  const confirmed = await confirmDanger(
+    `¿Estás seguro de que deseas eliminar la configuración para "${config.supplier_name}"?`,
+    'Confirmar eliminación'
+  )
+  if (!confirmed) {
     return
   }
 

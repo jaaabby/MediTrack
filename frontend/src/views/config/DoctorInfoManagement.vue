@@ -298,6 +298,10 @@ import doctorInfoService from '@/services/config/doctorInfoService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import medicalCenterService from '@/services/config/medicalCenterService'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
+
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
+const { confirmDanger } = useAlert()
 
 const doctors = ref([])
 const specialties = ref([])
@@ -309,7 +313,6 @@ const selectedSpecialtyId = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
-const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 // Estado de paginación
 const currentPage = ref(1)
@@ -549,7 +552,11 @@ const saveDoctor = async () => {
 const confirmDelete = async (doctor) => {
   const doctorName = doctor.name || doctor.rut
   
-  if (!confirm(`¿Deseas eliminar (desactivar) al doctor "${doctorName}"?\n\nEl doctor será desactivado y no podrá iniciar sesión.`)) {
+  const confirmed = await confirmDanger(
+    `¿Deseas eliminar (desactivar) al doctor "${doctorName}"?\n\nEl doctor será desactivado y no podrá iniciar sesión.`,
+    'Confirmar desactivación'
+  )
+  if (!confirmed) {
     return
   }
 

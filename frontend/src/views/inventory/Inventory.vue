@@ -1276,10 +1276,12 @@ import qrService from '@/services/qr/qrService'
 import QrcodeVue from 'qrcode.vue'
 import { exportToExcel as exportExcel, formatDateForExcel } from '@/utils/excelExport'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 
 const route = useRoute()
 const authStore = useAuthStore()
-const { success: showSuccess, error: showError } = useNotification()
+const { success: showSuccess, error: showError, info: showInfo } = useNotification()
+const { alert, confirmDanger } = useAlert()
 
 // Estado reactivo
 const supplies = ref([])
@@ -1611,7 +1613,7 @@ const getStatusBadgeClass = (status) => {
   return 'bg-gray-100 text-gray-800'
 }
 
-const viewMovementDetails = (movement) => {
+const viewMovementDetails = async (movement) => {
   // Mostrar detalles completos del movimiento
   let detailsText = `Fecha: ${formatDate(movement.date_time || movement.date)}\n`
   detailsText += `Tipo: ${movement.action || movement.type || 'N/A'}\n`
@@ -1622,7 +1624,7 @@ const viewMovementDetails = (movement) => {
     detailsText += `\nDetalles adicionales:\n${JSON.stringify(movement.details, null, 2)}`
   }
 
-  alert(`Detalles del Movimiento\n\n${detailsText}`)
+  await alert(detailsText, 'Detalles del Movimiento')
 }
 
 // Función para obtener la descripción del estado en español
@@ -1733,7 +1735,11 @@ const saveEdit = async () => {
 }
 
 const deleteSupply = async (supply) => {
-  if (!confirm(`¿Está seguro de que desea eliminar el lote de ${supply.name}?`)) {
+  const confirmed = await confirmDanger(
+    `¿Está seguro de que desea eliminar el lote de ${supply.name}?`,
+    'Confirmar eliminación'
+  )
+  if (!confirmed) {
     return
   }
   
@@ -1748,7 +1754,6 @@ const deleteSupply = async (supply) => {
 }
 
 // Funciones de notificación - usa el sistema unificado
-const { info: showInfo } = useNotification()
 const showNotification = (message, type = 'info') => {
   if (type === 'success') {
     showSuccess(message)
@@ -1960,7 +1965,7 @@ const loadInventory = async () => {
 }
 
 // Lifecycle
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'batch_id', label: 'N° de Lote' },
@@ -1975,7 +1980,7 @@ const exportToExcel = () => {
       { key: 'updated_at', label: 'Última Actualización', formatter: formatDateForExcel }
     ]
     
-    exportExcel(filteredSupplies.value, columns, 'inventario_insumos')
+    await exportExcel(filteredSupplies.value, columns, 'inventario_insumos')
     showSuccess('Exportación a Excel completada exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)

@@ -290,6 +290,10 @@
 import { ref, computed, onMounted } from 'vue'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
+
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
+const { confirmDanger } = useAlert()
 
 const specialties = ref([])
 const loading = ref(false)
@@ -298,7 +302,6 @@ const searchTerm = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
-const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 // Estado de ordenamiento
 const sortKey = ref('id')
@@ -472,7 +475,11 @@ const saveSpecialty = async () => {
 }
 
 const confirmDelete = async (specialty) => {
-  if (!confirm(`¿Deseas eliminar la especialidad "${specialty.name}"?\n\nEsta acción no se puede deshacer.`)) {
+  const confirmed = await confirmDanger(
+    `¿Deseas eliminar la especialidad "${specialty.name}"?\n\nEsta acción no se puede deshacer.`,
+    'Confirmar eliminación'
+  )
+  if (!confirmed) {
     return
   }
 

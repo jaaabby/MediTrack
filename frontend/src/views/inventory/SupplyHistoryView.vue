@@ -591,7 +591,7 @@ const getStatusClass = (status) => {
   return classes[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
 }
 
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'id', label: 'ID' },
@@ -610,7 +610,7 @@ const exportToExcel = () => {
       { key: 'notes', label: 'Notas' }
     ]
     
-    exportExcel(sortedHistory.value, columns, 'historial_insumos')
+    await exportExcel(sortedHistory.value, columns, 'historial_insumos')
     showSuccess('El archivo Excel se ha descargado exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)
