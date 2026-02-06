@@ -114,7 +114,7 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 		// Formatear fecha en formato ISO 8601 con zona horaria para evitar problemas de interpretación
 		// Esto asegura que la fecha se interprete correctamente en el frontend
 		dateTimeISO := dateTime.Format(time.RFC3339)
-		
+
 		// También formatear confirmation_date si existe
 		var confirmationDateISO *string
 		if confirmationDate.Valid {
@@ -156,4 +156,56 @@ func (s *SupplyHistoryService) UpdateSupplyHistory(id int, history *models.Suppl
 	}
 	// Actualizar campos omitiendo ID y timestamps
 	return s.DB.Model(&existing).Omit("id", "created_at", "updated_at").Updates(history).Error
+}
+
+// GetConsumptionStatsBySurgery obtiene estadísticas de consumo real por cirugía desde supply_history
+func (s *SupplyHistoryService) GetConsumptionStatsBySurgery() ([]map[string]interface{}, error) {
+	var results []map[string]interface{}
+
+	// Query para obtener consumo por cirugía y tipo de insumo
+	query := `
+		SELECT 
+			b.surgery_id,
+			s.name as surgery_name,
+			ms.code as supply_code,
+			sc.name as supply_name,
+			COUNT(sh.id) as consumed_count
+		FROM supply_history sh
+		INNER JOIN medical_supply ms ON sh.medical_supply_id = ms.id
+		INNER JOIN batch b ON ms.batch_id = b.id
+		LEFT JOIN surgery s ON b.surgery_id = s.id
+		LEFT JOIN supply_code sc ON ms.code = sc.code
+		WHERE sh.status = 'consumido'
+		GROUP BY b.surgery_id, s.name, ms.code, sc.name
+		ORDER BY b.surgery_id, consumed_count DESC
+	`
+
+	rows, err := s.DB.Raw(query).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var surgeryID sql.NullInt64
+		var surgeryName, supplyName sql.NullString
+		var supplyCode, consumedCount int
+
+		err := rows.Scan(&surgeryID, &surgeryName, &supplyCode, &supplyName, &consumedCount)
+		if err != nil {
+			return nil, err
+		}
+
+		result := map[string]interface{}{
+			"surgery_id":     surgeryID.Int64,
+			"surgery_name":   surgeryName.String,
+			"supply_code":    supplyCode,
+			"supply_name":    supplyName.String,
+			"consumed_count": consumedCount,
+		}
+
+		results = append(results, result)
+	}
+
+	return results, nil
 }

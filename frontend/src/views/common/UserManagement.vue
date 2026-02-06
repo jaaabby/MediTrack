@@ -146,7 +146,7 @@
               <th class="table-header-cell">
                 <span>Estado</span>
               </th>
-              <th class="table-header-cell">
+              <th class="table-header-cell sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <span>Acciones</span>
               </th>
             </tr>
@@ -211,24 +211,25 @@
                   {{ user.is_active ? 'Activo' : 'Inactivo' }}
                 </span>
               </td>
-              <td class="table-cell">
-                <div class="flex space-x-1.5 sm:space-x-2">
+              <td class="table-cell sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
+                <div class="flex justify-end space-x-2">
                   <button
                     @click.stop="openEditModal(user)"
-                    class="text-warning-600 hover:text-warning-800"
+                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
                     title="Editar usuario"
                   >
-                    <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
+                    <span class="font-medium text-xs">Editar</span>
                   </button>
                   <button
                     @click.stop="openDeleteModal(user)"
-                    class="text-danger-600 hover:text-danger-800"
+                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
                     title="Eliminar usuario"
                   >
-                    <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>

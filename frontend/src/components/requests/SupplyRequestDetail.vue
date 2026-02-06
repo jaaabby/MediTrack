@@ -489,8 +489,8 @@
                         <p class="text-sm text-gray-500">{{ formatDate(request.assigned_date) }}</p>
                         <p class="text-xs text-gray-400">por {{ request.assigned_by_pavedad_name }}</p>
                         <p class="text-xs text-gray-600 mt-1">Asignada a: {{ request.assigned_to_name }}</p>
-                        <template v-for="comment in parseAllComments().filter(c => c.type === 'asignación')">
-                          <p :key="comment.date" class="text-xs mt-1 italic" :class="comment.content.trim() === '' ? 'text-gray-400' : 'text-gray-600'">
+                        <template v-for="comment in parseAllComments().filter(c => c.type === 'asignación')" :key="comment.date">
+                          <p class="text-xs mt-1 italic" :class="comment.content.trim() === '' ? 'text-gray-400' : 'text-gray-600'">
                             "{{ comment.content.trim() === '' ? 'No hay observaciones' : comment.content }}"
                           </p>
                         </template>
@@ -536,8 +536,8 @@
                       </div>
                       <div class="min-w-0 flex-1 pt-1.5">
                         <p class="text-sm font-medium text-gray-900">Items devueltos</p>
-                        <template v-for="comment in parseAllComments().filter(c => c.type === 'devolución')">
-                          <div :key="comment.date" class="mt-2">
+                        <template v-for="comment in parseAllComments().filter(c => c.type === 'devolución')" :key="comment.date">
+                          <div class="mt-2">
                             <p class="text-sm text-gray-500">{{ comment.date }}</p>
                             <p class="text-xs text-gray-400">por {{ comment.author }}</p>
                             <p class="text-xs mt-1 italic text-gray-600 whitespace-pre-wrap">"{{ comment.content }}"</p>
@@ -566,8 +566,8 @@
                       </div>
                       <div class="min-w-0 flex-1 pt-1.5">
                         <p class="text-sm font-medium text-gray-900">Reenviado al encargado</p>
-                        <template v-for="comment in parseAllComments().filter(c => c.type === 'reenvío')">
-                          <div :key="comment.date" class="mt-2">
+                        <template v-for="comment in parseAllComments().filter(c => c.type === 'reenvío')" :key="comment.date">
+                          <div class="mt-2">
                             <p class="text-sm text-gray-500">{{ comment.date }}</p>
                             <p class="text-xs text-gray-400">por {{ comment.author }}</p>
                             <p class="text-xs mt-1 italic text-gray-600 whitespace-pre-wrap">"{{ comment.content }}"</p>

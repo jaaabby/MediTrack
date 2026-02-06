@@ -151,30 +151,110 @@
           </div>
         </div>
 
-        <table class="min-w-full divide-y divide-gray-200">
+        <table class="min-w-full divide-y divide-gray-200" style="min-width: 900px;">
           <thead class="table-header">
             <tr>
-              <th class="table-header-cell">
-                Insumo
+              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[180px]">
+                <div class="flex items-center justify-between">
+                  <span>Insumo</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('name', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'name' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('name', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'name' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th class="table-header-cell">
-                Estado
+              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
+                <div class="flex items-center justify-between">
+                  <span>Estado</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('status', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'status' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('status', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'status' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th class="table-header-cell">
-                Tiempo Sin Consumir
+              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[150px]">
+                <div class="flex items-center justify-between">
+                  <span>Tiempo Sin Consumir</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('businessHoursElapsed', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'businessHoursElapsed' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('businessHoursElapsed', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'businessHoursElapsed' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th class="table-header-cell">
-                Recepcionado
+              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[150px]">
+                <div class="flex items-center justify-between">
+                  <span>Recepcionado</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('receivedAt', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'receivedAt' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('receivedAt', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'receivedAt' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th class="table-header-cell">
-                Bodega Destino
+              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[150px]">
+                <div class="flex items-center justify-between">
+                  <span>Bodega Destino</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('storeName', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'storeName' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('storeName', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'storeName' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th class="table-header-cell">Acciones</th>
+              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)] min-w-[120px]">Acciones</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="supply in paginatedSupplies" :key="supply.id" 
-                class="hover:bg-gray-50 cursor-pointer"
+                class="group hover:bg-gray-50 cursor-pointer"
                 :class="{ 'bg-red-50': supply.shouldReturn }">
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                 <div class="flex items-center">
@@ -212,20 +292,29 @@
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                 {{ supply.storeName }}
               </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap" @click.stop>
-                <div class="flex flex-col sm:flex-row gap-1 sm:gap-2">
+              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]" 
+                  :class="[supply.shouldReturn ? 'bg-red-50' : 'bg-white', 'group-hover:bg-gray-50']"
+                  @click.stop>
+                <div class="flex justify-end gap-2">
                 <button 
                     @click.stop="returnIndividualSupply(supply)"
                   :disabled="returningSupplies[supply.qrCode]"
-                    class="btn-danger-sm text-xs w-full sm:w-auto min-w-[100px] sm:min-w-[90px]"
+                    class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded transition-colors inline-flex items-center gap-1"
+                  :title="returningSupplies[supply.qrCode] ? 'Regresando...' : 'Regresar'"
                 >
-                  {{ returningSupplies[supply.qrCode] ? 'Regresando...' : 'Regresar' }}
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                  <span class="font-medium text-xs">Regresar</span>
                 </button>
                 <button 
                     @click.stop="viewSupplyDetails(supply.qrCode)"
-                    class="btn-secondary-sm text-xs w-full sm:w-auto min-w-[100px] sm:min-w-[90px]"
+                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
+                  title="Ver Detalles"
                 >
-                  Ver Detalles
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                 </button>
                 </div>
               </td>
@@ -286,13 +375,60 @@ const autoRefreshInterval = ref(null)
 const autoRefreshEnabled = ref(true)
 const refreshIntervalSeconds = 30 // Actualizar cada 30 segundos
 
+// Estado de ordenamiento
+const sortField = ref('none')
+const sortDirection = ref('asc')
+
 // Computed properties
 const criticalSupplies = computed(() => {
   return suppliesForReturn.value.filter(supply => supply.shouldReturn || (supply.businessHoursElapsed || 0) >= 8)
 })
 
 const filteredSupplies = computed(() => {
-  return [...suppliesForReturn.value]
+  let filtered = [...suppliesForReturn.value]
+
+  // Solo aplicar ordenamiento si se ha seleccionado explícitamente un campo
+  if (sortField.value && sortField.value !== 'none') {
+    filtered.sort((a, b) => {
+      let aValue, bValue
+
+      switch (sortField.value) {
+        case 'name':
+          aValue = (a.name || '').toLowerCase()
+          bValue = (b.name || '').toLowerCase()
+          break
+        case 'status':
+          aValue = (a.status || '').toLowerCase()
+          bValue = (b.status || '').toLowerCase()
+          break
+        case 'businessHoursElapsed':
+          aValue = a.businessHoursElapsed || 0
+          bValue = b.businessHoursElapsed || 0
+          break
+        case 'receivedAt':
+          aValue = new Date(a.receivedAt || 0).getTime()
+          bValue = new Date(b.receivedAt || 0).getTime()
+          break
+        case 'storeName':
+          aValue = (a.storeName || '').toLowerCase()
+          bValue = (b.storeName || '').toLowerCase()
+          break
+        default:
+          return 0
+      }
+
+      let result = 0
+      if (typeof aValue === 'string') {
+        result = aValue.localeCompare(bValue)
+      } else {
+        result = aValue - bValue
+      }
+
+      return sortDirection.value === 'asc' ? result : -result
+    })
+  }
+
+  return filtered
 })
 
 const totalPages = computed(() => Math.ceil(filteredSupplies.value.length / itemsPerPage))
@@ -421,6 +557,13 @@ const viewSupplyDetails = (qrCode) => {
     name: 'QRDetails',
     params: { qrCode: qrCode }
   })
+}
+
+// Función de ordenamiento
+const sortBy = (field, direction) => {
+  sortField.value = field
+  sortDirection.value = direction
+  currentPage.value = 1
 }
 
 // Funciones auxiliares

@@ -36,6 +36,16 @@ class SupplyHistoryService {
       throw error
     }
   }
+
+  async getConsumptionStatsBySurgery() {
+    try {
+      const response = await this.api.get('/supply-history/consumption-stats')
+      return response.data.data?.consumption_stats || []
+    } catch (error) {
+      console.error('Error en getConsumptionStatsBySurgery:', error)
+      throw error
+    }
+  }
 }
 
 export default new SupplyHistoryService()
