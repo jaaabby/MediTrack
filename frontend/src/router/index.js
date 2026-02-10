@@ -13,6 +13,26 @@ const routes = [
       requiresAuth: false
     }
   },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('@/views/auth/ForgotPassword.vue'),
+    meta: {
+      title: 'Recuperar Contraseña - MediTrack',
+      description: 'Solicitar recuperación de contraseña',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('@/views/auth/ResetPassword.vue'),
+    meta: {
+      title: 'Restablecer Contraseña - MediTrack',
+      description: 'Restablecer contraseña con token',
+      requiresAuth: false
+    }
+  },
 
   // Ruta raíz
   {

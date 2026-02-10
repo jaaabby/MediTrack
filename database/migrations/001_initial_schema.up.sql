@@ -75,6 +75,8 @@ CREATE TABLE "user" (
     pavilion_id INTEGER REFERENCES pavilion(id),
     specialty_id INTEGER REFERENCES medical_specialty(id),
     is_active BOOLEAN DEFAULT TRUE,
+    reset_password_token VARCHAR(255),
+    reset_password_expires_at BIGINT,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
     updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 );
@@ -82,6 +84,7 @@ CREATE TABLE "user" (
 CREATE INDEX idx_user_email ON "user"(email);
 CREATE INDEX idx_user_specialty ON "user"(specialty_id);
 CREATE INDEX idx_user_pavilion ON "user"(pavilion_id);
+CREATE INDEX idx_user_reset_token ON "user"(reset_password_token);
 
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,

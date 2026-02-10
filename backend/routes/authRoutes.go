@@ -17,6 +17,9 @@ func SetupAuthRoutes(router *gin.RouterGroup, userService services.UserService, 
 		// Rutas públicas
 		auth.POST("/login", authController.Login)
 		auth.POST("/register", authController.Register)
+		auth.POST("/forgot-password", authController.RequestPasswordReset)
+		auth.POST("/reset-password", authController.ResetPassword)
+		auth.POST("/validate-reset-token", authController.ValidateResetToken)
 
 		// Rutas protegidas
 		auth.Use(middleware.AuthMiddleware(secretKey))

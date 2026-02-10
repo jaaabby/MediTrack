@@ -1,9 +1,13 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"meditrack/models"
 	"strings"
+	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -173,4 +177,84 @@ func (s *UserService) SearchUsers(searchTerm string) ([]models.User, error) {
 	}
 
 	return filteredUsers, nil
+}
+
+// GenerateResetToken genera un token único para recuperación de contraseña
+func (s *UserService) GenerateResetToken(email string) (string, error) {
+	// Buscar usuario por email
+	var user models.User
+	if err := s.DB.Where("email = ? AND is_active = ?", email, true).First(&user).Error; err != nil {
+		return "", err
+	}
+
+	// Generar token aleatorio (32 bytes = 64 caracteres hex)
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	// Establecer tiempo de expiración (1 hora desde ahora)
+	expiresAt := time.Now().Add(1 * time.Hour).Unix()
+
+	// Guardar token y expiración en la base de datos
+	if err := s.DB.Model(&user).Updates(map[string]interface{}{
+		"reset_password_token":      token,
+		"reset_password_expires_at": expiresAt,
+	}).Error; err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+// ValidateResetToken valida si un token de reset es válido y no ha expirado
+func (s *UserService) ValidateResetToken(token string) (*models.User, error) {
+	var user models.User
+
+	// Buscar usuario por token
+	if err := s.DB.Where("reset_password_token = ?", token).First(&user).Error; err != nil {
+		return nil, err
+	}
+
+	// Verificar si el token ha expirado
+	if user.ResetPasswordExpiresAt == nil || *user.ResetPasswordExpiresAt < time.Now().Unix() {
+		return nil, gorm.ErrRecordNotFound // Token expirado
+	}
+
+	return &user, nil
+}
+
+// ResetPassword cambia la contraseña del usuario usando un token de reset
+func (s *UserService) ResetPassword(token, newPassword string) error {
+	// Validar token
+	user, err := s.ValidateResetToken(token)
+	if err != nil {
+		return err
+	}
+
+	// Hashear la nueva contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	// Actualizar contraseña y limpiar token
+	if err := s.DB.Model(&user).Updates(map[string]interface{}{
+		"password":                  string(hashedPassword),
+		"reset_password_token":      nil,
+		"reset_password_expires_at": nil,
+	}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ClearResetToken limpia el token de reset de un usuario
+func (s *UserService) ClearResetToken(rut string) error {
+	return s.DB.Model(&models.User{}).Where("rut = ?", rut).Updates(map[string]interface{}{
+		"reset_password_token":      nil,
+		"reset_password_expires_at": nil,
+	}).Error
 }

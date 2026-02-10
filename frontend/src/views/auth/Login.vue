@@ -56,6 +56,16 @@
           </div>
         </div>
 
+        <!-- Enlace para recuperación de contraseña -->
+        <div class="flex items-center justify-end">
+          <router-link
+            to="/forgot-password"
+            class="text-sm font-medium text-brand-blue-dark hover:text-brand-blue"
+          >
+            ¿Olvidaste tu contraseña?
+          </router-link>
+        </div>
+
         <!-- Mensaje de Error General -->
         <div v-if="errorMessage" class="rounded-md bg-red-50 p-4">
           <div class="flex">

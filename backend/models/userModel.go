@@ -14,20 +14,22 @@ const (
 
 // User representa un usuario del sistema
 type User struct {
-	RUT             string            `json:"rut" gorm:"primaryKey"`
-	Name            string            `json:"name" db:"name" gorm:"not null"`
-	Email           string            `json:"email" db:"email"`
-	Password        string            `json:"password" db:"password" gorm:"not null"`
-	Role            string            `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')"`
-	MedicalCenterID int               `json:"medical_center_id" db:"medical_center_id" gorm:"not null"`
-	MedicalCenter   *MedicalCenter    `json:"medical_center,omitempty" gorm:"foreignKey:MedicalCenterID"`
-	PavilionID      *int              `json:"pavilion_id" db:"pavilion_id"`
-	Pavilion        *Pavilion         `json:"pavilion,omitempty" gorm:"foreignKey:PavilionID"`
-	SpecialtyID     *int              `json:"specialty_id" db:"specialty_id"`
-	Specialty       *MedicalSpecialty `json:"specialty,omitempty" gorm:"foreignKey:SpecialtyID"`
-	IsActive        bool              `json:"is_active" db:"is_active" gorm:"default:true"`
-	CreatedAt       int64             `json:"created_at" db:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt       int64             `json:"updated_at" db:"updated_at" gorm:"autoUpdateTime"`
+	RUT                    string            `json:"rut" gorm:"primaryKey"`
+	Name                   string            `json:"name" db:"name" gorm:"not null"`
+	Email                  string            `json:"email" db:"email"`
+	Password               string            `json:"password" db:"password" gorm:"not null"`
+	Role                   string            `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')"`
+	MedicalCenterID        int               `json:"medical_center_id" db:"medical_center_id" gorm:"not null"`
+	MedicalCenter          *MedicalCenter    `json:"medical_center,omitempty" gorm:"foreignKey:MedicalCenterID"`
+	PavilionID             *int              `json:"pavilion_id" db:"pavilion_id"`
+	Pavilion               *Pavilion         `json:"pavilion,omitempty" gorm:"foreignKey:PavilionID"`
+	SpecialtyID            *int              `json:"specialty_id" db:"specialty_id"`
+	Specialty              *MedicalSpecialty `json:"specialty,omitempty" gorm:"foreignKey:SpecialtyID"`
+	IsActive               bool              `json:"is_active" db:"is_active" gorm:"default:true"`
+	ResetPasswordToken     *string           `json:"-" db:"reset_password_token"`
+	ResetPasswordExpiresAt *int64            `json:"-" db:"reset_password_expires_at"`
+	CreatedAt              int64             `json:"created_at" db:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt              int64             `json:"updated_at" db:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // UserResponse representa la respuesta del usuario sin contraseña
