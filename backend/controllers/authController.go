@@ -206,8 +206,9 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
-	// Actualizar contraseña
+	// Actualizar contraseña y desactivar flag de cambio obligatorio
 	user.Password = string(hashedPassword)
+	user.MustChangePassword = false
 	if _, err := c.userService.UpdateUser(user.RUT, user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
@@ -219,6 +220,105 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Contraseña cambiada exitosamente",
+	})
+}
+
+// FirstTimePasswordChange cambia la contraseña en el primer inicio de sesión
+// No requiere contraseña actual si el usuario tiene MustChangePassword=true
+func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
+	var changePassReq struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password" binding:"required,min=6"`
+	}
+
+	if err := ctx.ShouldBindJSON(&changePassReq); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	// Si MustChangePassword es true, no verificar contraseña actual
+	// Si es false, requerir contraseña actual
+	if !user.MustChangePassword {
+		if changePassReq.CurrentPassword == "" {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Se requiere la contraseña actual",
+			})
+			return
+		}
+
+		// Verificar contraseña actual
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(changePassReq.CurrentPassword)); err != nil {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Contraseña actual incorrecta",
+			})
+			return
+		}
+	} else {
+		// Si está en primer inicio, verificar contraseña temporal
+		if changePassReq.CurrentPassword == "" {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Se requiere la contraseña temporal",
+			})
+			return
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(changePassReq.CurrentPassword)); err != nil {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Contraseña temporal incorrecta",
+			})
+			return
+		}
+	}
+
+	// Hashear nueva contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(changePassReq.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al procesar nueva contraseña",
+		})
+		return
+	}
+
+	// Actualizar contraseña y desactivar flag de cambio obligatorio
+	user.Password = string(hashedPassword)
+	user.MustChangePassword = false
+	if _, err := c.userService.UpdateUser(user.RUT, user); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al actualizar contraseña: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Contraseña actualizada exitosamente",
 	})
 }
 

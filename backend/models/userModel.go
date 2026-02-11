@@ -26,6 +26,7 @@ type User struct {
 	SpecialtyID            *int              `json:"specialty_id" db:"specialty_id"`
 	Specialty              *MedicalSpecialty `json:"specialty,omitempty" gorm:"foreignKey:SpecialtyID"`
 	IsActive               bool              `json:"is_active" db:"is_active" gorm:"default:true"`
+	MustChangePassword     bool              `json:"must_change_password" db:"must_change_password" gorm:"default:false"`
 	ResetPasswordToken     *string           `json:"-" db:"reset_password_token"`
 	ResetPasswordExpiresAt *int64            `json:"-" db:"reset_password_expires_at"`
 	CreatedAt              int64             `json:"created_at" db:"created_at" gorm:"autoCreateTime"`
@@ -34,35 +35,37 @@ type User struct {
 
 // UserResponse representa la respuesta del usuario sin contraseña
 type UserResponse struct {
-	RUT             string            `json:"rut"`
-	Name            string            `json:"name"`
-	Email           string            `json:"email"`
-	Role            string            `json:"role"`
-	MedicalCenterID int               `json:"medical_center_id"`
-	MedicalCenter   *MedicalCenter    `json:"medical_center,omitempty"`
-	PavilionID      *int              `json:"pavilion_id,omitempty"`
-	SpecialtyID     *int              `json:"specialty_id,omitempty"`
-	Specialty       *MedicalSpecialty `json:"specialty,omitempty"`
-	IsActive        bool              `json:"is_active"`
-	CreatedAt       int64             `json:"created_at"`
-	UpdatedAt       int64             `json:"updated_at"`
+	RUT                string            `json:"rut"`
+	Name               string            `json:"name"`
+	Email              string            `json:"email"`
+	Role               string            `json:"role"`
+	MedicalCenterID    int               `json:"medical_center_id"`
+	MedicalCenter      *MedicalCenter    `json:"medical_center,omitempty"`
+	PavilionID         *int              `json:"pavilion_id,omitempty"`
+	SpecialtyID        *int              `json:"specialty_id,omitempty"`
+	Specialty          *MedicalSpecialty `json:"specialty,omitempty"`
+	IsActive           bool              `json:"is_active"`
+	MustChangePassword bool              `json:"must_change_password"`
+	CreatedAt          int64             `json:"created_at"`
+	UpdatedAt          int64             `json:"updated_at"`
 }
 
 // ToResponse convierte un User a UserResponse
 func (u User) ToResponse() UserResponse {
 	return UserResponse{
-		RUT:             u.RUT,
-		Name:            u.Name,
-		Email:           u.Email,
-		Role:            u.Role,
-		MedicalCenterID: u.MedicalCenterID,
-		MedicalCenter:   u.MedicalCenter,
-		PavilionID:      u.PavilionID,
-		SpecialtyID:     u.SpecialtyID,
-		Specialty:       u.Specialty,
-		IsActive:        u.IsActive,
-		CreatedAt:       u.CreatedAt,
-		UpdatedAt:       u.UpdatedAt,
+		RUT:                u.RUT,
+		Name:               u.Name,
+		Email:              u.Email,
+		Role:               u.Role,
+		MedicalCenterID:    u.MedicalCenterID,
+		MedicalCenter:      u.MedicalCenter,
+		PavilionID:         u.PavilionID,
+		SpecialtyID:        u.SpecialtyID,
+		Specialty:          u.Specialty,
+		IsActive:           u.IsActive,
+		MustChangePassword: u.MustChangePassword,
+		CreatedAt:          u.CreatedAt,
+		UpdatedAt:          u.UpdatedAt,
 	}
 }
 

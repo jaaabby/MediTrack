@@ -26,6 +26,7 @@ func SetupAuthRoutes(router *gin.RouterGroup, userService services.UserService, 
 		{
 			auth.GET("/profile", authController.GetProfile)
 			auth.PUT("/change-password", authController.ChangePassword)
+			auth.PUT("/first-time-password-change", authController.FirstTimePasswordChange)
 		}
 	}
 }

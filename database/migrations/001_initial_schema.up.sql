@@ -75,6 +75,7 @@ CREATE TABLE "user" (
     pavilion_id INTEGER REFERENCES pavilion(id),
     specialty_id INTEGER REFERENCES medical_specialty(id),
     is_active BOOLEAN DEFAULT TRUE,
+    must_change_password BOOLEAN DEFAULT FALSE,
     reset_password_token VARCHAR(255),
     reset_password_expires_at BIGINT,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),

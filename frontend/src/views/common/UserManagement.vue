@@ -339,50 +339,16 @@
                     <p v-if="formErrors.email" class="mt-1 text-sm text-red-600">{{ formErrors.email }}</p>
                   </div>
 
-                  <!-- Contraseña -->
-                  <div v-if="!isEditMode">
-                    <label for="password" class="block text-sm font-medium text-gray-700">
-                      Contraseña <span class="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="password"
-                      v-model="userForm.password"
-                      type="password"
-                      required
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      :class="{ 'border-red-500': formErrors.password }"
-                    />
-                    <p v-if="formErrors.password" class="mt-1 text-sm text-red-600">{{ formErrors.password }}</p>
-                    <p class="mt-1 text-xs text-gray-500">Mínimo 6 caracteres</p>
-                  </div>
-
-                  <!-- Cambiar contraseña (solo para editar) -->
-                  <div v-if="isEditMode">
-                    <div class="flex items-center mb-2">
-                      <input
-                        id="change_password"
-                        v-model="changePassword"
-                        type="checkbox"
-                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label for="change_password" class="ml-2 block text-sm font-medium text-gray-700">
-                        Cambiar contraseña
-                      </label>
-                    </div>
-                    <div v-if="changePassword">
-                      <label for="new_password" class="block text-sm font-medium text-gray-700">
-                        Nueva Contraseña <span class="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="new_password"
-                        v-model="userForm.password"
-                        type="password"
-                        :required="changePassword"
-                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        :class="{ 'border-red-500': formErrors.password }"
-                      />
-                      <p v-if="formErrors.password" class="mt-1 text-sm text-red-600">{{ formErrors.password }}</p>
-                      <p class="mt-1 text-xs text-gray-500">Mínimo 6 caracteres</p>
+                  <!-- Mensaje informativo sobre contraseña automática (solo al crear) -->
+                  <div v-if="!isEditMode" class="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <div class="flex">
+                      <svg class="h-5 w-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div class="text-sm text-blue-700">
+                        <p class="font-medium">Contraseña Automática</p>
+                        <p class="mt-1">El sistema generará una contraseña segura y la enviará automáticamente al correo electrónico del usuario.</p>
+                      </div>
                     </div>
                   </div>
 
@@ -586,7 +552,6 @@ const loading = ref(false)
 const saving = ref(false)
 const showModal = ref(false)
 const isEditMode = ref(false)
-const changePassword = ref(false)
 
 // Refs para búsqueda y filtros
 const searchTerm = ref('')
@@ -762,7 +727,6 @@ const getSpecialtyName = (specialtyId) => {
 const openCreateModal = () => {
   resetForm()
   isEditMode.value = false
-  changePassword.value = false
   showModal.value = true
 }
 
@@ -770,7 +734,6 @@ const openCreateModal = () => {
 const openEditModal = (user) => {
   resetForm()
   isEditMode.value = true
-  changePassword.value = false
   userForm.id = user.id
   userForm.name = user.name
   userForm.rut = user.rut
@@ -786,10 +749,8 @@ const openEditModal = (user) => {
 // Cerrar modal
 const closeModal = () => {
   showModal.value = false
-  changePassword.value = false
   resetForm()
 }
-
 // Resetear formulario
 const resetForm = () => {
   userForm.id = null
@@ -834,17 +795,6 @@ const validateForm = () => {
   } else if (!userForm.email.includes('@')) {
     formErrors.email = 'El email debe ser válido'
     isValid = false
-  }
-  
-  // Validar contraseña solo en creación o si se desea cambiar en edición
-  if (!isEditMode.value || changePassword.value) {
-    if (!userForm.password.trim()) {
-      formErrors.password = 'La contraseña es requerida'
-      isValid = false
-    } else if (userForm.password.length < 6) {
-      formErrors.password = 'La contraseña debe tener al menos 6 caracteres'
-      isValid = false
-    }
   }
   
   if (!userForm.role) {
@@ -902,10 +852,8 @@ const saveUser = async () => {
       userData.specialty_id = userForm.specialty_id ? parseInt(userForm.specialty_id) : null
     }
     
-    // Solo incluir contraseña si es modo creación o si se desea cambiar
-    if (!isEditMode.value || changePassword.value) {
-      userData.password = userForm.password
-    }
+    // NO se permite cambiar contraseña desde el formulario de edición
+    // Los usuarios deben cambiarla mediante el sistema de recuperación de contraseña
     
     if (isEditMode.value) {
       // Usar RUT como identificador para actualizar
@@ -915,7 +863,7 @@ const saveUser = async () => {
     }
     
     if (response.success) {
-      showSuccess(isEditMode.value ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente')
+      showSuccess(isEditMode.value ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente. Se ha enviado un correo con la contraseña temporal.')
       closeModal()
       await loadUsers()
     } else {

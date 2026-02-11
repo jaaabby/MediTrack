@@ -137,6 +137,43 @@ class AuthService {
     }
   }
 
+  // Cambiar contraseña por primera vez (contraseña temporal)
+  async firstTimePasswordChange(temporaryPassword, newPassword) {
+    try {
+      const token = this.getToken()
+      if (!token) {
+        throw new Error('No hay token de autenticación')
+      }
+
+      const response = await fetch(`${this.baseURL}/auth/first-time-password-change`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          temporary_password: temporaryPassword,
+          new_password: newPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cambiar contraseña')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al cambiar contraseña')
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error en AuthService.firstTimePasswordChange:', error)
+      throw error
+    }
+  }
+
   // Solicitar recuperación de contraseña
   async requestPasswordReset(email) {
     try {

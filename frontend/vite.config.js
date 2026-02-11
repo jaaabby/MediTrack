@@ -14,7 +14,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0', // Escucha en todas las interfaces de red
-    https: false, // Habilita HTTPS (mkcert plugin genera los certificados)
+    https: true, // Habilita HTTPS (mkcert plugin genera los certificados)
     // PROXY COMPLETAMENTE DESACTIVADO
     // proxy: {
     //   '/api': {
