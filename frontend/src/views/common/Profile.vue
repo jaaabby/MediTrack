@@ -153,6 +153,20 @@ const saveProfile = async () => {
     try {
         loading.value = true
 
+        // Validar email
+        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+        if (!editForm.email || !editForm.email.trim()) {
+            showError('El email es requerido')
+            loading.value = false
+            return
+        }
+        
+        if (!emailRegex.test(editForm.email.trim())) {
+            showError('El formato del email no es válido')
+            loading.value = false
+            return
+        }
+
         const response = await userService.updateProfile(editForm)
 
         if (response.success) {

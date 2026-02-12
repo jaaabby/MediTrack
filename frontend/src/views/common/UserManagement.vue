@@ -638,6 +638,9 @@ const formErrors = reactive({
 
 // Watcher para limpiar campos condicionales cuando cambia el rol
 watch(() => userForm.role, (newRole, oldRole) => {
+  // Limpiar error del rol
+  formErrors.role = ''
+  
   if (newRole !== oldRole) {
     // Limpiar pabellón si no es rol pabellón o pavedad
     if (newRole !== 'pabellón' && newRole !== 'pavedad') {
@@ -650,6 +653,35 @@ watch(() => userForm.role, (newRole, oldRole) => {
       formErrors.specialty_id = ''
     }
   }
+})
+
+// Watchers para limpiar errores individuales cuando el usuario modifica cada campo
+watch(() => userForm.name, () => {
+  formErrors.name = ''
+})
+
+watch(() => userForm.rut, () => {
+  formErrors.rut = ''
+})
+
+watch(() => userForm.email, () => {
+  formErrors.email = ''
+})
+
+watch(() => userForm.password, () => {
+  formErrors.password = ''
+})
+
+watch(() => userForm.medical_center_id, () => {
+  formErrors.medical_center_id = ''
+})
+
+watch(() => userForm.pavilion_id, () => {
+  formErrors.pavilion_id = ''
+})
+
+watch(() => userForm.specialty_id, () => {
+  formErrors.specialty_id = ''
 })
 
 // Cargar usuarios
@@ -789,10 +821,13 @@ const validateForm = () => {
     isValid = false
   }
   
+  // Regex para validar email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  
   if (!userForm.email.trim()) {
     formErrors.email = 'El email es requerido'
     isValid = false
-  } else if (!userForm.email.includes('@')) {
+  } else if (!emailRegex.test(userForm.email)) {
     formErrors.email = 'El email debe ser válido'
     isValid = false
   }

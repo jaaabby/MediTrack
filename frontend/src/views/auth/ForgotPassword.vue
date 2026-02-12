@@ -133,12 +133,14 @@ const errors = reactive({
 const validateEmail = () => {
   errors.email = ''
   
+  // Regex para validar email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  
   if (!email.value) {
     errors.email = 'El correo electrónico es requerido'
     return false
   }
   
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(email.value)) {
     errors.email = 'Ingresa un correo electrónico válido'
     return false

@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -128,17 +128,31 @@ const errors = reactive({
   password: ''
 })
 
+// Limpiar errores cuando el usuario modifica los campos
+watch(() => loginForm.email, () => {
+  errors.email = ''
+  errorMessage.value = ''
+})
+
+watch(() => loginForm.password, () => {
+  errors.password = ''
+  errorMessage.value = ''
+})
+
 // Validación del formulario
 const validateForm = () => {
   errors.email = ''
   errors.password = ''
+  
+  // Regex para validar email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
   
   if (!loginForm.email) {
     errors.email = 'El email es requerido'
     return false
   }
   
-  if (!loginForm.email.includes('@')) {
+  if (!emailRegex.test(loginForm.email)) {
     errors.email = 'El email debe ser válido'
     return false
   }
@@ -149,7 +163,7 @@ const validateForm = () => {
   }
   
   if (loginForm.password.length < 6) {
-    errors.password = 'La contraseña debe tener al menos 6 caracteres'
+    errors.password = 'La contraseña ingresada es incorrecta'
     return false
   }
   
