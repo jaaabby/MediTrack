@@ -111,13 +111,6 @@
             </button>
         </div>
 
-        <!-- Mensaje de éxito/error -->
-        <div v-if="message" class="mt-4">
-            <div :class="messageType === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'"
-                class="border rounded-md p-4">
-                {{ message }}
-            </div>
-        </div>
     </div>
 </template>
 
@@ -125,12 +118,12 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { userService } from '@/services/common/userService'
+import { useNotification } from '@/composables/useNotification'
 
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 const editMode = ref(false)
 const loading = ref(false)
-const message = ref('')
-const messageType = ref('success')
 
 // Formulario de edición
 const editForm = reactive({
@@ -149,7 +142,7 @@ const loadProfile = async () => {
 
     } catch (error) {
         console.error('Error al cargar el perfil:', error)
-        showMessage('Error al cargar la información del perfil', 'error')
+        showError('Error al cargar la información del perfil')
     } finally {
         loading.value = false
     }
@@ -159,6 +152,20 @@ const loadProfile = async () => {
 const saveProfile = async () => {
     try {
         loading.value = true
+
+        // Validar email
+        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+        if (!editForm.email || !editForm.email.trim()) {
+            showError('El email es requerido')
+            loading.value = false
+            return
+        }
+        
+        if (!emailRegex.test(editForm.email.trim())) {
+            showError('El formato del email no es válido')
+            loading.value = false
+            return
+        }
 
         const response = await userService.updateProfile(editForm)
 
@@ -171,14 +178,14 @@ const saveProfile = async () => {
             })
 
             editMode.value = false
-            showMessage('Perfil actualizado correctamente', 'success')
+            showSuccess('Perfil actualizado correctamente')
         } else {
-            showMessage(response.error || 'Error al actualizar el perfil', 'error')
+            showError(response.error || 'Error al actualizar el perfil')
         }
 
     } catch (error) {
         console.error('Error al actualizar el perfil:', error)
-        showMessage('Error al actualizar el perfil', 'error')
+        showError('Error al actualizar el perfil')
     } finally {
         loading.value = false
     }
@@ -189,16 +196,6 @@ const cancelEdit = () => {
     editForm.name = authStore.getUserName || ''
     editForm.email = authStore.getUserEmail || ''
     editMode.value = false
-    message.value = ''
-}
-
-// Mostrar mensaje
-const showMessage = (text, type = 'success') => {
-    message.value = text
-    messageType.value = type
-    setTimeout(() => {
-        message.value = ''
-    }, 5000)
 }
 
 // Formatear fecha

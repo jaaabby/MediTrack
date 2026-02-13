@@ -56,6 +56,16 @@
           </div>
         </div>
 
+        <!-- Enlace para recuperación de contraseña -->
+        <div class="flex items-center justify-end">
+          <router-link
+            to="/forgot-password"
+            class="text-sm font-medium text-brand-blue-dark hover:text-brand-blue"
+          >
+            ¿Olvidaste tu contraseña?
+          </router-link>
+        </div>
+
         <!-- Mensaje de Error General -->
         <div v-if="errorMessage" class="rounded-md bg-red-50 p-4">
           <div class="flex">
@@ -91,23 +101,13 @@
             {{ isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
           </button>
         </div>
-
-        <!-- Enlace al registro -->
-        <div class="text-center">
-          <router-link
-            to="/register"
-            class="text-sm text-brand-blue-dark hover:text-brand-blue-medium font-medium"
-          >
-            ¿No tienes cuenta? Regístrate
-          </router-link>
-        </div>
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -128,17 +128,31 @@ const errors = reactive({
   password: ''
 })
 
+// Limpiar errores cuando el usuario modifica los campos
+watch(() => loginForm.email, () => {
+  errors.email = ''
+  errorMessage.value = ''
+})
+
+watch(() => loginForm.password, () => {
+  errors.password = ''
+  errorMessage.value = ''
+})
+
 // Validación del formulario
 const validateForm = () => {
   errors.email = ''
   errors.password = ''
+  
+  // Regex para validar email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
   
   if (!loginForm.email) {
     errors.email = 'El email es requerido'
     return false
   }
   
-  if (!loginForm.email.includes('@')) {
+  if (!emailRegex.test(loginForm.email)) {
     errors.email = 'El email debe ser válido'
     return false
   }
@@ -149,7 +163,7 @@ const validateForm = () => {
   }
   
   if (loginForm.password.length < 6) {
-    errors.password = 'La contraseña debe tener al menos 6 caracteres'
+    errors.password = 'La contraseña ingresada es incorrecta'
     return false
   }
   
@@ -167,6 +181,13 @@ const handleLogin = async () => {
   
   try {
     await authStore.login(loginForm.email, loginForm.password)
+    
+    // Verificar si el usuario debe cambiar su contraseña
+    if (authStore.user?.must_change_password) {
+      console.log('Usuario debe cambiar contraseña temporal, redirigiendo...')
+      await router.replace('/first-time-password-change')
+      return
+    }
     
     // Redirigir al usuario después del login exitoso
     const redirectTo = router.currentRoute.value.query.redirect || '/home'

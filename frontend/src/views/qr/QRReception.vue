@@ -371,10 +371,12 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qr/qrService'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 
 // Estado del componente
 const loading = ref(false)
@@ -570,13 +572,6 @@ const receiveSupply = async () => {
 
     // Obtener el pabellón del usuario (asumiendo que está en el contexto del pabellón)
     const pavilionId = currentUser.value?.pavilion_id || 1 // Fallback a pabellón 1
-
-    // Guardar el estado anterior para mostrar el cambio
-    const previousStatus = scannedProduct.value.supply_info?.Status || 
-                          scannedProduct.value.supply_info?.status || 
-                          scannedProduct.value.status || 
-                          scannedProduct.value.current_status || 
-                          'en_camino_a_pabellon'
     
     const result = await qrService.receiveSupply(
       qrInput.value.trim(),
@@ -587,39 +582,21 @@ const receiveSupply = async () => {
       true // Siempre recepcionado (el usuario decidirá después si consumir o devolver)
     )
     
-    console.log('Resultado de receiveSupply:', result) // Debug
-    
     if (result.success) {
-      console.log('Recepción exitosa, configurando alerta...') // Debug
+      // Mostrar notificación de éxito
+      notificationStore.success('El insumo ha sido recepcionado correctamente')
       
-      consumptionSuccess.value = {
-        ...result.data,
-        qr_code: scannedProduct.value.qr_code,
-        batch_id: scannedProduct.value.supply_info?.batch?.id,
-        status_change: {
-          from: getStatusLabel({ supply_info: { status: previousStatus } }),
-          to: 'Recepcionado'
-        }
-      }
-      
-      console.log('consumptionSuccess configurado:', consumptionSuccess.value) // Debug
-      
-      // Limpiar solo los campos del formulario pero mantener la alerta de éxito
-      receptionForm.value = {
-        notes: ''
-      }
-      qrInput.value = ''
-      scannedProduct.value = null
-      error.value = null
-      // NO limpiar consumptionSuccess para que se muestre la alerta
-      
+      // Redirigir a la vista de QR
+      router.push('/qr')
     } else {
       throw new Error(result.error || 'Error al recepcionar el insumo')
     }
     
   } catch (err) {
     console.error('Error receiving supply:', err)
-    error.value = err.response?.data?.error || err.message || 'Error al recepcionar el insumo'
+    const errorMessage = err.response?.data?.error || err.message || 'Error al recepcionar el insumo'
+    notificationStore.error(errorMessage)
+    error.value = errorMessage
   } finally {
     receiving.value = false
   }

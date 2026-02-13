@@ -131,7 +131,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import supplyRequestService from '@/services/requests/supplyRequestService'
 import pavilionService from '@/services/config/pavilionService'
-import Swal from 'sweetalert2'
+import { useNotification } from '@/composables/useNotification'
 
 // Props
 const props = defineProps({
@@ -148,6 +148,7 @@ const props = defineProps({
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 const requestData = ref(null)
 const requestId = ref(null)
@@ -195,27 +196,10 @@ const copyRequestNumber = async () => {
   
   try {
     await navigator.clipboard.writeText(requestNumber.value)
-    Swal.fire({
-      icon: 'success',
-      title: 'Copiado',
-      text: `Número de solicitud ${requestNumber.value} copiado al portapapeles`,
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 2000,
-      timerProgressBar: true
-    })
+    showSuccess(`Número de solicitud ${requestNumber.value} copiado al portapapeles`)
   } catch (err) {
     console.error('Error copiando al portapapeles:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'No se pudo copiar al portapapeles',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 2000
-    })
+    showError('No se pudo copiar al portapapeles')
   }
 }
 

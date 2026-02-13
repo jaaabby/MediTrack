@@ -435,7 +435,7 @@
                   </span>
                 </div>
               </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 Acciones
               </th>
             </tr>
@@ -504,11 +504,11 @@
               </td>
 
               <!-- Acciones -->
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <div class="flex justify-end space-x-2">
                   <button
                     @click.stop="viewRequest(request.id)"
-                    class="text-blue-600 hover:text-blue-900 p-1"
+                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
                     title="Ver detalles"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -519,40 +519,36 @@
 
                   <!-- Botón de Asignar para Pavedad -->
                   <button
-                    v-if="authStore.isPavedad"
-                    @click.stop="request.status === 'pendiente_pavedad' ? openAssignModal(request) : null"
-                    :disabled="request.status !== 'pendiente_pavedad'"
+                    @click.stop="authStore.isPavedad && request.status === 'pendiente_pavedad' ? openAssignModal(request) : null"
+                    :disabled="!authStore.isPavedad || request.status !== 'pendiente_pavedad'"
                     :class="[
-                      'p-1',
-                      request.status === 'pendiente_pavedad'
-                        ? 'text-purple-600 hover:text-purple-900 cursor-pointer'
-                        : 'text-gray-400 cursor-not-allowed opacity-60'
+                      'p-1.5 rounded transition-colors',
+                      authStore.isPavedad && request.status === 'pendiente_pavedad'
+                        ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-50 cursor-pointer'
+                        : 'text-gray-400 bg-gray-100 cursor-not-allowed'
                     ]"
-                    :title="request.status === 'pendiente_pavedad' ? 'Asignar' : 'Ya asignada'"
+                    :title="!authStore.isPavedad ? 'Solo Pavedad puede asignar' : request.status === 'pendiente_pavedad' ? 'Asignar' : 'Ya asignada'"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                     </svg>
-                    <span v-if="request.status !== 'pendiente_pavedad'" class="text-xs">✓</span>
                   </button>
 
                   <!-- Botón Revisar Items para Encargado de Bodega -->
                   <button
-                    v-if="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut"
-                    @click.stop="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
-                    :disabled="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'"
+                    @click.stop="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut && (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
+                    :disabled="!authStore.isWarehouseManager || request.assigned_to !== authStore.getUserRut || (request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado')"
                     :class="[
-                      'p-1',
-                      (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
-                        ? 'text-blue-600 hover:text-blue-900 cursor-pointer'
-                        : 'text-gray-400 cursor-not-allowed opacity-60'
+                      'p-1.5 rounded transition-colors',
+                      authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut && (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
+                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 cursor-pointer'
+                        : 'text-gray-400 bg-gray-100 cursor-not-allowed'
                     ]"
-                    :title="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar insumos' : 'Ya revisada'"
+                    :title="!authStore.isWarehouseManager ? 'Solo Encargado de Bodega' : request.assigned_to !== authStore.getUserRut ? 'No asignado a ti' : (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar insumos' : 'Ya revisada'"
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    <span v-if="request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado'" class="text-xs">✓</span>
                   </button>
                 </div>
               </td>
@@ -621,11 +617,14 @@ import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import Swal from 'sweetalert2'
+import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
+const { prompt } = useAlert()
 
 // Estado del modal de asignación
 const showAssignModal = ref(false)
@@ -637,7 +636,6 @@ const selectedRequestForReview = ref(null)
 
 // Estado reactivo
 const loading = ref(false)
-const error = ref(null)
 const requests = ref([])
 const pavilions = ref([])
 const currentPage = ref(1)
@@ -815,7 +813,6 @@ const stats = computed(() => {
 // Métodos
 const loadSupplyRequests = async () => {
   loading.value = true
-  error.value = null
 
   try {
     let result
@@ -866,23 +863,18 @@ const loadSupplyRequests = async () => {
         requests.value = allRequests
       }
       
-      // Limpiar error si la carga fue exitosa (incluso si no hay solicitudes)
-      error.value = null
-      
       console.log('Solicitudes cargadas:', requests.value)
     } else {
       // Solo establecer error si realmente hay un error (no solo falta de datos)
       requests.value = []
-      // Solo establecer error si hay un mensaje de error específico
+      // Solo mostrar error si hay un mensaje de error específico
       if (result.error && result.error !== 'No hay solicitudes' && result.error !== 'No se encontraron solicitudes') {
-        error.value = result.error
-      } else {
-        error.value = null // No hay error, solo no hay datos
+        showError(result.error)
       }
     }
   } catch (err) {
     console.error('Error cargando solicitudes:', err)
-    error.value = 'Error al conectar con el servidor'
+    showError('Error al conectar con el servidor')
     requests.value = []
   } finally {
     loading.value = false
@@ -965,39 +957,33 @@ const approveRequest = async (id) => {
     
     await supplyRequestService.approveSupplyRequest(id, approvalData)
     
-    await Swal.fire({
-      icon: 'success',
-      title: 'Solicitud Aprobada',
-      text: 'La solicitud ha sido aprobada exitosamente',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess('La solicitud ha sido aprobada exitosamente')
     
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error aprobando solicitud:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al aprobar la solicitud',
-      text: err.response?.data?.error || err.message
-    })
+    showError(err.response?.data?.error || err.message || 'Error al aprobar la solicitud')
   }
 }
 
 const rejectRequest = async (id) => {
-  const { value: reason } = await Swal.fire({
-    title: 'Motivo del rechazo',
-    input: 'text',
-    inputLabel: 'Ingrese el motivo del rechazo:',
-    inputPlaceholder: 'Motivo...',
-    showCancelButton: true,
-    confirmButtonText: 'Rechazar',
-    cancelButtonText: 'Cancelar',
-    inputValidator: (value) => {
-      if (!value) return 'Debe ingresar un motivo';
+  const reason = await prompt(
+    'Ingrese el motivo del rechazo:',
+    'Rechazar Solicitud',
+    {
+      placeholder: 'Motivo del rechazo...',
+      inputType: 'textarea',
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return 'Debe ingresar un motivo para rechazar la solicitud'
+        }
+        return null
+      }
     }
-  })
-  if (!reason) return
+  )
+  if (!reason) {
+    return
+  }
 
   try {
     const rejectionData = {
@@ -1008,22 +994,12 @@ const rejectRequest = async (id) => {
     
     await supplyRequestService.rejectSupplyRequest(id, rejectionData)
     
-    await Swal.fire({
-      icon: 'success',
-      title: 'Solicitud Rechazada',
-      text: 'La solicitud ha sido rechazada',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess('La solicitud ha sido rechazada')
     
     await loadSupplyRequests()
   } catch (err) {
     console.error('Error rechazando solicitud:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al rechazar la solicitud',
-      text: err.response?.data?.error || err.message
-    })
+    showError(err.response?.data?.error || err.message || 'Error al rechazar la solicitud')
   }
 }
 
@@ -1204,7 +1180,7 @@ const getRejectionReason = (request) => {
 }
 
 // Lifecycle
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'request_number', label: 'Número de Solicitud' },
@@ -1235,21 +1211,11 @@ const exportToExcel = () => {
       }
     ]
     
-    exportExcel(filteredRequests.value, columns, 'solicitudes_insumos')
-    Swal.fire({
-      icon: 'success',
-      title: 'Exportación completada',
-      text: 'El archivo Excel se ha descargado exitosamente',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    await exportExcel(filteredRequests.value, columns, 'solicitudes_insumos')
+    showSuccess('El archivo Excel se ha descargado exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al exportar',
-      text: 'Ocurrió un error al exportar a Excel: ' + error.message
-    })
+    showError('Ocurrió un error al exportar a Excel: ' + error.message)
   }
 }
 

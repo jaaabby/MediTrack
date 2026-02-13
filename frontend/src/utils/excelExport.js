@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 /**
  * Exporta datos a un archivo Excel
@@ -6,10 +6,29 @@ import * as XLSX from 'xlsx'
  * @param {Array} columns - Array de objetos con la configuración de columnas { key: string, label: string }
  * @param {string} filename - Nombre del archivo (sin extensión)
  */
-export function exportToExcel(data, columns, filename = 'export') {
+export async function exportToExcel(data, columns, filename = 'export') {
   try {
-    // Preparar los datos para Excel
-    const excelData = data.map(item => {
+    // Crear workbook y worksheet
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Datos')
+
+    // Agregar encabezados
+    worksheet.columns = columns.map(col => ({
+      header: col.label,
+      key: col.key,
+      width: Math.max(col.label.length, 15) // Ancho mínimo de 15 caracteres
+    }))
+
+    // Estilizar encabezados
+    worksheet.getRow(1).font = { bold: true }
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    }
+
+    // Agregar datos
+    data.forEach(item => {
       const row = {}
       columns.forEach(col => {
         // Obtener el valor, manejando valores anidados con notación de punto
@@ -21,28 +40,17 @@ export function exportToExcel(data, columns, filename = 'export') {
         
         // Formatear el valor según el tipo
         if (value === null || value === undefined) {
-          row[col.label] = ''
+          row[col.key] = ''
         } else if (col.formatter && typeof col.formatter === 'function') {
-          row[col.label] = col.formatter(value, item)
+          row[col.key] = col.formatter(value, item)
         } else if (value instanceof Date) {
-          row[col.label] = value.toLocaleString('es-CL')
+          row[col.key] = value.toLocaleString('es-CL')
         } else {
-          row[col.label] = String(value)
+          row[col.key] = String(value)
         }
       })
-      return row
+      worksheet.addRow(row)
     })
-
-    // Crear workbook y worksheet
-    const worksheet = XLSX.utils.json_to_sheet(excelData)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos')
-
-    // Ajustar ancho de columnas
-    const columnWidths = columns.map(col => ({
-      wch: Math.max(col.label.length, 15) // Ancho mínimo de 15 caracteres
-    }))
-    worksheet['!cols'] = columnWidths
 
     // Generar nombre de archivo con fecha
     const date = new Date()
@@ -50,7 +58,16 @@ export function exportToExcel(data, columns, filename = 'export') {
     const fullFilename = `${filename}_${dateStr}.xlsx`
 
     // Descargar el archivo
-    XLSX.writeFile(workbook, fullFilename)
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fullFilename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
     
     return true
   } catch (error) {

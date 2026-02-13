@@ -293,6 +293,21 @@
           </div>
         </div>
       </div>
+
+      <!-- Gestión de Usuarios (solo admin) -->
+      <div v-if="authStore.isAdmin" class="card hover:shadow-lg transition-all duration-200 cursor-pointer" @click="navigateTo('/users')">
+        <div class="flex items-center gap-4">
+          <div class="bg-pink-100 p-3 rounded-lg">
+            <svg class="h-8 w-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 truncate">Gestión de Usuarios</h3>
+            <p class="text-gray-600 text-xs sm:text-sm truncate">Administrar cuentas de usuario</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

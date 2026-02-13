@@ -125,7 +125,7 @@
                   </span>
                 </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 Acciones
               </th>
             </tr>
@@ -150,17 +150,18 @@
                   </span>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <div class="flex justify-end space-x-2">
                   <button @click="openEditModal(supplyCode)" 
-                    class="btn-primary text-xs px-3 py-1.5"
+                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
                     title="Editar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
+                    <span class="font-medium text-xs">Editar</span>
                   </button>
                   <button @click="confirmDelete(supplyCode)" 
-                    class="btn-danger text-xs px-3 py-1.5"
+                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
                     title="Eliminar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -295,7 +296,11 @@
 import { ref, computed, onMounted } from 'vue'
 import supplyCodeService from '@/services/config/supplyCodeService'
 import inventoryService from '@/services/inventory/inventoryService'
-import Swal from 'sweetalert2'
+import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
+
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
+const { confirm, confirmDanger } = useAlert()
 
 const supplyCodes = ref([])
 const loading = ref(false)
@@ -448,48 +453,18 @@ const openEditModal = async (supplyCode) => {
   const isCritical = isStockCritical(currentStock, supplyCode.critical_stock)
   
   if (isCritical) {
-    const result = await Swal.fire({
-      title: '⚠️ Advertencia: Stock Crítico',
-      html: `
-        <div class="text-left">
-          <p class="mb-3">Este código de insumo tiene <strong>stock crítico</strong>:</p>
-          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-3">
-            <div class="flex items-center mb-2">
-              <svg class="h-5 w-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span class="font-semibold text-red-800">Stock Actual: ${currentStock}</span>
-            </div>
-            <div class="text-sm text-red-700">
-              <p>Stock Crítico: ${supplyCode.critical_stock}</p>
-              <p class="mt-1">¿Estás seguro de que deseas editar este código?</p>
-            </div>
-          </div>
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, continuar',
-      cancelButtonText: 'Cancelar',
-      customClass: {
-        popup: 'text-left'
-      }
-    })
-    
-    if (!result.isConfirmed) {
-      return // Cancelar si el usuario no confirma
+    const confirmed = await confirm(
+      `Este código de insumo tiene stock crítico:\n\nStock Actual: ${currentStock}\nStock Crítico: ${supplyCode.critical_stock}\n\n¿Estás seguro de que deseas editar este código?`,
+      'ADVERTENCIA: Stock Crítico',
+      { icon: 'warning' }
+    )
+    if (!confirmed) {
+      return
     }
   }
   
   isEditing.value = true
-  supplyCodeForm.value = {
-    code: supplyCode.code,
-    name: supplyCode.name,
-    code_supplier: supplyCode.code_supplier,
-    critical_stock: supplyCode.critical_stock
-  }
+  supplyCodeForm.value = { ...supplyCode }
   showModal.value = true
 }
 
@@ -513,32 +488,16 @@ const saveSupplyCode = async () => {
         code_supplier: supplyCodeForm.value.code_supplier,
         critical_stock: supplyCodeForm.value.critical_stock
       })
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Código actualizado!',
-        text: 'El código de insumo ha sido actualizado exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('El código de insumo ha sido actualizado exitosamente.')
     } else {
       await supplyCodeService.createSupplyCode(supplyCodeForm.value)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Código creado!',
-        text: 'El código de insumo ha sido creado exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('El código de insumo ha sido creado exitosamente.')
     }
     closeModal()
     await loadSupplyCodes()
   } catch (err) {
     const errorMessage = err.response?.data?.error || err.message || 'Error al guardar el código de insumo'
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: errorMessage
-    })
+    showError(errorMessage)
   } finally {
     saving.value = false
   }
@@ -549,73 +508,26 @@ const confirmDelete = async (supplyCode) => {
   const currentStock = await getCurrentStock(supplyCode.code)
   const isCritical = isStockCritical(currentStock, supplyCode.critical_stock)
   
-  let result
+  let confirmMessage
   
   if (isCritical) {
-    // Mostrar advertencia de stock crítico
-    result = await Swal.fire({
-      title: '⚠️ Advertencia: Stock Crítico',
-      html: `
-        <div class="text-left">
-          <p class="mb-3">Este código de insumo tiene <strong>stock crítico</strong>:</p>
-          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-3">
-            <div class="flex items-center mb-2">
-              <svg class="h-5 w-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span class="font-semibold text-red-800">Stock Actual: ${currentStock}</span>
-            </div>
-            <div class="text-sm text-red-700">
-              <p>Stock Crítico: ${supplyCode.critical_stock}</p>
-              <p class="mt-2 font-semibold">¿Estás seguro de que deseas eliminar este código?</p>
-              <p class="mt-1 text-xs">Esta acción no se puede deshacer.</p>
-            </div>
-          </div>
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar',
-      customClass: {
-        popup: 'text-left'
-      }
-    })
+    confirmMessage = `ADVERTENCIA: Stock Crítico\n\nEste código de insumo tiene stock crítico:\n\nStock Actual: ${currentStock}\nStock Crítico: ${supplyCode.critical_stock}\n\n¿Estás seguro de que deseas eliminar este código?\n\nEsta acción no se puede deshacer.`
   } else {
-    // Mostrar confirmación normal
-    result = await Swal.fire({
-      title: '¿Eliminar código de insumo?',
-      text: `¿Estás seguro de que deseas eliminar el código "${supplyCode.code} - ${supplyCode.name}"?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
-    })
+    confirmMessage = `¿Estás seguro de que deseas eliminar el código "${supplyCode.code} - ${supplyCode.name}"?\n\nEsta acción no se puede deshacer.`
   }
 
-  if (result.isConfirmed) {
-    try {
-      await supplyCodeService.deleteSupplyCode(supplyCode.code)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Código eliminado!',
-        text: 'El código de insumo ha sido eliminado exitosamente.',
-        timer: 2000,
-        showConfirmButton: false
-      })
-      await loadSupplyCodes()
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar el código de insumo'
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: errorMessage
-      })
-    }
+  const confirmed = await confirmDanger(confirmMessage, 'Confirmar eliminación')
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await supplyCodeService.deleteSupplyCode(supplyCode.code)
+    showSuccess('El código de insumo ha sido eliminado exitosamente.')
+    await loadSupplyCodes()
+  } catch (err) {
+    const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar el código de insumo'
+    showError(errorMessage)
   }
 }
 

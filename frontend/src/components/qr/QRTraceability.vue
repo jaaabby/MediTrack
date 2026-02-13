@@ -283,10 +283,15 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { format, formatDistanceToNow, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
+import ExcelJS from 'exceljs'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
 
 const route = useRoute()
 const router = useRouter()
+const { success: showSuccess, error: showError } = useNotification()
 
 const props = defineProps({
   qrCode: {
@@ -339,7 +344,9 @@ const loadTraceability = async () => {
     qrInfo.value = qrData
     
   } catch (err) {
-    error.value = err.message || 'Error al cargar la trazabilidad'
+    const errorMessage = err.message || 'Error al cargar la trazabilidad'
+    error.value = errorMessage
+    showError(errorMessage)
     console.error('Error cargando trazabilidad:', err)
   } finally {
     loading.value = false
@@ -447,8 +454,74 @@ const getCurrentStatusBadgeClass = () => {
 }
 
 const getCurrentLocation = () => {
-  // Si el estado es pendiente_retiro, el insumo físicamente está en bodega
+  // Si el insumo está consumido, mostrar dónde fue consumido
   const status = qrInfo.value?.supply_info?.status || qrInfo.value?.status
+  
+  console.log('🔍 getCurrentLocation - Debug:', {
+    status,
+    is_consumed: qrInfo.value?.is_consumed,
+    supply_info_status: qrInfo.value?.supply_info?.status
+  })
+  
+  if (status?.toLowerCase() === 'consumido' || qrInfo.value?.is_consumed) {
+    const events = getAllEvents()
+    console.log('📋 Eventos totales:', events.length)
+    
+    // Buscar el evento de consumo
+    const consumptionEvent = events.find(e => {
+      const isConsumption = e.event_type === 'movement' && 
+                           (e.status === 'consumido' || e.status === 'consumed')
+      if (isConsumption) {
+        console.log('✅ Encontrado evento de consumo:', e)
+      }
+      return isConsumption
+    })
+    
+    if (consumptionEvent && consumptionEvent.location) {
+      console.log('✓ Usando ubicación del evento de consumo:', consumptionEvent.location)
+      return `Fue usado en ${consumptionEvent.location}`
+    }
+    
+    console.log('⚠️ No hay ubicación en evento de consumo, buscando recepción...')
+    
+    // Buscar el último evento de recepción que debe tener la ubicación
+    const receptionEvent = events.find(e => {
+      const isReception = e.event_type === 'movement' && 
+                         (e.status === 'recepcionado' || e.status === 'received')
+      if (isReception) {
+        console.log('📍 Encontrado evento de recepción:', {
+          location: e.location,
+          destination_name: e.destination_name,
+          event: e
+        })
+      }
+      return isReception
+    })
+    
+    if (receptionEvent) {
+      // Verificar múltiples fuentes de ubicación
+      const location = receptionEvent.location || 
+                      (receptionEvent.destination_name ? 
+                        `${receptionEvent.destination_type === 'pavilion' ? 'Pabellón' : 'Almacén'}: ${receptionEvent.destination_name}` : 
+                        null)
+      
+      if (location) {
+        console.log('✓ Usando ubicación del evento de recepción:', location)
+        return `Fue usado en ${location}`
+      }
+    }
+    
+    // Si no hay evento de consumo pero hay información de ubicación en supply_info
+    if (qrInfo.value?.supply_info?.location_type === 'pavilion' && qrInfo.value?.supply_info?.pavilion_name) {
+      console.log('✓ Usando ubicación de supply_info')
+      return `Fue usado en Pabellón: ${qrInfo.value.supply_info.pavilion_name}`
+    }
+    
+    console.log('❌ No se encontró ubicación en ninguna fuente')
+    return 'Consumido (ubicación no especificada)'
+  }
+  
+  // Si el estado es pendiente_retiro, el insumo físicamente está en bodega
   if (status?.toLowerCase() === 'pendiente_retiro') {
     // Buscar la última ubicación de bodega antes del movimiento a pabellón
     const events = getAllEvents()
@@ -697,37 +770,441 @@ const formatRelativeTime = (dateString) => {
   }
 }
 
-const exportTraceability = () => {
-  const data = {
-    qr_code: qrCode.value,
-    export_date: new Date().toISOString(),
-    product_info: qrInfo.value,
-    traceability_data: traceabilityData.value,
-    events: getAllEvents(),
-    summary: {
-      total_events: getAllEvents().length,
-      total_scans: getEventCount('scan'),
-      total_movements: getEventCount('movement'),
-      locations_visited: getLocationCount(),
-      users_involved: getUserCount(),
-      current_status: getCurrentStatusLabel(),
-      time_in_system: getTimeInSystem()
-    }
-  }
+const exportTraceability = async () => {
+  try {
+    // Crear libro de Excel
+    const workbook = new ExcelJS.Workbook()
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `trazabilidad-${qrCode.value}-${format(new Date(), 'yyyy-MM-dd')}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+    // ==================== Hoja 1: Resumen ====================
+    const summarySheet = workbook.addWorksheet('Resumen')
+    
+    // Agregar datos
+    summarySheet.addRow(['REPORTE DE TRAZABILIDAD DEL INSUMO MEDICO'])
+    summarySheet.addRow([])
+    summarySheet.addRow(['INFORMACION GENERAL'])
+    summarySheet.addRow(['Código QR:', qrCode.value])
+    summarySheet.addRow(['Nombre del Insumo:', qrInfo.value?.supply_info?.name || 'N/A'])
+    summarySheet.addRow(['Código de Proveedor:', qrInfo.value?.supply_code?.code_supplier || 'N/A'])
+    summarySheet.addRow(['Lote:', qrInfo.value?.supply_info?.batch?.id || qrInfo.value?.batch_id || 'N/A'])
+    summarySheet.addRow(['Estado Actual:', getCurrentStatusLabel()])
+    summarySheet.addRow(['Ubicación Actual:', getCurrentLocation()])
+    summarySheet.addRow(['Tiempo en Sistema:', getTimeInSystem()])
+    summarySheet.addRow(['Fecha de Exportación:', format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })])
+    summarySheet.addRow([])
+    summarySheet.addRow(['ESTADISTICAS DEL INSUMO'])
+    summarySheet.addRow(['Total de Eventos Registrados:', getAllEvents().length])
+    summarySheet.addRow(['Total de Movimientos:', getEventCount('movement')])
+    summarySheet.addRow(['Ubicaciones Visitadas:', getLocationCount()])
+    summarySheet.addRow(['Usuarios Involucrados:', getUserCount()])
+    summarySheet.addRow([])
+    summarySheet.addRow(['INFORMACION DEL LOTE'])
+    summarySheet.addRow(['Proveedor:', qrInfo.value?.batch_info?.supplier || qrInfo.value?.supplier || 'N/A'])
+    summarySheet.addRow(['Fecha de Vencimiento:', qrInfo.value?.batch_info?.expiration_date ? formatDateTime(qrInfo.value.batch_info.expiration_date) : 'N/A'])
+    
+    // Aplicar estilos y anchos de columna
+    summarySheet.getColumn(1).width = 30
+    summarySheet.getColumn(2).width = 50
+    
+    // Estilizar y mergear celdas para títulos
+    summarySheet.getRow(1).font = { bold: true, size: 14 }
+    summarySheet.mergeCells('A1:B1')
+    summarySheet.getRow(3).font = { bold: true }
+    summarySheet.mergeCells('A3:B3')
+    summarySheet.getRow(13).font = { bold: true }
+    summarySheet.mergeCells('A13:B13')
+    summarySheet.getRow(19).font = { bold: true }
+    summarySheet.mergeCells('A19:B19')
+
+    // ==================== Hoja 2: Historial de Eventos ====================
+    const events = getAllEvents()
+    const eventsSheet = workbook.addWorksheet('Historial de Eventos')
+    
+    eventsSheet.addRow(['HISTORIAL COMPLETO DE EVENTOS'])
+    eventsSheet.addRow([])
+    eventsSheet.addRow(['Fecha y Hora', 'Tipo de Evento', 'Estado', 'Descripción', 'Usuario', 'Ubicación', 'Notas'])
+    
+    // Estilizar encabezados
+    const eventsHeaderRow = eventsSheet.getRow(3)
+    eventsHeaderRow.font = { bold: true }
+    eventsHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    }
+    
+    events.forEach(event => {
+      eventsSheet.addRow([
+        formatDateTime(event.date_time || event.timestamp),
+        getEventTitle(event),
+        event.status || 'N/A',
+        getEventDescription(event),
+        event.user_name || 'N/A',
+        event.location || 'N/A',
+        event.notes || event.observations || 'N/A'
+      ])
+    })
+    
+    // Configurar anchos de columna
+    eventsSheet.getColumn(1).width = 18
+    eventsSheet.getColumn(2).width = 25
+    eventsSheet.getColumn(3).width = 20
+    eventsSheet.getColumn(4).width = 40
+    eventsSheet.getColumn(5).width = 25
+    eventsSheet.getColumn(6).width = 35
+    eventsSheet.getColumn(7).width = 40
+    
+    // Mergear título
+    eventsSheet.getRow(1).font = { bold: true, size: 14 }
+    eventsSheet.mergeCells('A1:G1')
+
+    // ==================== Hoja 3: Recorrido del Insumo ====================
+    const journey = getLocationJourney()
+    const journeySheet = workbook.addWorksheet('Recorrido')
+    
+    journeySheet.addRow(['RECORRIDO DEL INSUMO POR UBICACIONES'])
+    journeySheet.addRow([])
+    journeySheet.addRow(['Secuencia', 'Ubicación', 'Fecha de Llegada', 'Duración en Ubicación', 'Estado Actual'])
+    
+    // Estilizar encabezados
+    const journeyHeaderRow = journeySheet.getRow(3)
+    journeyHeaderRow.font = { bold: true }
+    journeyHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    }
+    
+    journey.forEach((location, index) => {
+      journeySheet.addRow([
+        index + 1,
+        location.name,
+        formatDateTime(location.date),
+        location.duration || 'Ubicación actual',
+        location.is_current ? '✓ UBICACION ACTUAL' : 'Ubicación anterior'
+      ])
+    })
+    
+    // Configurar anchos de columna
+    journeySheet.getColumn(1).width = 12
+    journeySheet.getColumn(2).width = 45
+    journeySheet.getColumn(3).width = 20
+    journeySheet.getColumn(4).width = 25
+    journeySheet.getColumn(5).width = 22
+    
+    // Mergear título
+    journeySheet.getRow(1).font = { bold: true, size: 14 }
+    journeySheet.mergeCells('A1:E1')
+
+    // ==================== Hoja 4: Resumen por Usuario ====================
+    const userSummarySheet = workbook.addWorksheet('Resumen por Usuario')
+    
+    userSummarySheet.addRow(['RESUMEN DE ACTIVIDAD POR USUARIO'])
+    userSummarySheet.addRow([])
+    userSummarySheet.addRow(['Usuario', 'Número de Eventos', 'Último Evento', 'Fecha del Último Evento'])
+    
+    // Estilizar encabezados
+    const userSummaryHeaderRow = userSummarySheet.getRow(3)
+    userSummaryHeaderRow.font = { bold: true }
+    userSummaryHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    }
+    
+    // Agrupar eventos por usuario
+    const userEvents = new Map()
+    events.forEach(event => {
+      const userName = event.user_name || 'Usuario no identificado'
+      if (!userEvents.has(userName)) {
+        userEvents.set(userName, [])
+      }
+      userEvents.get(userName).push(event)
+    })
+    
+    // Crear resumen por usuario
+    Array.from(userEvents.entries()).forEach(([userName, userEventList]) => {
+      const lastEvent = userEventList[0] // Ya están ordenados por fecha descendente
+      userSummarySheet.addRow([
+        userName,
+        userEventList.length,
+        getEventTitle(lastEvent),
+        formatDateTime(lastEvent.date_time || lastEvent.timestamp)
+      ])
+    })
+    
+    // Configurar anchos de columna
+    userSummarySheet.getColumn(1).width = 30
+    userSummarySheet.getColumn(2).width = 20
+    userSummarySheet.getColumn(3).width = 35
+    userSummarySheet.getColumn(4).width = 20
+    
+    // Mergear título
+    userSummarySheet.getRow(1).font = { bold: true, size: 14 }
+    userSummarySheet.mergeCells('A1:D1')
+
+    // Generar archivo Excel
+    const fileName = `Trazabilidad_${qrCode.value}_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    showSuccess('Trazabilidad exportada a Excel exitosamente')
+  } catch (err) {
+    console.error('Error al exportar trazabilidad:', err)
+    showError('Error al exportar la trazabilidad: ' + err.message)
+  }
 }
 
 const printTraceability = () => {
-  window.print()
+  try {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.width
+    const margin = 15
+    const contentWidth = pageWidth - (margin * 2)
+    let yPos = 15
+
+    // === ENCABEZADO ===
+    // Logo/Título
+    doc.setFillColor(37, 99, 235) // bg-blue-600
+    doc.rect(0, 0, pageWidth, 35, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('REPORTE DE TRAZABILIDAD', margin, 15)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}`, margin, 25)
+    
+    yPos = 45
+
+    // === INFORMACIÓN DEL INSUMO ===
+    doc.setTextColor(0, 0, 0)
+    doc.setFillColor(243, 244, 246) // bg-gray-100
+    doc.roundedRect(margin, yPos, contentWidth, 50, 2, 2, 'F')
+    
+    yPos += 8
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text(qrInfo.value?.supply_info?.name || 'Insumo Médico', margin + 5, yPos)
+    
+    yPos += 7
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(75, 85, 99) // text-gray-600
+    doc.text(`QR: ${qrCode.value}`, margin + 5, yPos)
+    
+    yPos += 10
+    // Estado y ubicación en dos columnas
+    const colWidth = contentWidth / 2
+    
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7)
+    doc.setTextColor(107, 114, 128)
+    doc.text('ESTADO ACTUAL', margin + 5, yPos)
+    
+    yPos += 5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(0, 0, 0)
+    doc.text(getCurrentStatusLabel(), margin + 5, yPos)
+    const locationText = doc.splitTextToSize(getCurrentLocation(), colWidth - 10)
+    doc.text(locationText, margin + 5 + colWidth, yPos)
+    
+    yPos += Math.max(5, locationText.length * 4)
+    
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7)
+    doc.setTextColor(107, 114, 128)
+    doc.text('TIEMPO EN SISTEMA', margin + 5, yPos)
+    doc.text('CODIGO PROVEEDOR', margin + 5 + colWidth, yPos)
+    
+    yPos += 5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(0, 0, 0)
+    doc.text(getTimeInSystem(), margin + 5, yPos)
+    doc.text(String(qrInfo.value?.supply_code?.code_supplier || 'N/A'), margin + 5 + colWidth, yPos)
+    
+    yPos += 15
+
+    // === ESTADÍSTICAS ===
+    doc.setFillColor(59, 130, 246) // bg-blue-600
+    doc.rect(margin, yPos, contentWidth, 6, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('ESTADISTICAS', margin + 3, yPos + 4)
+    
+    yPos += 10
+    doc.setTextColor(0, 0, 0)
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    
+    const statWidth = contentWidth / 4
+    const stats = [
+      { label: 'Eventos', value: getAllEvents().length },
+      { label: 'Movimientos', value: getEventCount('movement') },
+      { label: 'Ubicaciones', value: getLocationCount() },
+      { label: 'Usuarios', value: getUserCount() }
+    ]
+    
+    stats.forEach((stat, i) => {
+      const xPos = margin + (i * statWidth)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(14)
+      doc.text(stat.value.toString(), xPos + statWidth/2, yPos + 5, { align: 'center' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+      doc.setTextColor(107, 114, 128)
+      doc.text(stat.label, xPos + statWidth/2, yPos + 10, { align: 'center' })
+      doc.setTextColor(0, 0, 0)
+    })
+    
+    yPos += 20
+
+    // === RECORRIDO ===
+    doc.setFillColor(59, 130, 246)
+    doc.rect(margin, yPos, contentWidth, 6, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('RECORRIDO DEL INSUMO', margin + 3, yPos + 4)
+    
+    yPos += 12
+    const journey = getLocationJourney()
+    
+    journey.forEach((location, index) => {
+      if (yPos > 260) {
+        doc.addPage()
+        yPos = 20
+      }
+      
+      // Círculo numerado
+      const circleColor = location.is_current ? [34, 197, 94] : [156, 163, 175]
+      doc.setFillColor(circleColor[0], circleColor[1], circleColor[2])
+      doc.circle(margin + 4, yPos + 2, 3, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'bold')
+      doc.text((index + 1).toString(), margin + 4, yPos + 3, { align: 'center' })
+      
+      // Línea conectora
+      if (index < journey.length - 1) {
+        doc.setDrawColor(209, 213, 219)
+        doc.setLineWidth(0.5)
+        doc.line(margin + 4, yPos + 5, margin + 4, yPos + 18)
+      }
+      
+      // Contenido
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      const locText = doc.splitTextToSize(location.name, contentWidth - 15)
+      doc.text(locText, margin + 10, yPos + 2)
+      
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+      doc.setTextColor(107, 114, 128)
+      doc.text(formatDateTime(location.date), margin + 10, yPos + 7)
+      
+      if (location.duration) {
+        doc.text(`Duración: ${location.duration}`, margin + 10, yPos + 11)
+      }
+      
+      if (location.is_current) {
+        doc.setTextColor(34, 197, 94)
+        doc.setFont('helvetica', 'bold')
+        doc.text('• UBICACION ACTUAL', margin + 10, yPos + location.duration ? 15 : 11)
+      }
+      
+      yPos += 18
+    })
+    
+    yPos += 5
+
+    // === HISTORIAL DE EVENTOS ===
+    if (yPos > 200) {
+      doc.addPage()
+      yPos = 20
+    }
+    
+    doc.setFillColor(59, 130, 246)
+    doc.rect(margin, yPos, contentWidth, 6, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('HISTORIAL DETALLADO', margin + 3, yPos + 4)
+    
+    yPos += 12
+    const events = getAllEvents()
+    
+    events.forEach((event, index) => {
+      if (yPos > 260) {
+        doc.addPage()
+        yPos = 20
+      }
+      
+      // Fondo alternado
+      if (index % 2 === 0) {
+        doc.setFillColor(249, 250, 251)
+        doc.rect(margin, yPos - 2, contentWidth, 20, 'F')
+      }
+      
+      // Fecha
+      doc.setTextColor(107, 114, 128)
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'normal')
+      doc.text(formatDateTime(event.date_time || event.timestamp), margin + 2, yPos + 1)
+      
+      // Título del evento
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text(getEventTitle(event), margin + 2, yPos + 6)
+      
+      // Descripción
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+      doc.setTextColor(75, 85, 99)
+      const desc = doc.splitTextToSize(getEventDescription(event), contentWidth - 4)
+      doc.text(desc.slice(0, 1), margin + 2, yPos + 10)
+      
+      // Usuario
+      if (event.user_name) {
+        doc.setTextColor(107, 114, 128)
+        doc.setFontSize(6)
+        doc.text(`Usuario: ${event.user_name}`, margin + 2, yPos + 14)
+      }
+      
+      yPos += 20
+    })
+
+    // Pie de página en todas las páginas
+    const pageCount = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(7)
+      doc.setTextColor(156, 163, 175)
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, 285, { align: 'center' })
+      doc.text('MediTrack - Sistema de Trazabilidad', pageWidth / 2, 290, { align: 'center' })
+    }
+
+    // Guardar PDF
+    const fileName = `Trazabilidad_${qrCode.value}_${format(new Date(), 'yyyy-MM-dd_HHmm')}.pdf`
+    doc.save(fileName)
+    
+    showSuccess('PDF generado exitosamente')
+  } catch (err) {
+    console.error('Error al generar PDF:', err)
+    showError('Error al generar el PDF: ' + err.message)
+  }
 }
 
 const applyFilters = () => {

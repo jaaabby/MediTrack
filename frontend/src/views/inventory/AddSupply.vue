@@ -30,7 +30,6 @@
                 type="number"
                 placeholder="123456"
                 class="form-input"
-                required
               />
             </div>
             
@@ -44,7 +43,6 @@
                 type="text"
                 placeholder="Ej: Jeringa 10ml"
                 class="form-input"
-                required
               />
             </div>
             
@@ -58,7 +56,6 @@
                 type="number"
                 placeholder="789"
                 class="form-input"
-                required
               />
             </div>
             
@@ -73,7 +70,6 @@
                 min="1"
                 placeholder="1"
                 class="form-input"
-                required
               />
               <p class="text-sm text-gray-500 mt-1">
                 Nivel mínimo de stock para generar alertas. Para insumos específicos, generalmente se usa 1.
@@ -101,7 +97,6 @@
                 v-model="batchForm.expirationDate"
                 type="date"
                 class="form-input"
-                required
               />
             </div>
             
@@ -117,23 +112,49 @@
                 max="1000"
                 placeholder="50"
                 class="form-input"
-                required
               />
               <p class="text-sm text-gray-500 mt-1">Se generará un QR único para cada producto individual</p>
             </div>
             
-            <div>
-              <label for="supplier" class="block text-sm font-medium text-gray-700 mb-2">
+            <div class="relative">
+              <label for="supplier-search" class="block text-sm font-medium text-gray-700 mb-2">
                 Proveedor <span class="text-red-500">*</span>
               </label>
               <input
-                id="supplier"
-                v-model="batchForm.supplier"
+                id="supplier-search"
+                v-model="supplierSearch"
+                @input="onSupplierSearch"
+                @focus="showSupplierOptions = true"
+                @blur="hideSupplierOptions"
                 type="text"
-                placeholder="Nombre del proveedor"
-                class="form-input"
-                required
+                placeholder="Escribir o seleccionar proveedor..."
+                class="form-input w-full"
+                autocomplete="off"
               />
+              
+              <!-- Dropdown de opciones -->
+              <div
+                v-show="showSupplierOptions"
+                class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200"
+              >
+                <div v-if="filteredSuppliers.length === 0" class="py-2 pl-3 text-gray-500 text-sm italic">
+                  {{ uniqueSuppliers.length === 0 ? 'No hay proveedores registrados aún' : 'No se encontraron coincidencias' }}
+                </div>
+                <div
+                  v-for="supplier in filteredSuppliers"
+                  :key="supplier"
+                  @mousedown="selectSupplier(supplier)"
+                  class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50"
+                >
+                  <span class="font-medium text-gray-900 block truncate">
+                    {{ supplier }}
+                  </span>
+                </div>
+              </div>
+              
+              <p class="text-sm text-gray-500 mt-1">
+                Escriba un nombre para agregar un proveedor nuevo o seleccione uno existente
+              </p>
             </div>
             
             <div class="relative">
@@ -152,7 +173,6 @@
                   class="form-input w-full pr-10"
                   :disabled="loadingStores"
                   autocomplete="off"
-                  required
                 />
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,7 +229,6 @@
                 max="365"
                 placeholder="90"
                 class="form-input"
-                required
               />
               <p class="text-sm text-gray-500 mt-1">
                 Días de anticipación para alertas de vencimiento (mínimo 90 días recomendado)
@@ -276,7 +295,9 @@
                 v-if="batchQRImage" 
                 :src="batchQRImage" 
                 :alt="`QR del Lote: ${generatedBatch.qr_code}`"
-                class="w-48 h-48 mx-auto object-contain border rounded"
+                class="w-48 h-48 mx-auto object-contain border rounded cursor-pointer hover:opacity-80 transition-opacity"
+                @click="openQRModal(generatedBatch.qr_code, 'Lote ' + generatedBatch.id)"
+                title="Click para ampliar"
               />
               <div v-else class="w-48 h-48 mx-auto bg-gray-100 rounded flex items-center justify-center">
                 <svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -285,6 +306,15 @@
               </div>
               
               <div class="mt-4 space-y-2">
+                <button 
+                  @click="openQRModal(generatedBatch.qr_code, 'Lote ' + generatedBatch.id)"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors text-sm flex items-center justify-center"
+                >
+                  <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                  </svg>
+                  Ver Ampliado
+                </button>
                 <button 
                   @click="downloadBatchQR('normal')"
                   class="w-full btn-secondary text-sm"
@@ -351,11 +381,20 @@
             <button @click="showAllQRs = !showAllQRs" class="btn-secondary text-sm">
               {{ showAllQRs ? 'Ocultar QRs' : 'Mostrar QRs' }}
             </button>
-            <button @click="downloadAllSupplyQRs" class="btn-primary text-sm">
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <button 
+              @click="downloadAllSupplyQRs" 
+              :disabled="downloadingAll"
+              class="btn-primary text-sm flex items-center"
+              :class="{ 'opacity-50 cursor-not-allowed': downloadingAll }"
+            >
+              <svg v-if="downloadingAll" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Descargar Todos
+              <svg v-else class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              {{ downloadingAll ? 'Descargando...' : 'Descargar Todos' }}
             </button>
           </div>
         </div>
@@ -397,6 +436,16 @@
               
               <div class="flex space-x-1 pt-2">
                 <button 
+                  @click="openQRModal(supply.qr_code, `Producto #${index + 1}`)"
+                  class="flex-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
+                  title="Ver QR ampliado"
+                >
+                  <svg class="h-3 w-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                  </svg>
+                  Ver
+                </button>
+                <button 
                   @click="downloadSupplyQR(supply.qr_code, 'normal')"
                   class="flex-1 text-xs bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded transition-colors"
                 >
@@ -430,7 +479,7 @@
           Crear Otro Lote
         </button>
         
-        <router-link :to="`/qr/${generatedBatch.qr_code}`" class="btn-secondary text-center">
+        <router-link :to="{ name: 'QRScanner', query: { qr: generatedBatch.qr_code } }" class="btn-secondary text-center">
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5l2 3h3l2-3h5v5M4 4v5m16-5v5" />
           </svg>
@@ -439,22 +488,56 @@
       </div>
     </div>
 
-    <!-- Mensaje de Error -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
-      <div class="flex items-start">
-        <div class="flex-shrink-0">
-          <svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+    <!-- Modal de QR Ampliado -->
+    <div v-if="showQRModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" @click="closeQRModal">
+      <div class="bg-white rounded-lg max-w-2xl w-full p-6" @click.stop>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold text-gray-900">{{ selectedQRName }}</h3>
+          <button @click="closeQRModal" class="text-gray-400 hover:text-gray-600">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-        <div class="ml-3 flex-1">
-          <h3 class="text-lg font-medium text-red-800">Error al crear el lote</h3>
-          <div class="mt-2 text-sm text-red-700">
-            <p>{{ error }}</p>
-          </div>
+        
+        <div class="text-center">
+          <img 
+            :src="getSupplyQRImageUrl(selectedQRCode)" 
+            :alt="selectedQRName"
+            class="mx-auto max-w-full h-auto border-2 rounded-lg shadow-lg"
+            style="max-height: 500px;"
+          />
+          
           <div class="mt-4">
-            <button @click="clearError" class="btn-secondary text-sm">
-              Intentar de Nuevo
+            <code class="block text-sm text-gray-700 bg-gray-100 px-3 py-2 rounded break-all">
+              {{ selectedQRCode }}
+            </code>
+          </div>
+          
+          <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <button 
+              @click="downloadSelectedQR('normal')"
+              class="btn-secondary flex items-center justify-center"
+            >
+              <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Descargar PNG Normal
+            </button>
+            <button 
+              @click="downloadSelectedQR('high')"
+              class="btn-primary flex items-center justify-center"
+            >
+              <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Descargar HD
+            </button>
+            <button 
+              @click="closeQRModal"
+              class="btn-secondary"
+            >
+              Cerrar
             </button>
           </div>
         </div>
@@ -466,55 +549,62 @@
 <script setup>
 
 import { ref, onMounted, computed } from 'vue'
+import { jsPDF } from 'jspdf'
 import qrService from '@/services/qr/qrService'
 import inventoryService from '@/services/inventory/inventoryService'
 import storeService from '@/services/inventory/storeService'
+import supplierConfigService from '@/services/config/supplierConfigService'
+import { useNotification } from '@/composables/useNotification'
+
+const { success: showSuccess, error: showError, info: showInfo } = useNotification()
 
 // Validación de formularios
 const validateForm = () => {
+  const errors = []
+  
+  // Auto-completar días de alerta si es <= 0
+  if (!batchForm.value.expirationAlertDays || isNaN(parseInt(batchForm.value.expirationAlertDays)) || parseInt(batchForm.value.expirationAlertDays) <= 0) {
+    batchForm.value.expirationAlertDays = 90
+  }
+  
   // Validar supplyForm
   if (!supplyForm.value.code || isNaN(parseInt(supplyForm.value.code))) {
-    error.value = 'El código del insumo es obligatorio y debe ser numérico.'
-    return false
+    errors.push('• El código del insumo es obligatorio y debe ser numérico.')
   }
   if (!supplyForm.value.name || supplyForm.value.name.trim() === '') {
-    error.value = 'El nombre del insumo es obligatorio.'
-    return false
+    errors.push('• El nombre del insumo es obligatorio.')
   }
   if (!supplyForm.value.codeSupplier || isNaN(parseInt(supplyForm.value.codeSupplier))) {
-    error.value = 'El código de proveedor es obligatorio y debe ser numérico.'
-    return false
+    errors.push('• El código de proveedor es obligatorio y debe ser numérico.')
   }
   // Validar batchForm
   if (!batchForm.value.expirationDate) {
-    error.value = 'La fecha de vencimiento es obligatoria.'
-    return false
+    errors.push('• La fecha de vencimiento es obligatoria.')
   }
   if (!batchForm.value.amount || isNaN(parseInt(batchForm.value.amount)) || parseInt(batchForm.value.amount) < 1) {
-    error.value = 'La cantidad debe ser un número mayor a 0.'
-    return false
+    errors.push('• La cantidad debe ser un número mayor a 0.')
   }
-  if (!batchForm.value.supplier || batchForm.value.supplier.trim() === '') {
-    error.value = 'El proveedor es obligatorio.'
-    return false
-  }
-  if (!batchForm.value.expirationAlertDays || isNaN(parseInt(batchForm.value.expirationAlertDays)) || parseInt(batchForm.value.expirationAlertDays) < 1) {
-    error.value = 'Los días de alerta deben ser un número mayor a 0.'
-    return false
+  if (!supplierSearch.value || supplierSearch.value.trim() === '') {
+    errors.push('• El proveedor es obligatorio.')
   }
   if (!batchForm.value.storeId || batchForm.value.storeId === '') {
-    error.value = 'Debe seleccionar un almacén.'
-    return false
+    errors.push('• Debe seleccionar un almacén.')
   }
   
   // Verificar que el almacén seleccionado exista en la lista
-  const selectedStore = stores.value.find(s => s.id === parseInt(batchForm.value.storeId))
-  if (!selectedStore) {
-    error.value = 'Debe seleccionar un almacén válido.'
+  if (batchForm.value.storeId) {
+    const selectedStore = stores.value.find(s => s.id === parseInt(batchForm.value.storeId))
+    if (!selectedStore) {
+      errors.push('• Debe seleccionar un almacén válido.')
+    }
+  }
+  
+  // Si hay errores, mostrarlos todos juntos
+  if (errors.length > 0) {
+    showError('Por favor corrija los siguientes errores:\n\n' + errors.join('\n'))
     return false
   }
   
-  error.value = null
   return true
 }
 
@@ -529,6 +619,13 @@ const stores = ref([])
 const loadingStores = ref(false)
 const storeSearch = ref('')
 const showStoreOptions = ref(false)
+const showQRModal = ref(false)
+const selectedQRCode = ref('')
+const selectedQRName = ref('')
+const downloadingAll = ref(false)
+const supplierSearch = ref('')
+const showSupplierOptions = ref(false)
+const uniqueSuppliers = ref([])
 
 // Formularios
 const supplyForm = ref({
@@ -559,7 +656,7 @@ const createSupply = async () => {
       batch: {
         expiration_date: batchForm.value.expirationDate,
         amount: parseInt(batchForm.value.amount),
-        supplier: batchForm.value.supplier,
+        supplier: supplierSearch.value,
         store_id: parseInt(batchForm.value.storeId), // Ya viene como número del select
         expiration_alert_days: parseInt(batchForm.value.expirationAlertDays)
       },
@@ -585,15 +682,15 @@ const createSupply = async () => {
       
       console.log(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales`)
       
-      error.value = null
+      showSuccess(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales\n✅ Proveedor "${supplierSearch.value}" registrado en el sistema`)
       await loadBatchQRImage()
     } else {
-      error.value = result.error || 'Error desconocido al crear el lote'
+      showError(result.error || 'Error desconocido al crear el lote')
     }
 
   } catch (err) {
     console.error('Error creating supply:', err)
-    error.value = err.message || 'Error de conexión al crear el lote'
+    showError(err.message || 'Error de conexión al crear el lote')
   } finally {
     creating.value = false
   }
@@ -631,15 +728,93 @@ const downloadSupplyQR = async (qrCode, resolution = 'normal') => {
 const downloadAllSupplyQRs = async () => {
   if (!generatedSupplies.value || generatedSupplies.value.length === 0) return
   
+  downloadingAll.value = true
+  const total = generatedSupplies.value.length
+  
   try {
-    // Descargar todos los QRs de productos individuales
-    for (const supply of generatedSupplies.value) {
-      await downloadSupplyQR(supply.qr_code, 'normal')
-      // Pequeña pausa entre descargas para evitar saturar el navegador
-      await new Promise(resolve => setTimeout(resolve, 100))
+    // Crear PDF en formato A4
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
+    
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 15
+    const qrSize = 50 // Tamaño del QR en mm
+    const spacing = 10 // Espaciado entre elementos
+    
+    let currentY = margin
+    let processedCount = 0
+    
+    for (let i = 0; i < generatedSupplies.value.length; i++) {
+      const supply = generatedSupplies.value[i]
+      
+      // Si no cabe en la página actual, crear una nueva
+      if (currentY + qrSize + 40 > pageHeight - margin && i > 0) {
+        pdf.addPage()
+        currentY = margin
+      }
+      
+      try {
+        // Obtener imagen QR como base64
+        const qrImageUrl = qrService.getQRImageUrl(supply.qr_code)
+        const response = await fetch(qrImageUrl)
+        const blob = await response.blob()
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result)
+          reader.readAsDataURL(blob)
+        })
+        
+        // Agregar QR code al PDF
+        pdf.addImage(base64, 'PNG', margin, currentY, qrSize, qrSize)
+        
+        // Agregar información del insumo a la derecha del QR
+        const textX = margin + qrSize + spacing
+        let textY = currentY + 8
+        
+        pdf.setFontSize(12)
+        pdf.setFont(undefined, 'bold')
+        pdf.text(`Código: ${supply.qr_code}`, textX, textY)
+        
+        textY += 7
+        pdf.setFontSize(10)
+        pdf.setFont(undefined, 'normal')
+        pdf.text(`Nombre: ${supplyForm.value.name || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Código Insumo: ${supplyForm.value.code || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Lote: ${generatedBatch.value?.id || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Proveedor: ${supplierSearch.value || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Vencimiento: ${formatDate(generatedBatch.value?.expiration_date)}`, textX, textY)
+        
+        currentY += qrSize + spacing + 5
+        
+        processedCount++
+        
+      } catch (error) {
+        console.error(`Error procesando QR ${supply.qr_code}:`, error)
+      }
     }
+    
+    // Descargar PDF
+    const fileName = `lote_${generatedBatch.value?.id}_qr_codes.pdf`
+    pdf.save(fileName)
+    
+    showSuccess(`✅ PDF generado exitosamente con ${processedCount} códigos QR`)
   } catch (error) {
-    console.error('Error downloading all supply QRs:', error)
+    console.error('Error generando PDF con QRs:', error)
+    showError(`Error al generar el PDF: ${error.message}`)
+  } finally {
+    downloadingAll.value = false
   }
 }
 
@@ -672,7 +847,6 @@ const createAnother = () => {
   generatedSupplies.value = null
   batchQRImage.value = null
   showAllQRs.value = false
-  error.value = null
   
   supplyForm.value = {
     code: '',
@@ -689,11 +863,9 @@ const createAnother = () => {
     expirationAlertDays: 90 // Resetear al valor por defecto
   }
   storeSearch.value = ''
+  supplierSearch.value = ''
   showStoreOptions.value = false
-}
-
-const clearError = () => {
-  error.value = null
+  showSupplierOptions.value = false
 }
 
 // Computed para almacenes filtrados
@@ -710,6 +882,18 @@ const filteredStores = computed(() => {
   ).slice(0, 10) // Limitar a 10 resultados para no ser invasivo
 })
 
+// Computed para proveedores filtrados
+const filteredSuppliers = computed(() => {
+  if (!supplierSearch.value.trim()) {
+    // Si no hay búsqueda, mostrar todos (limitado a 10 para no ser invasivo)
+    return uniqueSuppliers.value.slice(0, 10)
+  }
+  const search = supplierSearch.value.toLowerCase().trim()
+  return uniqueSuppliers.value.filter(supplier => 
+    supplier.toLowerCase().includes(search)
+  ).slice(0, 10) // Limitar a 10 resultados
+})
+
 // Cargar almacenes al montar el componente
 const loadStores = async () => {
   loadingStores.value = true
@@ -718,7 +902,7 @@ const loadStores = async () => {
     stores.value = storesList || []
   } catch (err) {
     console.error('Error al cargar almacenes:', err)
-    error.value = 'Error al cargar la lista de almacenes. Por favor, recarga la página.'
+    showError('Error al cargar la lista de almacenes. Por favor, recarga la página.')
   } finally {
     loadingStores.value = false
   }
@@ -761,9 +945,65 @@ const hideStoreOptions = () => {
   }, 200)
 }
 
-// Cargar almacenes al montar el componente
+// Funciones para manejar la búsqueda y selección de proveedores
+const onSupplierSearch = () => {
+  showSupplierOptions.value = true
+  console.log('🔍 Buscando proveedor:', supplierSearch.value)
+  console.log('📋 Proveedores filtrados:', filteredSuppliers.value.length)
+}
+
+const selectSupplier = (supplier) => {
+  supplierSearch.value = supplier
+  showSupplierOptions.value = false
+  console.log('✅ Proveedor seleccionado:', supplier)
+}
+
+const hideSupplierOptions = () => {
+  setTimeout(() => {
+    showSupplierOptions.value = false
+  }, 200)
+}
+
+// Cargar proveedores desde la configuración de proveedores
+const loadSuppliers = async () => {
+  try {
+    const supplierConfigs = await supplierConfigService.getAllSupplierConfigs()
+    console.log('📦 Configuraciones de proveedores cargadas:', supplierConfigs?.length || 0)
+    if (supplierConfigs && Array.isArray(supplierConfigs)) {
+      uniqueSuppliers.value = supplierConfigs
+        .map(config => config.supplier_name)
+        .filter(name => name && name.trim())
+        .sort()
+      console.log('✅ Proveedores encontrados:', uniqueSuppliers.value.length, uniqueSuppliers.value)
+    }
+  } catch (err) {
+    console.error('❌ Error al cargar proveedores:', err)
+    // No mostrar error al usuario, los proveedores son opcionales
+  }
+}
+
+// Funciones para modal de QR ampliado
+const openQRModal = (qrCode, name) => {
+  selectedQRCode.value = qrCode
+  selectedQRName.value = name
+  showQRModal.value = true
+}
+
+const closeQRModal = () => {
+  showQRModal.value = false
+  selectedQRCode.value = ''
+  selectedQRName.value = ''
+}
+
+const downloadSelectedQR = async (resolution = 'high') => {
+  if (!selectedQRCode.value) return
+  await downloadSupplyQR(selectedQRCode.value, resolution)
+}
+
+// Cargar almacenes y proveedores al montar el componente
 onMounted(() => {
   loadStores()
+  loadSuppliers()
 })
 </script>
 

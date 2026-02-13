@@ -94,10 +94,27 @@ export const userService = {
     }
   },
 
+  // Obtener todos los usuarios (solo para administradores)
+  async getAllUsers() {
+    try {
+      const response = await apiClient.get('/v1/users/')
+      return {
+        success: true,
+        data: response.data.data || response.data || []
+      }
+    } catch (error) {
+      console.error('Error al obtener todos los usuarios:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || error.response?.data?.message || 'Error al obtener lista de usuarios'
+      }
+    }
+  },
+
   // Crear nuevo usuario (solo para administradores)
   async createUser(userData) {
     try {
-      const response = await apiClient.post('/users', userData)
+      const response = await apiClient.post('/v1/users/', userData)
       return {
         success: true,
         data: response.data
@@ -114,7 +131,7 @@ export const userService = {
   // Actualizar usuario (solo para administradores)
   async updateUser(userId, userData) {
     try {
-      const response = await apiClient.put(`/users/${userId}`, userData)
+      const response = await apiClient.put(`/v1/users/${userId}`, userData)
       return {
         success: true,
         data: response.data
@@ -131,7 +148,7 @@ export const userService = {
   // Eliminar usuario (solo para administradores)
   async deleteUser(userId) {
     try {
-      const response = await apiClient.delete(`/users/${userId}`)
+      const response = await apiClient.delete(`/v1/users/${userId}`)
       return {
         success: true,
         data: response.data

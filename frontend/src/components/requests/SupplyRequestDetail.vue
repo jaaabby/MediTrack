@@ -259,7 +259,7 @@
               </button>
             </div>
             <div v-show="!itemsCollapsed || !hasActiveCart" class="divide-y divide-gray-200">
-              <div v-for="(item, index) in items" :key="item.id" class="p-4 sm:p-6">
+              <div v-for="item in items" :key="item.id" class="p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1">
@@ -1037,6 +1037,7 @@ import { userService } from '@/services/common/userService'
 import cartService from '@/services/requests/cartService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useNotification } from '@/composables/useNotification'
 import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
 import QrcodeVue from 'qrcode.vue'
@@ -1045,6 +1046,7 @@ import SupplyCart from '@/components/requests/SupplyCart.vue'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError, info: showInfo } = useNotification()
 
 // Estado reactivo
 const loading = ref(false)
@@ -1728,7 +1730,14 @@ const closeMessageModal = () => {
 }
 
 const showMessage = (type, title, message) => {
-  openMessageModal(type, title, message)
+  // Usar el sistema unificado de notificaciones
+  if (type === 'success') {
+    showSuccess(message)
+  } else if (type === 'error') {
+    showError(message)
+  } else {
+    showInfo(message)
+  }
 }
 
 const openInputModal = (title, label, placeholder, callback, confirmText = 'Confirmar') => {
