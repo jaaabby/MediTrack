@@ -8,8 +8,8 @@ const routes = [
     name: 'Login',
     component: () => import('@/views/auth/Login.vue'),
     meta: {
-      title: 'Iniciar SesiÃ³n - MediTrack',
-      description: 'Acceso al sistema de gestiÃ³n de insumos mÃ©dicos',
+      title: 'Iniciar Sesión - MediTrack',
+      description: 'Acceso al sistema de gestión de insumos médicos',
       requiresAuth: false
     }
   },
@@ -18,8 +18,8 @@ const routes = [
     name: 'ForgotPassword',
     component: () => import('@/views/auth/ForgotPassword.vue'),
     meta: {
-      title: 'Recuperar ContraseÃ±a - MediTrack',
-      description: 'Solicitar recuperaciÃ³n de contraseÃ±a',
+      title: 'Recuperar Contraseña - MediTrack',
+      description: 'Solicitar recuperación de contraseña',
       requiresAuth: false
     }
   },
@@ -28,8 +28,8 @@ const routes = [
     name: 'ResetPassword',
     component: () => import('@/views/auth/ResetPassword.vue'),
     meta: {
-      title: 'Restablecer ContraseÃ±a - MediTrack',
-      description: 'Restablecer contraseÃ±a con token',
+      title: 'Restablecer Contraseña - MediTrack',
+      description: 'Restablecer contraseña con token',
       requiresAuth: false
     }
   },
@@ -38,14 +38,14 @@ const routes = [
     name: 'FirstTimePasswordChange',
     component: () => import('@/views/auth/FirstTimePasswordChange.vue'),
     meta: {
-      title: 'Cambio de ContraseÃ±a Obligatorio - MediTrack',
-      description: 'Cambio de contraseÃ±a temporal por primera vez',
+      title: 'Cambio de Contraseña Obligatorio - MediTrack',
+      description: 'Cambio de contraseña temporal por primera vez',
       requiresAuth: true,
       skipPasswordCheck: true // Evitar bucle infinito en el guard
     }
   },
 
-  // Ruta raÃ­z
+  // Ruta raíz
   {
     path: '/',
     redirect: '/home'
@@ -58,32 +58,32 @@ const routes = [
     component: () => import('@/views/common/Home.vue'),
     meta: {
       title: 'Inicio - MediTrack',
-      description: 'Panel principal del sistema de gestiÃ³n de insumos mÃ©dicos',
+      description: 'Panel principal del sistema de gestión de insumos médicos',
       requiresAuth: true
     }
   },
 
-  // GestiÃ³n de usuarios (solo administradores)
+  // Gestión de usuarios (solo administradores)
   {
     path: '/users',
     name: 'UserManagement',
     component: () => import('@/views/common/UserManagement.vue'),
     meta: {
-      title: 'GestiÃ³n de Usuarios - MediTrack',
-      description: 'AdministraciÃ³n de usuarios del sistema',
+      title: 'Gestión de Usuarios - MediTrack',
+      description: 'Administración de usuarios del sistema',
       requiresAuth: true,
       requiredRoles: ['admin']
     }
   },
 
-  // GestiÃ³n de inventario
+  // Gestión de inventario
   {
     path: '/inventory',
     name: 'Inventory',
     component: () => import('@/views/inventory/Inventory.vue'),
     meta: {
       title: 'Inventario - MediTrack',
-      description: 'GestiÃ³n y consulta del inventario de insumos mÃ©dicos',
+      description: 'Gestión y consulta del inventario de insumos médicos',
       requiresAuth: true
     }
   },
@@ -93,7 +93,7 @@ const routes = [
     component: () => import('@/views/inventory/AddSupply.vue'),
     meta: {
       title: 'Agregar Insumo - MediTrack',
-      description: 'Registrar nuevos insumos mÃ©dicos en el sistema',
+      description: 'Registrar nuevos insumos médicos en el sistema',
       requiresAuth: true
     }
   },
@@ -170,20 +170,20 @@ const routes = [
     }
   },
 
-  // NUEVA RUTA: GestiÃ³n de Retornos a Bodega
+  // NUEVA RUTA: Gestión de Retornos a Bodega
   {
     path: '/return-management',
     name: 'ReturnToBodegaManagement',
     component: () => import('@/views/management/ReturnToBodegaManagement.vue'),
     meta: {
-      title: 'GestiÃ³n de Retornos - MediTrack',
-      description: 'Monitoreo y gestiÃ³n de insumos que deben regresar a bodega',
+      title: 'Gestión de Retornos - MediTrack',
+      description: 'Monitoreo y gestión de insumos que deben regresar a bodega',
       requiresAuth: true,
       requiredRoles: ['admin', 'encargado de bodega']
     }
   },
 
-  // Rutas especÃ­ficas de QR con historial y trazabilidad
+  // Rutas específicas de QR con historial y trazabilidad
   {
     path: '/qr/:qrCode/details',
     name: 'QRDetails',
@@ -191,7 +191,7 @@ const routes = [
     props: route => ({ qrCode: route.params.qrCode }),
     meta: {
       title: 'Detalles QR - MediTrack',
-      description: 'InformaciÃ³n detallada del cÃ³digo QR',
+      description: 'Información detallada del código QR',
       requiresAuth: true
     }
   },
@@ -204,7 +204,7 @@ const routes = [
     props: route => ({ qrCode: route.params.qrCode }),
     meta: {
       title: 'Trazabilidad QR - MediTrack',
-      description: 'Trazabilidad completa del cÃ³digo QR estilo Starken',
+      description: 'Trazabilidad completa del código QR estilo Starken',
       requiresAuth: true
     }
   },
@@ -229,7 +229,7 @@ const routes = [
     component: () => import('@/views/requests/SupplyRequestList.vue'),
     meta: {
       title: 'Solicitudes de Insumo - MediTrack',
-      description: 'GestiÃ³n de solicitudes de insumo con trazabilidad QR',
+      description: 'Gestión de solicitudes de insumo con trazabilidad QR',
       requiresAuth: true
     }
   },
@@ -239,7 +239,7 @@ const routes = [
     component: () => import('@/views/requests/SupplyRequestForm.vue'),
     meta: {
       title: 'Nueva Solicitud - MediTrack',
-      description: 'Crear nueva solicitud de insumos mÃ©dicos',
+      description: 'Crear nueva solicitud de insumos médicos',
       requiresAuth: true
     }
   },
@@ -253,7 +253,7 @@ const routes = [
     }),
     meta: {
       title: 'Editar Solicitud - MediTrack',
-      description: 'Editar solicitud de insumos mÃ©dicos devuelta',
+      description: 'Editar solicitud de insumos médicos devuelta',
       requiresAuth: true
     }
   },
@@ -267,7 +267,7 @@ const routes = [
     }),
     meta: {
       title: 'Solicitud Creada - MediTrack',
-      description: 'ConfirmaciÃ³n de solicitud creada exitosamente',
+      description: 'Confirmación de solicitud creada exitosamente',
       requiresAuth: true
     }
   },
@@ -278,93 +278,93 @@ const routes = [
     props: route => ({ requestId: parseInt(route.params.id) }),
     meta: {
       title: 'Detalles de Solicitud - MediTrack',
-      description: 'Detalles y gestiÃ³n de solicitud de insumos',
+      description: 'Detalles y gestión de solicitud de insumos',
       requiresAuth: true
     }
   },
 
-  // GestiÃ³n de perfil
+  // Gestión de perfil
   {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/common/Profile.vue'),
     meta: {
       title: 'Perfil - MediTrack',
-      description: 'GestiÃ³n del perfil de usuario',
+      description: 'Gestión del perfil de usuario',
       requiresAuth: true
     }
   },
 
-  // === NUEVAS RUTAS DE GESTIÃ"N ===
+  // === NUEVAS RUTAS DE GESTIÓN ===
   
-  // GestiÃ³n de Transferencias
+  // Gestión de Transferencias
   {
     path: '/transfers',
     name: 'TransferManagement',
     component: () => import('@/views/management/TransferManagement.vue'),
     meta: {
       title: 'Transferencias - MediTrack',
-      description: 'GestiÃ³n de transferencias entre bodegas y pabellones',
+      description: 'Gestión de transferencias entre bodegas y pabellones',
       requiresAuth: true
     }
   },
 
-  // GestiÃ³n de Tipos de CirugÃ­a
+  // Gestión de Tipos de Cirugía
   {
     path: '/surgeries',
     name: 'SurgeryManagement',
     component: () => import('@/views/management/SurgeryManagement.vue'),
     meta: {
-      title: 'Tipos de CirugÃ­a - MediTrack',
-      description: 'AdministraciÃ³n de tipos de procedimientos quirÃºrgicos',
+      title: 'Tipos de Cirugía - MediTrack',
+      description: 'Administración de tipos de procedimientos quirúrgicos',
       requiresAuth: true
     }
   },
 
-  // ConfiguraciÃ³n MÃ©dica - Especialidades MÃ©dicas
+  // Configuración Médica - Especialidades Médicas
   {
     path: '/medical-specialties',
     name: 'MedicalSpecialtyManagement',
     component: () => import('@/views/config/MedicalSpecialtyManagement.vue'),
     meta: {
-      title: 'Especialidades MÃ©dicas - MediTrack',
-      description: 'AdministraciÃ³n de especialidades mÃ©dicas',
+      title: 'Especialidades Médicas - MediTrack',
+      description: 'Administración de especialidades médicas',
       requiresAuth: true
     }
   },
 
-  // ConfiguraciÃ³n MÃ©dica - Insumos TÃ­picos por CirugÃ­a
+  // Configuración Médica - Insumos Típicos por Cirugía
   {
     path: '/surgery-typical-supplies',
     name: 'SurgeryTypicalSupplyManagement',
     component: () => import('@/views/management/SurgeryTypicalSupplyManagement.vue'),
     meta: {
-      title: 'Insumos TÃ­picos por CirugÃ­a - MediTrack',
-      description: 'GestiÃ³n de insumos tÃ­picos asociados a cirugÃ­as',
+      title: 'Insumos Típicos por Cirugía - MediTrack',
+      description: 'Gestión de insumos típicos asociados a cirugías',
       requiresAuth: true
     }
   },
 
-  // ConfiguraciÃ³n MÃ©dica - InformaciÃ³n de Doctores
+  // Configuración Médica - Información de Doctores
   {
     path: '/doctor-info',
     name: 'DoctorInfoManagement',
     component: () => import('@/views/config/DoctorInfoManagement.vue'),
     meta: {
-      title: 'InformaciÃ³n de Doctores - MediTrack',
-      description: 'GestiÃ³n de informaciÃ³n extendida de doctores',
+      title: 'Información de Doctores - MediTrack',
+      description: 'Gestión de información extendida de doctores',
       requiresAuth: true
     }
   },
 
-  // ConfiguraciÃ³n - ConfiguraciÃ³n de Proveedores
+  // Configuración - Configuración de Proveedores
   {
     path: '/supplier-configs',
     name: 'SupplierConfigManagement',
     component: () => import('@/views/config/SupplierConfigManagement.vue'),
     meta: {
-      title: 'ConfiguraciÃ³n de Proveedores - MediTrack',
-      description: 'GestiÃ³n de alertas de vencimiento por proveedor',
+      title: 'Configuración de Proveedores - MediTrack',
+      description: 'Gestión de alertas de vencimiento por proveedor',
       requiresAuth: true
     }
   },
@@ -373,8 +373,8 @@ const routes = [
     name: 'SupplyCodeManagement',
     component: () => import('@/views/config/SupplyCodeManagement.vue'),
     meta: {
-      title: 'GestiÃ³n de CÃ³digos de Insumos - MediTrack',
-      description: 'GestiÃ³n de cÃ³digos de insumos y niveles crÃ­ticos de stock',
+      title: 'Gestión de Códigos de Insumos - MediTrack',
+      description: 'Gestión de códigos de insumos y niveles críticos de stock',
       requiresAuth: true
     }
   },
@@ -424,7 +424,7 @@ const routes = [
     component: () => import('@/views/inventory/PavilionInventoryView.vue'),
     meta: {
       title: 'Inventario de Pabellones - MediTrack',
-      description: 'Stock disponible en cada pabellÃ³n del hospital',
+      description: 'Stock disponible en cada pabellón del hospital',
       requiresAuth: true
     }
   },
@@ -435,8 +435,8 @@ const routes = [
     name: 'NotFound',
     component: () => import('@/views/common/NotFound.vue'),
     meta: {
-      title: 'PÃ¡gina No Encontrada - MediTrack',
-      description: 'La pÃ¡gina que buscas no existe',
+      title: 'Página No Encontrada - MediTrack',
+      description: 'La página que buscas no existe',
       requiresAuth: false
     }
   }
@@ -454,16 +454,16 @@ const router = createRouter({
   }
 })
 
-// Guards de navegaciÃ³n
+// Guards de navegación
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
-  // Establecer tÃ­tulo de la pÃ¡gina
+  // Establecer título de la página
   if (to.meta.title) {
     document.title = to.meta.title
   }
   
-  // Establecer meta descripciÃ³n
+  // Establecer meta descripción
   if (to.meta.description) {
     let metaDescription = document.querySelector('meta[name="description"]')
     if (metaDescription) {
@@ -476,23 +476,23 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Si estÃ¡ autenticado y trata de acceder al login, redirigir al home
+  // Si está autenticado y trata de acceder al login, redirigir al home
   if (to.name === 'Login' && authStore.isAuthenticated) {
-    console.log('âœ" Usuario autenticado intentando acceder a login, redirigiendo a home')
+    console.log('✔ Usuario autenticado intentando acceder a login, redirigiendo a home')
     next({ name: 'Home', replace: true })
     return
   }
 
-  // VerificaciÃ³n de autenticaciÃ³n para rutas protegidas
+  // Verificación de autenticación para rutas protegidas
   if (to.meta.requiresAuth !== false) {
-    // Verificar si el usuario estÃ¡ autenticado
+    // Verificar si el usuario está autenticado
     if (!authStore.isAuthenticated) {
-      console.log('âœ— Usuario no autenticado para ruta protegida')
-      // Intentar restaurar sesiÃ³n desde localStorage solo si no estÃ¡ autenticado
+      console.log('✖ Usuario no autenticado para ruta protegida')
+      // Intentar restaurar sesión desde localStorage solo si no está autenticado
       authStore.initializeAuth()
       
       if (!authStore.isAuthenticated) {
-        console.log('âœ— No se pudo restaurar sesiÃ³n, redirigiendo a login')
+        console.log('✖ No se pudo restaurar sesión, redirigiendo a login')
         next({
           name: 'Login',
           query: { redirect: to.fullPath },
@@ -500,16 +500,16 @@ router.beforeEach(async (to, from, next) => {
         })
         return
       }
-      console.log('âœ" SesiÃ³n restaurada exitosamente')
+      console.log('✔ Sesión restaurada exitosamente')
     }
 
-    // CORRECCIÃ"N CRÃTICA: Verificar si el usuario debe cambiar su contraseÃ±a por primera vez
+    // CORRECCIÓN CRÍTICA: Verificar si el usuario debe cambiar su contraseña por primera vez
     // Primero verificamos si la ruta tiene skipPasswordCheck (como FirstTimePasswordChange)
-    // Si NO tiene skipPasswordCheck Y el usuario debe cambiar contraseÃ±a, redirigimos
+    // Si NO tiene skipPasswordCheck Y el usuario debe cambiar contraseña, redirigimos
     if (authStore.user?.must_change_password) {
       // Solo redirigir si NO estamos en FirstTimePasswordChange y NO tiene skipPasswordCheck
       if (to.name !== 'FirstTimePasswordChange' && to.meta.skipPasswordCheck !== true) {
-        console.log('âœ— Usuario debe cambiar contraseÃ±a temporal, redirigiendo...')
+        console.log('✖ Usuario debe cambiar contraseña temporal, redirigiendo...')
         next({
           name: 'FirstTimePasswordChange',
           replace: true
@@ -518,11 +518,11 @@ router.beforeEach(async (to, from, next) => {
       }
     }
 
-    // Verificar roles requeridos si estÃ¡n especificados en la ruta
+    // Verificar roles requeridos si están especificados en la ruta
     if (to.meta.requiredRoles && to.meta.requiredRoles.length > 0) {
       const userRole = authStore.getUserRole
       if (!to.meta.requiredRoles.includes(userRole)) {
-        console.log('âœ— Usuario sin permisos suficientes para acceder a:', to.name)
+        console.log('✖ Usuario sin permisos suficientes para acceder a:', to.name)
         next({ name: 'Home', replace: true })
         return
       }
