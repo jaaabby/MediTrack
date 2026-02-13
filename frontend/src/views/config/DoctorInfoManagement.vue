@@ -491,6 +491,13 @@ const saveDoctor = async () => {
     return
   }
 
+  // Validar formato de email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  if (!emailRegex.test(doctorForm.value.email.trim())) {
+    showWarning('El formato del email no es válido')
+    return
+  }
+
   if (!isEditing.value && (!doctorForm.value.password || !doctorForm.value.password.trim())) {
     showWarning('La contraseña es obligatoria para nuevos doctores')
     return

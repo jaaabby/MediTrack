@@ -314,10 +314,12 @@ const validateForm = () => {
   }
 
   // Validar email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  
   if (!registerForm.email) {
     errors.email = 'El email es requerido'
     isValid = false
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.email)) {
+  } else if (!emailRegex.test(registerForm.email)) {
     errors.email = 'El email debe ser válido'
     isValid = false
   }

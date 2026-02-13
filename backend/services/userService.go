@@ -1,11 +1,61 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"math/big"
 	"meditrack/models"
 	"strings"
+	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
+
+// generateRandomPassword genera una contraseña aleatoria de 12 caracteres
+// con al menos una mayúscula, una minúscula, un número y un carácter especial
+func generateRandomPassword() (string, error) {
+	const (
+		length           = 12
+		lowercaseLetters = "abcdefghijkmnopqrstuvwxyz"
+		uppercaseLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+		digits           = "23456789"
+		specialChars     = "@#$%&*+-="
+	)
+
+	allChars := lowercaseLetters + uppercaseLetters + digits + specialChars
+	password := make([]byte, length)
+
+	// Asegurar al menos un carácter de cada tipo
+	charSets := []string{lowercaseLetters, uppercaseLetters, digits, specialChars}
+	for i := 0; i < 4; i++ {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(charSets[i]))))
+		if err != nil {
+			return "", err
+		}
+		password[i] = charSets[i][n.Int64()]
+	}
+
+	// Llenar el resto con caracteres aleatorios
+	for i := 4; i < length; i++ {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(allChars))))
+		if err != nil {
+			return "", err
+		}
+		password[i] = allChars[n.Int64()]
+	}
+
+	// Mezclar la contraseña
+	for i := len(password) - 1; i > 0; i-- {
+		j, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
+		if err != nil {
+			return "", err
+		}
+		password[i], password[j.Int64()] = password[j.Int64()], password[i]
+	}
+
+	return string(password), nil
+}
 
 // removeAccents elimina tildes y acentos de un string usando normalización Unicode
 func removeAccents(s string) string {
@@ -44,6 +94,34 @@ func (s *UserService) CreateUser(user *models.User) error {
 	return s.DB.Create(user).Error
 }
 
+// CreateUserWithTemporaryPassword crea un usuario con una contraseña temporal generada automáticamente
+func (s *UserService) CreateUserWithTemporaryPassword(user *models.User) (string, error) {
+	// Generar contraseña temporal
+	tempPassword, err := generateRandomPassword()
+	if err != nil {
+		return "", err
+	}
+
+	// Hashear la contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(tempPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	// Asignar contraseña hasheada y marcar que debe cambiarla
+	user.Password = string(hashedPassword)
+	user.MustChangePassword = true
+	user.IsActive = true
+
+	// Crear usuario en la base de datos
+	if err := s.DB.Create(user).Error; err != nil {
+		return "", err
+	}
+
+	// Retornar la contraseña en texto plano para enviarla por correo
+	return tempPassword, nil
+}
+
 func (s *UserService) GetUserByRut(rut string) (*models.User, error) {
 	var user models.User
 	if err := s.DB.Preload("MedicalCenter").Preload("Specialty").First(&user, "rut = ?", rut).Error; err != nil {
@@ -65,11 +143,12 @@ func (s *UserService) UpdateUser(rut string, newUser *models.User) (*models.User
 	// Usar Updates para campos generales, pero Update individual para is_active
 	// porque Updates ignora valores zero (false)
 	updates := map[string]interface{}{
-		"name":              newUser.Name,
-		"email":             newUser.Email,
-		"role":              newUser.Role,
-		"medical_center_id": newUser.MedicalCenterID,
-		"is_active":         newUser.IsActive, // Explícitamente actualizar is_active
+		"name":                 newUser.Name,
+		"email":                newUser.Email,
+		"role":                 newUser.Role,
+		"medical_center_id":    newUser.MedicalCenterID,
+		"is_active":            newUser.IsActive,           // Explícitamente actualizar is_active
+		"must_change_password": newUser.MustChangePassword, // Explícitamente actualizar must_change_password
 	}
 
 	// Actualizar campos opcionales
@@ -173,4 +252,84 @@ func (s *UserService) SearchUsers(searchTerm string) ([]models.User, error) {
 	}
 
 	return filteredUsers, nil
+}
+
+// GenerateResetToken genera un token único para recuperación de contraseña
+func (s *UserService) GenerateResetToken(email string) (string, error) {
+	// Buscar usuario por email
+	var user models.User
+	if err := s.DB.Where("email = ? AND is_active = ?", email, true).First(&user).Error; err != nil {
+		return "", err
+	}
+
+	// Generar token aleatorio (32 bytes = 64 caracteres hex)
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	// Establecer tiempo de expiración (1 hora desde ahora)
+	expiresAt := time.Now().Add(1 * time.Hour).Unix()
+
+	// Guardar token y expiración en la base de datos
+	if err := s.DB.Model(&user).Updates(map[string]interface{}{
+		"reset_password_token":      token,
+		"reset_password_expires_at": expiresAt,
+	}).Error; err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+// ValidateResetToken valida si un token de reset es válido y no ha expirado
+func (s *UserService) ValidateResetToken(token string) (*models.User, error) {
+	var user models.User
+
+	// Buscar usuario por token
+	if err := s.DB.Where("reset_password_token = ?", token).First(&user).Error; err != nil {
+		return nil, err
+	}
+
+	// Verificar si el token ha expirado
+	if user.ResetPasswordExpiresAt == nil || *user.ResetPasswordExpiresAt < time.Now().Unix() {
+		return nil, gorm.ErrRecordNotFound // Token expirado
+	}
+
+	return &user, nil
+}
+
+// ResetPassword cambia la contraseña del usuario usando un token de reset
+func (s *UserService) ResetPassword(token, newPassword string) error {
+	// Validar token
+	user, err := s.ValidateResetToken(token)
+	if err != nil {
+		return err
+	}
+
+	// Hashear la nueva contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	// Actualizar contraseña y limpiar token
+	if err := s.DB.Model(&user).Updates(map[string]interface{}{
+		"password":                  string(hashedPassword),
+		"reset_password_token":      nil,
+		"reset_password_expires_at": nil,
+	}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ClearResetToken limpia el token de reset de un usuario
+func (s *UserService) ClearResetToken(rut string) error {
+	return s.DB.Model(&models.User{}).Where("rut = ?", rut).Updates(map[string]interface{}{
+		"reset_password_token":      nil,
+		"reset_password_expires_at": nil,
+	}).Error
 }

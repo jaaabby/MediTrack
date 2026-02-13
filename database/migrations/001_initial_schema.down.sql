@@ -156,6 +156,7 @@ DROP INDEX IF EXISTS idx_medical_specialty_name;
 DROP INDEX IF EXISTS idx_batch_history_batch_number;
 
 -- Índices de user
+DROP INDEX IF EXISTS idx_user_reset_token;
 DROP INDEX IF EXISTS idx_user_email;
 
 -- Índices únicos de QR

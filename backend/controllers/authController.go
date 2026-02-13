@@ -3,10 +3,13 @@ package controllers
 import (
 	"fmt"
 	"meditrack/config"
+	"meditrack/mailer"
 	"meditrack/models"
 	"meditrack/pkg/response"
 	"meditrack/services"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -203,8 +206,9 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
-	// Actualizar contraseña
+	// Actualizar contraseña y desactivar flag de cambio obligatorio
 	user.Password = string(hashedPassword)
+	user.MustChangePassword = false
 	if _, err := c.userService.UpdateUser(user.RUT, user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
@@ -216,6 +220,105 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
 		Message: "Contraseña cambiada exitosamente",
+	})
+}
+
+// FirstTimePasswordChange cambia la contraseña en el primer inicio de sesión
+// No requiere contraseña actual si el usuario tiene MustChangePassword=true
+func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
+	var changePassReq struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password" binding:"required,min=6"`
+	}
+
+	if err := ctx.ShouldBindJSON(&changePassReq); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	// Si MustChangePassword es true, no verificar contraseña actual
+	// Si es false, requerir contraseña actual
+	if !user.MustChangePassword {
+		if changePassReq.CurrentPassword == "" {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Se requiere la contraseña actual",
+			})
+			return
+		}
+
+		// Verificar contraseña actual
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(changePassReq.CurrentPassword)); err != nil {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Contraseña actual incorrecta",
+			})
+			return
+		}
+	} else {
+		// Si está en primer inicio, verificar contraseña temporal
+		if changePassReq.CurrentPassword == "" {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Se requiere la contraseña temporal",
+			})
+			return
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(changePassReq.CurrentPassword)); err != nil {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Contraseña temporal incorrecta",
+			})
+			return
+		}
+	}
+
+	// Hashear nueva contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(changePassReq.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al procesar nueva contraseña",
+		})
+		return
+	}
+
+	// Actualizar contraseña y desactivar flag de cambio obligatorio
+	user.Password = string(hashedPassword)
+	user.MustChangePassword = false
+	if _, err := c.userService.UpdateUser(user.RUT, user); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al actualizar contraseña: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Contraseña actualizada exitosamente",
 	})
 }
 
@@ -284,5 +387,189 @@ func (c *AuthController) Register(ctx *gin.Context) {
 		Success: true,
 		Message: "Usuario registrado exitosamente",
 		Data:    newUser.ToResponse(),
+	})
+}
+
+// RequestPasswordResetRequest representa la solicitud para recuperar contraseña
+type RequestPasswordResetRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// RequestPasswordReset genera un token de recuperación y envía email
+func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
+	var req RequestPasswordResetRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Email inválido: " + err.Error(),
+		})
+		return
+	}
+
+	// Generar token de reset
+	token, err := c.userService.GenerateResetToken(req.Email)
+	if err != nil {
+		// Por seguridad, no revelamos si el email existe o no
+		ctx.JSON(http.StatusOK, response.Response{
+			Success: true,
+			Message: "Si el email existe, recibirás un correo con instrucciones para recuperar tu contraseña",
+		})
+		return
+	}
+
+	// Obtener usuario para enviar email
+	user, err := c.userService.GetUserByEmail(req.Email)
+	if err != nil {
+		ctx.JSON(http.StatusOK, response.Response{
+			Success: true,
+			Message: "Si el email existe, recibirás un correo con instrucciones para recuperar tu contraseña",
+		})
+		return
+	}
+
+	// Construir URL de reset
+	// 1. Intentar desde variable de entorno
+	frontendURL := os.Getenv("FRONTEND_URL")
+
+	// 2. Si no está configurada, detectar desde headers de la petición
+	if frontendURL == "" {
+		// Intentar obtener desde Origin header (más confiable)
+		origin := ctx.GetHeader("Origin")
+
+		// Si no hay Origin, intentar desde Referer
+		if origin == "" {
+			referer := ctx.GetHeader("Referer")
+			if referer != "" {
+				// Extraer solo protocolo://host:puerto del Referer (sin path)
+				// Ejemplo: http://localhost:3000/some/path -> http://localhost:3000
+				idx := len("http://")
+				if len(referer) > 8 && referer[:8] == "https://" {
+					idx = len("https://")
+				}
+
+				// Buscar el siguiente / después del protocolo
+				pathStart := idx
+				for i := idx; i < len(referer); i++ {
+					if referer[i] == '/' {
+						pathStart = i
+						break
+					}
+				}
+				origin = referer[:pathStart]
+			}
+		}
+
+		if origin != "" {
+			frontendURL = origin
+		} else {
+			// Último recurso: detectar entorno
+			env := os.Getenv("ENV")
+			if env == "production" {
+				frontendURL = "https://localhost:3000"
+			} else {
+				// Desarrollo: usar HTTPS si el frontend está configurado con HTTPS (mkcert)
+				// Por defecto, el frontend usa HTTPS en desarrollo
+				frontendURL = "https://localhost:3000"
+			}
+		}
+	}
+
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s", frontendURL, token)
+
+	// Preparar datos para el template
+	templateData := struct {
+		Name     string
+		ResetURL string
+		Email    string
+	}{
+		Name:     user.Name,
+		ResetURL: resetURL,
+		Email:    user.Email,
+	}
+
+	// Enviar email
+	templatePath := filepath.Join("mailer", "templates", "password_reset.html")
+	mailReq := mailer.NewRequest([]string{user.Email}, "Recuperación de Contraseña - MediTrack")
+
+	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
+		fmt.Printf("Error enviando email: %v\n", err)
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al enviar el correo de recuperación",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Si el email existe, recibirás un correo con instrucciones para recuperar tu contraseña",
+	})
+}
+
+// ResetPasswordRequest representa la solicitud para cambiar la contraseña
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+// ResetPassword cambia la contraseña usando un token válido
+func (c *AuthController) ResetPassword(ctx *gin.Context) {
+	var req ResetPasswordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Resetear contraseña
+	if err := c.userService.ResetPassword(req.Token, req.NewPassword); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Token inválido o expirado",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Contraseña actualizada exitosamente",
+	})
+}
+
+// ValidateResetTokenRequest representa la solicitud para validar un token
+type ValidateResetTokenRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+// ValidateResetToken verifica si un token es válido
+func (c *AuthController) ValidateResetToken(ctx *gin.Context) {
+	var req ValidateResetTokenRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Token requerido",
+		})
+		return
+	}
+
+	// Validar token
+	user, err := c.userService.ValidateResetToken(req.Token)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Token inválido o expirado",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Token válido",
+		Data: map[string]interface{}{
+			"email": user.Email,
+			"name":  user.Name,
+		},
 	})
 }
