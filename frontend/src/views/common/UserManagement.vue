@@ -313,14 +313,18 @@
                     </label>
                     <input
                       id="rut"
-                      v-model="userForm.rut"
+                      :value="userForm.rut"
+                      @input="handleRutInput"
                       type="text"
                       required
                       :disabled="isEditMode"
+                      placeholder="12345678-9"
+                      maxlength="10"
                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                       :class="{ 'border-red-500': formErrors.rut }"
                     />
                     <p v-if="formErrors.rut" class="mt-1 text-sm text-red-600">{{ formErrors.rut }}</p>
+                    <p class="mt-1 text-xs text-gray-500">Formato: 12345678-9</p>
                   </div>
 
                   <!-- Email -->
@@ -684,6 +688,62 @@ watch(() => userForm.specialty_id, () => {
   formErrors.specialty_id = ''
 })
 
+// Funciones de formateo de RUT
+const formatRut = (rut) => {
+  // Eliminar todo excepto números y K (eliminar guiones también)
+  let rutLimpio = rut.replace(/[^0-9kK]/g, '')
+  
+  if (rutLimpio.length === 0) return ''
+  
+  // Si solo hay un carácter, devolverlo sin formato
+  if (rutLimpio.length === 1) return rutLimpio
+  
+  // Si tiene más de 9 caracteres, limitar a 9
+  if (rutLimpio.length > 9) {
+    rutLimpio = rutLimpio.slice(0, 9)
+  }
+  
+  // Separar cuerpo y dígito verificador (el último carácter siempre es el DV)
+  let cuerpo = rutLimpio.slice(0, -1)
+  let dv = rutLimpio.slice(-1).toUpperCase()
+  
+  // Retornar con guión automático
+  return `${cuerpo}-${dv}`
+}
+
+const cleanRut = (rut) => {
+  // Eliminar puntos y espacios, mantener solo números, K y guión
+  let rutLimpio = rut.replace(/[^0-9kK]/g, '')
+  
+  if (rutLimpio.length <= 1) return rutLimpio
+  
+  // Separar cuerpo y dígito verificador
+  let cuerpo = rutLimpio.slice(0, -1)
+  let dv = rutLimpio.slice(-1).toUpperCase()
+  
+  // Retornar sin puntos pero con guión
+  return `${cuerpo}-${dv}`
+}
+
+const validateRutFormat = (rut) => {
+  // Validar formato básico del RUT chileno (sin validar dígito verificador)
+  const rutPattern = /^[0-9]{1,8}-[0-9kK]$/
+  return rutPattern.test(rut)
+}
+
+// Manejar input de RUT
+const handleRutInput = (event) => {
+  const input = event.target.value
+  // Primero eliminar todos los guiones y caracteres no válidos
+  const limpio = input.replace(/[^0-9kK]/g, '')
+  // Luego formatear
+  const formatted = formatRut(limpio)
+  userForm.rut = formatted
+  
+  // Forzar actualización del input
+  event.target.value = formatted
+}
+
 // Cargar usuarios
 const loadUsers = async () => {
   try {
@@ -768,7 +828,7 @@ const openEditModal = (user) => {
   isEditMode.value = true
   userForm.id = user.id
   userForm.name = user.name
-  userForm.rut = user.rut
+  userForm.rut = formatRut(user.rut) // Formatear RUT para mostrar con puntos
   userForm.email = user.email
   userForm.role = user.role
   userForm.medical_center_id = user.medical_center_id
@@ -819,6 +879,13 @@ const validateForm = () => {
   if (!userForm.rut.trim()) {
     formErrors.rut = 'El RUT es requerido'
     isValid = false
+  } else {
+    // Validar formato del RUT (sin puntos, con guión)
+    const rutLimpio = cleanRut(userForm.rut)
+    if (!validateRutFormat(rutLimpio)) {
+      formErrors.rut = 'El formato del RUT no es válido'
+      isValid = false
+    }
   }
   
   // Regex para validar email
@@ -870,7 +937,7 @@ const saveUser = async () => {
     // Preparar datos del usuario
     const userData = {
       name: userForm.name,
-      rut: userForm.rut,
+      rut: cleanRut(userForm.rut), // Guardar sin puntos pero con guión
       email: userForm.email,
       role: userForm.role,
       medical_center_id: userForm.medical_center_id,

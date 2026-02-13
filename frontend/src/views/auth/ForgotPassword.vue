@@ -31,7 +31,7 @@
               Correo enviado
             </h3>
             <div class="mt-2 text-sm text-green-700">
-              Si el correo existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña.
+              Hemos enviado un correo con las instrucciones para restablecer tu contraseña.
               Por favor, revisa tu bandeja de entrada y carpeta de spam.
             </div>
           </div>
@@ -162,6 +162,7 @@ const handleSubmit = async () => {
     await authService.requestPasswordReset(email.value)
     emailSent.value = true
   } catch (error) {
+    // El error puede ser específico (correo no existe) o genérico
     errorMessage.value = error.message || 'Error al enviar el correo de recuperación'
   } finally {
     isLoading.value = false

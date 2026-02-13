@@ -69,6 +69,23 @@
               placeholder="Mínimo 6 caracteres"
             />
             <p v-if="errors.newPassword" class="mt-1 text-sm text-red-600">{{ errors.newPassword }}</p>
+            
+            <!-- Barra de fortaleza -->
+            <div v-if="passwordForm.newPassword" class="mt-3">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-medium text-gray-700">Fortaleza de la contraseña:</span>
+                <span class="text-xs font-semibold" :class="passwordStrength.colorClass">
+                  {{ passwordStrength.label }}
+                </span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div 
+                  class="h-full rounded-full transition-all duration-300 ease-in-out"
+                  :class="passwordStrength.bgClass"
+                  :style="{ width: passwordStrength.width }"
+                ></div>
+              </div>
+            </div>
           </div>
 
           <!-- Confirmar nueva contraseña -->
@@ -139,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import authService from '@/services/auth/authService'
@@ -154,6 +171,72 @@ const passwordForm = reactive({
   currentPassword: '',
   newPassword: '',
   confirmPassword: ''
+})
+
+// Calcular fortaleza de la contraseña
+const passwordStrength = computed(() => {
+  const password = passwordForm.newPassword
+  if (!password) {
+    return { width: '0%', label: '', colorClass: '', bgClass: '' }
+  }
+  
+  let strength = 0
+  
+  // Longitud
+  if (password.length >= 6) strength += 20
+  if (password.length >= 8) strength += 10
+  if (password.length >= 10) strength += 10
+  if (password.length >= 12) strength += 10
+  
+  // Contiene minúsculas
+  if (/[a-z]/.test(password)) strength += 10
+  
+  // Contiene mayúsculas
+  if (/[A-Z]/.test(password)) strength += 15
+  
+  // Contiene números
+  if (/[0-9]/.test(password)) strength += 15
+  
+  // Contiene símbolos
+  if (/[^a-zA-Z0-9]/.test(password)) strength += 20
+  
+  // Determinar nivel y estilos
+  if (strength < 40) {
+    return {
+      width: `${strength}%`,
+      label: 'Muy débil',
+      colorClass: 'text-red-600',
+      bgClass: 'bg-red-500'
+    }
+  } else if (strength < 60) {
+    return {
+      width: `${strength}%`,
+      label: 'Débil',
+      colorClass: 'text-orange-600',
+      bgClass: 'bg-orange-500'
+    }
+  } else if (strength < 80) {
+    return {
+      width: `${strength}%`,
+      label: 'Media',
+      colorClass: 'text-yellow-600',
+      bgClass: 'bg-yellow-500'
+    }
+  } else if (strength < 100) {
+    return {
+      width: `${strength}%`,
+      label: 'Fuerte',
+      colorClass: 'text-green-600',
+      bgClass: 'bg-green-500'
+    }
+  } else {
+    return {
+      width: '100%',
+      label: 'Muy fuerte',
+      colorClass: 'text-green-700',
+      bgClass: 'bg-green-600'
+    }
+  }
 })
 
 // Estado de la UI

@@ -24,22 +24,32 @@
 
     <!-- Filtros -->
     <div class="card">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
+      <div class="flex flex-col md:flex-row gap-4 items-end">
+        <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
           <input type="text" v-model="searchTerm" placeholder="Nombre, QR, estado, usuario..." class="form-input" />
         </div>
-        <div>
+        <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Desde</label>
           <input type="date" v-model="filters.from_date" class="form-input" />
         </div>
-        <div>
+        <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Hasta</label>
           <input type="date" v-model="filters.to_date" class="form-input" />
         </div>
-      </div>
-      <div class="mt-4 flex justify-end">
-        <button @click="loadHistory" class="btn-primary">Aplicar Filtros</button>
+        <div>
+          <button 
+            @click="clearFilters" 
+            :disabled="!hasActiveFilters"
+            class="btn-secondary flex items-center justify-center whitespace-nowrap"
+            :class="{ 'opacity-50 cursor-not-allowed': !hasActiveFilters }"
+          >
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Limpiar Filtros
+          </button>
+        </div>
       </div>
     </div>
 
@@ -433,17 +443,62 @@ const sortOrder = ref('desc')
 const currentPage = ref(1)
 const itemsPerPage = 10
 
+// Computed para verificar si hay filtros activos
+// Helper para parsear fechas consistentemente
+const parseDateTimeToLocal = (dateStr) => {
+  if (!dateStr) return null
+  if (typeof dateStr === 'string') {
+    // Si no tiene información de zona horaria, asumir que es hora local
+    if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+      // Reemplazar espacio por 'T' para formato ISO compatible con hora local
+      return new Date(dateStr.replace(' ', 'T'))
+    }
+  }
+  return new Date(dateStr)
+}
+
+const hasActiveFilters = computed(() => {
+  return searchTerm.value !== '' || filters.value.from_date !== '' || filters.value.to_date !== ''
+})
+
 const filteredHistory = computed(() => {
-  if (!searchTerm.value) return history.value
-  const term = searchTerm.value.toLowerCase()
-  return history.value.filter(item => 
-    item.supply_name?.toLowerCase().includes(term) ||
-    item.qr_code?.toLowerCase().includes(term) ||
-    item.medical_supply_id?.toString().includes(term) ||
-    item.status?.toLowerCase().includes(term) ||
-    item.user_rut?.toLowerCase().includes(term) ||
-    item.destination_type?.toLowerCase().includes(term)
-  )
+  let filtered = [...history.value]
+  
+  // Filtrar por búsqueda de texto
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase()
+    filtered = filtered.filter(item => 
+      item.supply_name?.toLowerCase().includes(term) ||
+      item.qr_code?.toLowerCase().includes(term) ||
+      item.medical_supply_id?.toString().includes(term) ||
+      item.status?.toLowerCase().includes(term) ||
+      item.user_rut?.toLowerCase().includes(term) ||
+      item.destination_type?.toLowerCase().includes(term)
+    )
+  }
+  
+  // Filtrar por rango de fechas
+  if (filters.value.from_date) {
+    // Crear fecha local a las 00:00:00
+    const fromDate = new Date(filters.value.from_date + 'T00:00:00')
+    filtered = filtered.filter(item => {
+      if (!item.date_time) return false
+      const itemDate = parseDateTimeToLocal(item.date_time)
+      return itemDate >= fromDate
+    })
+  }
+  
+  if (filters.value.to_date) {
+    // Crear fecha local a las 23:59:59.999
+    const toDate = new Date(filters.value.to_date + 'T23:59:59.999')
+    filtered = filtered.filter(item => {
+      if (!item.date_time) return false
+      const itemDate = parseDateTimeToLocal(item.date_time)
+      return itemDate <= toDate
+    })
+  }
+  
+  return filtered
 })
 
 // Computed para obtener la lista ordenada
@@ -513,6 +568,13 @@ const loadHistory = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const clearFilters = () => {
+  searchTerm.value = ''
+  filters.value.from_date = ''
+  filters.value.to_date = ''
+  currentPage.value = 1
 }
 
 const viewDetails = (item) => {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // AuthController maneja las peticiones HTTP relacionadas con autenticación
@@ -409,10 +410,18 @@ func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
 	// Generar token de reset
 	token, err := c.userService.GenerateResetToken(req.Email)
 	if err != nil {
-		// Por seguridad, no revelamos si el email existe o no
-		ctx.JSON(http.StatusOK, response.Response{
-			Success: true,
-			Message: "Si el email existe, recibirás un correo con instrucciones para recuperar tu contraseña",
+		// Verificar si el error es porque el usuario no existe
+		if err == gorm.ErrRecordNotFound {
+			ctx.JSON(http.StatusNotFound, response.Response{
+				Success: false,
+				Error:   "El correo electrónico ingresado no está registrado en el sistema",
+			})
+			return
+		}
+		// Otro tipo de error
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al procesar la solicitud",
 		})
 		return
 	}
@@ -420,9 +429,9 @@ func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
 	// Obtener usuario para enviar email
 	user, err := c.userService.GetUserByEmail(req.Email)
 	if err != nil {
-		ctx.JSON(http.StatusOK, response.Response{
-			Success: true,
-			Message: "Si el email existe, recibirás un correo con instrucciones para recuperar tu contraseña",
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al procesar la solicitud",
 		})
 		return
 	}
@@ -502,7 +511,7 @@ func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Si el email existe, recibirás un correo con instrucciones para recuperar tu contraseña",
+		Message: "Correo enviado exitosamente. Por favor, revisa tu bandeja de entrada",
 	})
 }
 

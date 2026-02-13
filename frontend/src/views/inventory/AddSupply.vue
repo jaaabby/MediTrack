@@ -30,7 +30,12 @@
                 type="number"
                 placeholder="123456"
                 class="form-input"
+                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.code }"
+                @input="clearFieldError('code')"
               />
+              <p v-if="formErrors.code" class="text-sm text-red-600 mt-1">
+                {{ formErrors.code }}
+              </p>
             </div>
             
             <div>
@@ -43,7 +48,12 @@
                 type="text"
                 placeholder="Ej: Jeringa 10ml"
                 class="form-input"
+                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.name }"
+                @input="clearFieldError('name')"
               />
+              <p v-if="formErrors.name" class="text-sm text-red-600 mt-1">
+                {{ formErrors.name }}
+              </p>
             </div>
             
             <div>
@@ -56,7 +66,12 @@
                 type="number"
                 placeholder="789"
                 class="form-input"
+                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.codeSupplier }"
+                @input="clearFieldError('codeSupplier')"
               />
+              <p v-if="formErrors.codeSupplier" class="text-sm text-red-600 mt-1">
+                {{ formErrors.codeSupplier }}
+              </p>
             </div>
             
             <div>
@@ -97,7 +112,12 @@
                 v-model="batchForm.expirationDate"
                 type="date"
                 class="form-input"
+                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.expirationDate }"
+                @input="clearFieldError('expirationDate')"
               />
+              <p v-if="formErrors.expirationDate" class="text-sm text-red-600 mt-1">
+                {{ formErrors.expirationDate }}
+              </p>
             </div>
             
             <div>
@@ -112,8 +132,13 @@
                 max="1000"
                 placeholder="50"
                 class="form-input"
+                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.amount }"
+                @input="clearFieldError('amount')"
               />
-              <p class="text-sm text-gray-500 mt-1">Se generará un QR único para cada producto individual</p>
+              <p v-if="formErrors.amount" class="text-sm text-red-600 mt-1">
+                {{ formErrors.amount }}
+              </p>
+              <p v-else class="text-sm text-gray-500 mt-1">Se generará un QR único para cada producto individual</p>
             </div>
             
             <div class="relative">
@@ -129,6 +154,7 @@
                 type="text"
                 placeholder="Escribir o seleccionar proveedor..."
                 class="form-input w-full"
+                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.supplier }"
                 autocomplete="off"
               />
               
@@ -152,7 +178,10 @@
                 </div>
               </div>
               
-              <p class="text-sm text-gray-500 mt-1">
+              <p v-if="formErrors.supplier" class="text-sm text-red-600 mt-1">
+                {{ formErrors.supplier }}
+              </p>
+              <p v-else class="text-sm text-gray-500 mt-1">
                 Escriba un nombre para agregar un proveedor nuevo o seleccione uno existente
               </p>
             </div>
@@ -171,6 +200,7 @@
                   type="text"
                   :placeholder="loadingStores ? 'Cargando almacenes...' : 'Escribir o seleccionar almacén...'"
                   class="form-input w-full pr-10"
+                  :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.storeId }"
                   :disabled="loadingStores"
                   autocomplete="off"
                 />
@@ -211,8 +241,12 @@
                 No se encontraron almacenes que coincidan con "{{ storeSearch }}"
               </div>
               
+              <!-- Mensaje de error de validación -->
+              <p v-if="formErrors.storeId" class="text-sm text-red-600 mt-1">
+                {{ formErrors.storeId }}
+              </p>
               <!-- Mensaje cuando no hay almacenes -->
-              <p v-if="stores.length === 0 && !loadingStores" class="text-sm text-red-500 mt-1">
+              <p v-else-if="stores.length === 0 && !loadingStores" class="text-sm text-red-500 mt-1">
                 No hay almacenes disponibles
               </p>
             </div>
@@ -223,14 +257,21 @@
               </label>
               <input
                 id="expiration-alert-days"
-                v-model.number="batchForm.expirationAlertDays"
-                type="number"
+                v-model="batchForm.expirationAlertDays"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
                 min="1"
                 max="365"
                 placeholder="90"
                 class="form-input"
+                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.expirationAlertDays }"
+                @input="handleExpirationAlertDaysInput"
               />
-              <p class="text-sm text-gray-500 mt-1">
+              <p v-if="formErrors.expirationAlertDays" class="text-sm text-red-600 mt-1">
+                {{ formErrors.expirationAlertDays }}
+              </p>
+              <p v-else class="text-sm text-gray-500 mt-1">
                 Días de anticipación para alertas de vencimiento (mínimo 90 días recomendado)
               </p>
             </div>
@@ -558,54 +599,106 @@ import { useNotification } from '@/composables/useNotification'
 
 const { success: showSuccess, error: showError, info: showInfo } = useNotification()
 
+// Estado de errores de validación
+const formErrors = ref({
+  code: '',
+  name: '',
+  codeSupplier: '',
+  expirationDate: '',
+  amount: '',
+  supplier: '',
+  storeId: '',
+  expirationAlertDays: ''
+})
+
 // Validación de formularios
 const validateForm = () => {
-  const errors = []
+  // Resetear errores
+  formErrors.value = {
+    code: '',
+    name: '',
+    codeSupplier: '',
+    expirationDate: '',
+    amount: '',
+    supplier: '',
+    storeId: '',
+    expirationAlertDays: ''
+  }
   
-  // Auto-completar días de alerta si es <= 0
+  let hasErrors = false
+  
+  // Validar días de alerta de vencimiento
   if (!batchForm.value.expirationAlertDays || isNaN(parseInt(batchForm.value.expirationAlertDays)) || parseInt(batchForm.value.expirationAlertDays) <= 0) {
-    batchForm.value.expirationAlertDays = 90
+    formErrors.value.expirationAlertDays = 'Los días de alerta deben ser un número mayor a 0.'
+    hasErrors = true
   }
   
   // Validar supplyForm
   if (!supplyForm.value.code || isNaN(parseInt(supplyForm.value.code))) {
-    errors.push('• El código del insumo es obligatorio y debe ser numérico.')
+    formErrors.value.code = 'El código del insumo es obligatorio y debe ser numérico.'
+    hasErrors = true
   }
   if (!supplyForm.value.name || supplyForm.value.name.trim() === '') {
-    errors.push('• El nombre del insumo es obligatorio.')
+    formErrors.value.name = 'El nombre del insumo es obligatorio.'
+    hasErrors = true
   }
   if (!supplyForm.value.codeSupplier || isNaN(parseInt(supplyForm.value.codeSupplier))) {
-    errors.push('• El código de proveedor es obligatorio y debe ser numérico.')
+    formErrors.value.codeSupplier = 'El código de proveedor es obligatorio y debe ser numérico.'
+    hasErrors = true
   }
   // Validar batchForm
   if (!batchForm.value.expirationDate) {
-    errors.push('• La fecha de vencimiento es obligatoria.')
+    formErrors.value.expirationDate = 'La fecha de vencimiento es obligatoria.'
+    hasErrors = true
   }
   if (!batchForm.value.amount || isNaN(parseInt(batchForm.value.amount)) || parseInt(batchForm.value.amount) < 1) {
-    errors.push('• La cantidad debe ser un número mayor a 0.')
+    formErrors.value.amount = 'La cantidad debe ser un número mayor a 0.'
+    hasErrors = true
   }
   if (!supplierSearch.value || supplierSearch.value.trim() === '') {
-    errors.push('• El proveedor es obligatorio.')
+    formErrors.value.supplier = 'El proveedor es obligatorio.'
+    hasErrors = true
   }
   if (!batchForm.value.storeId || batchForm.value.storeId === '') {
-    errors.push('• Debe seleccionar un almacén.')
+    formErrors.value.storeId = 'Debe seleccionar un almacén.'
+    hasErrors = true
   }
   
   // Verificar que el almacén seleccionado exista en la lista
   if (batchForm.value.storeId) {
     const selectedStore = stores.value.find(s => s.id === parseInt(batchForm.value.storeId))
     if (!selectedStore) {
-      errors.push('• Debe seleccionar un almacén válido.')
+      formErrors.value.storeId = 'Debe seleccionar un almacén válido.'
+      hasErrors = true
     }
   }
   
-  // Si hay errores, mostrarlos todos juntos
-  if (errors.length > 0) {
-    showError('Por favor corrija los siguientes errores:\n\n' + errors.join('\n'))
-    return false
+  return !hasErrors
+}
+
+// Limpiar error individual cuando el usuario empiece a editar
+const clearFieldError = (field) => {
+  if (formErrors.value[field]) {
+    formErrors.value[field] = ''
   }
+}
+
+// Validar que solo se ingresen números y no empiece con 0
+const handleExpirationAlertDaysInput = (event) => {
+  clearFieldError('expirationAlertDays')
+  const value = event.target.value
   
-  return true
+  // Remover caracteres no numéricos
+  let numericValue = value.replace(/[^0-9]/g, '')
+  
+  // Si empieza con 0, remover todos los ceros iniciales
+  numericValue = numericValue.replace(/^0+/, '')
+  
+  // Actualizar el valor
+  batchForm.value.expirationAlertDays = numericValue ? parseInt(numericValue) : ''
+  
+  // Actualizar el input manualmente
+  event.target.value = numericValue
 }
 
 // Estado reactivo
@@ -848,6 +941,18 @@ const createAnother = () => {
   batchQRImage.value = null
   showAllQRs.value = false
   
+  // Reset form errors
+  formErrors.value = {
+    code: '',
+    name: '',
+    codeSupplier: '',
+    expirationDate: '',
+    amount: '',
+    supplier: '',
+    storeId: '',
+    expirationAlertDays: ''
+  }
+  
   supplyForm.value = {
     code: '',
     name: '',
@@ -910,6 +1015,7 @@ const loadStores = async () => {
 
 // Funciones para manejar la búsqueda y selección de almacenes
 const onStoreSearch = () => {
+  clearFieldError('storeId')  // Limpiar error al escribir
   showStoreOptions.value = true
   // Si el texto coincide exactamente con un almacén, seleccionarlo automáticamente
   const exactMatch = stores.value.find(store => 
@@ -947,6 +1053,7 @@ const hideStoreOptions = () => {
 
 // Funciones para manejar la búsqueda y selección de proveedores
 const onSupplierSearch = () => {
+  clearFieldError('supplier')  // Limpiar error al escribir
   showSupplierOptions.value = true
   console.log('🔍 Buscando proveedor:', supplierSearch.value)
   console.log('📋 Proveedores filtrados:', filteredSuppliers.value.length)

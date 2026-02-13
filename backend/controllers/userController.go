@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"meditrack/mailer"
@@ -94,19 +95,68 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
+	// Construir URL del sistema
+	// 1. Intentar desde variable de entorno
+	frontendURL := os.Getenv("FRONTEND_URL")
+
+	// 2. Si no está configurada, detectar desde headers de la petición
+	if frontendURL == "" {
+		// Intentar obtener desde Origin header (más confiable)
+		origin := ctx.GetHeader("Origin")
+
+		// Si no hay Origin, intentar desde Referer
+		if origin == "" {
+			referer := ctx.GetHeader("Referer")
+			if referer != "" {
+				// Extraer solo protocolo://host:puerto del Referer (sin path)
+				idx := len("http://")
+				if len(referer) > 8 && referer[:8] == "https://" {
+					idx = len("https://")
+				}
+
+				// Buscar el siguiente / después del protocolo
+				pathStart := idx
+				for i := idx; i < len(referer); i++ {
+					if referer[i] == '/' {
+						pathStart = i
+						break
+					}
+				}
+				origin = referer[:pathStart]
+			}
+		}
+
+		if origin != "" {
+			frontendURL = origin
+		} else {
+			// Último recurso: detectar entorno
+			env := os.Getenv("ENV")
+			if env == "production" {
+				frontendURL = "https://localhost:3000"
+			} else {
+				// Desarrollo: usar HTTPS si el frontend está configurado con HTTPS (mkcert)
+				frontendURL = "https://localhost:3000"
+			}
+		}
+	}
+
+	systemURL := frontendURL + "/login"
+
 	// Preparar datos para el template de email
 	templateData := struct {
-		Name     string
-		Email    string
-		RUT      string
-		Role     string
-		Password string
+		Name      string
+		Email     string
+		RUT       string
+		Role      string
+		Password  string
+		SystemURL string
 	}{
-		Name:     user.Name,
-		Email:    user.Email,
-		RUT:      user.RUT,
-		Role:     user.Role,
-		Password: tempPassword,
+		Name:      user.Name,
+		Email:     user.Email,
+		RUT:       user.RUT,
+		Role:      user.Role,
+		Password:  tempPassword,
+		SystemURL: systemURL,
 	}
 
 	// Enviar email con contraseña temporal
