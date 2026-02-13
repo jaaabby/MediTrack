@@ -137,6 +137,130 @@ class AuthService {
     }
   }
 
+  // Cambiar contraseña por primera vez (contraseña temporal)
+  async firstTimePasswordChange(temporaryPassword, newPassword) {
+    try {
+      const token = this.getToken()
+      if (!token) {
+        throw new Error('No hay token de autenticación')
+      }
+
+      const response = await fetch(`${this.baseURL}/auth/first-time-password-change`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          temporary_password: temporaryPassword,
+          new_password: newPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cambiar contraseña')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al cambiar contraseña')
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error en AuthService.firstTimePasswordChange:', error)
+      throw error
+    }
+  }
+
+  // Solicitar recuperación de contraseña
+  async requestPasswordReset(email) {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al solicitar recuperación de contraseña')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al solicitar recuperación de contraseña')
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error en AuthService.requestPasswordReset:', error)
+      throw error
+    }
+  }
+
+  // Validar token de recuperación
+  async validateResetToken(token) {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/validate-reset-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Token inválido o expirado')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Token inválido o expirado')
+      }
+
+      return data.data
+    } catch (error) {
+      console.error('Error en AuthService.validateResetToken:', error)
+      throw error
+    }
+  }
+
+  // Resetear contraseña con token
+  async resetPassword(token, newPassword) {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          new_password: newPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al resetear contraseña')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al resetear contraseña')
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error en AuthService.resetPassword:', error)
+      throw error
+    }
+  }
+
   // Guardar token en localStorage
   setToken(token) {
     localStorage.setItem('auth_token', token)

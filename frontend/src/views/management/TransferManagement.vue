@@ -185,7 +185,7 @@
                   </span>
                 </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 Acciones
               </th>
             </tr>
@@ -204,10 +204,10 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(transfer.created_at) }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <div class="flex justify-end space-x-2">
                   <button @click="viewDetails(transfer)" 
-                    class="btn-primary text-xs px-3 py-1.5"
+                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
                     title="Ver detalles">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -216,7 +216,7 @@
                   </button>
                   <button v-if="transfer.status === 'pendiente' || transfer.status === 'en_transito'" 
                     @click="openConfirmModal(transfer)" 
-                    class="btn-success text-xs px-3 py-1.5"
+                    class="text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded transition-colors"
                     title="Confirmar recepción">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -224,7 +224,7 @@
                   </button>
                   <button v-if="transfer.status === 'pendiente'" 
                     @click="openCancelModal(transfer)" 
-                    class="btn-danger text-xs px-3 py-1.5"
+                    class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded transition-colors"
                     title="Cancelar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1052,7 +1052,7 @@ const showNotification = (message, type = 'info') => {
   }
 }
 
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'transfer_code', label: 'Código de Transferencia' },
@@ -1072,7 +1072,7 @@ const exportToExcel = () => {
       { key: 'rejection_reason', label: 'Motivo de Rechazo' }
     ]
     
-    exportExcel(sortedTransfers.value, columns, 'transferencias')
+    await exportExcel(sortedTransfers.value, columns, 'transferencias')
     showNotification('Exportación a Excel completada exitosamente', 'success')
   } catch (error) {
     console.error('Error al exportar:', error)

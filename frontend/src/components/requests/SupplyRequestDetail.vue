@@ -259,7 +259,7 @@
               </button>
             </div>
             <div v-show="!itemsCollapsed || !hasActiveCart" class="divide-y divide-gray-200">
-              <div v-for="(item, index) in items" :key="item.id" class="p-4 sm:p-6">
+              <div v-for="item in items" :key="item.id" class="p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-3 sm:mb-4">
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1">

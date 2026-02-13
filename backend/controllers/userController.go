@@ -5,7 +5,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 
+	"meditrack/mailer"
 	"meditrack/models"
 	"meditrack/pkg/response"
 	"meditrack/services"
@@ -32,7 +34,6 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		RUT             string `json:"rut" binding:"required"`
 		Name            string `json:"name" binding:"required"`
 		Email           string `json:"email" binding:"required,email"`
-		Password        string `json:"password" binding:"required,min=6"`
 		Role            string `json:"role" binding:"required"`
 		MedicalCenterID int    `json:"medical_center_id" binding:"required"`
 		PavilionID      *int   `json:"pavilion_id"`
@@ -66,25 +67,13 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	// Hashear la contraseña
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRequest.Password), bcrypt.DefaultCost)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   "Error al procesar contraseña: " + err.Error(),
-		})
-		return
-	}
-
 	// Crear modelo
 	user := models.User{
 		RUT:             userRequest.RUT,
 		Name:            userRequest.Name,
 		Email:           userRequest.Email,
-		Password:        string(hashedPassword),
 		Role:            userRequest.Role,
 		MedicalCenterID: userRequest.MedicalCenterID,
-		IsActive:        true,
 	}
 
 	// Asignar campos opcionales
@@ -95,7 +84,9 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		user.SpecialtyID = userRequest.SpecialtyID
 	}
 
-	if err := c.userService.CreateUser(&user); err != nil {
+	// Crear usuario con contraseña temporal
+	tempPassword, err := c.userService.CreateUserWithTemporaryPassword(&user)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al crear usuario: " + err.Error(),
@@ -103,9 +94,41 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
+	// Preparar datos para el template de email
+	templateData := struct {
+		Name     string
+		Email    string
+		RUT      string
+		Role     string
+		Password string
+	}{
+		Name:     user.Name,
+		Email:    user.Email,
+		RUT:      user.RUT,
+		Role:     user.Role,
+		Password: tempPassword,
+	}
+
+	// Enviar email con contraseña temporal
+	templatePath := filepath.Join("mailer", "templates", "temporary_password.html")
+	mailReq := mailer.NewRequest([]string{user.Email}, "¡Bienvenido a MediTrack! - Tus credenciales de acceso")
+
+	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
+		log.Printf("⚠️ Error enviando email a %s: %v", user.Email, err)
+		// Continuamos aunque falle el email - el usuario fue creado
+		ctx.JSON(http.StatusCreated, response.Response{
+			Success: true,
+			Message: "Usuario creado exitosamente, pero hubo un error al enviar el correo. Por favor, contacte al administrador para obtener su contraseña temporal.",
+			Data:    user.ToResponse(),
+		})
+		return
+	}
+
+	log.Printf("✅ Usuario creado y correo enviado exitosamente a: %s", user.Email)
+
 	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
-		Message: "Usuario creado exitosamente",
+		Message: "Usuario creado exitosamente. Se ha enviado un correo con la contraseña temporal.",
 		Data:    user.ToResponse(),
 	})
 }

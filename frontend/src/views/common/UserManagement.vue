@@ -146,7 +146,7 @@
               <th class="table-header-cell">
                 <span>Estado</span>
               </th>
-              <th class="table-header-cell">
+              <th class="table-header-cell sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <span>Acciones</span>
               </th>
             </tr>
@@ -211,24 +211,25 @@
                   {{ user.is_active ? 'Activo' : 'Inactivo' }}
                 </span>
               </td>
-              <td class="table-cell">
-                <div class="flex space-x-1.5 sm:space-x-2">
+              <td class="table-cell sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
+                <div class="flex justify-end space-x-2">
                   <button
                     @click.stop="openEditModal(user)"
-                    class="text-warning-600 hover:text-warning-800"
+                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
                     title="Editar usuario"
                   >
-                    <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
+                    <span class="font-medium text-xs">Editar</span>
                   </button>
                   <button
                     @click.stop="openDeleteModal(user)"
-                    class="text-danger-600 hover:text-danger-800"
+                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
                     title="Eliminar usuario"
                   >
-                    <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -338,50 +339,16 @@
                     <p v-if="formErrors.email" class="mt-1 text-sm text-red-600">{{ formErrors.email }}</p>
                   </div>
 
-                  <!-- Contraseña -->
-                  <div v-if="!isEditMode">
-                    <label for="password" class="block text-sm font-medium text-gray-700">
-                      Contraseña <span class="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="password"
-                      v-model="userForm.password"
-                      type="password"
-                      required
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      :class="{ 'border-red-500': formErrors.password }"
-                    />
-                    <p v-if="formErrors.password" class="mt-1 text-sm text-red-600">{{ formErrors.password }}</p>
-                    <p class="mt-1 text-xs text-gray-500">Mínimo 6 caracteres</p>
-                  </div>
-
-                  <!-- Cambiar contraseña (solo para editar) -->
-                  <div v-if="isEditMode">
-                    <div class="flex items-center mb-2">
-                      <input
-                        id="change_password"
-                        v-model="changePassword"
-                        type="checkbox"
-                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label for="change_password" class="ml-2 block text-sm font-medium text-gray-700">
-                        Cambiar contraseña
-                      </label>
-                    </div>
-                    <div v-if="changePassword">
-                      <label for="new_password" class="block text-sm font-medium text-gray-700">
-                        Nueva Contraseña <span class="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="new_password"
-                        v-model="userForm.password"
-                        type="password"
-                        :required="changePassword"
-                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        :class="{ 'border-red-500': formErrors.password }"
-                      />
-                      <p v-if="formErrors.password" class="mt-1 text-sm text-red-600">{{ formErrors.password }}</p>
-                      <p class="mt-1 text-xs text-gray-500">Mínimo 6 caracteres</p>
+                  <!-- Mensaje informativo sobre contraseña automática (solo al crear) -->
+                  <div v-if="!isEditMode" class="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <div class="flex">
+                      <svg class="h-5 w-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div class="text-sm text-blue-700">
+                        <p class="font-medium">Contraseña Automática</p>
+                        <p class="mt-1">El sistema generará una contraseña segura y la enviará automáticamente al correo electrónico del usuario.</p>
+                      </div>
                     </div>
                   </div>
 
@@ -585,7 +552,6 @@ const loading = ref(false)
 const saving = ref(false)
 const showModal = ref(false)
 const isEditMode = ref(false)
-const changePassword = ref(false)
 
 // Refs para búsqueda y filtros
 const searchTerm = ref('')
@@ -672,6 +638,9 @@ const formErrors = reactive({
 
 // Watcher para limpiar campos condicionales cuando cambia el rol
 watch(() => userForm.role, (newRole, oldRole) => {
+  // Limpiar error del rol
+  formErrors.role = ''
+  
   if (newRole !== oldRole) {
     // Limpiar pabellón si no es rol pabellón o pavedad
     if (newRole !== 'pabellón' && newRole !== 'pavedad') {
@@ -684,6 +653,35 @@ watch(() => userForm.role, (newRole, oldRole) => {
       formErrors.specialty_id = ''
     }
   }
+})
+
+// Watchers para limpiar errores individuales cuando el usuario modifica cada campo
+watch(() => userForm.name, () => {
+  formErrors.name = ''
+})
+
+watch(() => userForm.rut, () => {
+  formErrors.rut = ''
+})
+
+watch(() => userForm.email, () => {
+  formErrors.email = ''
+})
+
+watch(() => userForm.password, () => {
+  formErrors.password = ''
+})
+
+watch(() => userForm.medical_center_id, () => {
+  formErrors.medical_center_id = ''
+})
+
+watch(() => userForm.pavilion_id, () => {
+  formErrors.pavilion_id = ''
+})
+
+watch(() => userForm.specialty_id, () => {
+  formErrors.specialty_id = ''
 })
 
 // Cargar usuarios
@@ -761,7 +759,6 @@ const getSpecialtyName = (specialtyId) => {
 const openCreateModal = () => {
   resetForm()
   isEditMode.value = false
-  changePassword.value = false
   showModal.value = true
 }
 
@@ -769,7 +766,6 @@ const openCreateModal = () => {
 const openEditModal = (user) => {
   resetForm()
   isEditMode.value = true
-  changePassword.value = false
   userForm.id = user.id
   userForm.name = user.name
   userForm.rut = user.rut
@@ -785,10 +781,8 @@ const openEditModal = (user) => {
 // Cerrar modal
 const closeModal = () => {
   showModal.value = false
-  changePassword.value = false
   resetForm()
 }
-
 // Resetear formulario
 const resetForm = () => {
   userForm.id = null
@@ -827,23 +821,15 @@ const validateForm = () => {
     isValid = false
   }
   
+  // Regex para validar email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  
   if (!userForm.email.trim()) {
     formErrors.email = 'El email es requerido'
     isValid = false
-  } else if (!userForm.email.includes('@')) {
+  } else if (!emailRegex.test(userForm.email)) {
     formErrors.email = 'El email debe ser válido'
     isValid = false
-  }
-  
-  // Validar contraseña solo en creación o si se desea cambiar en edición
-  if (!isEditMode.value || changePassword.value) {
-    if (!userForm.password.trim()) {
-      formErrors.password = 'La contraseña es requerida'
-      isValid = false
-    } else if (userForm.password.length < 6) {
-      formErrors.password = 'La contraseña debe tener al menos 6 caracteres'
-      isValid = false
-    }
   }
   
   if (!userForm.role) {
@@ -901,10 +887,8 @@ const saveUser = async () => {
       userData.specialty_id = userForm.specialty_id ? parseInt(userForm.specialty_id) : null
     }
     
-    // Solo incluir contraseña si es modo creación o si se desea cambiar
-    if (!isEditMode.value || changePassword.value) {
-      userData.password = userForm.password
-    }
+    // NO se permite cambiar contraseña desde el formulario de edición
+    // Los usuarios deben cambiarla mediante el sistema de recuperación de contraseña
     
     if (isEditMode.value) {
       // Usar RUT como identificador para actualizar
@@ -914,7 +898,7 @@ const saveUser = async () => {
     }
     
     if (response.success) {
-      showSuccess(isEditMode.value ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente')
+      showSuccess(isEditMode.value ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente. Se ha enviado un correo con la contraseña temporal.')
       closeModal()
       await loadUsers()
     } else {

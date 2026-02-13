@@ -285,7 +285,7 @@ import { format, formatDistanceToNow, differenceInDays, differenceInHours, diffe
 import { es } from 'date-fns/locale'
 import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
 
@@ -770,65 +770,70 @@ const formatRelativeTime = (dateString) => {
   }
 }
 
-const exportTraceability = () => {
+const exportTraceability = async () => {
   try {
     // Crear libro de Excel
-    const workbook = XLSX.utils.book_new()
+    const workbook = new ExcelJS.Workbook()
 
     // ==================== Hoja 1: Resumen ====================
-    const summaryData = [
-      ['REPORTE DE TRAZABILIDAD DEL INSUMO MEDICO'],
-      [''],
-      ['INFORMACION GENERAL'],
-      ['Código QR:', qrCode.value],
-      ['Nombre del Insumo:', qrInfo.value?.supply_info?.name || 'N/A'],
-      ['Código de Proveedor:', qrInfo.value?.supply_code?.code_supplier || 'N/A'],
-      ['Lote:', qrInfo.value?.supply_info?.batch?.id || qrInfo.value?.batch_id || 'N/A'],
-      ['Estado Actual:', getCurrentStatusLabel()],
-      ['Ubicación Actual:', getCurrentLocation()],
-      ['Tiempo en Sistema:', getTimeInSystem()],
-      ['Fecha de Exportación:', format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })],
-      [''],
-      ['ESTADISTICAS DEL INSUMO'],
-      ['Total de Eventos Registrados:', getAllEvents().length],
-      ['Total de Movimientos:', getEventCount('movement')],
-      ['Ubicaciones Visitadas:', getLocationCount()],
-      ['Usuarios Involucrados:', getUserCount()],
-      [''],
-      ['INFORMACION DEL LOTE'],
-      ['Proveedor:', qrInfo.value?.batch_info?.supplier || qrInfo.value?.supplier || 'N/A'],
-      ['Fecha de Vencimiento:', qrInfo.value?.batch_info?.expiration_date ? formatDateTime(qrInfo.value.batch_info.expiration_date) : 'N/A'],
-    ]
+    const summarySheet = workbook.addWorksheet('Resumen')
     
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData)
+    // Agregar datos
+    summarySheet.addRow(['REPORTE DE TRAZABILIDAD DEL INSUMO MEDICO'])
+    summarySheet.addRow([])
+    summarySheet.addRow(['INFORMACION GENERAL'])
+    summarySheet.addRow(['Código QR:', qrCode.value])
+    summarySheet.addRow(['Nombre del Insumo:', qrInfo.value?.supply_info?.name || 'N/A'])
+    summarySheet.addRow(['Código de Proveedor:', qrInfo.value?.supply_code?.code_supplier || 'N/A'])
+    summarySheet.addRow(['Lote:', qrInfo.value?.supply_info?.batch?.id || qrInfo.value?.batch_id || 'N/A'])
+    summarySheet.addRow(['Estado Actual:', getCurrentStatusLabel()])
+    summarySheet.addRow(['Ubicación Actual:', getCurrentLocation()])
+    summarySheet.addRow(['Tiempo en Sistema:', getTimeInSystem()])
+    summarySheet.addRow(['Fecha de Exportación:', format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })])
+    summarySheet.addRow([])
+    summarySheet.addRow(['ESTADISTICAS DEL INSUMO'])
+    summarySheet.addRow(['Total de Eventos Registrados:', getAllEvents().length])
+    summarySheet.addRow(['Total de Movimientos:', getEventCount('movement')])
+    summarySheet.addRow(['Ubicaciones Visitadas:', getLocationCount()])
+    summarySheet.addRow(['Usuarios Involucrados:', getUserCount()])
+    summarySheet.addRow([])
+    summarySheet.addRow(['INFORMACION DEL LOTE'])
+    summarySheet.addRow(['Proveedor:', qrInfo.value?.batch_info?.supplier || qrInfo.value?.supplier || 'N/A'])
+    summarySheet.addRow(['Fecha de Vencimiento:', qrInfo.value?.batch_info?.expiration_date ? formatDateTime(qrInfo.value.batch_info.expiration_date) : 'N/A'])
     
     // Aplicar estilos y anchos de columna
-    summarySheet['!cols'] = [
-      { wch: 30 }, // Columna A (etiquetas)
-      { wch: 50 }  // Columna B (valores)
-    ]
+    summarySheet.getColumn(1).width = 30
+    summarySheet.getColumn(2).width = 50
     
-    // Mergear celdas para títulos
-    if (!summarySheet['!merges']) summarySheet['!merges'] = []
-    summarySheet['!merges'].push(
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }, // Título principal
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }, // INFORMACION GENERAL
-      { s: { r: 12, c: 0 }, e: { r: 12, c: 1 } }, // ESTADISTICAS
-      { s: { r: 18, c: 0 }, e: { r: 18, c: 1 } }  // INFORMACION DEL LOTE
-    )
-    
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumen')
+    // Estilizar y mergear celdas para títulos
+    summarySheet.getRow(1).font = { bold: true, size: 14 }
+    summarySheet.mergeCells('A1:B1')
+    summarySheet.getRow(3).font = { bold: true }
+    summarySheet.mergeCells('A3:B3')
+    summarySheet.getRow(13).font = { bold: true }
+    summarySheet.mergeCells('A13:B13')
+    summarySheet.getRow(19).font = { bold: true }
+    summarySheet.mergeCells('A19:B19')
 
     // ==================== Hoja 2: Historial de Eventos ====================
     const events = getAllEvents()
-    const eventsData = [
-      ['HISTORIAL COMPLETO DE EVENTOS'],
-      [''],
-      ['Fecha y Hora', 'Tipo de Evento', 'Estado', 'Descripción', 'Usuario', 'Ubicación', 'Notas']
-    ]
+    const eventsSheet = workbook.addWorksheet('Historial de Eventos')
+    
+    eventsSheet.addRow(['HISTORIAL COMPLETO DE EVENTOS'])
+    eventsSheet.addRow([])
+    eventsSheet.addRow(['Fecha y Hora', 'Tipo de Evento', 'Estado', 'Descripción', 'Usuario', 'Ubicación', 'Notas'])
+    
+    // Estilizar encabezados
+    const eventsHeaderRow = eventsSheet.getRow(3)
+    eventsHeaderRow.font = { bold: true }
+    eventsHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    }
     
     events.forEach(event => {
-      eventsData.push([
+      eventsSheet.addRow([
         formatDateTime(event.date_time || event.timestamp),
         getEventTitle(event),
         event.status || 'N/A',
@@ -839,35 +844,38 @@ const exportTraceability = () => {
       ])
     })
     
-    const eventsSheet = XLSX.utils.aoa_to_sheet(eventsData)
-    
     // Configurar anchos de columna
-    eventsSheet['!cols'] = [
-      { wch: 18 }, // Fecha y Hora
-      { wch: 25 }, // Tipo de Evento
-      { wch: 20 }, // Estado
-      { wch: 40 }, // Descripción
-      { wch: 25 }, // Usuario
-      { wch: 35 }, // Ubicación
-      { wch: 40 }  // Notas
-    ]
+    eventsSheet.getColumn(1).width = 18
+    eventsSheet.getColumn(2).width = 25
+    eventsSheet.getColumn(3).width = 20
+    eventsSheet.getColumn(4).width = 40
+    eventsSheet.getColumn(5).width = 25
+    eventsSheet.getColumn(6).width = 35
+    eventsSheet.getColumn(7).width = 40
     
     // Mergear título
-    if (!eventsSheet['!merges']) eventsSheet['!merges'] = []
-    eventsSheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } })
-    
-    XLSX.utils.book_append_sheet(workbook, eventsSheet, 'Historial de Eventos')
+    eventsSheet.getRow(1).font = { bold: true, size: 14 }
+    eventsSheet.mergeCells('A1:G1')
 
     // ==================== Hoja 3: Recorrido del Insumo ====================
     const journey = getLocationJourney()
-    const journeyData = [
-      ['RECORRIDO DEL INSUMO POR UBICACIONES'],
-      [''],
-      ['Secuencia', 'Ubicación', 'Fecha de Llegada', 'Duración en Ubicación', 'Estado Actual']
-    ]
+    const journeySheet = workbook.addWorksheet('Recorrido')
+    
+    journeySheet.addRow(['RECORRIDO DEL INSUMO POR UBICACIONES'])
+    journeySheet.addRow([])
+    journeySheet.addRow(['Secuencia', 'Ubicación', 'Fecha de Llegada', 'Duración en Ubicación', 'Estado Actual'])
+    
+    // Estilizar encabezados
+    const journeyHeaderRow = journeySheet.getRow(3)
+    journeyHeaderRow.font = { bold: true }
+    journeyHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    }
     
     journey.forEach((location, index) => {
-      journeyData.push([
+      journeySheet.addRow([
         index + 1,
         location.name,
         formatDateTime(location.date),
@@ -876,29 +884,32 @@ const exportTraceability = () => {
       ])
     })
     
-    const journeySheet = XLSX.utils.aoa_to_sheet(journeyData)
-    
     // Configurar anchos de columna
-    journeySheet['!cols'] = [
-      { wch: 12 }, // Secuencia
-      { wch: 45 }, // Ubicación
-      { wch: 20 }, // Fecha de Llegada
-      { wch: 25 }, // Duración
-      { wch: 22 }  // Estado
-    ]
+    journeySheet.getColumn(1).width = 12
+    journeySheet.getColumn(2).width = 45
+    journeySheet.getColumn(3).width = 20
+    journeySheet.getColumn(4).width = 25
+    journeySheet.getColumn(5).width = 22
     
     // Mergear título
-    if (!journeySheet['!merges']) journeySheet['!merges'] = []
-    journeySheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } })
-    
-    XLSX.utils.book_append_sheet(workbook, journeySheet, 'Recorrido')
+    journeySheet.getRow(1).font = { bold: true, size: 14 }
+    journeySheet.mergeCells('A1:E1')
 
     // ==================== Hoja 4: Resumen por Usuario ====================
-    const userSummaryData = [
-      ['RESUMEN DE ACTIVIDAD POR USUARIO'],
-      [''],
-      ['Usuario', 'Número de Eventos', 'Último Evento', 'Fecha del Último Evento']
-    ]
+    const userSummarySheet = workbook.addWorksheet('Resumen por Usuario')
+    
+    userSummarySheet.addRow(['RESUMEN DE ACTIVIDAD POR USUARIO'])
+    userSummarySheet.addRow([])
+    userSummarySheet.addRow(['Usuario', 'Número de Eventos', 'Último Evento', 'Fecha del Último Evento'])
+    
+    // Estilizar encabezados
+    const userSummaryHeaderRow = userSummarySheet.getRow(3)
+    userSummaryHeaderRow.font = { bold: true }
+    userSummaryHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    }
     
     // Agrupar eventos por usuario
     const userEvents = new Map()
@@ -913,7 +924,7 @@ const exportTraceability = () => {
     // Crear resumen por usuario
     Array.from(userEvents.entries()).forEach(([userName, userEventList]) => {
       const lastEvent = userEventList[0] // Ya están ordenados por fecha descendente
-      userSummaryData.push([
+      userSummarySheet.addRow([
         userName,
         userEventList.length,
         getEventTitle(lastEvent),
@@ -921,25 +932,28 @@ const exportTraceability = () => {
       ])
     })
     
-    const userSummarySheet = XLSX.utils.aoa_to_sheet(userSummaryData)
-    
     // Configurar anchos de columna
-    userSummarySheet['!cols'] = [
-      { wch: 30 }, // Usuario
-      { wch: 20 }, // Número de Eventos
-      { wch: 35 }, // Último Evento
-      { wch: 20 }  // Fecha
-    ]
+    userSummarySheet.getColumn(1).width = 30
+    userSummarySheet.getColumn(2).width = 20
+    userSummarySheet.getColumn(3).width = 35
+    userSummarySheet.getColumn(4).width = 20
     
     // Mergear título
-    if (!userSummarySheet['!merges']) userSummarySheet['!merges'] = []
-    userSummarySheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } })
-    
-    XLSX.utils.book_append_sheet(workbook, userSummarySheet, 'Resumen por Usuario')
+    userSummarySheet.getRow(1).font = { bold: true, size: 14 }
+    userSummarySheet.mergeCells('A1:D1')
 
     // Generar archivo Excel
     const fileName = `Trazabilidad_${qrCode.value}_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`
-    XLSX.writeFile(workbook, fileName)
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
     
     showSuccess('Trazabilidad exportada a Excel exitosamente')
   } catch (err) {

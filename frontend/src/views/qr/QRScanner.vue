@@ -385,6 +385,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 import qrService from '@/services/qr/qrService'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import jsQR from 'jsqr'
@@ -395,6 +396,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { success: showSuccess, error: showError } = useNotification()
+const { confirm } = useAlert()
 
 // Referencias DOM
 const videoElement = ref(null)
@@ -1251,7 +1253,11 @@ const returnToStore = async (qrCode) => {
   if (!qrCode || returningToStore.value) return
   
   // Confirmar la acción
-  if (!confirm('¿Está seguro de que desea regresar este insumo a bodega?\n\nEsta acción cambiará el estado del insumo a "en_camino_a_bodega". Deberá confirmar la llegada cuando el insumo llegue físicamente a bodega.')) {
+  const confirmed = await confirm(
+    '¿Está seguro de que desea regresar este insumo a bodega?\n\nEsta acción cambiará el estado del insumo a "en_camino_a_bodega". Deberá confirmar la llegada cuando el insumo llegue físicamente a bodega.',
+    'Confirmar retorno a bodega'
+  )
+  if (!confirmed) {
     return
   }
   
@@ -1291,7 +1297,11 @@ const confirmArrivalToStore = async (qrCode) => {
   if (!qrCode || confirmingArrival.value) return
   
   // Confirmar la acción
-  if (!confirm('¿Confirma que este insumo ha llegado a bodega?\n\nEsta acción cambiará el estado del insumo a "disponible" y será registrada en el historial de trazabilidad.')) {
+  const confirmed = await confirm(
+    '¿Confirma que este insumo ha llegado a bodega?\n\nEsta acción cambiará el estado del insumo a "disponible" y será registrada en el historial de trazabilidad.',
+    'Confirmar llegada a bodega'
+  )
+  if (!confirmed) {
     return
   }
   
@@ -1338,7 +1348,11 @@ const markAsReadyForPickup = async (info) => {
   }
   
   // Confirmar la acción
-  if (!confirm(`¿Está seguro de marcar el carrito ${cart.cart_number} como "Listo para retiro"?\n\nEsto indicará al pabellón que puede proceder a retirar los insumos.`)) {
+  const confirmed = await confirm(
+    `¿Está seguro de marcar el carrito ${cart.cart_number} como "Listo para retiro"?\n\nEsto indicará al pabellón que puede proceder a retirar los insumos.`,
+    'Confirmar listo para retiro'
+  )
+  if (!confirmed) {
     return
   }
   

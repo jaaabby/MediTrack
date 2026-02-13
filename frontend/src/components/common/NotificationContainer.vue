@@ -60,7 +60,12 @@
           
           <!-- Mensaje -->
           <div class="flex-1 min-w-0">
-            <p class="text-sm sm:text-base font-medium break-words">
+            <div v-if="notification.message.includes('\n')" class="text-sm sm:text-base font-medium break-words space-y-1">
+              <p v-for="(line, idx) in notification.message.split('\n')" :key="idx" class="leading-relaxed">
+                {{ line }}
+              </p>
+            </div>
+            <p v-else class="text-sm sm:text-base font-medium break-words">
               {{ notification.message }}
             </p>
           </div>

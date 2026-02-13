@@ -6,6 +6,7 @@ import (
 	"log"
 	"meditrack/mailer"
 	"meditrack/models"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -306,8 +307,10 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 			return err
 		}
 
+		// Intentar crear configuración del proveedor (pero no fallar la transacción completa)
 		if err := s.ensureSupplierConfigTx(tx, batch.Supplier, batch.ID, expirationAlertDays); err != nil {
-			log.Printf("Advertencia creando config de proveedor: %v", err)
+			log.Printf("⚠️  ADVERTENCIA: No se pudo crear configuración para proveedor '%s': %v", batch.Supplier, err)
+			// No retornamos el error para no bloquear la creación del lote
 		}
 
 		supplies, err := s.createIndividualSuppliesTx(tx, batch, supplyCode, individualCount)
@@ -352,6 +355,12 @@ func (s *BatchService) ensureSupplierConfig(supplierName string, batchID, expira
 }
 
 func (s *BatchService) ensureSupplierConfigTx(tx *gorm.DB, supplierName string, batchID, expirationAlertDays int) error {
+	if supplierName == "" {
+		return nil
+	}
+
+	// Limpiar espacios en blanco del nombre del proveedor
+	supplierName = strings.TrimSpace(supplierName)
 	if supplierName == "" {
 		return nil
 	}

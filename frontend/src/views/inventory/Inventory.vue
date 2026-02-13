@@ -8,27 +8,55 @@
 
     <!-- Filtros y búsqueda -->
     <div class="card">
-      <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-        <!-- Buscador único -->
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar insumo</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+          <!-- Buscador único -->
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar insumo</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input type="text" placeholder="Buscar por número de lote, nombre, código o proveedor..."
+                class="form-input pl-10 w-full" v-model="searchTerm" />
             </div>
-            <input type="text" placeholder="Buscar por número de lote, nombre, código o proveedor..."
-              class="form-input pl-10 w-full" v-model="searchTerm" />
+          </div>
+
+          <!-- Botón de limpiar búsqueda -->
+          <div class="w-full sm:w-auto">
+            <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearSearch" 
+              :disabled="!searchTerm && !dateFilterFrom && !dateFilterTo && sortField === 'none'"
+            >
+              <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Limpiar Filtros
+            </button>
           </div>
         </div>
 
-        <!-- Botón de limpiar búsqueda -->
-        <div class="w-full sm:w-auto">
-          <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearSearch" :disabled="!searchTerm">
-            Limpiar
-          </button>
+        <!-- Filtros de fecha -->
+        <div class="flex flex-col sm:flex-row gap-4">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de vencimiento desde</label>
+            <input type="date" class="form-input w-full" v-model="dateFilterFrom" />
+          </div>
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de vencimiento hasta</label>
+            <input type="date" class="form-input w-full" v-model="dateFilterTo" />
+          </div>
+        </div>
+
+        <!-- Indicador de filtros activos -->
+        <div v-if="searchTerm || dateFilterFrom || dateFilterTo || sortField !== 'none'" class="text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded">
+          <span class="font-medium">Filtros activos:</span>
+          <span v-if="searchTerm"> Búsqueda: "{{ searchTerm }}"</span>
+          <span v-if="dateFilterFrom"> | Desde: {{ formatDate(dateFilterFrom) }}</span>
+          <span v-if="dateFilterTo"> | Hasta: {{ formatDate(dateFilterTo) }}</span>
+          <span v-if="sortField !== 'none'"> | Ordenado por: {{ sortField }}</span>
         </div>
       </div>
     </div>
@@ -225,7 +253,7 @@
                   </div>
                 </div>
               </th>
-              <th class="table-header-cell">Acciones</th>
+              <th class="table-header-cell sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">Acciones</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -254,16 +282,17 @@
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                 <span class="text-gray-700 text-xs sm:text-sm">{{ supply.supplier }}</span>
               </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap" @click.stop>
-                <div class="flex space-x-1.5 sm:space-x-2">
-                  <button class="text-warning-600 hover:text-warning-800" @click.stop="editSupply(supply)">
-                    <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]" @click.stop>
+                <div class="flex flex-row justify-end gap-2">
+                  <button class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 text-xs transition-colors" @click.stop="editSupply(supply)" title="Editar">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
+                    <span class="font-medium">Editar</span>
                   </button>
-                  <button class="text-danger-600 hover:text-danger-800" @click.stop="deleteSupply(supply)">
-                    <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <button class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded inline-flex items-center justify-center transition-colors" @click.stop="deleteSupply(supply)" title="Eliminar">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -283,8 +312,31 @@
           class="relative top-4 sm:top-20 mx-2 sm:mx-auto p-4 sm:p-8 border w-auto sm:w-full max-w-2xl shadow-lg rounded-xl bg-white">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
             <h3 class="text-lg sm:text-2xl font-bold text-gray-900">Detalles del lote de {{ supplyName || '...' }}</h3>
-            <button @click="closeBatchDetailsModal"
-              class="btn-secondary px-4 py-2 rounded-lg text-sm sm:text-base w-full sm:w-auto">Cerrar</button>
+            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button 
+                @click="downloadAllBatchQRs" 
+                :disabled="downloadingAllBatch || batchDetails.length === 0"
+                class="btn-primary px-3 py-2 rounded-lg text-xs sm:text-sm w-full sm:w-auto flex items-center justify-center gap-1.5"
+              >
+                <svg v-if="!downloadingAllBatch" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span class="hidden sm:inline">{{ downloadingAllBatch ? 'Generando...' : 'Descargar QRs' }}</span>
+                <span class="sm:hidden">{{ downloadingAllBatch ? 'PDF...' : 'QRs' }}</span>
+              </button>
+              <button 
+                @click="goToSupplyHistory"
+                class="btn-secondary px-3 py-2 rounded-lg text-xs sm:text-sm w-full sm:w-auto flex items-center justify-center gap-1.5"
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Historial</span>
+              </button>
+              <button @click="closeBatchDetailsModal"
+                class="btn-secondary px-3 py-2 rounded-lg text-xs sm:text-sm w-full sm:w-auto">Cerrar</button>
+            </div>
           </div>
           <div v-if="batchDetailsLoading" class="flex justify-center items-center py-8">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -408,20 +460,35 @@
               </div>
 
               <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Fecha de Vencimiento</label>
-                <input type="date" v-model="editingSupply.expiration_date" class="form-input w-full text-sm" required />
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Fecha de Vencimiento <span class="text-red-500">*</span></label>
+                <input type="date" v-model="editingSupply.expiration_date" class="form-input w-full text-sm" />
               </div>
 
               <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Cantidad</label>
-                <input type="number" v-model="editingSupply.amount" class="form-input w-full text-sm" min="0"
-                  required />
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Cantidad <span class="text-red-500">*</span></label>
+                <input type="number" v-model="editingSupply.amount" class="form-input w-full text-sm" min="0" />
                 <span class="text-xs text-gray-500">unidades</span>
               </div>
 
-              <div>
-                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Proveedor</label>
-                <input type="text" v-model="editingSupply.supplier" class="form-input w-full text-sm" required />
+              <div class="relative">
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Proveedor <span class="text-red-500">*</span></label>
+                <select
+                  v-model="editingSupply.supplier"
+                  class="form-input w-full text-sm"
+                >
+                  <option value="" disabled>Seleccionar proveedor...</option>
+                  <option
+                    v-for="supplier in uniqueSuppliers"
+                    :key="supplier"
+                    :value="supplier"
+                  >
+                    {{ supplier }}
+                  </option>
+                </select>
+                
+                <p class="text-xs text-gray-500 mt-1">
+                  Seleccione un proveedor existente. Para agregar uno nuevo, cree un lote desde "Agregar Insumo"
+                </p>
               </div>
 
               <div class="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0 pt-3 sm:pt-4">
@@ -682,7 +749,7 @@
                         </div>
                       </th>
                       <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
+                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px] sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                         Acciones</th>
                     </tr>
                   </thead>
@@ -710,16 +777,15 @@
                         <span class="text-gray-700 text-xs sm:text-sm">{{ movement.user_rut || movement.user || 'N/A'
                           }}</span>
                       </td>
-                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <div class="flex space-x-2">
-                          <button class="text-blue-600 hover:text-blue-800"
-                            @click="viewMovementDetails(movement)">
-                            <svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          </button>
-                        </div>
+                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
+                        <button class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded flex items-center gap-1 text-xs transition-colors"
+                          @click="viewMovementDetails(movement)">
+                          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span class="font-medium">Ver</span>
+                        </button>
                       </td>
                     </tr>
                   </tbody>
@@ -1267,19 +1333,23 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { jsPDF } from 'jspdf'
 import inventoryService from '@/services/inventory/inventoryService'
 import qrService from '@/services/qr/qrService'
 import QrcodeVue from 'qrcode.vue'
 import { exportToExcel as exportExcel, formatDateForExcel } from '@/utils/excelExport'
 import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
-const { success: showSuccess, error: showError } = useNotification()
+const { success: showSuccess, error: showError, info: showInfo } = useNotification()
+const { alert, confirmDanger } = useAlert()
 
 // Estado reactivo
 const supplies = ref([])
@@ -1290,11 +1360,14 @@ const sortField = ref('none')
 const sortDirection = ref('asc')
 const currentPage = ref(1)
 const itemsPerPage = 10
+const dateFilterFrom = ref('')
+const dateFilterTo = ref('')
 
 // Estado del modal de edición
 const showEditModal = ref(false)
 const editingSupply = ref({})
 const saving = ref(false)
+const uniqueSuppliers = ref([])
 
 // Estado del modal de historial global
 const showGlobalHistoryModal = ref(false)
@@ -1338,6 +1411,25 @@ const filteredSupplies = computed(() => {
       supply.name.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
       supply.supplier.toLowerCase().includes(searchTerm.value.toLowerCase())
     )
+  }
+
+  // Filtro de fecha de vencimiento (desde)
+  if (dateFilterFrom.value) {
+    const fromDate = new Date(dateFilterFrom.value)
+    filtered = filtered.filter(supply => {
+      const expirationDate = new Date(supply.expiration_date)
+      return expirationDate >= fromDate
+    })
+  }
+
+  // Filtro de fecha de vencimiento (hasta)
+  if (dateFilterTo.value) {
+    const toDate = new Date(dateFilterTo.value)
+    toDate.setHours(23, 59, 59, 999) // Incluir todo el día
+    filtered = filtered.filter(supply => {
+      const expirationDate = new Date(supply.expiration_date)
+      return expirationDate <= toDate
+    })
   }
 
   // Solo aplicar ordenamiento si se ha seleccionado explícitamente un campo
@@ -1556,6 +1648,8 @@ const clearSearch = () => {
   searchTerm.value = ''
   sortField.value = 'none'
   sortDirection.value = 'asc'
+  dateFilterFrom.value = ''
+  dateFilterTo.value = ''
   currentPage.value = 1
 }
 
@@ -1611,7 +1705,7 @@ const getStatusBadgeClass = (status) => {
   return 'bg-gray-100 text-gray-800'
 }
 
-const viewMovementDetails = (movement) => {
+const viewMovementDetails = async (movement) => {
   // Mostrar detalles completos del movimiento
   let detailsText = `Fecha: ${formatDate(movement.date_time || movement.date)}\n`
   detailsText += `Tipo: ${movement.action || movement.type || 'N/A'}\n`
@@ -1622,7 +1716,7 @@ const viewMovementDetails = (movement) => {
     detailsText += `\nDetalles adicionales:\n${JSON.stringify(movement.details, null, 2)}`
   }
 
-  alert(`Detalles del Movimiento\n\n${detailsText}`)
+  await alert(detailsText, 'Detalles del Movimiento')
 }
 
 // Función para obtener la descripción del estado en español
@@ -1682,6 +1776,25 @@ const saveEdit = async () => {
     return
   }
 
+  // Validar todos los campos y recoger errores
+  const errors = []
+  
+  if (!editingSupply.value.expiration_date) {
+    errors.push('• La fecha de vencimiento es obligatoria.')
+  }
+  if (!editingSupply.value.amount || isNaN(parseInt(editingSupply.value.amount)) || parseInt(editingSupply.value.amount) < 0) {
+    errors.push('• La cantidad debe ser un número mayor o igual a 0.')
+  }
+  if (!editingSupply.value.supplier || editingSupply.value.supplier.trim() === '') {
+    errors.push('• El proveedor es obligatorio.')
+  }
+  
+  // Si hay errores, mostrarlos todos juntos
+  if (errors.length > 0) {
+    showError('Por favor corrija los siguientes errores:\n\n' + errors.join('\n'))
+    return
+  }
+
   saving.value = true
 
   try {
@@ -1733,7 +1846,11 @@ const saveEdit = async () => {
 }
 
 const deleteSupply = async (supply) => {
-  if (!confirm(`¿Está seguro de que desea eliminar el lote de ${supply.name}?`)) {
+  const confirmed = await confirmDanger(
+    `¿Está seguro de que desea eliminar el lote de ${supply.name}?`,
+    'Confirmar eliminación'
+  )
+  if (!confirmed) {
     return
   }
   
@@ -1748,7 +1865,6 @@ const deleteSupply = async (supply) => {
 }
 
 // Funciones de notificación - usa el sistema unificado
-const { info: showInfo } = useNotification()
 const showNotification = (message, type = 'info') => {
   if (type === 'success') {
     showSuccess(message)
@@ -1766,6 +1882,7 @@ const batchDetailsLoading = ref(false)
 const batchDetailsError = ref(null)
 const selectedBatch = ref(null)
 const supplyName = ref('')
+const downloadingAllBatch = ref(false)
 const openBatchDetailsModal = async (batch) => {
   showBatchDetailsModal.value = true
   batchDetailsLoading.value = true
@@ -1807,6 +1924,109 @@ const closeBatchDetailsModal = () => {
   selectedBatch.value = null
   batchDetailsError.value = null
   batchDetailsCurrentPage.value = 1 // Resetear paginación
+}
+
+const downloadAllBatchQRs = async () => {
+  if (!batchDetails.value || batchDetails.value.length === 0) {
+    showError('No hay códigos QR para descargar')
+    return
+  }
+  
+  downloadingAllBatch.value = true
+  const total = batchDetails.value.length
+  
+  try {
+    // Crear PDF en formato A4
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
+    
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 15
+    const qrSize = 50 // Tamaño del QR en mm
+    const spacing = 10 // Espaciado entre elementos
+    
+    let currentY = margin
+    let processedCount = 0
+    
+    for (let i = 0; i < batchDetails.value.length; i++) {
+      const supply = batchDetails.value[i]
+      
+      // Si no cabe en la página actual, crear una nueva
+      if (currentY + qrSize + 40 > pageHeight - margin && i > 0) {
+        pdf.addPage()
+        currentY = margin
+      }
+      
+      try {
+        // Obtener imagen QR como base64
+        const qrImageUrl = qrService.getQRImageUrl(supply.qr_code)
+        const response = await fetch(qrImageUrl)
+        const blob = await response.blob()
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result)
+          reader.readAsDataURL(blob)
+        })
+        
+        // Agregar QR code al PDF
+        pdf.addImage(base64, 'PNG', margin, currentY, qrSize, qrSize)
+        
+        // Agregar información del insumo a la derecha del QR
+        const textX = margin + qrSize + spacing
+        let textY = currentY + 8
+        
+        pdf.setFontSize(12)
+        pdf.setFont(undefined, 'bold')
+        pdf.text(`Código: ${supply.qr_code}`, textX, textY)
+        
+        textY += 7
+        pdf.setFontSize(10)
+        pdf.setFont(undefined, 'normal')
+        pdf.text(`ID: ${supply.id || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Código Insumo: ${supply.code || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Nombre: ${supplyName.value || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Lote: ${selectedBatch.value?.batch_id || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Proveedor: ${selectedBatch.value?.supplier || 'N/A'}`, textX, textY)
+        
+        textY += 6
+        pdf.text(`Vencimiento: ${formatDate(selectedBatch.value?.expiration_date)}`, textX, textY)
+        
+        currentY += qrSize + spacing + 5
+        
+        processedCount++
+        
+      } catch (error) {
+        console.error(`Error procesando QR ${supply.qr_code}:`, error)
+      }
+    }
+    
+    // Descargar PDF
+    const fileName = `lote_${selectedBatch.value?.batch_id}_${supplyName.value.replace(/\s+/g, '_')}_qr_codes.pdf`
+    pdf.save(fileName)
+    
+    showSuccess(`✅ PDF generado exitosamente con ${processedCount} códigos QR`)
+  } catch (error) {
+    console.error('Error generando PDF con QRs:', error)
+    showError(`Error al generar el PDF: ${error.message}`)
+  } finally {
+    downloadingAllBatch.value = false
+  }
+}
+
+const goToSupplyHistory = () => {
+  router.push('/supply-history')
 }
 
 const getQrDataUrl = (code) => {
@@ -1951,6 +2171,16 @@ const loadInventory = async () => {
     } else {
       supplies.value = []
     }
+    
+    // Extraer proveedores únicos del inventario
+    const suppliersSet = new Set()
+    supplies.value.forEach(supply => {
+      if (supply.supplier && supply.supplier.trim()) {
+        suppliersSet.add(supply.supplier.trim())
+      }
+    })
+    uniqueSuppliers.value = Array.from(suppliersSet).sort()
+    
   } catch (err) {
     error.value = 'Error al cargar el inventario: ' + err.message
     console.error('Error al cargar inventario:', err)
@@ -1960,7 +2190,7 @@ const loadInventory = async () => {
 }
 
 // Lifecycle
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'batch_id', label: 'N° de Lote' },
@@ -1975,7 +2205,7 @@ const exportToExcel = () => {
       { key: 'updated_at', label: 'Última Actualización', formatter: formatDateForExcel }
     ]
     
-    exportExcel(filteredSupplies.value, columns, 'inventario_insumos')
+    await exportExcel(filteredSupplies.value, columns, 'inventario_insumos')
     showSuccess('Exportación a Excel completada exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)
