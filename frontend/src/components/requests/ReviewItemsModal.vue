@@ -161,7 +161,7 @@
           <div class="flex justify-end space-x-3">
             <button
               @click="closeActionModal"
-              class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
             >
               Cancelar
             </button>
@@ -169,7 +169,7 @@
               @click="confirmAction"
               :disabled="loading"
               :class="getActionButtonClass()"
-              class="disabled:opacity-50"
+              class="px-6 py-2 rounded-md text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {{ loading ? 'Procesando...' : 'Confirmar' }}
             </button>
@@ -261,15 +261,11 @@ const getActionTitle = () => {
 
 const getActionButtonClass = () => {
   const classes = {
-    'aceptado': 'bg-green-600 hover:bg-green-700',
-    'rechazado': 'bg-red-600 hover:bg-red-700',
-    'devuelto': 'bg-yellow-600 hover:bg-yellow-700'
+    'aceptado': 'bg-green-600 hover:bg-green-700 focus:ring-green-500',
+    'rechazado': 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+    'devuelto': 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
   }
-  // Usar clases de botones estándar
-  if (selectedAction.value === 'aceptado') return 'btn-success'
-  if (selectedAction.value === 'rechazado') return 'btn-danger'
-  if (selectedAction.value === 'devuelto') return 'bg-yellow-600 hover:bg-yellow-700 text-white'
-  return 'btn-primary'
+  return classes[selectedAction.value] || 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
 }
 
 const getItemNotesClass = (status) => {

@@ -20,7 +20,7 @@
 
       <!-- Formulario de Login -->
       <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
-        <div class="rounded-md shadow-sm -space-y-px">
+        <div class="space-y-4">
           <!-- Campo Email -->
           <div>
             <label for="email" class="sr-only">Email</label>
@@ -30,12 +30,12 @@
               name="email"
               type="email"
               autocomplete="email"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-brand-blue-dark focus:border-brand-blue-dark focus:z-10 sm:text-sm"
-              :class="{ 'border-red-500': errors.email }"
+              @blur="validateEmail"
+              class="appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-blue-dark focus:border-brand-blue-dark focus:z-10 sm:text-sm"
+              :class="errors.email ? 'border-red-500' : 'border-gray-300'"
               placeholder="Correo electrónico"
             />
-            <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email }}</p>
+            <p v-if="errors.email" class="mt-2 text-sm text-red-600 font-medium">{{ errors.email }}</p>
           </div>
 
           <!-- Campo Contraseña -->
@@ -47,12 +47,11 @@
               name="password"
               type="password"
               autocomplete="current-password"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-brand-blue-dark focus:border-brand-blue-dark focus:z-10 sm:text-sm"
-              :class="{ 'border-red-500': errors.password }"
+              class="appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-blue-dark focus:border-brand-blue-dark focus:z-10 sm:text-sm"
+              :class="errors.password ? 'border-red-500' : 'border-gray-300'"
               placeholder="Contraseña"
             />
-            <p v-if="errors.password" class="mt-1 text-sm text-red-600">{{ errors.password }}</p>
+            <p v-if="errors.password" class="mt-2 text-sm text-red-600 font-medium">{{ errors.password }}</p>
           </div>
         </div>
 
@@ -139,6 +138,19 @@ watch(() => loginForm.password, () => {
   errorMessage.value = ''
 })
 
+// Validar email cuando el usuario sale del campo
+const validateEmail = () => {
+  if (!loginForm.email) {
+    return // No mostrar error si está vacío al salir del campo
+  }
+  
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  
+  if (!emailRegex.test(loginForm.email)) {
+    errors.email = 'El email debe ser válido'
+  }
+}
+
 // Validación del formulario
 const validateForm = () => {
   errors.email = ''
@@ -159,11 +171,6 @@ const validateForm = () => {
   
   if (!loginForm.password) {
     errors.password = 'La contraseña es requerida'
-    return false
-  }
-  
-  if (loginForm.password.length < 6) {
-    errors.password = 'La contraseña ingresada es incorrecta'
     return false
   }
   
@@ -199,7 +206,7 @@ const handleLogin = async () => {
     
   } catch (error) {
     console.error('Error en login:', error)
-    errorMessage.value = error.message || 'Error al iniciar sesión. Verifica tus credenciales.'
+    errorMessage.value = error.message || 'Las credenciales ingresadas son inválidas. Verifica tu correo y contraseña.'
   } finally {
     isLoading.value = false
   }

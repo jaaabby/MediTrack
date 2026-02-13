@@ -80,7 +80,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Error:   "Credenciales inválidas",
+			Error:   "El correo electrónico ingresado no está registrado en el sistema",
 		})
 		return
 	}
@@ -98,7 +98,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Error:   "Credenciales inválidas",
+			Error:   "La contraseña ingresada es incorrecta",
 		})
 		return
 	}
@@ -407,8 +407,8 @@ func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
 		return
 	}
 
-	// Generar token de reset
-	token, err := c.userService.GenerateResetToken(req.Email)
+	// Obtener usuario primero para verificar su estado
+	user, err := c.userService.GetUserByEmail(req.Email)
 	if err != nil {
 		// Verificar si el error es porque el usuario no existe
 		if err == gorm.ErrRecordNotFound {
@@ -426,8 +426,17 @@ func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
 		return
 	}
 
-	// Obtener usuario para enviar email
-	user, err := c.userService.GetUserByEmail(req.Email)
+	// Verificar si el usuario debe cambiar su contraseña (primer inicio)
+	if user.MustChangePassword {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "No puedes recuperar tu contraseña porque aún no has ingresado al sistema por primera vez. Usa la contraseña temporal enviada a tu correo.",
+		})
+		return
+	}
+
+	// Generar token de reset
+	token, err := c.userService.GenerateResetToken(req.Email)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
