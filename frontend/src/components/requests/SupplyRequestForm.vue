@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <form @submit.prevent="submitRequest" class="space-y-4 sm:space-y-6">
+    <form @submit.prevent="submitRequest" novalidate class="space-y-4 sm:space-y-6">
       <!-- Información básica -->
       <div class="bg-gray-50 p-3 sm:p-4 rounded-lg">
         <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Información Básica</h3>
@@ -62,13 +62,18 @@
               type="datetime-local"
               id="surgery_datetime"
               v-model="requestForm.surgery_datetime"
-              required
               :min="minDateTime"
               class="form-input"
-              :class="{ 'border-orange-500': isUrgentRequest, 'border-red-500': isEmergencyRequest }"
+              :class="{ 
+                'border-orange-500': isUrgentRequest, 
+                'border-red-500': isEmergencyRequest || fieldErrors.surgery_datetime 
+              }"
               @change="checkAdvanceNotice"
             />
-            <p class="text-xs text-gray-500 mt-1">
+            <p v-if="fieldErrors.surgery_datetime" class="text-xs text-red-600 mt-1 font-medium">
+              {{ fieldErrors.surgery_datetime }}
+            </p>
+            <p v-else class="text-xs text-gray-500 mt-1">
               {{ props.editMode ? 'Fecha y hora programada para la cirugía' : 'Selecciona la fecha y hora programada para la cirugía' }}
             </p>
             <!-- Advertencia de anticipación mínima -->
@@ -116,8 +121,8 @@
               v-else
               id="pavilion"
               v-model="requestForm.pavilion_id"
-              required
               class="form-select text-sm"
+              :class="{ 'border-red-500': fieldErrors.pavilion_id }"
               :disabled="loadingPavilions"
             >
               <option value="">Seleccionar pabellón</option>
@@ -129,7 +134,10 @@
                 {{ pavilion.name }}
               </option>
             </select>
-            <p v-if="loadingPavilions && !props.editMode" class="text-xs text-gray-500 mt-1">Cargando pabellones...</p>
+            <p v-if="fieldErrors.pavilion_id" class="text-xs text-red-600 mt-1 font-medium">
+              {{ fieldErrors.pavilion_id }}
+            </p>
+            <p v-else-if="loadingPavilions && !props.editMode" class="text-xs text-gray-500 mt-1">Cargando pabellones...</p>
             <p v-else class="text-xs text-gray-500 mt-1">
               {{ props.editMode ? 'Pabellón donde se realizará la cirugía' : 'Selecciona el pabellón donde se realizará la cirugía' }}
             </p>
@@ -143,8 +151,8 @@
             <select
               id="surgery_id"
               v-model="requestForm.surgery_id"
-              required
               class="form-select text-sm"
+              :class="{ 'border-red-500': fieldErrors.surgery_id }"
               :disabled="loadingSurgeries"
             >
               <option :value="null">Seleccionar cirugía</option>
@@ -152,7 +160,10 @@
                 {{ surgery.name }}
               </option>
             </select>
-            <p v-if="loadingSurgeries" class="text-xs text-gray-500 mt-1">Cargando cirugías...</p>
+            <p v-if="fieldErrors.surgery_id" class="text-xs text-red-600 mt-1 font-medium">
+              {{ fieldErrors.surgery_id }}
+            </p>
+            <p v-else-if="loadingSurgeries" class="text-xs text-gray-500 mt-1">Cargando cirugías...</p>
             <p v-else-if="filteredSurgeries.length === 0" class="text-xs text-yellow-600 mt-1">
               No hay cirugías disponibles para tu especialidad
             </p>
@@ -366,9 +377,13 @@
                   @blur="onSupplyCodeBlur(index)"
                   placeholder="Escribir código..."
                   class="form-select text-sm"
+                  :class="{ 'border-red-500': fieldErrors.items[index]?.supply_code }"
                   :disabled="props.editMode && item.item_status === 'aceptado'"
                   :readonly="props.editMode && item.item_status === 'aceptado'"
                 />
+                <p v-if="fieldErrors.items[index]?.supply_code" class="text-xs text-red-600 mt-1 font-medium">
+                  {{ fieldErrors.items[index].supply_code }}
+                </p>
                 <!-- Dropdown de sugerencias por código -->
                 <div 
                   v-if="showCodeDropdowns[index] && medicalSupplies.length > 0"
@@ -402,11 +417,17 @@
                   @blur="onSupplyInputBlur(index)"
                   placeholder="Escribir nombre..."
                   class="form-select text-sm"
-                  :class="{ 'bg-gray-100 cursor-not-allowed': props.editMode && item.item_status === 'aceptado' }"
+                  :class="{ 
+                    'bg-gray-100 cursor-not-allowed': props.editMode && item.item_status === 'aceptado',
+                    'border-red-500': fieldErrors.items[index]?.supply_name
+                  }"
                   autocomplete="off"
                   :disabled="props.editMode && item.item_status === 'aceptado'"
                   :readonly="props.editMode && item.item_status === 'aceptado'"
                 />
+                <p v-if="fieldErrors.items[index]?.supply_name" class="text-xs text-red-600 mt-1 font-medium">
+                  {{ fieldErrors.items[index].supply_name }}
+                </p>
                 
                 <!-- Dropdown de sugerencias por nombre -->
                 <div 
@@ -445,13 +466,16 @@
                 <input
                   type="number"
                   v-model.number="item.quantity_requested"
-                  required
                   min="1"
                   placeholder="1"
                   class="form-input text-sm"
+                  :class="{ 'border-red-500': fieldErrors.items[index]?.quantity_requested }"
                   :disabled="props.editMode && item.item_status === 'aceptado'"
                   :readonly="props.editMode && item.item_status === 'aceptado'"
                 />
+                <p v-if="fieldErrors.items[index]?.quantity_requested" class="text-xs text-red-600 mt-1 font-medium">
+                  {{ fieldErrors.items[index].quantity_requested }}
+                </p>
               </div>
             </div>
 
@@ -723,6 +747,14 @@ const loadingTypicalSupplies = ref(false)
 const showTypicalSupplies = ref(false)
 const typicalSuppliesExpanded = ref(true)
 
+// Errores de campos individuales
+const fieldErrors = reactive({
+  surgery_datetime: '',
+  pavilion_id: '',
+  surgery_id: '',
+  items: [] // Array de objetos con errores por cada item
+})
+
 // Fecha mínima para la cirugía (hoy)
 const minDateTime = computed(() => {
   const now = new Date()
@@ -968,6 +1000,8 @@ const addSupplyItem = () => {
   showCodeDropdowns.value.unshift(false)
   showSupplyListModals.value.unshift(false)
   supplyListSearchTerms.value.unshift('')
+  // Inicializar errores para el nuevo item
+  fieldErrors.items.unshift({ supply_code: '', supply_name: '', quantity_requested: '' })
 }
 
 const addTypicalSupply = (typicalSupply) => {
@@ -1121,6 +1155,8 @@ const removeSupplyItem = (index) => {
   showCodeDropdowns.value.splice(index, 1)
   showSupplyListModals.value.splice(index, 1)
   supplyListSearchTerms.value.splice(index, 1)
+  // Remover errores del item
+  fieldErrors.items.splice(index, 1)
 }
 
 // Funciones para autocompletado de insumos
@@ -1307,8 +1343,116 @@ const consolidateDuplicateItems = () => {
   return consolidated
 }
 
+// Validar campos individuales
+const validateField = (fieldName, value) => {
+  switch(fieldName) {
+    case 'surgery_datetime':
+      if (!value) {
+        fieldErrors.surgery_datetime = 'La fecha y hora de cirugía es obligatoria'
+      } else {
+        fieldErrors.surgery_datetime = ''
+      }
+      break
+    case 'pavilion_id':
+      if (!value) {
+        fieldErrors.pavilion_id = 'Debe seleccionar un pabellón'
+      } else {
+        fieldErrors.pavilion_id = ''
+      }
+      break
+    case 'surgery_id':
+      if (!value) {
+        fieldErrors.surgery_id = 'Debe seleccionar un tipo de cirugía'
+      } else {
+        fieldErrors.surgery_id = ''
+      }
+      break
+  }
+}
+
+// Validar item individual
+const validateItem = (index) => {
+  if (!fieldErrors.items[index]) {
+    fieldErrors.items[index] = { supply_code: '', supply_name: '', quantity_requested: '' }
+  }
+  
+  const item = requestForm.items[index]
+  
+  if (!item.supply_code || item.supply_code === '') {
+    fieldErrors.items[index].supply_code = 'El código del insumo es obligatorio'
+  } else {
+    fieldErrors.items[index].supply_code = ''
+  }
+  
+  if (!item.supply_name || item.supply_name === '') {
+    fieldErrors.items[index].supply_name = 'El nombre del insumo es obligatorio'
+  } else {
+    fieldErrors.items[index].supply_name = ''
+  }
+  
+  if (!item.quantity_requested || item.quantity_requested < 1) {
+    fieldErrors.items[index].quantity_requested = 'La cantidad debe ser mayor a 0'
+  } else {
+    fieldErrors.items[index].quantity_requested = ''
+  }
+}
+
 const validateForm = () => {
-  // Primero consolidar items duplicados
+  console.log('🔍 Iniciando validación del formulario')
+  
+  // Limpiar errores anteriores
+  fieldErrors.surgery_datetime = ''
+  fieldErrors.pavilion_id = ''
+  fieldErrors.surgery_id = ''
+  fieldErrors.items = requestForm.items.map(() => ({ 
+    supply_code: '', 
+    supply_name: '', 
+    quantity_requested: '' 
+  }))
+  
+  // Validar campos principales (solo si no está en modo edición o el campo es editable)
+  if (!props.editMode) {
+    console.log('📝 Validando campos principales')
+    validateField('surgery_datetime', requestForm.surgery_datetime)
+    validateField('pavilion_id', requestForm.pavilion_id)
+  }
+  validateField('surgery_id', requestForm.surgery_id)
+  
+  console.log('📋 Cantidad de items:', requestForm.items.length)
+  
+  // Validar que haya al menos un item
+  if (requestForm.items.length === 0) {
+    errors.value.push('Debe agregar al menos un insumo')
+    console.log('❌ No hay items')
+    return false
+  }
+  
+  // Validar items
+  requestForm.items.forEach((item, index) => {
+    // Solo validar items que no están aceptados (en modo edición)
+    if (!props.editMode || item.item_status !== 'aceptado') {
+      console.log(`🔍 Validando item ${index}:`, item)
+      validateItem(index)
+    }
+  })
+  
+  // Verificar si hay errores en los campos individuales ANTES de consolidar duplicados
+  const hasFieldErrors = fieldErrors.surgery_datetime || 
+                        fieldErrors.pavilion_id || 
+                        fieldErrors.surgery_id ||
+                        fieldErrors.items.some(item => item.supply_code || item.supply_name || item.quantity_requested)
+  
+  console.log('❓ Hay errores de campo?', hasFieldErrors)
+  
+  // Si hay errores, no continuar
+  if (hasFieldErrors) {
+    console.log('❌ Validación falló por errores de campo')
+    return false
+  }
+  
+  console.log('✅ Validación de campos exitosa, procediendo a consolidar duplicados')
+  
+  // Solo si no hay errores, consolidar items duplicados
   const consolidated = consolidateDuplicateItems()
   
   // Verificar si hay duplicados
@@ -1337,6 +1481,11 @@ const validateForm = () => {
     showSupplyDropdowns.value = requestForm.items.map(() => false)
     showSupplyListModals.value = requestForm.items.map(() => false)
     supplyListSearchTerms.value = requestForm.items.map(() => '')
+    fieldErrors.items = requestForm.items.map(() => ({ 
+      supply_code: '', 
+      supply_name: '', 
+      quantity_requested: '' 
+    }))
     
     // Mostrar mensaje informativo
     showInfo(`Se detectaron ${duplicateCount} insumo(s) duplicado(s). Las cantidades fueron sumadas automáticamente.`)
@@ -1345,6 +1494,7 @@ const validateForm = () => {
   // Validar el formulario (con items consolidados si se aplicó)
   const validation = supplyRequestService.validateSupplyRequest(requestForm)
   errors.value = validation.errors
+  
   return validation.isValid
 }
 
@@ -1357,6 +1507,11 @@ const resetForm = () => {
     surgery_id: null
   })
   errors.value = []
+  // Limpiar errores de campos individuales
+  fieldErrors.surgery_datetime = ''
+  fieldErrors.pavilion_id = ''
+  fieldErrors.surgery_id = ''
+  fieldErrors.items = []
 }
 
 const cancelForm = () => {
@@ -1365,6 +1520,20 @@ const cancelForm = () => {
 
 const submitRequest = async () => {
   if (!validateForm()) {
+    console.log('Errores de validación:', {
+      surgery_datetime: fieldErrors.surgery_datetime,
+      pavilion_id: fieldErrors.pavilion_id,
+      surgery_id: fieldErrors.surgery_id,
+      items: fieldErrors.items
+    })
+    // Scroll hacia el primer campo con error
+    nextTick(() => {
+      const firstError = document.querySelector('.border-red-500')
+      if (firstError) {
+        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        firstError.focus()
+      }
+    })
     return
   }
 
@@ -1615,6 +1784,12 @@ const loadRequestForEdit = async () => {
         showCodeDropdowns.value = requestForm.items.map(() => false)
         showSupplyListModals.value = requestForm.items.map(() => false)
         supplyListSearchTerms.value = requestForm.items.map(() => '')
+        // Inicializar errores para los items
+        fieldErrors.items = requestForm.items.map(() => ({ 
+          supply_code: '', 
+          supply_name: '', 
+          quantity_requested: '' 
+        }))
       }
     }
   } catch (error) {
