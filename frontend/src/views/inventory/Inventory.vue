@@ -54,8 +54,8 @@
         <div v-if="searchTerm || dateFilterFrom || dateFilterTo || sortField !== 'none'" class="text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded">
           <span class="font-medium">Filtros activos:</span>
           <span v-if="searchTerm"> Búsqueda: "{{ searchTerm }}"</span>
-          <span v-if="dateFilterFrom"> | Desde: {{ formatDate(dateFilterFrom) }}</span>
-          <span v-if="dateFilterTo"> | Hasta: {{ formatDate(dateFilterTo) }}</span>
+          <span v-if="dateFilterFrom"> | Desde: {{ formatFilterDate(dateFilterFrom) }}</span>
+          <span v-if="dateFilterTo"> | Hasta: {{ formatFilterDate(dateFilterTo) }}</span>
           <span v-if="sortField !== 'none'"> | Ordenado por: {{ sortField }}</span>
         </div>
       </div>
@@ -1662,6 +1662,20 @@ const sortBy = (field, direction) => {
 const formatDate = (dateString) => {
   try {
     return format(new Date(dateString), 'dd/MM/yyyy', { locale: es })
+  } catch {
+    return dateString
+  }
+}
+
+// Función para formatear fechas de filtros (input type="date")
+// Evita problemas de zona horaria al tratar la fecha como local
+const formatFilterDate = (dateString) => {
+  if (!dateString) return ''
+  try {
+    // Si la fecha viene en formato YYYY-MM-DD (de input date)
+    // la parseamos manualmente para evitar conversión de zona horaria
+    const [year, month, day] = dateString.split('-')
+    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`
   } catch {
     return dateString
   }
