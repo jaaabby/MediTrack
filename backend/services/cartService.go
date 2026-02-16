@@ -519,8 +519,8 @@ func (s *CartService) processItemReturn(tx *gorm.DB, cart *models.SupplyCart, ca
 	oldLocationID := supply.LocationID
 	storeID := batch.StoreID
 
-	// Crear transferencia
-	transferCode := fmt.Sprintf("RETURN-CART-%d-%s", time.Now().Unix(), supply.QRCode[len(supply.QRCode)-5:])
+	// Crear transferencia con código compacto
+	transferCode := fmt.Sprintf("RC-%d-%02X", now.Unix()%100000000, cart.ID)
 	transfer := models.SupplyTransfer{
 		TransferCode:    transferCode,
 		QRCode:          supply.QRCode,
@@ -837,11 +837,12 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 			return fmt.Errorf("la solicitud no tiene pabellón asignado")
 		}
 
-		// Transferir cada insumo al pabellón
-		for _, cartItem := range cartItems {
-			supply := cartItem.SupplyRequestQRAssignment.MedicalSupply
+		// Generar timestamp base para los códigos de transferencia
+		baseTimestamp := time.Now().Unix()
 
-			// Verificar que el insumo esté en bodega
+		// Transferir cada insumo al pabellón
+		for idx, cartItem := range cartItems {
+			supply := cartItem.SupplyRequestQRAssignment.MedicalSupply
 			if supply.LocationType != models.SupplyLocationStore {
 				return fmt.Errorf("el insumo %s no está en bodega (ubicación: %s)", supply.QRCode, supply.LocationType)
 			}
@@ -922,8 +923,8 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 				}
 			}
 
-			// Crear registro de transferencia
-			transferCode := fmt.Sprintf("TRANS-CART-%d-%s", time.Now().Unix(), supply.QRCode[len(supply.QRCode)-5:])
+			// Crear registro de transferencia con código único compacto
+			transferCode := fmt.Sprintf("TC-%d-%02X", baseTimestamp%100000000, idx+1)
 			transfer := models.SupplyTransfer{
 				TransferCode:    transferCode,
 				QRCode:          supply.QRCode,

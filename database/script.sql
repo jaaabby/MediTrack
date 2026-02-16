@@ -573,8 +573,16 @@ ON CONFLICT (rut) DO NOTHING;
 -- Esto permite probar todos los casos de visualización de stock y la paginación
 -- ============================================================================
 
--- GRUPO 1: Transferencias vinculadas a solicitud completada (para detección de retornos)
--- Estos son los que estarán pendientes de retorno (>8 horas sin consumir)
+-- ============================================================================
+-- TRANSFERENCIAS SEED (DATOS ESTÁTICOS DE PRUEBA)
+-- ============================================================================
+-- Conjunto simplificado de transferencias con datos estáticos para pruebas
+-- Se usa el prefijo TRANS-SEED- para evitar colisiones con códigos de producción
+
+-- NOTA: Los medical_supply_id se obtienen de los QR codes. Los QR tienen la forma SUPPLY_X_YYYY
+-- donde X es el batch_id y YYYY es el número secuencial con padding de 4 dígitos
+
+-- Transferencias completadas antiguas (más de 3 días) - Pabellón 1
 INSERT INTO supply_transfer (
     transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
     destination_type, destination_id, sent_by, sent_by_name,
@@ -583,35 +591,39 @@ INSERT INTO supply_transfer (
     send_date, receive_date, notes
 ) 
 SELECT 
-    'TRANS-' || TO_CHAR(NOW() - INTERVAL '5 days', 'YYYYMMDDHH24MI') || '-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
-    qa.qr_code,
-    qa.medical_supply_id,
-    'store',
-    1, -- Bodega Central
-    'pavilion',
-    sr.pavilion_id,
-    '11111111-1',
-    'Encargado Bodega',
-    '22222222-2',
-    'María González',
-    NOW() - INTERVAL '5 days' + INTERVAL '1 hour',
-    '22222222-2',
-    'María González',
-    'recibido',
-    'Transferencia para solicitud ' || sr.request_number,
-    NOW() - INTERVAL '5 days',
-    NOW() - INTERVAL '5 days' + INTERVAL '2 hours',
-    'Insumos para cirugía - MÁS DE 8 HORAS SIN CONSUMIR - PENDIENTE RETORNO'
-FROM supply_request_qr_assignment qa
-JOIN supply_request sr ON sr.id = qa.supply_request_id
-WHERE sr.request_number = 'SOL-20250130083000'
-AND qa.status = 'delivered'
-LIMIT 20
+    'TRANS-SEED-OLD-0001', 'SUPPLY_1_0001', ms.id, 'store', 1, 'pavilion', 1,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '5 days', '22222222-2', 'María González', 'recibido',
+    'Transferencia antigua para pruebas', NOW() - INTERVAL '5 days',
+    NOW() - INTERVAL '5 days' + INTERVAL '1 hour', 'Insumo transferido hace 5 días'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_1_0001'
+UNION ALL
+SELECT 
+    'TRANS-SEED-OLD-0002', 'SUPPLY_1_0002', ms.id, 'store', 1, 'pavilion', 1,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '5 days', '22222222-2', 'María González', 'recibido',
+    'Transferencia antigua para pruebas', NOW() - INTERVAL '5 days',
+    NOW() - INTERVAL '5 days' + INTERVAL '1 hour', 'Insumo transferido hace 5 días'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_1_0002'
+UNION ALL
+SELECT 
+    'TRANS-SEED-OLD-0003', 'SUPPLY_2_0001', ms.id, 'store', 1, 'pavilion', 1,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '4 days', '22222222-2', 'María González', 'recibido',
+    'Transferencia antigua para pruebas', NOW() - INTERVAL '4 days',
+    NOW() - INTERVAL '4 days' + INTERVAL '1 hour', 'Insumo transferido hace 4 días'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_2_0001'
+UNION ALL
+SELECT 
+    'TRANS-SEED-OLD-0004', 'SUPPLY_2_0002', ms.id, 'store', 1, 'pavilion', 2,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '3 days', '22222222-2', 'María González', 'recibido',
+    'Transferencia antigua para pruebas', NOW() - INTERVAL '3 days',
+    NOW() - INTERVAL '3 days' + INTERVAL '1 hour', 'Insumo transferido hace 3 días'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_2_0002'
 ON CONFLICT (transfer_code) DO NOTHING;
 
--- GRUPO 2: Transferencias genéricas a pabellones (inventario general)
--- MODIFICADO: Distribuido estratégicamente para probar todos los casos de stock
--- Pabellón 1 tendrá diferentes cantidades por batch para visualizar todos los colores de stock
+-- Transferencias recientes (menos de 8 horas) - Válidas
 INSERT INTO supply_transfer (
     transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
     destination_type, destination_id, sent_by, sent_by_name,
@@ -620,286 +632,52 @@ INSERT INTO supply_transfer (
     send_date, receive_date, notes
 ) 
 SELECT 
-    'TRANS-' || TO_CHAR(NOW() - INTERVAL '2 days', 'YYYYMMDDHH24MI') || '-G-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
-    ms.qr_code,
-    ms.id,
-    'store',
-    b.store_id,
-    'pavilion',
-    1,
-    '11111111-1',
-    'Encargado Bodega',
-    '22222222-2',
-    'María González',
-    NOW() - INTERVAL '2 days' + INTERVAL '2 hours',
-    '22222222-2',
-    'María González',
-    'recibido',
-    'Transferencia programada para cirugía',
-    NOW() - INTERVAL '2 days',
-    NOW() - INTERVAL '2 days' + INTERVAL '3 hours',
-    'Inventario general de pabellón'
-FROM (
-    -- Batch 1: 12 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 1 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 12)
-    UNION ALL
-    -- Batch 2: 8 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 2 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 8)
-    UNION ALL
-    -- Batch 3: 3 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 3 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 3)
-    UNION ALL
-    -- Batch 5: 1 unidad
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 5 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 1)
-    UNION ALL
-    -- Batch 9: 15 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 9 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 15)
-    UNION ALL
-    -- Batch 10: 6 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 10 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 6)
-) ms
-JOIN batch b ON ms.batch_id = b.id
+    'TRANS-SEED-REC-0001', 'SUPPLY_3_0001', ms.id, 'store', 1, 'pavilion', 1,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '2 hours', '22222222-2', 'María González', 'recibido',
+    'Transferencia reciente', NOW() - INTERVAL '2 hours',
+    NOW() - INTERVAL '1 hour', 'Insumo transferido recientemente'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_3_0001'
+UNION ALL
+SELECT 
+    'TRANS-SEED-REC-0002', 'SUPPLY_3_0002', ms.id, 'store', 1, 'pavilion', 2,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '4 hours', '22222222-2', 'María González', 'recibido',
+    'Transferencia reciente', NOW() - INTERVAL '4 hours',
+    NOW() - INTERVAL '3 hours', 'Insumo transferido recientemente'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_3_0002'
+UNION ALL
+SELECT 
+    'TRANS-SEED-REC-0003', 'SUPPLY_4_0001', ms.id, 'store', 1, 'pavilion', 3,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '6 hours', '22222222-2', 'María González', 'recibido',
+    'Transferencia reciente', NOW() - INTERVAL '6 hours',
+    NOW() - INTERVAL '5 hours', 'Insumo transferido recientemente'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_4_0001'
 ON CONFLICT (transfer_code) DO NOTHING;
 
--- GRUPO 2.5: Transferencias adicionales al Pabellón 1 para completar casos de stock
+-- Transferencias pendientes
 INSERT INTO supply_transfer (
     transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
     destination_type, destination_id, sent_by, sent_by_name,
-    picked_up_by, picked_up_by_name, picked_up_date,
-    received_by, received_by_name, status, transfer_reason,
-    send_date, receive_date, notes
+    status, transfer_reason, send_date, notes
 ) 
 SELECT 
-    'TRANS-' || TO_CHAR(NOW() - INTERVAL '1 day', 'YYYYMMDDHH24MI') || '-G2-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
-    ms.qr_code,
-    ms.id,
-    'store',
-    b.store_id,
-    'pavilion',
-    1,
-    '11111111-1',
-    'Encargado Bodega',
-    '22222222-2',
-    'María González',
-    NOW() - INTERVAL '1 day' + INTERVAL '3 hours',
-    '22222222-2',
-    'María González',
-    'recibido',
-    'Transferencia adicional para stock variado',
-    NOW() - INTERVAL '1 day',
-    NOW() - INTERVAL '1 day' + INTERVAL '4 hours',
-    'Stock adicional'
-FROM (
-    -- Batch 12: 4 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 12 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 4)
-    UNION ALL
-    -- Batch 15: 2 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 15 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 2)
-    UNION ALL
-    -- Batch 18: 7 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 18 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 7)
-    UNION ALL
-    -- Batch 23: 11 unidades
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 23 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 11)
-) ms
-JOIN batch b ON ms.batch_id = b.id
-ON CONFLICT (transfer_code) DO NOTHING;
-
--- GRUPO 2.6: Transferencias para crear STOCK BAJO en bodega
--- Transferir la mayoría de las unidades de los batches 6, 7, y 32 para dejarlos con < 20% del stock original
-INSERT INTO supply_transfer (
-    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
-    destination_type, destination_id, sent_by, sent_by_name,
-    picked_up_by, picked_up_by_name, picked_up_date,
-    received_by, received_by_name, status, transfer_reason,
-    send_date, receive_date, notes
-) 
+    'TRANS-SEED-PEND-0001', 'SUPPLY_5_0001', ms.id, 'store', 1, 'pavilion', 1,
+    '11111111-1', 'Encargado Bodega', 'pendiente',
+    'Transferencia pendiente de recogida', NOW() - INTERVAL '1 hour',
+    'Esperando recogida'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_5_0001'
+UNION ALL
 SELECT 
-    'TRANS-' || TO_CHAR(NOW() - INTERVAL '2 days', 'YYYYMMDDHH24MI') || '-SB-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
-    ms.qr_code,
-    ms.id,
-    'store',
-    b.store_id,
-    'pavilion',
-    CASE 
-        WHEN b.id = 6 THEN 2   -- Batch 6 al Pabellón 2
-        WHEN b.id = 7 THEN 3   -- Batch 7 al Pabellón 3
-        WHEN b.id = 32 THEN 4  -- Batch 32 al Pabellón 4
-    END,
-    '11111111-1',
-    'Encargado Bodega',
-    '22222222-2',
-    'María González',
-    NOW() - INTERVAL '2 days' + INTERVAL '2 hours',
-    '22222222-2',
-    'María González',
-    'recibido',
-    'Transferencia para pabellones - Creará stock bajo en bodega',
-    NOW() - INTERVAL '2 days',
-    NOW() - INTERVAL '2 days' + INTERVAL '3 hours',
-    'Stock bajo'
-FROM (
-    -- Batch 6: 9 de 10 unidades (quedará 1 = 10%)
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 6 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 9)
-    UNION ALL
-    -- Batch 7: 9 de 10 unidades (quedará 1 = 10%)
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 7 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 9)
-    UNION ALL
-    -- Batch 32: 17 de 20 unidades (quedará 3 = 15%)
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 32 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 17)
-) ms
-JOIN batch b ON ms.batch_id = b.id
+    'TRANS-SEED-PEND-0002', 'SUPPLY_5_0002', ms.id, 'store', 1, 'pavilion', 2,
+    '11111111-1', 'Encargado Bodega', 'pendiente',
+    'Transferencia pendiente de recogida', NOW() - INTERVAL '30 minutes',
+    'Esperando recogida'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_5_0002'
 ON CONFLICT (transfer_code) DO NOTHING;
 
--- GRUPO 3: Transferencias recientes (<8 horas) - VÁLIDAS
-INSERT INTO supply_transfer (
-    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
-    destination_type, destination_id, sent_by, sent_by_name,
-    picked_up_by, picked_up_by_name, picked_up_date,
-    received_by, received_by_name, status, transfer_reason,
-    send_date, receive_date, notes
-) 
-SELECT 
-    'TRANS-' || TO_CHAR(NOW() - INTERVAL '4 hours', 'YYYYMMDDHH24MI') || '-R-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
-    ms.qr_code,
-    ms.id,
-    'store',
-    b.store_id,
-    'pavilion',
-    (ROW_NUMBER() OVER () % 5) + 11, -- Distribuir entre pabellones 11-15
-    '11111111-1',
-    'Encargado Bodega',
-    '22222222-2',
-    'María González',
-    NOW() - INTERVAL '4 hours' + INTERVAL '30 minutes',
-    '22222222-2',
-    'María González',
-    'recibido',
-    'Transferencia reciente para cirugía programada',
-    NOW() - INTERVAL '4 hours',
-    NOW() - INTERVAL '3 hours',
-    'Insumos transferidos recientemente - Dentro del período válido'
-FROM medical_supply ms
-JOIN batch b ON ms.batch_id = b.id
-WHERE ms.batch_id IN (4, 11, 13, 14, 16, 19, 20, 24)
-AND ms.status = 'disponible'
-AND NOT EXISTS (
-    SELECT 1 FROM supply_request_qr_assignment qa 
-    WHERE qa.medical_supply_id = ms.id
-)
-LIMIT 15
-ON CONFLICT (transfer_code) DO NOTHING;
-
--- GRUPO 4: Transferencias críticas (>72 horas) - RETORNO URGENTE
--- MODIFICADO: Primeros 15 items van al Pabellón 1 para tener más de 40 items totales
-INSERT INTO supply_transfer (
-    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
-    destination_type, destination_id, sent_by, sent_by_name,
-    picked_up_by, picked_up_by_name, picked_up_date,
-    received_by, received_by_name, status, transfer_reason,
-    send_date, receive_date, notes
-) 
-SELECT 
-    'TRANS-' || TO_CHAR(NOW() - INTERVAL '3 days', 'YYYYMMDDHH24MI') || '-C-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
-    ms.qr_code,
-    ms.id,
-    'store',
-    b.store_id,
-    'pavilion',
-    CASE 
-        WHEN ROW_NUMBER() OVER () <= 15 THEN 1  -- Primeros 15 al Pabellón 1
-        ELSE (ROW_NUMBER() OVER () % 8) + 3     -- Resto distribuidos en pabellones 3-10
-    END,
-    '11111111-1',
-    'Encargado Bodega',
-    '22222222-2',
-    'María González',
-    NOW() - INTERVAL '3 days' + INTERVAL '1 hour',
-    '22222222-2',
-    'María González',
-    'recibido',
-    'Transferencia programada - Stock de reserva',
-    NOW() - INTERVAL '3 days',
-    NOW() - INTERVAL '3 days' + INTERVAL '2 hours',
-    'Insumos transferidos hace 3 días - Stock de emergencia en pabellón'
-FROM medical_supply ms
-JOIN batch b ON ms.batch_id = b.id
-WHERE ms.batch_id IN (8, 17, 21, 22, 25, 26, 27, 28, 29, 30)
-AND ms.status = 'disponible'
-AND NOT EXISTS (
-    SELECT 1 FROM supply_request_qr_assignment qa 
-    WHERE qa.medical_supply_id = ms.id
-)
-LIMIT 18
-ON CONFLICT (transfer_code) DO NOTHING;
-
--- GRUPO 5: Transferencias PENDIENTES y EN TRÁNSITO para estadísticas
--- Estas transferencias NO tienen receive_date ni received_by porque están pendientes/en tránsito
+-- Transferencias en tránsito
 INSERT INTO supply_transfer (
     transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
     destination_type, destination_id, sent_by, sent_by_name,
@@ -907,41 +685,20 @@ INSERT INTO supply_transfer (
     status, transfer_reason, send_date, notes
 ) 
 SELECT 
-    'TRANS-' || TO_CHAR(NOW(), 'YYYYMMDDHH24MI') || '-PEND-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
-    ms.qr_code,
-    ms.id,
-    'store',
-    b.store_id,
-    'pavilion',
-    (ROW_NUMBER() OVER () % 10) + 1, -- Distribuir entre pabellones 1-10
-    '11111111-1',
-    'Encargado Bodega',
-    NULL, -- Sin picked_up_by porque está pendiente
-    NULL, -- Sin picked_up_by_name
-    NULL, -- Sin picked_up_date
-    CASE 
-        WHEN ROW_NUMBER() OVER () <= 5 THEN 'pendiente'     -- 5 pendientes
-        ELSE 'en_transito'                                    -- 5 en tránsito
-    END,
-    'Transferencia programada para cirugía',
-    NOW() - INTERVAL '2 hours', -- Enviadas hace 2 horas
-    CASE 
-        WHEN ROW_NUMBER() OVER () <= 5 THEN 'Transferencia pendiente de recogida'
-        ELSE 'Transferencia en camino al pabellón'
-    END
-FROM medical_supply ms
-JOIN batch b ON ms.batch_id = b.id
-WHERE ms.batch_id IN (31, 33, 44, 45, 46, 47)
-AND ms.status = 'disponible'
-AND NOT EXISTS (
-    SELECT 1 FROM supply_request_qr_assignment qa 
-    WHERE qa.medical_supply_id = ms.id
-)
-AND NOT EXISTS (
-    SELECT 1 FROM supply_transfer st2
-    WHERE st2.medical_supply_id = ms.id
-)
-LIMIT 10
+    'TRANS-SEED-TRAN-0001', 'SUPPLY_6_0001', ms.id, 'store', 1, 'pavilion', 1,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '45 minutes', 'en_transito',
+    'Transferencia en camino', NOW() - INTERVAL '1 hour',
+    'En camino al pabellón'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_6_0001'
+UNION ALL
+SELECT 
+    'TRANS-SEED-TRAN-0002', 'SUPPLY_6_0002', ms.id, 'store', 1, 'pavilion', 3,
+    '11111111-1', 'Encargado Bodega', '22222222-2', 'María González',
+    NOW() - INTERVAL '20 minutes', 'en_transito',
+    'Transferencia en camino', NOW() - INTERVAL '30 minutes',
+    'En camino al pabellón'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_6_0002'
 ON CONFLICT (transfer_code) DO NOTHING;
 
 -- ============================================================================
@@ -1088,109 +845,8 @@ DO UPDATE SET
     last_received_date = GREATEST(pavilion_inventory_summary.last_received_date, EXCLUDED.last_received_date),
     updated_at = NOW();
 
--- Simular consumo de insumos para crear casos de stock 0 (rojo) en Pabellón 1
--- Batch 8 y Batch 17: Todos los insumos consumidos (stock 0)
--- Primero necesitamos transferir estos insumos al Pabellón 1
-INSERT INTO supply_transfer (
-    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
-    destination_type, destination_id, sent_by, sent_by_name,
-    picked_up_by, picked_up_by_name, picked_up_date,
-    received_by, received_by_name, status, transfer_reason,
-    send_date, receive_date, notes
-) 
-SELECT 
-    'TRANS-' || TO_CHAR(NOW() - INTERVAL '3 days', 'YYYYMMDDHH24MI') || '-Z-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
-    ms.qr_code,
-    ms.id,
-    'store',
-    b.store_id,
-    'pavilion',
-    1, -- Al Pabellón 1
-    '11111111-1',
-    'Encargado Bodega',
-    '22222222-2',
-    'María González',
-    NOW() - INTERVAL '3 days' + INTERVAL '1 hour',
-    '22222222-2',
-    'María González',
-    'recibido',
-    'Transferencia para stock 0 (consumido totalmente)',
-    NOW() - INTERVAL '3 days',
-    NOW() - INTERVAL '3 days' + INTERVAL '2 hours',
-    'Insumos transferidos que serán consumidos totalmente para crear stock 0'
-FROM (
-    -- Batch 8: 5 unidades que se consumirán todas
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 8 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 5)
-    UNION ALL
-    -- Batch 17: 3 unidades que se consumirán todas
-    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
-     FROM medical_supply ms
-     JOIN batch b ON ms.batch_id = b.id
-     WHERE ms.batch_id = 17 AND ms.status = 'disponible'
-     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
-     LIMIT 3)
-) ms
-JOIN batch b ON ms.batch_id = b.id
-ON CONFLICT (transfer_code) DO NOTHING;
+-- Ya no es necesario simular transfers para consumo - el script queda más simple
 
--- Actualizar estado de estos insumos como recepcionados en Pabellón 1
-UPDATE medical_supply ms
-SET 
-    status = 'consumido',
-    location_type = 'pavilion',
-    location_id = 1,
-    in_transit = false,
-    transfer_date = NOW() - INTERVAL '3 days',
-    transferred_by = '22222222-2',
-    updated_at = NOW() - INTERVAL '2 days'  -- Consumidos hace 2 días
-FROM supply_transfer st
-WHERE ms.id = st.medical_supply_id
-AND st.transfer_code LIKE 'TRANS-%-Z-%'
-AND st.destination_id = 1;
-
--- Actualizar pavilion_inventory_summary para reflejar stock 0
--- Primero insertar las transferencias en el resumen
-INSERT INTO pavilion_inventory_summary (
-    pavilion_id,
-    batch_id,
-    supply_code,
-    total_received,
-    current_available,
-    total_consumed,
-    total_returned,
-    last_received_date,
-    created_at,
-    updated_at
-)
-SELECT 
-    1 AS pavilion_id,
-    ms.batch_id,
-    ms.code AS supply_code,
-    COUNT(*) AS total_received,
-    0 AS current_available,  -- Stock 0
-    COUNT(*) AS total_consumed,  -- Todos consumidos
-    0 AS total_returned,
-    MAX(st.receive_date) AS last_received_date,
-    NOW() AS created_at,
-    NOW() AS updated_at
-FROM supply_transfer st
-JOIN medical_supply ms ON ms.id = st.medical_supply_id
-WHERE st.transfer_code LIKE 'TRANS-%-Z-%'
-AND st.destination_id = 1
-AND st.status = 'recibido'
-GROUP BY ms.batch_id, ms.code
-ON CONFLICT (pavilion_id, batch_id) 
-DO UPDATE SET
-    total_received = pavilion_inventory_summary.total_received + EXCLUDED.total_received,
-    current_available = 0,  -- Stock agotado
-    total_consumed = pavilion_inventory_summary.total_consumed + EXCLUDED.total_consumed,
-    last_received_date = GREATEST(pavilion_inventory_summary.last_received_date, EXCLUDED.last_received_date),
-    updated_at = NOW();
 
 -- ============================================================================
 -- RESUMEN DE INVENTARIO POR BODEGA (CREAR ANTES DE ACTUALIZAR)
