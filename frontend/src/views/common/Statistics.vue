@@ -952,7 +952,7 @@ async function loadMedicalMetrics() {
 
     medicalMetrics.value.totalSpecialties = Array.isArray(specialties) ? specialties.filter(s => s.is_active).length : 0
     medicalMetrics.value.totalSurgeries = Array.isArray(surgeries) ? surgeries.length : 0
-    medicalMetrics.value.totalDoctors = Array.isArray(doctors) ? doctors.filter(d => d.is_available).length : 0
+    medicalMetrics.value.totalDoctors = Array.isArray(doctors) ? doctors.length : 0
     medicalMetrics.value.totalTypicalSupplies = Number(typicalSuppliesCount) || 0
 
     // Cargar solicitudes por especialidad (si hay datos disponibles)

@@ -98,14 +98,14 @@ const routes = [
     }
   },
 
-  // EstadÃ­sticas y reportes
+  // Estadísticas y reportes
   {
     path: '/statistics',
     name: 'Statistics',
     component: () => import('@/views/common/Statistics.vue'),
     meta: {
-      title: 'EstadÃ­sticas - MediTrack',
-      description: 'Panel de anÃ¡lisis y mÃ©tricas del sistema de inventario',
+      title: 'Estadísticas - MediTrack',
+      description: 'Panel de análisis y métricas del sistema de inventario',
       requiresAuth: true
     }
   },
@@ -117,7 +117,7 @@ const routes = [
     component: () => import('@/views/qr/QRScanner.vue'),
     meta: {
       title: 'Scanner QR - MediTrack',
-      description: 'EscÃ¡ner de cÃ³digos QR para insumos mÃ©dicos',
+      description: 'Escáner de códigos QR para insumos médicos',
       requiresAuth: true
     }
   },
@@ -129,7 +129,7 @@ const routes = [
     component: () => import('@/views/qr/QRConsumer.vue'),
     meta: {
       title: 'Consumo QR - MediTrack',
-      description: 'Consumir insumos mÃ©dicos con estado "recepcionado" mediante cÃ³digos QR',
+      description: 'Consumir insumos médicos con estado "recepcionado" mediante códigos QR',
       requiresAuth: true
     }
   },
@@ -141,19 +141,19 @@ const routes = [
     component: () => import('@/views/qr/QRTransfer.vue'),
     meta: {
       title: 'Transferir Insumo - MediTrack',
-      description: 'Transferir insumos mÃ©dicos con estado "disponible" a otros centros',
+      description: 'Transferir insumos médicos con estado "disponible" a otros centros',
       requiresAuth: true
     }
   },
 
-  // NUEVA RUTA: RecepciÃ³n de insumos
+  // NUEVA RUTA: Recepción de insumos
   {
     path: '/qr-reception',
     name: 'QRReception',
     component: () => import('@/views/qr/QRReception.vue'),
     meta: {
       title: 'Recepcionar Insumo - MediTrack',
-      description: 'Recepcionar insumos mÃ©dicos con estado "en_camino_a_pabellon"',
+      description: 'Recepcionar insumos médicos con estado "en_camino_a_pabellon"',
       requiresAuth: true
     }
   },
@@ -165,7 +165,7 @@ const routes = [
     component: () => import('@/views/qr/QRPickup.vue'),
     meta: {
       title: 'Retirar Insumo - MediTrack',
-      description: 'Retirar insumos mÃ©dicos desde bodega con estado "pendiente_retiro"',
+      description: 'Retirar insumos médicos desde bodega con estado "pendiente_retiro"',
       requiresAuth: true
     }
   },
@@ -391,7 +391,7 @@ const routes = [
     }
   },
 
-  // === NUEVAS RUTAS DE INVENTARIO POR UBICACIÃ"N ===
+  // === NUEVAS RUTAS DE INVENTARIO POR UBICACIÓN ===
   
   // Dashboard de Inventario
   {
