@@ -190,6 +190,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
 
 // Props
@@ -201,6 +202,7 @@ const props = defineProps({
 })
 
 const route = useRoute()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado reactivo
 const loading = ref(false)
@@ -276,9 +278,14 @@ const loadHistory = async () => {
   try {
     const history = await qrService.getBatchHistoryFormatted(batchId.value)
     historyData.value = history.sort((a, b) => new Date(b.date_time) - new Date(a.date_time))
+    if (history.length > 0) {
+      showSuccess(`Historial cargado: ${history.length} movimientos encontrados`)
+    }
   } catch (err) {
     console.error('Error al cargar historial:', err)
-    error.value = err.message || 'Error al cargar el historial del lote'
+    const errorMessage = err.message || 'Error al cargar el historial del lote'
+    error.value = errorMessage
+    showError(errorMessage)
   } finally {
     loading.value = false
   }

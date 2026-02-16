@@ -100,6 +100,9 @@ DROP INDEX IF EXISTS idx_supply_transfer_qr_code;
 -- Índices de medical_supply
 DROP INDEX IF EXISTS idx_medical_supply_status;
 
+-- Índices de supply_history
+DROP INDEX IF EXISTS idx_supply_history_location;
+
 -- Índices de qr_scan_event
 DROP INDEX IF EXISTS idx_qr_scan_event_session;
 DROP INDEX IF EXISTS idx_qr_scan_event_qr_time;
@@ -153,6 +156,7 @@ DROP INDEX IF EXISTS idx_medical_specialty_name;
 DROP INDEX IF EXISTS idx_batch_history_batch_number;
 
 -- Índices de user
+DROP INDEX IF EXISTS idx_user_reset_token;
 DROP INDEX IF EXISTS idx_user_email;
 
 -- Índices únicos de QR
@@ -192,6 +196,7 @@ DROP TABLE IF EXISTS batch CASCADE;
 DROP TABLE IF EXISTS supply_code CASCADE;
 
 -- Tablas de configuración médica
+DROP TABLE IF EXISTS doctor_info CASCADE;
 DROP TABLE IF EXISTS surgery_typical_supply CASCADE;
 DROP TABLE IF EXISTS medical_specialty CASCADE;
 

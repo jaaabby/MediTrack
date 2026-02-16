@@ -1,21 +1,41 @@
--- Script de Poblado Completo para MediTrack
--- Fecha: 2025-08-19
--- Última actualización: 2025-11-19
--- Descripción: Poblado completo de todas las tablas del sistema
+-- Script de Poblado Completo para MediTrack - VERSIÓN MEJORADA
+-- Fecha: 2025-02-05
+-- Descripción: Poblado completo con relaciones coherentes entre todas las tablas
 --
--- NOTAS IMPORTANTES:
--- - Este script crea el estado INICIAL de la base de datos
--- - Todos los insumos comienzan en estado 'disponible'
--- - Los estados cambian dinámicamente según las operaciones del sistema
--- - Ver documentación de estados en la sección de medical_supply
+-- MEJORAS IMPLEMENTADAS:
+-- - Códigos de insumo ampliados y categorizados por tipo de cirugía (54 códigos)
+-- - 50 lotes distribuidos entre Bodega Central (40) y Bodega Consignación (10)
+-- - Lotes con mejor distribución y relación con cirugías específicas
+-- - Generación automática de insumos médicos con QR codes únicos
+-- - Surgery_typical_supply completo para cirugías principales (120+ relaciones)
+-- - 6 solicitudes de ejemplo en diferentes estados del flujo
+-- - 58 transferencias a pabellones con diferentes antigüedades:
+--   * 25 transferencias >48 horas (PENDIENTES RETORNO) - Todas al Pabellón 1
+--   * 15 transferencias <8 horas (VÁLIDAS)
+--   * 18 transferencias >72 horas (CRÍTICAS - RETORNO URGENTE) - 15 al Pabellón 1, resto distribuidas
+--   * NOTA: El Pabellón 1 tiene 70+ items distribuidos en múltiples lotes para probar:
+--     - Stock 0 (rojo): Batch 8 y 17 consumidos totalmente
+--     - Stock bajo 1-4 (naranja): Batch 5 (1 unidad), Batch 15 (2 unidades), Batch 3 (3 unidades), Batch 12 (4 unidades)
+--     - Stock 5-9 (amarillo): Batch 10 (6 unidades), Batch 18 (7 unidades), Batch 2 (8 unidades)
+--     - Stock 10+ (verde): Batch 23 (11 unidades), Batch 1 (12 unidades), Batch 9 (15 unidades)
+-- - Inventario activo en pabellones (pavilion_inventory_summary actualizado)
+-- - Historial de transferencias documentado
+-- - Configuración de 17 proveedores con diferentes políticas de vencimiento
+-- - Reportes de gestión de retornos a bodega
+--
+-- DATOS PARA GESTIÓN DE RETORNOS:
+-- Los insumos transferidos a pabellones hace más de 8 horas laborales
+-- aparecerán automáticamente como "Pendientes de Retorno" en la vista
+-- de gestión de retornos a bodega.
 
--- Poblar centros médicos
+-- ============================================================================
+-- CENTROS MÉDICOS Y PABELLONES (NO MODIFICAR)
+-- ============================================================================
 INSERT INTO medical_center (id, name, address, phone, email) VALUES
 (1, 'Centro Médico Principal', 'Av. Principal 123', '+56 2 2345 6789', 'info@centromedico.cl'),
 (2, 'Clínica Norte', 'Calle Norte 456', '987654321', 'norte@meditrack.com')
 ON CONFLICT (id) DO NOTHING;
 
--- Poblar pabellones
 INSERT INTO pavilion (id, name, medical_center_id) VALUES
 (1, 'Pabellón Central 01', 1),
 (2, 'Pabellón Central 02', 1),
@@ -44,22 +64,88 @@ INSERT INTO pavilion (id, name, medical_center_id) VALUES
 (25, 'Pabellón Central 25', 1)
 ON CONFLICT (id) DO NOTHING;
 
--- Poblar bodegas
+-- ============================================================================
+-- BODEGAS
+-- ============================================================================
 INSERT INTO store (id, name, type, medical_center_id) VALUES
-(1, 'Bodega Principal', 'central', 1),
-(2, 'Bodega Secundaria', 'secundaria', 2)
+(1, 'Bodega Central', 'central', 1),
+(2, 'Bodega Consignación', 'consignacion', 2)
 ON CONFLICT (id) DO NOTHING;
 
--- Poblar códigos de insumos
+-- ============================================================================
+-- CÓDIGOS DE INSUMOS - AMPLIADO Y CATEGORIZADO
+-- ============================================================================
 INSERT INTO supply_code (code, name, code_supplier, critical_stock) VALUES
-(1001, 'Guantes', 5001, 5),
-(1002, 'Mascarillas', 5002, 10),
-(1003, 'Jeringas', 5003, 10),
-(1004, 'Agujas', 5004, 10),
-(1005, 'Gasas', 5005, 10)
+-- Insumos generales (1000-1099)
+(1001, 'Guantes Quirúrgicos Estériles', 5001, 100),
+(1002, 'Mascarillas N95', 5002, 50),
+(1003, 'Jeringas 10ml', 5003, 80),
+(1004, 'Agujas 21G', 5004, 100),
+(1005, 'Gasas Estériles 10x10cm', 5005, 200),
+(1006, 'Alcohol Gel 500ml', 5006, 30),
+(1007, 'Batas Quirúrgicas Estériles', 5007, 40),
+(1008, 'Campos Quirúrgicos Estériles', 5008, 60),
+(1009, 'Guantes de Examinación No Estériles', 5009, 150),
+(1010, 'Mascarillas Quirúrgicas Estándar', 5010, 200),
+
+-- Suturas y material de cierre (1100-1199)
+(1101, 'Sutura Vicryl 2-0', 5011, 40),
+(1102, 'Sutura Nylon 3-0', 5012, 35),
+(1103, 'Sutura Prolene 4-0', 5013, 30),
+(1104, 'Grapas Quirúrgicas', 5014, 25),
+(1105, 'Steri-Strips', 5015, 50),
+(1106, 'Pegamento Tisular', 5016, 20),
+
+-- Material para anestesia (1200-1299)
+(1201, 'Tubo Endotraqueal 7.0', 5017, 30),
+(1202, 'Tubo Endotraqueal 7.5', 5018, 30),
+(1203, 'Mascarilla Laríngea #4', 5019, 25),
+(1204, 'Cánula de Guedel #3', 5020, 40),
+(1205, 'Sonda Nelaton #14', 5021, 50),
+
+-- Catéteres y drenajes (1300-1399)
+(1301, 'Catéter Venoso Central', 5022, 15),
+(1302, 'Catéter Foley #16', 5023, 30),
+(1303, 'Drenaje Blake #19', 5024, 20),
+(1304, 'Catéter Venoso Periférico #20', 5025, 80),
+(1305, 'Catéter Venoso Periférico #22', 5026, 80),
+
+-- Material específico cardiovascular (1400-1499)
+(1401, 'Bisturí Eléctrico Desechable', 5027, 15),
+(1402, 'Compresas Hemostáticas', 5028, 25),
+(1403, 'Ligaduras Vasculares', 5029, 30),
+
+-- Material ortopédico (1500-1599)
+(1501, 'Yeso Sintético 10cm', 5030, 20),
+(1502, 'Yeso Sintético 15cm', 5031, 20),
+(1503, 'Vendas Elásticas 10cm', 5032, 40),
+(1504, 'Tornillos Ortopédicos 3.5mm', 5033, 15),
+(1505, 'Placas Ortopédicas Rectas', 5034, 10),
+
+-- Material oftalmológico (1600-1699)
+(1601, 'Lente Intraocular', 5035, 15),
+(1602, 'Viscoelástico Oftálmico', 5036, 20),
+(1603, 'Sutura Nylon 10-0', 5037, 10),
+
+-- Material urológico (1700-1799)
+(1701, 'Sonda Vesical #18', 5038, 25),
+(1702, 'Uréter Doble J #6', 5039, 15),
+(1703, 'Balón Dilatación Uretral', 5040, 10),
+
+-- Material ginecológico (1800-1899)
+(1801, 'Espéculo Vaginal Desechable', 5041, 50),
+(1802, 'Pinzas de Biopsia Cervical', 5042, 15),
+(1803, 'Histerómetro Desechable', 5043, 20),
+
+-- Material neurocirugía (1900-1999)
+(1901, 'Craneotomo Desechable', 5044, 5),
+(1902, 'Válvula Derivación Ventriculoperitoneal', 5045, 8),
+(1903, 'Hemostáticos Neurológicos', 5046, 12)
 ON CONFLICT (code) DO NOTHING;
 
--- Poblar especialidades médicas (si no existen ya por la migración)
+-- ============================================================================
+-- ESPECIALIDADES MÉDICAS
+-- ============================================================================
 INSERT INTO medical_specialty (name, description, code, is_active) VALUES
 ('Traumatología', 'Especialidad médica dedicada al diagnóstico y tratamiento de lesiones del sistema musculoesquelético', 'TRAUMA', TRUE),
 ('Cardiología', 'Especialidad médica dedicada al diagnóstico y tratamiento de enfermedades del corazón y del sistema circulatorio', 'CARDIOL', TRUE),
@@ -73,7 +159,9 @@ INSERT INTO medical_specialty (name, description, code, is_active) VALUES
 ('Plástica y Reconstructiva', 'Especialidad médica dedicada a la reconstrucción y mejoramiento estético de partes del cuerpo', 'PLAST', TRUE)
 ON CONFLICT (name) DO NOTHING;
 
--- Poblar cirugías (con especialidades asignadas)
+-- ============================================================================
+-- CIRUGÍAS (NO MODIFICAR - MANTENER TAL CUAL)
+-- ============================================================================
 INSERT INTO surgery (id, name, duration, specialty_id) VALUES
 (1, 'COLGAJOS COMPLEJOS (ABBE,MUSTARDA,CONV', 2.5, (SELECT id FROM medical_specialty WHERE code = 'PLAST')),
 (2, 'HASTA 5N SUPERFICIE CORPORAL RECEPTORA', 2, (SELECT id FROM medical_specialty WHERE code = 'PLAST')),
@@ -295,438 +383,626 @@ INSERT INTO surgery (id, name, duration, specialty_id) VALUES
 (218, 'ANEURISMA AORTICO ABDOMINAL TRAT. QUIR.', 4, (SELECT id FROM medical_specialty WHERE code = 'CARDIOL'))
 ON CONFLICT (id) DO UPDATE SET specialty_id = EXCLUDED.specialty_id;
 
--- Poblar lotes
+-- ============================================================================
+-- LOTES - AMPLIADO Y DIVERSIFICADO
+-- ============================================================================
+-- Lotes para Bodega Central (ID 1)
 INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code, surgery_id, location_type, location_id) VALUES
-(1, '2026-12-31', 10, 'Proveedor Uno', 1, 'BATCH_1_1', 1, 'store', 1),
-(2, '2025-12-31', 5, 'Proveedor Dos', 2, 'BATCH_2_1', 2, 'store', 2),
-(3, '2026-06-30', 15, 'Proveedor Tres', 1, 'BATCH_3_1', 5, 'store', 1),
-(4, '2025-10-15', 8, 'Proveedor Cuatro', 2, 'BATCH_4_1', 10, 'store', 2)
+-- Insumos generales
+(1, '2026-12-31', 150, 'Proveedor Uno', 1, 'BATCH_1001_001', NULL, 'store', 1),
+(2, '2026-01-15', 200, 'Proveedor Uno', 1, 'BATCH_1002_001', NULL, 'store', 1), -- VENCIDO (hace 1 mes)
+(3, '2026-03-10', 120, 'Proveedor Dos', 1, 'BATCH_1003_001', NULL, 'store', 1), -- PRÓXIMO A VENCIMIENTO (23 días)
+(4, '2026-08-30', 150, 'Proveedor Dos', 1, 'BATCH_1004_001', NULL, 'store', 1),
+(5, '2027-06-15', 300, 'Proveedor Tres', 1, 'BATCH_1005_001', NULL, 'store', 1),
+(6, '2026-11-20', 10, 'Proveedor Cuatro', 1, 'BATCH_1006_001', NULL, 'store', 1), -- STOCK BAJO (10 unidades, transferir 9)
+(7, '2027-01-10', 10, 'Proveedor Uno', 1, 'BATCH_1007_001', NULL, 'store', 1), -- STOCK BAJO (10 unidades, transferir 8)
+(8, '2026-09-25', 100, 'Proveedor Dos', 1, 'BATCH_1008_001', NULL, 'store', 1),
+-- Suturas (para cirugías generales y plásticas)
+(9, '2028-12-31', 60, 'Proveedor Cinco', 1, 'BATCH_1101_001', 1, 'store', 1),
+(10, '2028-10-20', 50, 'Proveedor Cinco', 1, 'BATCH_1102_001', 3, 'store', 1),
+(11, '2028-11-15', 45, 'Proveedor Cinco', 1, 'BATCH_1103_001', 26, 'store', 1),
+-- Material anestesia
+(12, '2027-07-30', 40, 'Proveedor Seis', 1, 'BATCH_1201_001', NULL, 'store', 1),
+(13, '2027-07-30', 40, 'Proveedor Seis', 1, 'BATCH_1202_001', NULL, 'store', 1),
+(14, '2027-09-15', 35, 'Proveedor Seis', 1, 'BATCH_1203_001', NULL, 'store', 1),
+-- Catéteres y drenajes
+(15, '2027-02-28', 25, 'Proveedor Siete', 1, 'BATCH_1301_001', 218, 'store', 1),
+(16, '2027-04-10', 45, 'Proveedor Siete', 1, 'BATCH_1302_001', NULL, 'store', 1),
+(17, '2027-05-20', 30, 'Proveedor Siete', 1, 'BATCH_1303_001', 34, 'store', 1),
+-- Material ortopédico
+(18, '2028-01-15', 30, 'Proveedor Ocho', 1, 'BATCH_1501_001', 5, 'store', 1),
+(19, '2028-01-15', 30, 'Proveedor Ocho', 1, 'BATCH_1502_001', 74, 'store', 1),
+(20, '2027-12-10', 60, 'Proveedor Ocho', 1, 'BATCH_1503_001', 75, 'store', 1),
+(21, '2029-06-30', 20, 'Proveedor Ocho', 1, 'BATCH_1504_001', 133, 'store', 1),
+(22, '2029-06-30', 15, 'Proveedor Ocho', 1, 'BATCH_1505_001', 137, 'store', 1),
+-- Material oftalmológico
+(23, '2027-08-20', 20, 'Proveedor Nueve', 1, 'BATCH_1601_001', 68, 'store', 1),
+(24, '2027-10-05', 30, 'Proveedor Nueve', 1, 'BATCH_1602_001', 68, 'store', 1),
+(25, '2028-03-15', 15, 'Proveedor Nueve', 1, 'BATCH_1603_001', 64, 'store', 1),
+-- Material urológico
+(26, '2027-11-25', 35, 'Proveedor Diez', 1, 'BATCH_1701_001', 11, 'store', 1),
+(27, '2027-12-30', 20, 'Proveedor Diez', 1, 'BATCH_1702_001', 12, 'store', 1),
+-- Material ginecológico
+(28, '2027-06-10', 70, 'Proveedor Once', 1, 'BATCH_1801_001', NULL, 'store', 1),
+(29, '2028-02-20', 20, 'Proveedor Once', 1, 'BATCH_1802_001', 40, 'store', 1),
+(30, '2027-09-30', 25, 'Proveedor Once', 1, 'BATCH_1803_001', 92, 'store', 1),
+-- Material neurocirugía
+(31, '2028-05-15', 8, 'Proveedor Doce', 1, 'BATCH_1901_001', 43, 'store', 1),
+(32, '2028-08-20', 20, 'Proveedor Doce', 1, 'BATCH_1902_001', 213, 'store', 1), -- STOCK BAJO (20 unidades, transferir 17),
+(33, '2027-12-15', 15, 'Proveedor Doce', 1, 'BATCH_1903_001', 31, 'store', 1),
+
+-- Lotes para Bodega Consignación (ID 2)
+(34, '2026-11-30', 100, 'Proveedor Consignación A', 2, 'BATCH_1001_002', NULL, 'store', 2),
+(35, '2027-02-28', 150, 'Proveedor Consignación A', 2, 'BATCH_1002_002', NULL, 'store', 2),
+(36, '2027-04-15', 80, 'Proveedor Consignación B', 2, 'BATCH_1003_002', NULL, 'store', 2),
+(37, '2027-05-20', 100, 'Proveedor Consignación B', 2, 'BATCH_1004_002', NULL, 'store', 2),
+(38, '2027-07-10', 200, 'Proveedor Consignación C', 2, 'BATCH_1005_002', NULL, 'store', 2),
+(39, '2027-01-25', 40, 'Proveedor Consignación C', 2, 'BATCH_1007_002', NULL, 'store', 2),
+(40, '2028-03-30', 35, 'Proveedor Consignación D', 2, 'BATCH_1101_002', 115, 'store', 2),
+(41, '2028-03-30', 30, 'Proveedor Consignación D', 2, 'BATCH_1102_002', 116, 'store', 2),
+(42, '2027-10-20', 25, 'Proveedor Consignación E', 2, 'BATCH_1301_002', NULL, 'store', 2),
+(43, '2027-11-15', 35, 'Proveedor Consignación E', 2, 'BATCH_1302_002', NULL, 'store', 2),
+
+-- Lotes adicionales para Bodega Central (antes en urgencias, ahora redistribuidos)
+(44, '2026-09-30', 80, 'Proveedor Uno', 1, 'BATCH_1001_004', NULL, 'store', 1),
+(45, '2026-10-15', 100, 'Proveedor Uno', 1, 'BATCH_1002_004', NULL, 'store', 1),
+(46, '2027-01-20', 60, 'Proveedor Dos', 1, 'BATCH_1003_004', NULL, 'store', 1),
+(47, '2026-12-05', 80, 'Proveedor Tres', 1, 'BATCH_1009_001', NULL, 'store', 1),
+(48, '2027-03-10', 120, 'Proveedor Tres', 1, 'BATCH_1010_001', NULL, 'store', 1),
+(49, '2027-02-15', 50, 'Proveedor Cuatro', 1, 'BATCH_1304_001', NULL, 'store', 1),
+(50, '2027-02-15', 50, 'Proveedor Cuatro', 1, 'BATCH_1305_001', NULL, 'store', 1)
 ON CONFLICT (id) DO NOTHING;
 
--- Poblar insumos médicos - TODOS EN ESTADO DISPONIBLE
--- Estados posibles:
---   'disponible': Insumo disponible en bodega para ser transferido
---   'pendiente_retiro': Insumo preparado para retiro físico de bodega (asignado a carrito cerrado)
---   'en_camino_a_pabellon': Insumo retirado físicamente y en tránsito a pabellón
---   'recepcionado': Insumo recibido en pabellón, listo para ser consumido
---   'consumido': Insumo usado en procedimiento médico
---   'en_camino_a_bodega': Insumo siendo devuelto a bodega
---
--- Flujo de dos pasos para transferencias desde carrito:
---   1. Encargado de bodega cierra carrito → insumos pasan a 'pendiente_retiro'
---   2. Enfermera escanea para retirar → insumos pasan a 'en_camino_a_pabellon'
---   3. Enfermera escanea al llegar → insumos pasan a 'recepcionado'
---   4. Doctor/Enfermera consume → insumos pasan a 'consumido'
-INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, location_id) VALUES
-(1001, 1, 'SUPPLY_1_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_2_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_3_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_4_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_5_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_6_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_7_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_8_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_9_1', 'disponible', 'store', 1),
-(1001, 1, 'SUPPLY_10_1', 'disponible', 'store', 1),
-(1002, 2, 'SUPPLY_11_1', 'disponible', 'store', 2),
-(1002, 2, 'SUPPLY_12_1', 'disponible', 'store', 2),
-(1002, 2, 'SUPPLY_13_1', 'disponible', 'store', 2),
-(1002, 2, 'SUPPLY_14_1', 'disponible', 'store', 2),
-(1002, 2, 'SUPPLY_15_1', 'disponible', 'store', 2),
-(1003, 3, 'SUPPLY_16_1', 'disponible', 'store', 1),
-(1003, 3, 'SUPPLY_17_1', 'disponible', 'store', 1),
-(1003, 3, 'SUPPLY_18_1', 'disponible', 'store', 1),
-(1003, 3, 'SUPPLY_19_1', 'disponible', 'store', 1),
-(1003, 3, 'SUPPLY_20_1', 'disponible', 'store', 1),
-(1004, 4, 'SUPPLY_21_1', 'disponible', 'store', 2),
-(1004, 4, 'SUPPLY_22_1', 'disponible', 'store', 2),
-(1004, 4, 'SUPPLY_23_1', 'disponible', 'store', 2),
-(1004, 4, 'SUPPLY_24_1', 'disponible', 'store', 2),
-(1004, 4, 'SUPPLY_25_1', 'disponible', 'store', 2)
-ON CONFLICT (qr_code) DO NOTHING;
+-- ============================================================================
+-- INSUMOS MÉDICOS - GENERACIÓN MASIVA CON QR ÚNICOS
+-- ============================================================================
+-- Función auxiliar para generar insumos por lote
+DO $$
+DECLARE
+    batch_record RECORD;
+    i INTEGER;
+    qr_prefix TEXT;
+    current_supply_code INTEGER;
+BEGIN
+    -- Obtener el código de insumo correspondiente a cada lote
+    FOR batch_record IN 
+        SELECT 
+            b.id as batch_id,
+            b.amount,
+            b.store_id,
+            b.qr_code as batch_qr,
+            CASE 
+                -- Mapeo de lotes a códigos de insumo basado en el QR del lote
+                WHEN b.qr_code LIKE '%1001%' THEN 1001
+                WHEN b.qr_code LIKE '%1002%' THEN 1002
+                WHEN b.qr_code LIKE '%1003%' THEN 1003
+                WHEN b.qr_code LIKE '%1004%' THEN 1004
+                WHEN b.qr_code LIKE '%1005%' THEN 1005
+                WHEN b.qr_code LIKE '%1006%' THEN 1006
+                WHEN b.qr_code LIKE '%1007%' THEN 1007
+                WHEN b.qr_code LIKE '%1008%' THEN 1008
+                WHEN b.qr_code LIKE '%1009%' THEN 1009
+                WHEN b.qr_code LIKE '%1010%' THEN 1010
+                WHEN b.qr_code LIKE '%1101%' THEN 1101
+                WHEN b.qr_code LIKE '%1102%' THEN 1102
+                WHEN b.qr_code LIKE '%1103%' THEN 1103
+                WHEN b.qr_code LIKE '%1201%' THEN 1201
+                WHEN b.qr_code LIKE '%1202%' THEN 1202
+                WHEN b.qr_code LIKE '%1203%' THEN 1203
+                WHEN b.qr_code LIKE '%1301%' THEN 1301
+                WHEN b.qr_code LIKE '%1302%' THEN 1302
+                WHEN b.qr_code LIKE '%1303%' THEN 1303
+                WHEN b.qr_code LIKE '%1304%' THEN 1304
+                WHEN b.qr_code LIKE '%1305%' THEN 1305
+                WHEN b.qr_code LIKE '%1501%' THEN 1501
+                WHEN b.qr_code LIKE '%1502%' THEN 1502
+                WHEN b.qr_code LIKE '%1503%' THEN 1503
+                WHEN b.qr_code LIKE '%1504%' THEN 1504
+                WHEN b.qr_code LIKE '%1505%' THEN 1505
+                WHEN b.qr_code LIKE '%1601%' THEN 1601
+                WHEN b.qr_code LIKE '%1602%' THEN 1602
+                WHEN b.qr_code LIKE '%1603%' THEN 1603
+                WHEN b.qr_code LIKE '%1701%' THEN 1701
+                WHEN b.qr_code LIKE '%1702%' THEN 1702
+                WHEN b.qr_code LIKE '%1801%' THEN 1801
+                WHEN b.qr_code LIKE '%1802%' THEN 1802
+                WHEN b.qr_code LIKE '%1803%' THEN 1803
+                WHEN b.qr_code LIKE '%1901%' THEN 1901
+                WHEN b.qr_code LIKE '%1902%' THEN 1902
+                WHEN b.qr_code LIKE '%1903%' THEN 1903
+                ELSE NULL
+            END as supply_code
+        FROM batch b
+        WHERE b.id <= 50
+    LOOP
+        -- Generar insumos para este lote
+        IF batch_record.supply_code IS NOT NULL THEN
+            FOR i IN 1..batch_record.amount LOOP
+                qr_prefix := 'SUPPLY_' || batch_record.batch_id || '_' || LPAD(i::TEXT, 4, '0');
+                
+                INSERT INTO medical_supply (
+                    code, 
+                    batch_id, 
+                    qr_code, 
+                    status, 
+                    location_type, 
+                    location_id
+                ) VALUES (
+                    batch_record.supply_code,
+                    batch_record.batch_id,
+                    qr_prefix,
+                    'disponible',
+                    'store',
+                    batch_record.store_id
+                ) ON CONFLICT (qr_code) DO NOTHING;
+            END LOOP;
+        END IF;
+    END LOOP;
+END $$;
 
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES (
-    '12345678-9',
-    'Administrador del Sistema',
-    'admin@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'admin',
-    1,
-    NULL,
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-) ON CONFLICT (rut) DO NOTHING;
+-- ============================================================================
+-- USUARIOS (NO MODIFICAR - MANTENER TAL CUAL)
+-- ============================================================================
+INSERT INTO "user" (rut, name, email, password, role, medical_center_id, pavilion_id, specialty_id, is_active, created_at, updated_at) VALUES 
+('12345678-9', 'Administrador del Sistema', 'admin@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'admin', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('87654321-0', 'Usuario Pabellón', 'pabellon@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'pabellón', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('11111111-1', 'Encargado Bodega', 'bodegacentral@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'encargado de bodega', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('22222222-2', 'María González', 'enfermera@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'enfermera', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('33333333-3', 'Dr. Carlos Pérez', 'doctor@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 1, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('SYSTEM-INIT', 'Sistema de Inicialización', 'system@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'admin', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('44444444-4', 'Pavedad', 'pavedad@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'pavedad', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('12121212-1', 'Usuario Consignación', 'bodegaconsignacion@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'encargado de bodega', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('55555555-5', 'Dr. Ana Martínez', 'ana.martinez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 2, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('66666666-6', 'Dr. Roberto Silva', 'roberto.silva@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 4, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('77777777-7', 'Dra. Laura Torres', 'laura.torres@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 8, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('88888888-8', 'Dr. Pedro Ramírez', 'pedro.ramirez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 3, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('99999999-9', 'Dra. Carmen López', 'carmen.lopez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 5, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('10101010-1', 'Dr. Miguel Ángel Rojas', 'miguel.rojas@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 7, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('20202020-2', 'Dra. Patricia Vega', 'patricia.vega@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 2, NULL, 10, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('30303030-3', 'Dr. Fernando Castro', 'fernando.castro@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 2, NULL, 6, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('PABELLON1', 'Pabellón 1', 'pabellon1@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'pabellón', 1, 1, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW()))
+ON CONFLICT (rut) DO NOTHING;
 
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES (
-    '87654321-0',
-    'Usuario Pabellón',
-    'pabellon@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'pabellón',
-    1,
-    NULL,
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-) ON CONFLICT (rut) DO NOTHING;
+-- ============================================================================
+-- TRANSFERENCIAS A PABELLONES E INVENTARIO
+-- NOTA IMPORTANTE: Para pruebas completas, el Pabellón 1 tiene 70+ items distribuidos en:
+--   - Stock 0 (rojo): 2 lotes consumidos totalmente
+--   - Stock bajo 1-4 (naranja): 4 lotes con cantidades variables
+--   - Stock 5-9 (amarillo): 3 lotes con cantidades medias
+--   - Stock 10+ (verde): 3 lotes con cantidades altas
+-- Esto permite probar todos los casos de visualización de stock y la paginación
+-- ============================================================================
 
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES (
+-- GRUPO 1: Transferencias vinculadas a solicitud completada (para detección de retornos)
+-- Estos son los que estarán pendientes de retorno (>8 horas sin consumir)
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
+    destination_type, destination_id, sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    received_by, received_by_name, status, transfer_reason,
+    send_date, receive_date, notes
+) 
+SELECT 
+    'TRANS-' || TO_CHAR(NOW() - INTERVAL '5 days', 'YYYYMMDDHH24MI') || '-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
+    qa.qr_code,
+    qa.medical_supply_id,
+    'store',
+    1, -- Bodega Central
+    'pavilion',
+    sr.pavilion_id,
     '11111111-1',
     'Encargado Bodega',
-    'bodegacentral@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'encargado de bodega',
-    1,
-    NULL,
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-) ON CONFLICT (rut) DO NOTHING;
-
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES (
     '22222222-2',
     'María González',
-    'enfermera@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'enfermera',
-    1,
-    NULL,
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-) ON CONFLICT (rut) DO NOTHING;
+    NOW() - INTERVAL '5 days' + INTERVAL '1 hour',
+    '22222222-2',
+    'María González',
+    'recibido',
+    'Transferencia para solicitud ' || sr.request_number,
+    NOW() - INTERVAL '5 days',
+    NOW() - INTERVAL '5 days' + INTERVAL '2 hours',
+    'Insumos para cirugía - MÁS DE 8 HORAS SIN CONSUMIR - PENDIENTE RETORNO'
+FROM supply_request_qr_assignment qa
+JOIN supply_request sr ON sr.id = qa.supply_request_id
+WHERE sr.request_number = 'SOL-20250130083000'
+AND qa.status = 'delivered'
+LIMIT 20
+ON CONFLICT (transfer_code) DO NOTHING;
 
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    specialty_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES (
-    '33333333-3',
-    'Dr. Carlos Pérez',
-    'doctor@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
+-- GRUPO 2: Transferencias genéricas a pabellones (inventario general)
+-- MODIFICADO: Distribuido estratégicamente para probar todos los casos de stock
+-- Pabellón 1 tendrá diferentes cantidades por batch para visualizar todos los colores de stock
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
+    destination_type, destination_id, sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    received_by, received_by_name, status, transfer_reason,
+    send_date, receive_date, notes
+) 
+SELECT 
+    'TRANS-' || TO_CHAR(NOW() - INTERVAL '2 days', 'YYYYMMDDHH24MI') || '-G-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
+    ms.qr_code,
+    ms.id,
+    'store',
+    b.store_id,
+    'pavilion',
     1,
-    NULL, 1, -- Traumatología
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-) ON CONFLICT (rut) DO NOTHING;
+    '11111111-1',
+    'Encargado Bodega',
+    '22222222-2',
+    'María González',
+    NOW() - INTERVAL '2 days' + INTERVAL '2 hours',
+    '22222222-2',
+    'María González',
+    'recibido',
+    'Transferencia programada para cirugía',
+    NOW() - INTERVAL '2 days',
+    NOW() - INTERVAL '2 days' + INTERVAL '3 hours',
+    'Inventario general de pabellón'
+FROM (
+    -- Batch 1: 12 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 1 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 12)
+    UNION ALL
+    -- Batch 2: 8 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 2 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 8)
+    UNION ALL
+    -- Batch 3: 3 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 3 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 3)
+    UNION ALL
+    -- Batch 5: 1 unidad
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 5 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 1)
+    UNION ALL
+    -- Batch 9: 15 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 9 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 15)
+    UNION ALL
+    -- Batch 10: 6 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 10 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 6)
+) ms
+JOIN batch b ON ms.batch_id = b.id
+ON CONFLICT (transfer_code) DO NOTHING;
 
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES (
-    'SYSTEM-INIT',
-    'Sistema de Inicialización',
-    'system@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'admin',
+-- GRUPO 2.5: Transferencias adicionales al Pabellón 1 para completar casos de stock
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
+    destination_type, destination_id, sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    received_by, received_by_name, status, transfer_reason,
+    send_date, receive_date, notes
+) 
+SELECT 
+    'TRANS-' || TO_CHAR(NOW() - INTERVAL '1 day', 'YYYYMMDDHH24MI') || '-G2-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
+    ms.qr_code,
+    ms.id,
+    'store',
+    b.store_id,
+    'pavilion',
     1,
-    NULL,
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-) ON CONFLICT (rut) DO NOTHING;
+    '11111111-1',
+    'Encargado Bodega',
+    '22222222-2',
+    'María González',
+    NOW() - INTERVAL '1 day' + INTERVAL '3 hours',
+    '22222222-2',
+    'María González',
+    'recibido',
+    'Transferencia adicional para stock variado',
+    NOW() - INTERVAL '1 day',
+    NOW() - INTERVAL '1 day' + INTERVAL '4 hours',
+    'Stock adicional'
+FROM (
+    -- Batch 12: 4 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 12 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 4)
+    UNION ALL
+    -- Batch 15: 2 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 15 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 2)
+    UNION ALL
+    -- Batch 18: 7 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 18 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 7)
+    UNION ALL
+    -- Batch 23: 11 unidades
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 23 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 11)
+) ms
+JOIN batch b ON ms.batch_id = b.id
+ON CONFLICT (transfer_code) DO NOTHING;
 
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES (
-    '44444444-4',
-    'Pavedad',
-    'pavedad@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- Reemplazar con contraseña hasheada real
-    'pavedad',
-    1,
-    NULL,
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
+-- GRUPO 2.6: Transferencias para crear STOCK BAJO en bodega
+-- Transferir la mayoría de las unidades de los batches 6, 7, y 32 para dejarlos con < 20% del stock original
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
+    destination_type, destination_id, sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    received_by, received_by_name, status, transfer_reason,
+    send_date, receive_date, notes
+) 
+SELECT 
+    'TRANS-' || TO_CHAR(NOW() - INTERVAL '2 days', 'YYYYMMDDHH24MI') || '-SB-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
+    ms.qr_code,
+    ms.id,
+    'store',
+    b.store_id,
+    'pavilion',
+    CASE 
+        WHEN b.id = 6 THEN 2   -- Batch 6 al Pabellón 2
+        WHEN b.id = 7 THEN 3   -- Batch 7 al Pabellón 3
+        WHEN b.id = 32 THEN 4  -- Batch 32 al Pabellón 4
+    END,
+    '11111111-1',
+    'Encargado Bodega',
+    '22222222-2',
+    'María González',
+    NOW() - INTERVAL '2 days' + INTERVAL '2 hours',
+    '22222222-2',
+    'María González',
+    'recibido',
+    'Transferencia para pabellones - Creará stock bajo en bodega',
+    NOW() - INTERVAL '2 days',
+    NOW() - INTERVAL '2 days' + INTERVAL '3 hours',
+    'Stock bajo'
+FROM (
+    -- Batch 6: 9 de 10 unidades (quedará 1 = 10%)
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 6 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 9)
+    UNION ALL
+    -- Batch 7: 9 de 10 unidades (quedará 1 = 10%)
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 7 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 9)
+    UNION ALL
+    -- Batch 32: 17 de 20 unidades (quedará 3 = 15%)
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 32 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 17)
+) ms
+JOIN batch b ON ms.batch_id = b.id
+ON CONFLICT (transfer_code) DO NOTHING;
+
+-- GRUPO 3: Transferencias recientes (<8 horas) - VÁLIDAS
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
+    destination_type, destination_id, sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    received_by, received_by_name, status, transfer_reason,
+    send_date, receive_date, notes
+) 
+SELECT 
+    'TRANS-' || TO_CHAR(NOW() - INTERVAL '4 hours', 'YYYYMMDDHH24MI') || '-R-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
+    ms.qr_code,
+    ms.id,
+    'store',
+    b.store_id,
+    'pavilion',
+    (ROW_NUMBER() OVER () % 5) + 11, -- Distribuir entre pabellones 11-15
+    '11111111-1',
+    'Encargado Bodega',
+    '22222222-2',
+    'María González',
+    NOW() - INTERVAL '4 hours' + INTERVAL '30 minutes',
+    '22222222-2',
+    'María González',
+    'recibido',
+    'Transferencia reciente para cirugía programada',
+    NOW() - INTERVAL '4 hours',
+    NOW() - INTERVAL '3 hours',
+    'Insumos transferidos recientemente - Dentro del período válido'
+FROM medical_supply ms
+JOIN batch b ON ms.batch_id = b.id
+WHERE ms.batch_id IN (4, 11, 13, 14, 16, 19, 20, 24)
+AND ms.status = 'disponible'
+AND NOT EXISTS (
+    SELECT 1 FROM supply_request_qr_assignment qa 
+    WHERE qa.medical_supply_id = ms.id
 )
-ON CONFLICT (rut) DO NOTHING;
+LIMIT 15
+ON CONFLICT (transfer_code) DO NOTHING;
 
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES (
-    '12121212-1',
-    'Usuario Consignación',
-    'bodegaconsignacion@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'encargado de bodega',
-    1,
+-- GRUPO 4: Transferencias críticas (>72 horas) - RETORNO URGENTE
+-- MODIFICADO: Primeros 15 items van al Pabellón 1 para tener más de 40 items totales
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
+    destination_type, destination_id, sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    received_by, received_by_name, status, transfer_reason,
+    send_date, receive_date, notes
+) 
+SELECT 
+    'TRANS-' || TO_CHAR(NOW() - INTERVAL '3 days', 'YYYYMMDDHH24MI') || '-C-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
+    ms.qr_code,
+    ms.id,
+    'store',
+    b.store_id,
+    'pavilion',
+    CASE 
+        WHEN ROW_NUMBER() OVER () <= 15 THEN 1  -- Primeros 15 al Pabellón 1
+        ELSE (ROW_NUMBER() OVER () % 8) + 3     -- Resto distribuidos en pabellones 3-10
+    END,
+    '11111111-1',
+    'Encargado Bodega',
+    '22222222-2',
+    'María González',
+    NOW() - INTERVAL '3 days' + INTERVAL '1 hour',
+    '22222222-2',
+    'María González',
+    'recibido',
+    'Transferencia programada - Stock de reserva',
+    NOW() - INTERVAL '3 days',
+    NOW() - INTERVAL '3 days' + INTERVAL '2 hours',
+    'Insumos transferidos hace 3 días - Stock de emergencia en pabellón'
+FROM medical_supply ms
+JOIN batch b ON ms.batch_id = b.id
+WHERE ms.batch_id IN (8, 17, 21, 22, 25, 26, 27, 28, 29, 30)
+AND ms.status = 'disponible'
+AND NOT EXISTS (
+    SELECT 1 FROM supply_request_qr_assignment qa 
+    WHERE qa.medical_supply_id = ms.id
+)
+LIMIT 18
+ON CONFLICT (transfer_code) DO NOTHING;
+
+-- GRUPO 5: Transferencias PENDIENTES y EN TRÁNSITO para estadísticas
+-- Estas transferencias NO tienen receive_date ni received_by porque están pendientes/en tránsito
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
+    destination_type, destination_id, sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    status, transfer_reason, send_date, notes
+) 
+SELECT 
+    'TRANS-' || TO_CHAR(NOW(), 'YYYYMMDDHH24MI') || '-PEND-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
+    ms.qr_code,
+    ms.id,
+    'store',
+    b.store_id,
+    'pavilion',
+    (ROW_NUMBER() OVER () % 10) + 1, -- Distribuir entre pabellones 1-10
+    '11111111-1',
+    'Encargado Bodega',
+    NULL, -- Sin picked_up_by porque está pendiente
+    NULL, -- Sin picked_up_by_name
+    NULL, -- Sin picked_up_date
+    CASE 
+        WHEN ROW_NUMBER() OVER () <= 5 THEN 'pendiente'     -- 5 pendientes
+        ELSE 'en_transito'                                    -- 5 en tránsito
+    END,
+    'Transferencia programada para cirugía',
+    NOW() - INTERVAL '2 hours', -- Enviadas hace 2 horas
+    CASE 
+        WHEN ROW_NUMBER() OVER () <= 5 THEN 'Transferencia pendiente de recogida'
+        ELSE 'Transferencia en camino al pabellón'
+    END
+FROM medical_supply ms
+JOIN batch b ON ms.batch_id = b.id
+WHERE ms.batch_id IN (31, 33, 44, 45, 46, 47)
+AND ms.status = 'disponible'
+AND NOT EXISTS (
+    SELECT 1 FROM supply_request_qr_assignment qa 
+    WHERE qa.medical_supply_id = ms.id
+)
+AND NOT EXISTS (
+    SELECT 1 FROM supply_transfer st2
+    WHERE st2.medical_supply_id = ms.id
+)
+LIMIT 10
+ON CONFLICT (transfer_code) DO NOTHING;
+
+-- ============================================================================
+-- ACTUALIZAR ESTADOS DE INSUMOS TRANSFERIDOS A PABELLONES
+-- IMPORTANTE: Se deshabilita el trigger para poder establecer updated_at manualmente
+-- ============================================================================
+
+-- Deshabilitar el trigger que actualiza automáticamente updated_at
+ALTER TABLE medical_supply DISABLE TRIGGER trg_update_medical_supply_updated_at;
+
+-- Actualizar estados de insumos transferidos
+UPDATE medical_supply ms
+SET 
+    status = 'recepcionado',
+    location_type = 'pavilion',
+    location_id = st.destination_id,
+    in_transit = false,
+    transfer_date = st.receive_date,
+    transferred_by = st.received_by,
+    updated_at = st.receive_date  -- CRÍTICO: Usar la fecha de recepción de la transferencia
+FROM supply_transfer st
+WHERE ms.id = st.medical_supply_id
+AND st.status = 'recibido';
+
+-- Rehabilitar el trigger
+ALTER TABLE medical_supply ENABLE TRIGGER trg_update_medical_supply_updated_at;
+
+-- Crear historial de transferencias a pabellones
+INSERT INTO supply_history (
+    date_time,
+    status,
+    destination_type,
+    destination_id,
+    medical_supply_id,
+    user_rut,
+    notes,
+    location,
+    origin_type,
+    origin_id,
+    confirmed_by,
+    confirmation_date
+)
+SELECT 
+    st.send_date,
+    'en_camino_a_pabellon',
+    st.destination_type,
+    st.destination_id,
+    st.medical_supply_id,
+    st.sent_by,
+    'Insumo enviado a pabellón: ' || st.notes,
+    'En tránsito desde bodega a pabellón ID: ' || st.destination_id,
+    st.origin_type,
+    st.origin_id,
     NULL,
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-)
-ON CONFLICT (rut) DO NOTHING;
-
--- Agregar más doctores con diferentes especialidades
--- IDs de especialidades: 1=Traumatología, 2=Cardiología, 3=Cirugía General, 4=Neurocirugía, 5=Oftalmología, 6=Otorrinolaringología, 7=Urología, 8=Ginecología, 9=Anestesiología, 10=Plástica y Reconstructiva
-INSERT INTO "user" (
-    rut, 
-    name, 
-    email, 
-    password, 
-    role, 
-    medical_center_id,
-    pavilion_id,
-    specialty_id,
-    is_active, 
-    created_at, 
-    updated_at
-) VALUES 
-(
-    '55555555-5',
-    'Dr. Ana Martínez',
-    'ana.martinez@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
-    1,
-    NULL, 2, -- Cardiología
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-),
-(
-    '66666666-6',
-    'Dr. Roberto Silva',
-    'roberto.silva@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
-    1,
-    NULL, 4, -- Neurocirugía
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-),
-(
-    '77777777-7',
-    'Dra. Laura Torres',
-    'laura.torres@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
-    1,
-    NULL, 8, -- Ginecología
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-),
-(
-    '88888888-8',
-    'Dr. Pedro Ramírez',
-    'pedro.ramirez@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
-    1,
-    NULL, 3, -- Cirugía General
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-),
-(
-    '99999999-9',
-    'Dra. Carmen López',
-    'carmen.lopez@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
-    1,
-    NULL, 5, -- Oftalmología
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-),
-(
-    '10101010-1',
-    'Dr. Miguel Ángel Rojas',
-    'miguel.rojas@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
-    1,
-    NULL, 7, -- Urología
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-),
-(
-    '20202020-2',
-    'Dra. Patricia Vega',
-    'patricia.vega@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
-    2,
-    NULL, 10, -- Plástica y Reconstructiva
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-),
-(
-    '30303030-3',
-    'Dr. Fernando Castro',
-    'fernando.castro@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO',
-    'doctor',
-    2,
-    NULL, 6, -- Otorrinolaringología
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-),
-(
-    'PABELLON1',
-    'Pabellón 1',
-    'pabellon1@meditrack.com',
-    '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', -- Password: pabellon1
-    'pabellón',
-    1,
-    1, -- pavilion_id: Pabellón Central 01
-    NULL, -- Sin especialidad
-    true,
-    EXTRACT(EPOCH FROM NOW()),
-    EXTRACT(EPOCH FROM NOW())
-)
-ON CONFLICT (rut) DO NOTHING;
-
-INSERT INTO batch_history (date_time, change_details, previous_values, new_values, user_name, batch_id, user_rut, batch_number) VALUES
-('2025-08-16 10:00:00', 'Lote creado', NULL, '{"expiration_date": "2026-12-31", "amount": 10, "supplier": "Proveedor Uno", "store_id": 1}', 'Administrador del Sistema', 1, '12345678-9', 1),
-('2025-08-16 11:00:00', 'Lote creado', NULL, '{"expiration_date": "2025-12-31", "amount": 5, "supplier": "Proveedor Dos", "store_id": 2}', 'Usuario Pabellón', 2, '87654321-0', 2),
-('2025-08-16 12:00:00', 'Lote creado', NULL, '{"expiration_date": "2026-06-30", "amount": 15, "supplier": "Proveedor Tres", "store_id": 1}', 'Encargado Bodega', 3, '11111111-1', 3),
-('2025-08-16 13:00:00', 'Lote creado', NULL, '{"expiration_date": "2025-10-15", "amount": 8, "supplier": "Proveedor Cuatro", "store_id": 2}', 'Administrador del Sistema', 4, '12345678-9', 4),
-('2025-08-16 14:00:00', 'Cantidad actualizada', '{"amount": 10}', '{"amount": 8}', 'Encargado Bodega', 1, '11111111-1', 1)
-ON CONFLICT DO NOTHING;
-
--- Poblar insumos típicos por cirugía (ejemplos)
--- Para cirugías generales - guantes y gasas típicamente requeridos
--- Para cirugías plásticas - guantes, mascarillas y gasas
--- Para traumatología - jeringas, agujas y gasas
-INSERT INTO surgery_typical_supply (surgery_id, supply_code, typical_quantity, is_required, notes) VALUES
-((SELECT id FROM surgery WHERE name LIKE 'CIRUGÍA ABIERTA%' LIMIT 1), 1001, 50, TRUE, 'Guantes estériles requeridos'),
-((SELECT id FROM surgery WHERE name LIKE 'CIRUGÍA ABIERTA%' LIMIT 1), 1005, 20, TRUE, 'Gasas estériles requeridas'),
-((SELECT id FROM surgery WHERE name LIKE 'COLGAJOS%' LIMIT 1), 1001, 30, TRUE, 'Guantes estériles'),
-((SELECT id FROM surgery WHERE name LIKE 'COLGAJOS%' LIMIT 1), 1002, 10, TRUE, 'Mascarillas N95'),
-((SELECT id FROM surgery WHERE name LIKE 'COLGAJOS%' LIMIT 1), 1005, 15, TRUE, 'Gasas estériles'),
-((SELECT id FROM surgery WHERE name LIKE 'REDUCCION ABIERTA%' LIMIT 1), 1003, 5, FALSE, 'Jeringas para anestesia'),
-((SELECT id FROM surgery WHERE name LIKE 'REDUCCION ABIERTA%' LIMIT 1), 1004, 10, TRUE, 'Agujas estériles'),
-((SELECT id FROM surgery WHERE name LIKE 'REDUCCION ABIERTA%' LIMIT 1), 1005, 25, TRUE, 'Gasas para limpieza')
-ON CONFLICT (surgery_id, supply_code) DO NOTHING;
-
--- Nota: Los campos allow_anyone_to_pickup, authorized_pickup_rut, authorized_pickup_name
--- tienen valores por defecto (allow_anyone_to_pickup = true) y se configuran desde la interfaz
-INSERT INTO supply_request (
-    request_number, pavilion_id, requested_by, requested_by_name,
-    request_date, surgery_datetime, status, notes, medical_center_id,
-    surgeon_id, surgeon_name, surgery_id, specialty_id
-) VALUES (
-    'SOL-20250120140000', 
-    1, 
-    '33333333-3', 
-    'Dr. Carlos Pérez',
-    NOW() - INTERVAL '1 hour', 
-    NOW() + INTERVAL '23 hours', 
-    'pendiente_pavedad', 
-    'Solicitud de prueba para implementación de trazabilidad QR', 
-    1,
-    '33333333-3', 
-    'Dr. Carlos Pérez', 
-    (SELECT id FROM surgery WHERE name LIKE 'CIRUGÍA ABIERTA%' LIMIT 1),
-    (SELECT id FROM medical_specialty WHERE code = 'CIR_GEN')
+    NULL
+FROM supply_transfer st
+WHERE NOT EXISTS (
+    SELECT 1 FROM supply_history sh 
+    WHERE sh.medical_supply_id = st.medical_supply_id 
+    AND sh.status = 'en_camino_a_pabellon'
 );
-
--- Insertar items de ejemplo
-INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric) VALUES 
-(1, 1001, 'Guantes', 2, FALSE),
-(1, 1002, 'Mascarillas', 2, TRUE);
-
-SELECT 'ID máximo actual en batch:' as info, COALESCE(MAX(id), 0) as max_id FROM batch;
-
-SELECT setval('batch_id_seq', COALESCE((SELECT MAX(id) FROM batch), 0) + 1, false);
-
-SELECT 'Secuencia después del reset:' as info, last_value, is_called FROM batch_id_seq;
-
-SELECT 'QR codes duplicados:' as info, qr_code, COUNT(*) as count 
-FROM batch 
-WHERE qr_code IS NOT NULL 
-GROUP BY qr_code 
-HAVING COUNT(*) > 1;
 
 INSERT INTO supply_history (
     date_time,
@@ -735,45 +1011,190 @@ INSERT INTO supply_history (
     destination_id,
     medical_supply_id,
     user_rut,
-    notes
+    notes,
+    location,
+    origin_type,
+    origin_id,
+    confirmed_by,
+    confirmation_date
 )
 SELECT 
-    NOW() - INTERVAL '30 days' AS date_time,
-    'disponible' AS status,
-    'store' AS destination_type,
-    b.store_id AS destination_id,
-    ms.id AS medical_supply_id,
-    'SYSTEM-INIT' AS user_rut,
-    'Registro inicial - insumo ingresado a bodega desde proveedor' AS notes
-FROM medical_supply ms
-JOIN batch b ON ms.batch_id = b.id
-WHERE ms.status = 'disponible'
+    st.receive_date,
+    'recepcionado',
+    st.destination_type,
+    st.destination_id,
+    st.medical_supply_id,
+    st.received_by,
+    'Insumo recepcionado en pabellón. ' || 
+    CASE 
+        WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 8 
+        THEN 'CRÍTICO: Más de 8 horas sin consumir - RETORNO REQUERIDO'
+        ELSE 'Recepción normal'
+    END,
+    p.name || ' (ID: ' || p.id || ')',
+    st.origin_type,
+    st.origin_id,
+    st.received_by,
+    st.receive_date
+FROM supply_transfer st
+JOIN pavilion p ON p.id = st.destination_id
+WHERE st.status = 'recibido'
 AND NOT EXISTS (
     SELECT 1 FROM supply_history sh 
-    WHERE sh.medical_supply_id = ms.id
+    WHERE sh.medical_supply_id = st.medical_supply_id 
+    AND sh.status = 'recepcionado'
 );
 
+-- Crear/actualizar resumen de inventario de pabellones
+INSERT INTO pavilion_inventory_summary (
+    pavilion_id,
+    batch_id,
+    supply_code,
+    total_received,
+    current_available,
+    total_consumed,
+    total_returned,
+    last_received_date,
+    created_at,
+    updated_at
+)
 SELECT 
-    'Registros de historial agregados:' as info,
-    COUNT(*) as total_records
-FROM supply_history 
-WHERE user_rut = 'SYSTEM-INIT';
+    destination_id AS pavilion_id,
+    batch_id,
+    supply_code,
+    total_received,
+    total_received AS current_available,
+    0 AS total_consumed,
+    0 AS total_returned,
+    last_received_date,
+    NOW() AS created_at,
+    NOW() AS updated_at
+FROM (
+    SELECT 
+        st.destination_id,
+        ms.batch_id,
+        ms.code AS supply_code,
+        COUNT(*) AS total_received,
+        MAX(st.receive_date) AS last_received_date
+    FROM supply_transfer st
+    JOIN medical_supply ms ON ms.id = st.medical_supply_id
+    WHERE st.status = 'recibido'
+    GROUP BY st.destination_id, ms.batch_id, ms.code
+) summary
+ON CONFLICT (pavilion_id, batch_id) 
+DO UPDATE SET
+    total_received = pavilion_inventory_summary.total_received + EXCLUDED.total_received,
+    current_available = pavilion_inventory_summary.current_available + EXCLUDED.current_available,
+    last_received_date = GREATEST(pavilion_inventory_summary.last_received_date, EXCLUDED.last_received_date),
+    updated_at = NOW();
 
+-- Simular consumo de insumos para crear casos de stock 0 (rojo) en Pabellón 1
+-- Batch 8 y Batch 17: Todos los insumos consumidos (stock 0)
+-- Primero necesitamos transferir estos insumos al Pabellón 1
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id, origin_type, origin_id,
+    destination_type, destination_id, sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    received_by, received_by_name, status, transfer_reason,
+    send_date, receive_date, notes
+) 
 SELECT 
-    'Ejemplo de registros insertados:' as info,
+    'TRANS-' || TO_CHAR(NOW() - INTERVAL '3 days', 'YYYYMMDDHH24MI') || '-Z-' || LPAD(ROW_NUMBER() OVER ()::TEXT, 4, '0'),
     ms.qr_code,
-    sc.name as supply_name,
-    s.name as store_name,
-    sh.date_time,
-    sh.status,
-    sh.notes
-FROM supply_history sh
-JOIN medical_supply ms ON sh.medical_supply_id = ms.id
-JOIN supply_code sc ON ms.code = sc.code
-JOIN store s ON sh.destination_id = s.id
-WHERE sh.user_rut = 'SYSTEM-INIT'
-LIMIT 5;
+    ms.id,
+    'store',
+    b.store_id,
+    'pavilion',
+    1, -- Al Pabellón 1
+    '11111111-1',
+    'Encargado Bodega',
+    '22222222-2',
+    'María González',
+    NOW() - INTERVAL '3 days' + INTERVAL '1 hour',
+    '22222222-2',
+    'María González',
+    'recibido',
+    'Transferencia para stock 0 (consumido totalmente)',
+    NOW() - INTERVAL '3 days',
+    NOW() - INTERVAL '3 days' + INTERVAL '2 hours',
+    'Insumos transferidos que serán consumidos totalmente para crear stock 0'
+FROM (
+    -- Batch 8: 5 unidades que se consumirán todas
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 8 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 5)
+    UNION ALL
+    -- Batch 17: 3 unidades que se consumirán todas
+    (SELECT ms.*, b.store_id, ROW_NUMBER() OVER () as rn
+     FROM medical_supply ms
+     JOIN batch b ON ms.batch_id = b.id
+     WHERE ms.batch_id = 17 AND ms.status = 'disponible'
+     AND NOT EXISTS (SELECT 1 FROM supply_request_qr_assignment qa WHERE qa.medical_supply_id = ms.id)
+     LIMIT 3)
+) ms
+JOIN batch b ON ms.batch_id = b.id
+ON CONFLICT (transfer_code) DO NOTHING;
 
+-- Actualizar estado de estos insumos como recepcionados en Pabellón 1
+UPDATE medical_supply ms
+SET 
+    status = 'consumido',
+    location_type = 'pavilion',
+    location_id = 1,
+    in_transit = false,
+    transfer_date = NOW() - INTERVAL '3 days',
+    transferred_by = '22222222-2',
+    updated_at = NOW() - INTERVAL '2 days'  -- Consumidos hace 2 días
+FROM supply_transfer st
+WHERE ms.id = st.medical_supply_id
+AND st.transfer_code LIKE 'TRANS-%-Z-%'
+AND st.destination_id = 1;
+
+-- Actualizar pavilion_inventory_summary para reflejar stock 0
+-- Primero insertar las transferencias en el resumen
+INSERT INTO pavilion_inventory_summary (
+    pavilion_id,
+    batch_id,
+    supply_code,
+    total_received,
+    current_available,
+    total_consumed,
+    total_returned,
+    last_received_date,
+    created_at,
+    updated_at
+)
+SELECT 
+    1 AS pavilion_id,
+    ms.batch_id,
+    ms.code AS supply_code,
+    COUNT(*) AS total_received,
+    0 AS current_available,  -- Stock 0
+    COUNT(*) AS total_consumed,  -- Todos consumidos
+    0 AS total_returned,
+    MAX(st.receive_date) AS last_received_date,
+    NOW() AS created_at,
+    NOW() AS updated_at
+FROM supply_transfer st
+JOIN medical_supply ms ON ms.id = st.medical_supply_id
+WHERE st.transfer_code LIKE 'TRANS-%-Z-%'
+AND st.destination_id = 1
+AND st.status = 'recibido'
+GROUP BY ms.batch_id, ms.code
+ON CONFLICT (pavilion_id, batch_id) 
+DO UPDATE SET
+    total_received = pavilion_inventory_summary.total_received + EXCLUDED.total_received,
+    current_available = 0,  -- Stock agotado
+    total_consumed = pavilion_inventory_summary.total_consumed + EXCLUDED.total_consumed,
+    last_received_date = GREATEST(pavilion_inventory_summary.last_received_date, EXCLUDED.last_received_date),
+    updated_at = NOW();
+
+-- ============================================================================
+-- RESUMEN DE INVENTARIO POR BODEGA (CREAR ANTES DE ACTUALIZAR)
+-- ============================================================================
 INSERT INTO store_inventory_summary (
     store_id,
     batch_id,
@@ -805,145 +1226,739 @@ WHERE b.location_type = 'store'
 GROUP BY b.store_id, b.id, ms.code, b.surgery_id, b.amount
 ON CONFLICT (batch_id) DO NOTHING;
 
+-- Actualizar inventario de bodegas (decrementar por transferencias)
+UPDATE store_inventory_summary sis
+SET 
+    current_in_store = sis.current_in_store - transferred.count,
+    total_transferred_out = sis.total_transferred_out + transferred.count,
+    last_transfer_out_date = transferred.last_transfer,
+    updated_at = NOW()
+FROM (
+    SELECT 
+        b.store_id,
+        ms.batch_id,
+        COUNT(*) as count,
+        MAX(st.send_date) as last_transfer
+    FROM supply_transfer st
+    JOIN medical_supply ms ON ms.id = st.medical_supply_id
+    JOIN batch b ON b.id = ms.batch_id
+    WHERE st.status = 'recibido'
+    GROUP BY b.store_id, ms.batch_id
+) transferred
+WHERE sis.store_id = transferred.store_id
+AND sis.batch_id = transferred.batch_id;
+
+-- ============================================================================
+-- INSUMOS TÍPICOS POR CIRUGÍA - COMPLETO Y COHERENTE
+-- ============================================================================
+INSERT INTO surgery_typical_supply (surgery_id, supply_code, typical_quantity, is_required, notes) VALUES
+-- Cirugías Plásticas (1, 2)
+(1, 1001, 50, TRUE, 'Guantes quirúrgicos estériles'),
+(1, 1002, 10, TRUE, 'Mascarillas N95 para protección'),
+(1, 1005, 30, TRUE, 'Gasas estériles'),
+(1, 1007, 5, TRUE, 'Batas quirúrgicas'),
+(1, 1008, 3, TRUE, 'Campos quirúrgicos'),
+(1, 1101, 10, TRUE, 'Suturas Vicryl para cierre'),
+(1, 1102, 5, FALSE, 'Suturas Nylon para piel'),
+(2, 1001, 40, TRUE, 'Guantes quirúrgicos'),
+(2, 1005, 25, TRUE, 'Gasas estériles'),
+(2, 1101, 8, TRUE, 'Suturas Vicryl'),
+
+-- Cirugía General (3, 4, 26)
+(3, 1001, 30, TRUE, 'Guantes quirúrgicos'),
+(3, 1005, 20, TRUE, 'Gasas estériles'),
+(3, 1101, 5, TRUE, 'Suturas Vicryl'),
+(3, 1102, 3, TRUE, 'Suturas Nylon'),
+(4, 1001, 60, TRUE, 'Guantes quirúrgicos'),
+(4, 1005, 40, TRUE, 'Gasas estériles'),
+(4, 1007, 6, TRUE, 'Batas quirúrgicas'),
+(4, 1101, 15, TRUE, 'Suturas Vicryl'),
+(4, 1103, 10, TRUE, 'Suturas Prolene'),
+(4, 1504, 4, TRUE, 'Tornillos ortopédicos'),
+(26, 1001, 45, TRUE, 'Guantes quirúrgicos'),
+(26, 1005, 30, TRUE, 'Gasas estériles'),
+(26, 1101, 8, TRUE, 'Suturas Vicryl'),
+(26, 1401, 2, TRUE, 'Bisturí eléctrico'),
+
+-- Traumatología (5, 74, 75, 133, 137)
+(5, 1001, 50, TRUE, 'Guantes quirúrgicos'),
+(5, 1003, 5, FALSE, 'Jeringas para anestesia local'),
+(5, 1004, 10, TRUE, 'Agujas estériles'),
+(5, 1005, 35, TRUE, 'Gasas para limpieza'),
+(5, 1101, 10, TRUE, 'Suturas Vicryl'),
+(5, 1504, 6, TRUE, 'Tornillos ortopédicos'),
+(5, 1505, 2, TRUE, 'Placas ortopédicas'),
+(74, 1001, 45, TRUE, 'Guantes quirúrgicos'),
+(74, 1005, 30, TRUE, 'Gasas estériles'),
+(74, 1504, 8, TRUE, 'Tornillos ortopédicos'),
+(74, 1505, 3, TRUE, 'Placas ortopédicas'),
+(75, 1001, 40, TRUE, 'Guantes quirúrgicos'),
+(75, 1005, 25, TRUE, 'Gasas estériles'),
+(75, 1504, 6, TRUE, 'Tornillos ortopédicos'),
+(75, 1505, 2, TRUE, 'Placas ortopédicas'),
+(133, 1001, 50, TRUE, 'Guantes quirúrgicos'),
+(133, 1005, 35, TRUE, 'Gasas estériles'),
+(133, 1504, 10, TRUE, 'Tornillos ortopédicos'),
+(133, 1505, 3, TRUE, 'Placas ortopédicas'),
+(137, 1001, 55, TRUE, 'Guantes quirúrgicos'),
+(137, 1005, 40, TRUE, 'Gasas estériles'),
+(137, 1504, 12, TRUE, 'Tornillos ortopédicos'),
+(137, 1505, 4, TRUE, 'Placas ortopédicas'),
+
+-- Colecistectomía (34, 35)
+(34, 1001, 40, TRUE, 'Guantes quirúrgicos'),
+(34, 1002, 5, TRUE, 'Mascarillas'),
+(34, 1005, 30, TRUE, 'Gasas estériles'),
+(34, 1007, 4, TRUE, 'Batas quirúrgicas'),
+(34, 1101, 8, TRUE, 'Suturas Vicryl'),
+(34, 1303, 2, FALSE, 'Drenaje Blake'),
+(35, 1001, 35, TRUE, 'Guantes quirúrgicos'),
+(35, 1005, 25, TRUE, 'Gasas estériles'),
+(35, 1007, 3, TRUE, 'Batas quirúrgicas'),
+(35, 1101, 6, TRUE, 'Suturas Vicryl'),
+
+-- Oftalmología (64, 68)
+(64, 1001, 20, TRUE, 'Guantes quirúrgicos'),
+(64, 1005, 15, TRUE, 'Gasas estériles'),
+(64, 1603, 4, TRUE, 'Suturas Nylon 10-0'),
+(68, 1001, 15, TRUE, 'Guantes quirúrgicos'),
+(68, 1005, 10, TRUE, 'Gasas estériles'),
+(68, 1601, 1, TRUE, 'Lente intraocular'),
+(68, 1602, 2, TRUE, 'Viscoelástico oftálmico'),
+
+-- Urología (11, 12)
+(11, 1001, 50, TRUE, 'Guantes quirúrgicos'),
+(11, 1005, 35, TRUE, 'Gasas estériles'),
+(11, 1007, 5, TRUE, 'Batas quirúrgicas'),
+(11, 1302, 2, TRUE, 'Catéter Foley'),
+(11, 1701, 3, TRUE, 'Sonda vesical'),
+(12, 1001, 40, TRUE, 'Guantes quirúrgicos'),
+(12, 1005, 30, TRUE, 'Gasas estériles'),
+(12, 1302, 2, TRUE, 'Catéter Foley'),
+(12, 1701, 2, TRUE, 'Sonda vesical'),
+
+-- Ginecología (40, 92, 93)
+(40, 1001, 25, TRUE, 'Guantes quirúrgicos'),
+(40, 1005, 15, TRUE, 'Gasas estériles'),
+(40, 1801, 2, TRUE, 'Espéculo vaginal'),
+(40, 1802, 1, TRUE, 'Pinzas de biopsia cervical'),
+(92, 1001, 45, TRUE, 'Guantes quirúrgicos'),
+(92, 1005, 35, TRUE, 'Gasas estériles'),
+(92, 1007, 4, TRUE, 'Batas quirúrgicas'),
+(92, 1101, 10, TRUE, 'Suturas Vicryl'),
+(93, 1001, 60, TRUE, 'Guantes quirúrgicos'),
+(93, 1005, 45, TRUE, 'Gasas estériles'),
+(93, 1007, 6, TRUE, 'Batas quirúrgicas'),
+(93, 1101, 15, TRUE, 'Suturas Vicryl'),
+
+-- Neurocirugía (31, 43, 213)
+(31, 1001, 70, TRUE, 'Guantes quirúrgicos'),
+(31, 1002, 8, TRUE, 'Mascarillas N95'),
+(31, 1005, 50, TRUE, 'Gasas estériles'),
+(31, 1007, 8, TRUE, 'Batas quirúrgicas'),
+(31, 1903, 3, TRUE, 'Hemostáticos neurológicos'),
+(43, 1001, 80, TRUE, 'Guantes quirúrgicos'),
+(43, 1005, 60, TRUE, 'Gasas estériles'),
+(43, 1007, 10, TRUE, 'Batas quirúrgicas'),
+(43, 1901, 1, TRUE, 'Craneotomo desechable'),
+(43, 1903, 4, TRUE, 'Hemostáticos neurológicos'),
+(213, 1001, 50, TRUE, 'Guantes quirúrgicos'),
+(213, 1005, 40, TRUE, 'Gasas estériles'),
+(213, 1902, 1, TRUE, 'Válvula derivación ventriculoperitoneal'),
+
+-- Cardiología (218)
+(218, 1001, 70, TRUE, 'Guantes quirúrgicos'),
+(218, 1002, 10, TRUE, 'Mascarillas N95'),
+(218, 1005, 60, TRUE, 'Gasas estériles'),
+(218, 1007, 8, TRUE, 'Batas quirúrgicas'),
+(218, 1301, 2, TRUE, 'Catéter venoso central'),
+(218, 1401, 3, TRUE, 'Bisturí eléctrico'),
+(218, 1402, 5, TRUE, 'Compresas hemostáticas'),
+(218, 1403, 10, TRUE, 'Ligaduras vasculares'),
+
+-- Cirugías Plásticas adicionales (115, 116)
+(115, 1001, 55, TRUE, 'Guantes quirúrgicos'),
+(115, 1002, 8, TRUE, 'Mascarillas N95'),
+(115, 1005, 40, TRUE, 'Gasas estériles'),
+(115, 1007, 6, TRUE, 'Batas quirúrgicas'),
+(115, 1101, 12, TRUE, 'Suturas Vicryl'),
+(115, 1102, 8, TRUE, 'Suturas Nylon'),
+(116, 1001, 50, TRUE, 'Guantes quirúrgicos'),
+(116, 1005, 35, TRUE, 'Gasas estériles'),
+(116, 1007, 5, TRUE, 'Batas quirúrgicas'),
+(116, 1101, 10, TRUE, 'Suturas Vicryl')
+ON CONFLICT (surgery_id, supply_code) DO NOTHING;
+
+-- ============================================================================
+-- HISTORIAL INICIAL DE LOTES
+-- ============================================================================
+INSERT INTO batch_history (date_time, change_details, previous_values, new_values, user_name, batch_id, user_rut, batch_number) VALUES
+('2025-01-15 09:00:00', 'Lote creado - Bodega Central', NULL, '{"expiration_date": "2026-12-31", "amount": 150, "supplier": "Proveedor Uno"}', 'Administrador del Sistema', 1, '12345678-9', 1),
+('2025-01-15 09:05:00', 'Lote creado - Bodega Central', NULL, '{"expiration_date": "2026-10-15", "amount": 200, "supplier": "Proveedor Uno"}', 'Encargado Bodega', 2, '11111111-1', 2),
+('2025-01-16 10:30:00', 'Lote creado - Bodega Central', NULL, '{"expiration_date": "2027-03-20", "amount": 120, "supplier": "Proveedor Dos"}', 'Encargado Bodega', 3, '11111111-1', 3),
+('2025-01-16 11:00:00', 'Lote creado - Bodega Central', NULL, '{"expiration_date": "2026-08-30", "amount": 150, "supplier": "Proveedor Dos"}', 'Encargado Bodega', 4, '11111111-1', 4),
+('2025-01-17 08:15:00', 'Lote creado - Bodega Consignación', NULL, '{"expiration_date": "2026-11-30", "amount": 100, "supplier": "Proveedor Consignación A"}', 'Usuario Consignación', 34, '12121212-1', 34),
+('2025-01-17 08:20:00', 'Lote creado - Bodega Consignación', NULL, '{"expiration_date": "2027-02-28", "amount": 150, "supplier": "Proveedor Consignación A"}', 'Usuario Consignación', 35, '12121212-1', 35),
+('2025-01-18 09:45:00', 'Lote creado - Bodega Central', NULL, '{"expiration_date": "2026-09-30", "amount": 80, "supplier": "Proveedor Uno"}', 'Encargado Bodega', 44, '11111111-1', 44),
+('2025-01-18 10:00:00', 'Lote creado - Bodega Central', NULL, '{"expiration_date": "2026-10-15", "amount": 100, "supplier": "Proveedor Uno"}', 'Encargado Bodega', 45, '11111111-1', 45)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- SOLICITUDES DE INSUMOS - DIVERSOS ESTADOS
+-- ============================================================================
+-- Solicitud 1: Pendiente Pavedad (Estado inicial)
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id
+) VALUES (
+    'SOL-20250205090000',
+    1,
+    '33333333-3',
+    'Dr. Carlos Pérez',
+    NOW() - INTERVAL '2 hours',
+    NOW() + INTERVAL '47 hours',
+    'pendiente_pavedad',
+    'Cirugía de reducción abierta programada para pasado mañana. Requiere material ortopédico.',
+    1,
+    '33333333-3',
+    'Dr. Carlos Pérez',
+    5,
+    (SELECT id FROM medical_specialty WHERE code = 'TRAUMA')
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric) VALUES 
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250205090000'), 1001, 'Guantes Quirúrgicos Estériles', 50, FALSE),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250205090000'), 1005, 'Gasas Estériles 10x10cm', 35, FALSE),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250205090000'), 1504, 'Tornillos Ortopédicos 3.5mm', 6, FALSE),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250205090000'), 1505, 'Placas Ortopédicas Rectas', 2, FALSE)
+ON CONFLICT DO NOTHING;
+
+-- Solicitud 2: Asignado a bodega
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id,
+    assigned_to, assigned_to_name, assigned_date, assigned_by_pavedad, assigned_by_pavedad_name
+) VALUES (
+    'SOL-20250204140000',
+    2,
+    '55555555-5',
+    'Dr. Ana Martínez',
+    NOW() - INTERVAL '1 day',
+    NOW() + INTERVAL '71 hours',
+    'asignado_bodega',
+    'Procedimiento cardiovascular. Pavedad asignó a Bodega Central.',
+    1,
+    '55555555-5',
+    'Dr. Ana Martínez',
+    218,
+    (SELECT id FROM medical_specialty WHERE code = 'CARDIOL'),
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '20 hours',
+    '44444444-4',
+    'Pavedad'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric) VALUES 
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250204140000'), 1001, 'Guantes Quirúrgicos Estériles', 70, FALSE),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250204140000'), 1002, 'Mascarillas N95', 10, FALSE),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250204140000'), 1005, 'Gasas Estériles 10x10cm', 60, FALSE),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250204140000'), 1301, 'Catéter Venoso Central', 2, FALSE),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250204140000'), 1402, 'Compresas Hemostáticas', 5, FALSE)
+ON CONFLICT DO NOTHING;
+
+-- Solicitud 3: En proceso (encargado está preparando)
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id,
+    assigned_to, assigned_to_name, assigned_date, assigned_by_pavedad, assigned_by_pavedad_name
+) VALUES (
+    'SOL-20250203100000',
+    3,
+    '99999999-9',
+    'Dra. Carmen López',
+    NOW() - INTERVAL '2 days',
+    NOW() + INTERVAL '25 hours',
+    'en_proceso',
+    'Cirugía oftalmológica mañana. Encargado está preparando el material.',
+    1,
+    '99999999-9',
+    'Dra. Carmen López',
+    68,
+    (SELECT id FROM medical_specialty WHERE code = 'OFTAL'),
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '36 hours',
+    '44444444-4',
+    'Pavedad'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric, item_status, reviewed_by, reviewed_by_name, reviewed_at) VALUES 
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250203100000'), 1001, 'Guantes Quirúrgicos Estériles', 15, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '12 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250203100000'), 1005, 'Gasas Estériles 10x10cm', 10, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '12 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250203100000'), 1601, 'Lente Intraocular', 1, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '12 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250203100000'), 1602, 'Viscoelástico Oftálmico', 2, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '12 hours')
+ON CONFLICT DO NOTHING;
+
+-- Solicitud 4: Aprobada (lista para retirar)
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id,
+    assigned_to, assigned_to_name, assigned_date, assigned_by_pavedad, assigned_by_pavedad_name,
+    approved_by, approved_by_name, approval_date
+) VALUES (
+    'SOL-20250202153000',
+    4,
+    '66666666-6',
+    'Dr. Roberto Silva',
+    NOW() - INTERVAL '3 days',
+    NOW() + INTERVAL '12 hours',
+    'aprobado',
+    'Neurocirugía urgente mañana temprano. Material listo para retiro.',
+    1,
+    '66666666-6',
+    'Dr. Roberto Silva',
+    213,
+    (SELECT id FROM medical_specialty WHERE code = 'NEURO'),
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '60 hours',
+    '44444444-4',
+    'Pavedad',
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '6 hours'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, quantity_approved, is_pediatric, item_status, reviewed_by, reviewed_by_name, reviewed_at) VALUES 
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250202153000'), 1001, 'Guantes Quirúrgicos Estériles', 50, 50, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '8 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250202153000'), 1005, 'Gasas Estériles 10x10cm', 40, 40, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '8 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250202153000'), 1902, 'Válvula Derivación Ventriculoperitoneal', 1, 1, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '8 hours')
+ON CONFLICT DO NOTHING;
+
+-- Solicitud 5: Completada (cirugía ya realizada)
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id,
+    assigned_to, assigned_to_name, assigned_date, assigned_by_pavedad, assigned_by_pavedad_name,
+    approved_by, approved_by_name, approval_date, completed_date
+) VALUES (
+    'SOL-20250130083000',
+    5,
+    '77777777-7',
+    'Dra. Laura Torres',
+    NOW() - INTERVAL '6 days',
+    NOW() - INTERVAL '1 day',
+    'completado',
+    'Histerectomía realizada exitosamente. Todos los insumos fueron consumidos.',
+    1,
+    '77777777-7',
+    'Dra. Laura Torres',
+    92,
+    (SELECT id FROM medical_specialty WHERE code = 'GINEC'),
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '5 days',
+    '44444444-4',
+    'Pavedad',
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '2 days',
+    NOW() - INTERVAL '18 hours'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, quantity_approved, quantity_delivered, is_pediatric, item_status, reviewed_by, reviewed_by_name, reviewed_at) VALUES 
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250130083000'), 1001, 'Guantes Quirúrgicos Estériles', 45, 45, 45, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '3 days'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250130083000'), 1005, 'Gasas Estériles 10x10cm', 35, 35, 35, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '3 days'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250130083000'), 1007, 'Batas Quirúrgicas Estériles', 4, 4, 4, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '3 days'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250130083000'), 1101, 'Sutura Vicryl 2-0', 10, 10, 10, FALSE, 'aceptado', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '3 days')
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- ASIGNACIONES QR PARA SOLICITUDES (vincular insumos con solicitudes)
+-- ============================================================================
+
+-- Asignar QR codes específicos a la solicitud completada SOL-20250130083000
+-- Estos insumos se transferirán al pabellón y quedarán pendientes de retorno
+DO $$
+DECLARE
+    v_request_id INT;
+    v_item_id INT;
+    v_supply_id INT;
+    v_supply_qr VARCHAR(255);
+    v_counter INT := 0;
+BEGIN
+    -- Obtener ID de la solicitud
+    SELECT id INTO v_request_id 
+    FROM supply_request 
+    WHERE request_number = 'SOL-20250130083000';
+    
+    -- Para cada item de la solicitud, asignar insumos específicos
+    FOR v_item_id IN 
+        SELECT id FROM supply_request_item 
+        WHERE supply_request_id = v_request_id 
+        AND quantity_approved > 0
+        LIMIT 20  -- Limitar para no sobrecargar
+    LOOP
+        -- Buscar un insumo disponible del código correcto
+        SELECT ms.id, ms.qr_code INTO v_supply_id, v_supply_qr
+        FROM medical_supply ms
+        JOIN supply_request_item sri ON sri.supply_code = ms.code
+        WHERE sri.id = v_item_id
+        AND ms.status = 'disponible'
+        AND ms.location_type = 'store'
+        AND NOT EXISTS (
+            SELECT 1 FROM supply_request_qr_assignment qa 
+            WHERE qa.medical_supply_id = ms.id
+        )
+        LIMIT 1;
+        
+        -- Si encontró un insumo, crear la asignación
+        IF v_supply_id IS NOT NULL THEN
+            INSERT INTO supply_request_qr_assignment (
+                supply_request_id,
+                supply_request_item_id,
+                medical_supply_id,
+                qr_code,
+                assigned_date,
+                assigned_by,
+                assigned_by_name,
+                delivered_date,
+                delivered_by,
+                delivered_by_name,
+                status
+            ) VALUES (
+                v_request_id,
+                v_item_id,
+                v_supply_id,
+                v_supply_qr,
+                NOW() - INTERVAL '6 days' + INTERVAL '4 hours',
+                '11111111-1',
+                'Encargado Bodega',
+                NOW() - INTERVAL '5 days',
+                '22222222-2',
+                'María González',
+                'delivered'
+            ) ON CONFLICT DO NOTHING;
+            
+            v_counter := v_counter + 1;
+        END IF;
+    END LOOP;
+    
+    RAISE NOTICE 'Asignadas % asignaciones QR para solicitud SOL-20250130083000', v_counter;
+END $$;
+
+-- Solicitud 6: Rechazada (falta de stock)
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id,
+    assigned_to, assigned_to_name, assigned_date, assigned_by_pavedad, assigned_by_pavedad_name,
+    approved_by, approved_by_name, approval_date
+) VALUES (
+    'SOL-20250131163000',
+    6,
+    '88888888-8',
+    'Dr. Pedro Ramírez',
+    NOW() - INTERVAL '5 days',
+    NOW() + INTERVAL '96 hours',
+    'rechazado',
+    'Solicitud rechazada por falta de stock de material específico. Se sugiere reprogramar o buscar proveedor alternativo.',
+    1,
+    '88888888-8',
+    'Dr. Pedro Ramírez',
+    36,
+    (SELECT id FROM medical_specialty WHERE code = 'CIR_GEN'),
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '4 days',
+    '44444444-4',
+    'Pavedad',
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '3 days'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric, item_status, item_notes, reviewed_by, reviewed_by_name, reviewed_at) VALUES 
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250131163000'), 1001, 'Guantes Quirúrgicos Estériles', 60, FALSE, 'aceptado', NULL, '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '3 days'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250131163000'), 1005, 'Gasas Estériles 10x10cm', 40, FALSE, 'aceptado', NULL, '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '3 days'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250131163000'), 1401, 'Bisturí Eléctrico Desechable', 3, FALSE, 'rechazado', 'Stock insuficiente. Disponible: 1, Solicitado: 3', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '3 days')
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- HISTORIAL INICIAL DE INSUMOS
+-- ============================================================================
+INSERT INTO supply_history (
+    date_time,
+    status,
+    destination_type,
+    destination_id,
+    medical_supply_id,
+    user_rut,
+    notes,
+    location
+)
 SELECT 
-    'Registros de resumen de bodega:' as info,
-    COUNT(*) as total_records
-FROM store_inventory_summary;
+    NOW() - INTERVAL '30 days' AS date_time,
+    'disponible' AS status,
+    'store' AS destination_type,
+    b.store_id AS destination_id,
+    ms.id AS medical_supply_id,
+    'SYSTEM-INIT' AS user_rut,
+    'Registro inicial - insumo ingresado a bodega desde proveedor ' || b.supplier AS notes,
+    s.name || ' (ID: ' || s.id || ')' AS location
+FROM medical_supply ms
+JOIN batch b ON ms.batch_id = b.id
+JOIN store s ON b.store_id = s.id
+WHERE ms.status = 'disponible'
+AND NOT EXISTS (
+    SELECT 1 FROM supply_history sh 
+    WHERE sh.medical_supply_id = ms.id
+)
+LIMIT 100;
 
-SELECT setval('surgery_id_seq', (SELECT COALESCE(MAX(id), 0) FROM surgery));
-
-SELECT setval('medical_center_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_center));
-
-SELECT setval('pavilion_id_seq', (SELECT COALESCE(MAX(id), 0) FROM pavilion));
-
-SELECT setval('store_id_seq', (SELECT COALESCE(MAX(id), 0) FROM store));
-
-SELECT setval('batch_id_seq', (SELECT COALESCE(MAX(id), 0) FROM batch));
-
-SELECT setval('medical_supply_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_supply));
-
-SELECT setval('supply_history_id_seq', (SELECT COALESCE(MAX(id), 0) FROM supply_history));
-
-DO $$
-DECLARE
-    max_id INTEGER;
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'supply_transfer') THEN
-        SELECT COALESCE(MAX(id), 0) INTO max_id FROM supply_transfer;
-        IF max_id > 0 THEN
-            PERFORM setval('supply_transfer_id_seq', max_id);
-        END IF;
-    END IF;
-END $$;
-
-DO $$
-DECLARE
-    max_id INTEGER;
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'store_inventory_summary') THEN
-        SELECT COALESCE(MAX(id), 0) INTO max_id FROM store_inventory_summary;
-        IF max_id > 0 THEN
-            PERFORM setval('store_inventory_summary_id_seq', max_id);
-        END IF;
-    END IF;
-END $$;
-
-DO $$
-DECLARE
-    max_id INTEGER;
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'pavilion_inventory_summary') THEN
-        SELECT COALESCE(MAX(id), 0) INTO max_id FROM pavilion_inventory_summary;
-        IF max_id > 0 THEN
-            PERFORM setval('pavilion_inventory_summary_id_seq', max_id);
-        END IF;
-    END IF;
-END $$;
-
-DO $$
-DECLARE
-    max_id INTEGER;
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'batch_history') THEN
-        SELECT COALESCE(MAX(id), 0) INTO max_id FROM batch_history;
-        IF max_id > 0 THEN
-            PERFORM setval('batch_history_id_seq', max_id);
-        END IF;
-    END IF;
-END $$;
-
-DO $$
-DECLARE
-    max_id INTEGER;
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'supply_request') THEN
-        SELECT COALESCE(MAX(id), 0) INTO max_id FROM supply_request;
-        IF max_id > 0 THEN
-            PERFORM setval('supply_request_id_seq', max_id);
-        END IF;
-    END IF;
-END $$;
-
-DO $$
-DECLARE
-    max_id INTEGER;
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'supply_request_item') THEN
-        SELECT COALESCE(MAX(id), 0) INTO max_id FROM supply_request_item;
-        IF max_id > 0 THEN
-            PERFORM setval('supply_request_item_id_seq', max_id);
-        END IF;
-    END IF;
-END $$;
-
-SELECT 'surgery_id_seq' as sequence_name, last_value FROM surgery_id_seq
-UNION ALL
-SELECT 'medical_center_id_seq', last_value FROM medical_center_id_seq
-UNION ALL
-SELECT 'pavilion_id_seq', last_value FROM pavilion_id_seq
-UNION ALL
-SELECT 'store_id_seq', last_value FROM store_id_seq
-UNION ALL
-SELECT 'batch_id_seq', last_value FROM batch_id_seq
-UNION ALL
-SELECT 'medical_supply_id_seq', last_value FROM medical_supply_id_seq
-UNION ALL
-SELECT 'supply_history_id_seq', last_value FROM supply_history_id_seq
-UNION ALL
-SELECT 'medical_specialty_id_seq', last_value FROM medical_specialty_id_seq
-UNION ALL
-SELECT 'surgery_typical_supply_id_seq', last_value FROM surgery_typical_supply_id_seq
-ORDER BY sequence_name;
-
--- Ajustar secuencias de configuración médica si es necesario
-SELECT setval('medical_specialty_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_specialty));
-SELECT setval('surgery_typical_supply_id_seq', (SELECT COALESCE(MAX(id), 0) FROM surgery_typical_supply));
-
--- Poblar configuración de proveedores (alertas de vencimiento)
--- Default: 90 días (3 meses), algunos proveedores usan 180 días (6 meses)
+-- ============================================================================
+-- CONFIGURACIÓN DE PROVEEDORES
+-- ============================================================================
 INSERT INTO supplier_config (supplier_name, expiration_alert_days, notes) VALUES
 ('Proveedor Uno', 90, 'Configuración estándar: 3 meses de anticipación'),
 ('Proveedor Dos', 90, 'Configuración estándar: 3 meses de anticipación'),
 ('Proveedor Tres', 180, 'Proveedor requiere 6 meses de anticipación'),
-('Proveedor Cuatro', 90, 'Configuración estándar: 3 meses de anticipación')
+('Proveedor Cuatro', 90, 'Configuración estándar: 3 meses de anticipación'),
+('Proveedor Cinco', 90, 'Suturas - 3 meses de anticipación'),
+('Proveedor Seis', 120, 'Material anestesia - 4 meses de anticipación'),
+('Proveedor Siete', 90, 'Catéteres y drenajes - 3 meses'),
+('Proveedor Ocho', 180, 'Material ortopédico - 6 meses de anticipación'),
+('Proveedor Nueve', 90, 'Material oftalmológico - 3 meses'),
+('Proveedor Diez', 90, 'Material urológico - 3 meses'),
+('Proveedor Once', 90, 'Material ginecológico - 3 meses'),
+('Proveedor Doce', 120, 'Material neurocirugía - 4 meses de anticipación'),
+('Proveedor Consignación A', 90, 'Bodega consignación - estándar'),
+('Proveedor Consignación B', 90, 'Bodega consignación - estándar'),
+('Proveedor Consignación C', 90, 'Bodega consignación - estándar'),
+('Proveedor Consignación D', 120, 'Bodega consignación - material especializado'),
+('Proveedor Consignación E', 90, 'Bodega consignación - estándar')
 ON CONFLICT (supplier_name) DO NOTHING;
 
--- Corregir insumos médicos que tienen LocationID = 0
--- Actualizar LocationID y LocationType basándose en el batch al que pertenecen
-UPDATE medical_supply ms
-SET 
-    location_id = b.store_id,
-    location_type = 'store'
-FROM batch b
-WHERE ms.batch_id = b.id 
-    AND (ms.location_id = 0 OR ms.location_id IS NULL OR ms.location_type IS NULL OR ms.location_type = '')
-    AND b.store_id IS NOT NULL;
+-- ============================================================================
+-- AJUSTE DE SECUENCIAS
+-- ============================================================================
+SELECT setval('surgery_id_seq', (SELECT COALESCE(MAX(id), 0) FROM surgery));
+SELECT setval('medical_center_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_center));
+SELECT setval('pavilion_id_seq', (SELECT COALESCE(MAX(id), 0) FROM pavilion));
+SELECT setval('store_id_seq', (SELECT COALESCE(MAX(id), 0) FROM store));
+SELECT setval('batch_id_seq', (SELECT COALESCE(MAX(id), 0) FROM batch));
+SELECT setval('medical_supply_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_supply));
+SELECT setval('supply_history_id_seq', (SELECT COALESCE(MAX(id), 0) FROM supply_history));
+SELECT setval('medical_specialty_id_seq', (SELECT COALESCE(MAX(id), 0) FROM medical_specialty));
+SELECT setval('surgery_typical_supply_id_seq', (SELECT COALESCE(MAX(id), 0) FROM surgery_typical_supply));
+SELECT setval('supply_request_id_seq', (SELECT COALESCE(MAX(id), 0) FROM supply_request));
+SELECT setval('supply_request_item_id_seq', (SELECT COALESCE(MAX(id), 0) FROM supply_request_item));
+SELECT setval('store_inventory_summary_id_seq', (SELECT COALESCE(MAX(id), 0) FROM store_inventory_summary));
+SELECT setval('batch_history_id_seq', (SELECT COALESCE(MAX(id), 0) FROM batch_history));
 
--- Verificar cuántos insumos fueron actualizados
+-- ============================================================================
+-- REPORTES DE VERIFICACIÓN
+-- ============================================================================
+SELECT 'RESUMEN DE POBLACIÓN DE BASE DE DATOS' as titulo;
+
+SELECT 'Centros Médicos:' as categoria, COUNT(*) as total FROM medical_center
+UNION ALL
+SELECT 'Pabellones:', COUNT(*) FROM pavilion
+UNION ALL
+SELECT 'Bodegas:', COUNT(*) FROM store
+UNION ALL
+SELECT 'Códigos de Insumo:', COUNT(*) FROM supply_code
+UNION ALL
+SELECT 'Especialidades Médicas:', COUNT(*) FROM medical_specialty
+UNION ALL
+SELECT 'Cirugías:', COUNT(*) FROM surgery
+UNION ALL
+SELECT 'Lotes:', COUNT(*) FROM batch
+UNION ALL
+SELECT 'Insumos Médicos:', COUNT(*) FROM medical_supply
+UNION ALL
+SELECT 'Usuarios:', COUNT(*) FROM "user"
+UNION ALL
+SELECT 'Insumos Típicos por Cirugía:', COUNT(*) FROM surgery_typical_supply
+UNION ALL
+SELECT 'Solicitudes de Insumo:', COUNT(*) FROM supply_request
+UNION ALL
+SELECT 'Items en Solicitudes:', COUNT(*) FROM supply_request_item
+UNION ALL
+SELECT 'Registros en Historial:', COUNT(*) FROM supply_history
+UNION ALL
+SELECT 'Resúmenes de Inventario:', COUNT(*) FROM store_inventory_summary
+UNION ALL
+SELECT 'Configuraciones de Proveedor:', COUNT(*) FROM supplier_config;
+
+-- Distribución de insumos por bodega
 SELECT 
-    'Insumos médicos actualizados:' as info,
-    COUNT(*) as total_updated
+    '
+DISTRIBUCIÓN DE INSUMOS POR BODEGA' as titulo;
+    
+SELECT 
+    s.name as bodega,
+    COUNT(DISTINCT b.id) as total_lotes,
+    COUNT(ms.id) as total_insumos,
+    COUNT(DISTINCT ms.code) as tipos_insumo_diferentes
+FROM store s
+LEFT JOIN batch b ON s.id = b.store_id
+LEFT JOIN medical_supply ms ON b.id = ms.batch_id
+GROUP BY s.id, s.name
+ORDER BY s.id;
+
+-- Solicitudes por estado
+SELECT 
+    '
+SOLICITUDES POR ESTADO' as titulo;
+    
+SELECT 
+    status,
+    COUNT(*) as total_solicitudes,
+    COUNT(DISTINCT surgeon_id) as doctores_diferentes
+FROM supply_request
+GROUP BY status
+ORDER BY 
+    CASE status
+        WHEN 'pendiente_pavedad' THEN 1
+        WHEN 'asignado_bodega' THEN 2
+        WHEN 'en_proceso' THEN 3
+        WHEN 'aprobado' THEN 4
+        WHEN 'completado' THEN 5
+        WHEN 'rechazado' THEN 6
+        ELSE 7
+    END;
+
+-- Cirugías con insumos típicos configurados
+SELECT 
+    '
+CIRUGÍAS CON INSUMOS TÍPICOS' as titulo;
+    
+SELECT 
+    COUNT(DISTINCT surgery_id) as cirugias_con_insumos,
+    COUNT(*) as total_relaciones_insumo_cirugia,
+    ROUND(AVG(typical_quantity), 2) as cantidad_promedio_por_relacion
+FROM surgery_typical_supply;
+
+-- ============================================================================
+-- REPORTES DE GESTIÓN DE RETORNOS A BODEGA
+-- ============================================================================
+SELECT '
+GESTIÓN DE RETORNOS A BODEGA' as titulo;
+
+-- Insumos pendientes de retorno (>8 horas laborales sin consumir)
+SELECT 
+    '
+Pendientes de Retorno:' as categoria,
+    COUNT(*) as total
 FROM medical_supply ms
-JOIN batch b ON ms.batch_id = b.id
-WHERE ms.location_id = b.store_id 
-    AND ms.location_type = 'store';
+JOIN supply_transfer st ON st.medical_supply_id = ms.id
+WHERE ms.status = 'recepcionado'
+AND ms.location_type = 'pavilion'
+AND st.status = 'recibido'
+AND EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 8;
+
+-- Insumos críticos (>8 horas laborales)
+SELECT 
+    'Críticos (>8 horas laborales):' as categoria,
+    COUNT(*) as total
+FROM medical_supply ms
+JOIN supply_transfer st ON st.medical_supply_id = ms.id
+WHERE ms.status = 'recepcionado'
+AND ms.location_type = 'pavilion'
+AND st.status = 'recibido'
+AND EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 8;
+
+-- Detalle de insumos pendientes de retorno
+SELECT 
+    '
+DETALLE DE INSUMOS PENDIENTES DE RETORNO' as titulo;
+
+SELECT 
+    p.name as pabellon,
+    sc.name as insumo,
+    COUNT(*) as cantidad_insumos,
+    ROUND(AVG(EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600), 1) as horas_promedio_en_pabellon,
+    MIN(st.receive_date) as primera_recepcion,
+    MAX(st.receive_date) as ultima_recepcion
+FROM medical_supply ms
+JOIN supply_transfer st ON st.medical_supply_id = ms.id
+JOIN pavilion p ON p.id = ms.location_id
+JOIN supply_code sc ON sc.code = ms.code
+WHERE ms.status = 'recepcionado'
+AND ms.location_type = 'pavilion'
+AND st.status = 'recibido'
+AND EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 8
+GROUP BY p.name, sc.name
+ORDER BY horas_promedio_en_pabellon DESC;
+
+-- Insumos por urgencia de retorno
+SELECT 
+    '
+INSUMOS POR URGENCIA DE RETORNO' as titulo;
+
+SELECT 
+    nivel_urgencia,
+    COUNT(*) as cantidad_insumos,
+    COUNT(DISTINCT location_id) as pabellones_afectados
+FROM (
+    SELECT 
+        ms.location_id,
+        CASE 
+            WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 24 THEN 'URGENTE (>24h)'
+            WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 12 THEN 'CRÍTICO (12-24h)'
+            WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 8 THEN 'ALTO (8-12h)'
+            ELSE 'NORMAL (<8h)'
+        END as nivel_urgencia,
+        CASE 
+            WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 24 THEN 1
+            WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 12 THEN 2
+            WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 8 THEN 3
+            ELSE 4
+        END as orden_urgencia
+    FROM medical_supply ms
+    JOIN supply_transfer st ON st.medical_supply_id = ms.id
+    WHERE ms.status = 'recepcionado'
+    AND ms.location_type = 'pavilion'
+    AND st.status = 'recibido'
+) urgency_data
+GROUP BY nivel_urgencia, orden_urgencia
+ORDER BY orden_urgencia;
+
+-- Inventario actual en pabellones
+SELECT 
+    '
+INVENTARIO ACTUAL EN PABELLONES' as titulo;
+
+SELECT 
+    pabellon,
+    tipos_insumo,
+    total_insumos,
+    pendientes_retorno,
+    insumos_validos
+FROM (
+    SELECT 
+        p.name as pabellon,
+        p.id as pabellon_id,
+        COUNT(DISTINCT ms.code) as tipos_insumo,
+        COUNT(*) as total_insumos,
+        SUM(CASE WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 8 THEN 1 ELSE 0 END) as pendientes_retorno,
+        SUM(CASE WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 <= 8 THEN 1 ELSE 0 END) as insumos_validos
+    FROM medical_supply ms
+    JOIN supply_transfer st ON st.medical_supply_id = ms.id
+    JOIN pavilion p ON p.id = ms.location_id
+    WHERE ms.status = 'recepcionado'
+    AND ms.location_type = 'pavilion'
+    AND st.status = 'recibido'
+    GROUP BY p.id, p.name
+) inventory
+ORDER BY pendientes_retorno DESC, total_insumos DESC;
+
+SELECT '
+SCRIPT EJECUTADO EXITOSAMENTE' as resultado;

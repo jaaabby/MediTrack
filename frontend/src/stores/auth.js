@@ -88,8 +88,8 @@ export const useAuthStore = defineStore('auth', {
     // Verificar si puede agregar insumos al inventario (admin, encargado de bodega, enfermera)
     canAddSupplies: (state) => ['admin', 'encargado de bodega'].includes(state.user?.role),
     
-    // Verificar si puede gestionar transferencias (admin, encargado de bodega, enfermera, pabellón)
-    canManageTransfers: (state) => ['admin', 'encargado de bodega', 'enfermera', 'pabellón'].includes(state.user?.role),
+    // Verificar si puede gestionar transferencias (admin, encargado de bodega, enfermera)
+    canManageTransfers: (state) => ['admin', 'encargado de bodega', 'enfermera'].includes(state.user?.role),
     
     // Verificar si puede ver historial de insumos (admin, encargado de bodega, enfermera)
     canViewSupplyHistory: (state) => ['admin', 'encargado de bodega', 'enfermera'].includes(state.user?.role),

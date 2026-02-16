@@ -75,6 +75,9 @@ CREATE TABLE "user" (
     pavilion_id INTEGER REFERENCES pavilion(id),
     specialty_id INTEGER REFERENCES medical_specialty(id),
     is_active BOOLEAN DEFAULT TRUE,
+    must_change_password BOOLEAN DEFAULT FALSE,
+    reset_password_token VARCHAR(255),
+    reset_password_expires_at BIGINT,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
     updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 );
@@ -82,6 +85,7 @@ CREATE TABLE "user" (
 CREATE INDEX idx_user_email ON "user"(email);
 CREATE INDEX idx_user_specialty ON "user"(specialty_id);
 CREATE INDEX idx_user_pavilion ON "user"(pavilion_id);
+CREATE INDEX idx_user_reset_token ON "user"(reset_password_token);
 
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,
@@ -109,12 +113,16 @@ CREATE TABLE supply_history (
     medical_supply_id INTEGER NOT NULL REFERENCES medical_supply(id) ON DELETE CASCADE,
     user_rut VARCHAR(20) NOT NULL REFERENCES "user"(rut),
     notes TEXT,
+    location TEXT,
     origin_type VARCHAR(50),
     origin_id INTEGER,
     confirmed_by VARCHAR(20) REFERENCES "user"(rut),
     confirmation_date TIMESTAMP,
     transfer_notes TEXT
 );
+
+CREATE INDEX idx_supply_history_location ON supply_history(location);
+COMMENT ON COLUMN supply_history.location IS 'Ubicación legible del evento (ej: "Pabellon: Pabellón Central 01 (Centro Médico Principal)")';
 
 CREATE TABLE batch_history (
     id SERIAL PRIMARY KEY,

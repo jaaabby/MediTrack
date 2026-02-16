@@ -274,10 +274,12 @@ import { es } from 'date-fns/locale'
 import qrService from '@/services/qr/qrService'
 import pavilionService from '@/services/config/pavilionService'
 import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/composables/useNotification'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado reactivo
 const qrInput = ref('')
@@ -497,15 +499,20 @@ const transferProduct = async () => {
         qr_code: scannedProduct.value.qr_code
       }
       
+      // Mostrar notificación de éxito
+      showSuccess('Insumo transferido correctamente')
+      
       // Limpiar formulario
       scannedProduct.value = null
       qrInput.value = ''
     } else {
       error.value = result.error || 'Error al transferir el insumo'
+      showError(result.error || 'Error al transferir el insumo')
     }
   } catch (err) {
     console.error('DEBUG - Error en transferencia:', err)
     error.value = err.message || 'Error al transferir el insumo'
+    showError(err.message || 'Error al transferir el insumo')
   } finally {
     transferring.value = false
   }
@@ -603,18 +610,4 @@ const resetForm = () => {
 }
 </script>
 
-<style scoped>
-.form-input {
-  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500;
-}
-
-.form-select {
-  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500;
-}
-
-.form-textarea {
-  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500;
-}
-
-/* Usar clases de botones de style.css global */
-</style>
+<!-- Los estilos .form-input, .form-select y .form-textarea están definidos globalmente en style.css -->

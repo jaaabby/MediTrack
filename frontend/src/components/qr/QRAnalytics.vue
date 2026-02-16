@@ -383,6 +383,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
 import ScanEventHistory from '@/components/qr/ScanEventHistory.vue'
 // Nota: Los componentes de charts (ScanTimeChart, ScanPurposeChart) no existen aún
@@ -390,6 +391,7 @@ import ScanEventHistory from '@/components/qr/ScanEventHistory.vue'
 // import ScanPurposeChart from '@/components/qr/charts/ScanPurposeChart.vue'
 
 const route = useRoute()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Props
 const qrCode = computed(() => route.params.qrcode)
@@ -572,7 +574,9 @@ const loadAnalytics = async () => {
     
   } catch (err) {
     console.error('Error loading analytics:', err)
-    error.value = err.message || 'Error al cargar los datos de analytics'
+    const errorMessage = err.message || 'Error al cargar los datos de analytics'
+    error.value = errorMessage
+    showError(errorMessage)
   } finally {
     loading.value = false
   }
@@ -596,36 +600,45 @@ const applyFilters = () => {
 }
 
 const exportAnalytics = () => {
-  if (!analyticsData.value) return
-  
-  const exportData = {
-    qr_code: qrCode.value,
-    export_date: new Date().toISOString(),
-    analytics: analyticsData.value,
-    time_chart_data: timeChartData.value,
-    purpose_chart_data: purposeChartData.value,
-    top_users: topUsers.value,
-    top_locations: topLocations.value,
-    hourly_activity: hourlyActivity.value,
-    weekly_activity: weeklyActivity.value,
-    scan_sources: scanSources.value,
-    filters_applied: {
-      period: selectedPeriod.value,
-      scan_type: selectedScanType.value,
-      source: selectedSource.value,
-      status: selectedStatus.value
-    }
+  if (!analyticsData.value) {
+    showError('No hay datos para exportar')
+    return
   }
   
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `qr-analytics-${qrCode.value}-${format(new Date(), 'yyyy-MM-dd')}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  try {
+    const exportData = {
+      qr_code: qrCode.value,
+      export_date: new Date().toISOString(),
+      analytics: analyticsData.value,
+      time_chart_data: timeChartData.value,
+      purpose_chart_data: purposeChartData.value,
+      top_users: topUsers.value,
+      top_locations: topLocations.value,
+      hourly_activity: hourlyActivity.value,
+      weekly_activity: weeklyActivity.value,
+      scan_sources: scanSources.value,
+      filters_applied: {
+        period: selectedPeriod.value,
+        scan_type: selectedScanType.value,
+        source: selectedSource.value,
+        status: selectedStatus.value
+      }
+    }
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `qr-analytics-${qrCode.value}-${format(new Date(), 'yyyy-MM-dd')}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showSuccess('Analytics exportados exitosamente')
+  } catch (err) {
+    console.error('Error al exportar analytics:', err)
+    showError('Error al exportar los datos de analytics')
+  }
 }
 
 const handleEventDetails = (event) => {

@@ -438,11 +438,22 @@ func (s *CartService) processItemUse(tx *gorm.DB, cart *models.SupplyCart, cartI
 		return err
 	}
 
-	// Obtener pavilion ID
+	// Obtener pavilion ID y nombre
 	pavilionID := 0
+	locationStr := "Ubicacion no especificada"
 	var supplyRequest models.SupplyRequest
 	if err := tx.First(&supplyRequest, cartItem.SupplyRequestQRAssignment.SupplyRequestID).Error; err == nil {
 		pavilionID = supplyRequest.PavilionID
+
+		// Obtener nombre del pabellón y centro médico
+		var pavilion models.Pavilion
+		if err := tx.Preload("MedicalCenter").First(&pavilion, pavilionID).Error; err == nil {
+			if pavilion.MedicalCenter.Name != "" {
+				locationStr = fmt.Sprintf("Pabellon: %s (%s)", pavilion.Name, pavilion.MedicalCenter.Name)
+			} else {
+				locationStr = fmt.Sprintf("Pabellon: %s", pavilion.Name)
+			}
+		}
 	}
 
 	// Registrar historial
@@ -454,6 +465,7 @@ func (s *CartService) processItemUse(tx *gorm.DB, cart *models.SupplyCart, cartI
 		DestinationID:   pavilionID,
 		UserRUT:         userRUT,
 		Notes:           fmt.Sprintf("Insumo utilizado desde carrito %s", cart.CartNumber),
+		Location:        locationStr,
 	}
 	if err := tx.Create(&history).Error; err != nil {
 		return fmt.Errorf("error registrando historial: %w", err)

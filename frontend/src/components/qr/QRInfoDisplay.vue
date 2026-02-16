@@ -151,6 +151,8 @@
               :default-collapsed="true"
               @cart-loaded="onCartLoaded"
               @cart-closed="onCartClosed"
+              @item-used="onItemUsed"
+              @item-returned="onItemReturned"
               @error="onCartError"
             />
           </div>
@@ -191,6 +193,7 @@ import { computed, onMounted, ref } from 'vue'
 import QrcodeVue from 'qrcode.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
 import { useQRPdfDownload } from '@/composables/useQRPdfDownload'
 import SupplyCart from '@/components/requests/SupplyCart.vue'
@@ -212,7 +215,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['consume-supply', 'mark-as-delivered'])
+const emit = defineEmits(['consume-supply', 'mark-as-delivered', 'qr-updated'])
 
 // Registrar el componente QR
 defineExpose({ QrcodeVue })
@@ -223,6 +226,7 @@ const lastScanInfo = ref(null)
 
 // Composable para descarga de PDF
 const { downloadQRAsPDF: downloadPDF, isGenerating: isGeneratingPDF, error: pdfError } = useQRPdfDownload()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Función para descargar QR como PDF
 const downloadQRAsPDF = async () => {
@@ -232,12 +236,15 @@ const downloadQRAsPDF = async () => {
       includeInfo: true
     })
     
-    if (!success && pdfError.value) {
+    if (success) {
+      showSuccess('PDF descargado exitosamente')
+    } else if (pdfError.value) {
       console.error('Error al generar PDF:', pdfError.value)
-      // Aquí podrías mostrar una notificación de error al usuario
+      showError('Error al generar el PDF: ' + pdfError.value)
     }
   } catch (error) {
     console.error('Error al descargar PDF:', error)
+    showError('Error al descargar el PDF: ' + (error.message || 'Error desconocido'))
   }
 }
 
@@ -248,10 +255,24 @@ const onCartLoaded = (cart) => {
 
 const onCartClosed = (cart) => {
   console.log('Carrito cerrado en QRInfoDisplay:', cart)
+  // Emitir evento para que el padre recargue la información del QR
+  emit('qr-updated')
 }
 
 const onCartError = (error) => {
   console.log('No se encontró carrito para este QR (puede ser normal):', error)
+}
+
+const onItemUsed = () => {
+  console.log('Item usado en carrito')
+  // Emitir evento para que el padre recargue la información del QR
+  emit('qr-updated')
+}
+
+const onItemReturned = () => {
+  console.log('Item devuelto desde carrito')
+  // Emitir evento para que el padre recargue la información del QR
+  emit('qr-updated')
 }
 
 // Cargar información de trazabilidad si está habilitada

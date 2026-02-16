@@ -14,6 +14,7 @@ type SupplyHistory struct {
 	MedicalSupplyID int       `json:"medical_supply_id" db:"medical_supply_id" gorm:"not null"`
 	UserRUT         string    `json:"user_rut" db:"user_rut" gorm:"not null"`
 	Notes           string    `json:"notes" db:"notes" gorm:"type:text"`
+	Location        string    `json:"location" db:"location" gorm:"type:text"` // Ubicación legible del evento
 
 	// Nuevos campos para trazabilidad completa de transferencias
 	OriginType       *string    `json:"origin_type,omitempty"`                     // 'store' o 'pavilion'
@@ -67,4 +68,5 @@ type SupplyHistoryWithDestination struct {
 	OriginName        *string `json:"origin_name,omitempty"`
 	MedicalCenterName *string `json:"medical_center_name,omitempty"`
 	UserName          *string `json:"user_name,omitempty"`
+	// Location ya está incluido en SupplyHistory
 }

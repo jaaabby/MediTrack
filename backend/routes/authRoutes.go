@@ -17,12 +17,16 @@ func SetupAuthRoutes(router *gin.RouterGroup, userService services.UserService, 
 		// Rutas públicas
 		auth.POST("/login", authController.Login)
 		auth.POST("/register", authController.Register)
+		auth.POST("/forgot-password", authController.RequestPasswordReset)
+		auth.POST("/reset-password", authController.ResetPassword)
+		auth.POST("/validate-reset-token", authController.ValidateResetToken)
 
 		// Rutas protegidas
 		auth.Use(middleware.AuthMiddleware(secretKey))
 		{
 			auth.GET("/profile", authController.GetProfile)
 			auth.PUT("/change-password", authController.ChangePassword)
+			auth.PUT("/first-time-password-change", authController.FirstTimePasswordChange)
 		}
 	}
 }

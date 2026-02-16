@@ -82,6 +82,7 @@
                 muted 
                 playsinline
                 class="w-full h-full object-cover"
+                :style="shouldMirrorVideo ? { transform: 'scaleX(-1)' } : {}"
               ></video>
               
               <div class="absolute inset-0 flex items-center justify-center">
@@ -155,6 +156,7 @@
         @view-details="viewDetails"
         @view-batch="viewBatch"
         @consume-supply="consumeSupply"
+        @qr-updated="refreshScannedInfo"
       />
       
       <!-- Gestión del Carrito -->
@@ -374,42 +376,6 @@
     </div>
   </div>
 
-  <!-- Sistema de Notificaciones -->
-  <div v-if="notification" class="fixed top-4 right-4 left-4 sm:left-auto z-50 max-w-sm sm:w-full">
-    <div :class="[
-      'rounded-lg p-3 sm:p-4 shadow-lg border transition-all duration-300',
-      notification.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-    ]">
-      <div class="flex items-start">
-        <div class="flex-shrink-0">
-          <svg v-if="notification.type === 'success'" class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-          </svg>
-          <svg v-else class="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-          </svg>
-        </div>
-        <div class="ml-2 sm:ml-3 flex-1 min-w-0">
-          <p :class="[
-            'text-xs sm:text-sm font-medium break-words',
-            notification.type === 'success' ? 'text-green-800' : 'text-red-800'
-          ]">
-            {{ notification.message }}
-          </p>
-        </div>
-        <div class="ml-2 sm:ml-4 flex-shrink-0">
-          <button @click="closeNotification" :class="[
-            'rounded-md inline-flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2',
-            notification.type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-500' : 'text-red-500 hover:text-red-600 focus:ring-red-500'
-          ]">
-            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script setup>
@@ -418,16 +384,19 @@ import { useRouter, useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 import qrService from '@/services/qr/qrService'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import jsQR from 'jsqr'
 import QRInfoDisplay from '@/components/qr/QRInfoDisplay.vue'
 import SupplyCart from '@/components/requests/SupplyCart.vue'
-import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
+const { confirm } = useAlert()
 
 // Referencias DOM
 const videoElement = ref(null)
@@ -445,6 +414,8 @@ const cameraActive = ref(false)
 const cameraStarting = ref(false)
 const cameraError = ref(null)
 const detecting = ref(false)
+const isFrontCamera = ref(false)
+const isMobileDevice = ref(false)
 
 // Estado del retorno a bodega
 const returningToStore = ref(false)
@@ -462,6 +433,22 @@ const cartRef = ref(null)
 // Variables para manejo de cámara
 let mediaStream = null
 let animationFrameId = null
+
+// Computed para determinar si se debe aplicar efecto espejo
+const shouldMirrorVideo = computed(() => {
+  // Aplicar espejo si:
+  // 1. Es cámara delantera (user) en celular
+  // 2. Es cámara de computador (cualquier cámara en desktop)
+  // NO aplicar espejo si:
+  // - Es cámara trasera (environment) en celular
+  if (isFrontCamera.value && isMobileDevice.value) {
+    return true // Cámara delantera en celular: sí espejo
+  }
+  if (!isMobileDevice.value) {
+    return true // Cámara de computador: sí espejo
+  }
+  return false // Cámara trasera en celular: no espejo
+})
 
 // Computed properties
 const currentUser = computed(() => authStore.user)
@@ -840,22 +827,68 @@ const getRecommendationIcon = (info) => {
 }
 
 // ===== FUNCIONES DE CÁMARA =====
+// Detectar si es dispositivo móvil
+const detectMobileDevice = () => {
+  const userAgent = navigator.userAgent || navigator.vendor || window.opera
+  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase())
+  const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  return isMobile || hasTouchScreen
+}
+
 const startCameraScanner = async () => {
   if (cameraActive.value) return
   
   cameraStarting.value = true
   cameraError.value = null
   
+  // Detectar tipo de dispositivo
+  isMobileDevice.value = detectMobileDevice()
+  
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ 
+    // Intentar primero con cámara trasera (environment)
+    let constraints = { 
       video: { 
         facingMode: 'environment',
         width: { ideal: 1280 },
         height: { ideal: 720 }
       } 
-    })
+    }
+    
+    let stream = null
+    let isFront = false
+    
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints)
+      isFront = false // Cámara trasera
+    } catch (envError) {
+      // Si falla con environment, intentar con user (delantera)
+      console.log('No se pudo acceder a cámara trasera, intentando con delantera...')
+      constraints.video.facingMode = 'user'
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints)
+        isFront = true // Cámara delantera
+      } catch (userError) {
+        // Si ambas fallan, intentar sin especificar facingMode
+        delete constraints.video.facingMode
+        stream = await navigator.mediaDevices.getUserMedia(constraints)
+        // Intentar detectar si es delantera o trasera
+        const track = stream.getVideoTracks()[0]
+        const settings = track.getSettings()
+        isFront = settings.facingMode === 'user' || !settings.facingMode
+      }
+    }
+    
+    // Detectar tipo de cámara desde el stream
+    if (stream) {
+      const track = stream.getVideoTracks()[0]
+      const settings = track.getSettings()
+      if (settings.facingMode) {
+        isFront = settings.facingMode === 'user'
+      }
+    }
     
     mediaStream = stream
+    isFrontCamera.value = isFront
     cameraActive.value = true
     
     // Esperar a que el elemento video esté disponible
@@ -900,11 +933,17 @@ const startQRDetection = () => {
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
       
-      // Aplicar transformación espejo al canvas para que coincida con la vista del video
-      context.save()
-      context.scale(-1, 1)
-      context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height)
-      context.restore()
+      // Aplicar transformación espejo al canvas solo si el video también tiene espejo
+      // Esto asegura que el QR se detecte correctamente
+      if (shouldMirrorVideo.value) {
+        context.save()
+        context.scale(-1, 1)
+        context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height)
+        context.restore()
+      } else {
+        // Sin espejo, dibujar normal
+        context.drawImage(video, 0, 0, canvas.width, canvas.height)
+      }
       
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
       const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
@@ -1048,6 +1087,31 @@ const quickRescan = (qrCode) => {
   scanQRCode()
 }
 
+// Función para refrescar la información del QR escaneado (sin cambiar el input)
+const refreshScannedInfo = async () => {
+  if (!scannedInfo.value || !scannedInfo.value.qr_code) return
+  
+  try {
+    // Crear contexto de escaneo
+    const scanContext = buildScanContext()
+    
+    // Re-escanear el código QR actual para obtener información actualizada
+    const result = await qrService.scanQRCode(scannedInfo.value.qr_code, scanContext)
+    
+    console.log('🔄 Información del QR actualizada:', {
+      qr_code: result.qr_code,
+      status: result.supply_info?.Status || result.supply_info?.status
+    })
+    
+    scannedInfo.value = result
+    lastScanContext.value = scanContext
+    
+  } catch (err) {
+    console.error('Error al refrescar información del QR:', err)
+    // No mostrar error al usuario, solo loguear
+  }
+}
+
 // ===== FUNCIONES DE HISTORIAL =====
 const addToHistory = (qrCode, type, qrInfo = null, scanContext = null) => {
   const existing = scanHistory.value.findIndex(item => item.qr_code === qrCode)
@@ -1168,7 +1232,7 @@ const pickupSupply = async (qrCode) => {
     
     if (result.success) {
       // Mostrar notificación de éxito
-      showSuccessNotification('Retiro registrado exitosamente. El insumo está en camino al pabellón.')
+      showSuccess('Retiro registrado exitosamente. El insumo está en camino al pabellón.')
       
       // Recargar la información del insumo
       qrInput.value = qrCode
@@ -1189,15 +1253,13 @@ const returnToStore = async (qrCode) => {
   if (!qrCode || returningToStore.value) return
   
   // Confirmar la acción
-  const result = await Swal.fire({
-    title: '¿Está seguro de que desea regresar este insumo a bodega?',
-    html: 'Esta acción cambiará el estado del insumo a <b>en_camino_a_bodega</b>. Deberá confirmar la llegada cuando el insumo llegue físicamente a bodega.',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, marcar como en camino',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
+  const confirmed = await confirm(
+    '¿Está seguro de que desea regresar este insumo a bodega?\n\nEsta acción cambiará el estado del insumo a "en_camino_a_bodega". Deberá confirmar la llegada cuando el insumo llegue físicamente a bodega.',
+    'Confirmar retorno a bodega'
+  )
+  if (!confirmed) {
+    return
+  }
   
   returningToStore.value = true
   error.value = null
@@ -1209,7 +1271,7 @@ const returnToStore = async (qrCode) => {
     )
     
     // Mostrar notificación de éxito
-    showSuccessNotification('Insumo marcado como en camino a bodega. Confirme la llegada cuando el insumo llegue físicamente.')
+    showSuccess('Insumo marcado como en camino a bodega. Confirme la llegada cuando el insumo llegue físicamente.')
     
     // Volver a escanear para actualizar la información del insumo
     await scanQRCode()
@@ -1235,15 +1297,13 @@ const confirmArrivalToStore = async (qrCode) => {
   if (!qrCode || confirmingArrival.value) return
   
   // Confirmar la acción
-  const result = await Swal.fire({
-    title: '¿Confirma que este insumo ha llegado a bodega?',
-    html: 'Esta acción cambiará el estado del insumo a <b>disponible</b> y será registrada en el historial de trazabilidad.',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, confirmar',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
+  const confirmed = await confirm(
+    '¿Confirma que este insumo ha llegado a bodega?\n\nEsta acción cambiará el estado del insumo a "disponible" y será registrada en el historial de trazabilidad.',
+    'Confirmar llegada a bodega'
+  )
+  if (!confirmed) {
+    return
+  }
   
   confirmingArrival.value = true
   error.value = null
@@ -1256,7 +1316,7 @@ const confirmArrivalToStore = async (qrCode) => {
     )
     
     // Mostrar notificación de éxito
-    showSuccessNotification('Llegada a bodega confirmada exitosamente')
+    showSuccess('Llegada a bodega confirmada exitosamente')
     
     // Volver a escanear para actualizar la información del insumo
     await scanQRCode()
@@ -1288,15 +1348,13 @@ const markAsReadyForPickup = async (info) => {
   }
   
   // Confirmar la acción
-  const result = await Swal.fire({
-    title: 'Listo para retiro',
-    html: `¿Está seguro de marcar el carrito <b>${cart.cart_number}</b> como "Listo para retiro"?<br><br>Esto indicará al pabellón que puede proceder a retirar los insumos.`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, marcar como listo',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!result.isConfirmed) return
+  const confirmed = await confirm(
+    `¿Está seguro de marcar el carrito ${cart.cart_number} como "Listo para retiro"?\n\nEsto indicará al pabellón que puede proceder a retirar los insumos.`,
+    'Confirmar listo para retiro'
+  )
+  if (!confirmed) {
+    return
+  }
   
   markingAsReady.value = true
   error.value = null
@@ -1306,7 +1364,7 @@ const markAsReadyForPickup = async (info) => {
     const response = await cartService.transferCartToPavilion(cart.id)
     
     if (response.success) {
-      showSuccessNotification('Carrito marcado como listo para retiro exitosamente')
+      showSuccess('Carrito marcado como listo para retiro exitosamente')
       
       // Volver a escanear para actualizar la información del insumo
       await scanQRCode()
@@ -1319,7 +1377,7 @@ const markAsReadyForPickup = async (info) => {
   } catch (err) {
     console.error('Error marcando como listo para retiro:', err)
     error.value = err.response?.data?.message || err.message || 'Error al marcar como listo para retiro'
-    showErrorNotification(error.value)
+    showError(error.value)
   } finally {
     markingAsReady.value = false
   }
@@ -1415,7 +1473,7 @@ const addScannedSupplyToCart = async () => {
     await supplyRequestService.assignQRToRequest(assignmentData)
     
     // Mostrar notificación de éxito
-    showSuccessNotification(`Insumo agregado al carrito ${cart.cart_number} exitosamente`)
+    showSuccess(`Insumo agregado al carrito ${cart.cart_number} exitosamente`)
     
     // Limpiar selección y reescanear
     selectedCartForAdd.value = ''
@@ -1424,44 +1482,14 @@ const addScannedSupplyToCart = async () => {
   } catch (err) {
     console.error('Error agregando al carrito:', err)
     const errorMsg = err.response?.data?.error || err.message || 'Error al agregar el insumo al carrito'
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: errorMsg
-    })
+    showError(errorMsg)
   } finally {
     addingToCart.value = false
   }
 }
 
 // ===== SISTEMA DE NOTIFICACIONES =====
-const notification = ref(null)
-
-const showSuccessNotification = (message) => {
-  notification.value = {
-    type: 'success',
-    message: message,
-    visible: true
-  }
-  setTimeout(() => {
-    notification.value = null
-  }, 4000)
-}
-
-const showErrorNotification = (message) => {
-  notification.value = {
-    type: 'error',
-    message: message,
-    visible: true
-  }
-  setTimeout(() => {
-    notification.value = null
-  }, 5000)
-}
-
-const closeNotification = () => {
-  notification.value = null
-}
+// Usa el sistema unificado de notificaciones a través de useNotification()
 
 // ===== FUNCIONES AUXILIARES =====
 const formatDate = (dateString) => {

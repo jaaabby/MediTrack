@@ -1,23 +1,5 @@
 <template>
   <div class="max-w-4xl mx-auto p-6">
-    <!-- Header -->
-    <div class="mb-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Retiro de Insumos</h1>
-          <p class="text-gray-600 mt-2">Retirar insumos desde bodega que están pendientes de retiro</p>
-        </div>
-        <div class="flex space-x-2">
-          <router-link to="/qr" class="btn-secondary">
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            Volver al Scanner
-          </router-link>
-        </div>
-      </div>
-    </div>
-
     <!-- Mensaje de Error -->
     <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
       <div class="flex items-start space-x-3">
@@ -168,40 +150,6 @@
       </div>
     </div>
 
-    <!-- Success Message -->
-    <div v-if="pickupSuccess" class="bg-green-50 border border-green-200 rounded-md p-4">
-      <div class="flex">
-        <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-green-800">Retiro Exitoso</h3>
-          <div class="mt-2 text-sm text-green-700">
-            El insumo ha sido retirado correctamente de la bodega.
-            <div v-if="pickupSuccess.status_change" class="mt-1 text-xs text-green-600">
-              Estado cambiado de "{{ pickupSuccess.status_change.from }}" a "{{ pickupSuccess.status_change.to }}"
-            </div>
-          </div>
-          <div class="mt-4 flex flex-wrap gap-3">
-            <button @click="resetForm" class="btn-primary text-sm">
-              Retirar Otro Insumo
-            </button>
-            <router-link to="/qr" class="btn-secondary text-sm">
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-              Volver al Scanner
-            </router-link>
-            <router-link v-if="pickupSuccess.qr_code" :to="`/qr/${pickupSuccess.qr_code}/traceability`" class="btn-secondary text-sm">
-              Ver Trazabilidad
-            </router-link>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Modal de Confirmación de Retiro -->
     <div v-if="showPickupConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
       <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
@@ -260,10 +208,12 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qr/qrService'
 import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/composables/useNotification'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado del componente
 const loading = ref(false)
@@ -442,25 +392,15 @@ const pickupSupply = async () => {
     console.log('Resultado de pickupSupplyFromStore:', result)
     
     if (result.success) {
-      console.log('Retiro exitoso, configurando alerta...')
+      console.log('Retiro exitoso, redirigiendo...')
       
-      pickupSuccess.value = {
-        ...result.data,
-        qr_code: scannedProduct.value.qr_code,
-        batch_id: scannedProduct.value.supply_info?.batch?.id,
-        status_change: {
-          from: getStatusLabel({ supply_info: { status: previousStatus } }),
-          to: 'En Camino a Pabellón'
-        }
-      }
+      // Mostrar notificación de éxito y redirigir
+      showSuccess('El insumo ha sido retirado correctamente de la bodega')
       
-      // Limpiar formulario
-      pickupForm.value = {
-        notes: ''
-      }
-      qrInput.value = ''
-      scannedProduct.value = null
-      error.value = null
+      // Redirigir a la vista de QR
+      setTimeout(() => {
+        router.push('/qr')
+      }, 1500)
       
     } else {
       throw new Error(result.error || 'Error al retirar el insumo')
@@ -468,7 +408,13 @@ const pickupSupply = async () => {
     
   } catch (err) {
     console.error('Error picking up supply:', err)
-    error.value = err.response?.data?.error || err.message || 'Error al retirar el insumo'
+    const errorMessage = err.response?.data?.error || err.message || 'Error al retirar el insumo'
+    showError(errorMessage)
+    
+    // Redirigir a la vista de QR después de mostrar el error
+    setTimeout(() => {
+      router.push('/qr')
+    }, 2000)
   } finally {
     pickingUp.value = false
   }

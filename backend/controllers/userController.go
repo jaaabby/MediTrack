@@ -1,13 +1,20 @@
 package controllers
 
 import (
+	"bytes"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
+	"meditrack/mailer"
 	"meditrack/models"
 	"meditrack/pkg/response"
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserController maneja las peticiones HTTP relacionadas con usuarios
@@ -28,18 +35,28 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		RUT             string `json:"rut" binding:"required"`
 		Name            string `json:"name" binding:"required"`
 		Email           string `json:"email" binding:"required,email"`
-		Password        string `json:"password" binding:"required,min=6"`
 		Role            string `json:"role" binding:"required"`
 		MedicalCenterID int    `json:"medical_center_id" binding:"required"`
+		PavilionID      *int   `json:"pavilion_id"`
+		SpecialtyID     *int   `json:"specialty_id"`
 	}
 
+	// Log del body recibido
+	bodyBytes, _ := ctx.GetRawData()
+	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	log.Printf("📝 CreateUser - Body recibido: %s", string(bodyBytes))
+
 	if err := ctx.ShouldBindJSON(&userRequest); err != nil {
+		log.Printf("❌ Error en binding JSON: %v", err)
 		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de usuario inválidos: " + err.Error(),
 		})
 		return
 	}
+
+	log.Printf("✅ Datos parseados correctamente - RUT: %s, Role: %s, PavilionID: %v, SpecialtyID: %v",
+		userRequest.RUT, userRequest.Role, userRequest.PavilionID, userRequest.SpecialtyID)
 
 	// Validar rol
 	tempUser := models.User{Role: userRequest.Role}
@@ -56,13 +73,21 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		RUT:             userRequest.RUT,
 		Name:            userRequest.Name,
 		Email:           userRequest.Email,
-		Password:        userRequest.Password,
 		Role:            userRequest.Role,
 		MedicalCenterID: userRequest.MedicalCenterID,
-		IsActive:        true,
 	}
 
-	if err := c.userService.CreateUser(&user); err != nil {
+	// Asignar campos opcionales
+	if userRequest.PavilionID != nil {
+		user.PavilionID = userRequest.PavilionID
+	}
+	if userRequest.SpecialtyID != nil {
+		user.SpecialtyID = userRequest.SpecialtyID
+	}
+
+	// Crear usuario con contraseña temporal
+	tempPassword, err := c.userService.CreateUserWithTemporaryPassword(&user)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
 			Error:   "Error al crear usuario: " + err.Error(),
@@ -70,9 +95,90 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
+	// Construir URL del sistema
+	// 1. Intentar desde variable de entorno
+	frontendURL := os.Getenv("FRONTEND_URL")
+
+	// 2. Si no está configurada, detectar desde headers de la petición
+	if frontendURL == "" {
+		// Intentar obtener desde Origin header (más confiable)
+		origin := ctx.GetHeader("Origin")
+
+		// Si no hay Origin, intentar desde Referer
+		if origin == "" {
+			referer := ctx.GetHeader("Referer")
+			if referer != "" {
+				// Extraer solo protocolo://host:puerto del Referer (sin path)
+				idx := len("http://")
+				if len(referer) > 8 && referer[:8] == "https://" {
+					idx = len("https://")
+				}
+
+				// Buscar el siguiente / después del protocolo
+				pathStart := idx
+				for i := idx; i < len(referer); i++ {
+					if referer[i] == '/' {
+						pathStart = i
+						break
+					}
+				}
+				origin = referer[:pathStart]
+			}
+		}
+
+		if origin != "" {
+			frontendURL = origin
+		} else {
+			// Último recurso: detectar entorno
+			env := os.Getenv("ENV")
+			if env == "production" {
+				frontendURL = "https://localhost:3000"
+			} else {
+				// Desarrollo: usar HTTPS si el frontend está configurado con HTTPS (mkcert)
+				frontendURL = "https://localhost:3000"
+			}
+		}
+	}
+
+	systemURL := frontendURL + "/login"
+
+	// Preparar datos para el template de email
+	templateData := struct {
+		Name      string
+		Email     string
+		RUT       string
+		Role      string
+		Password  string
+		SystemURL string
+	}{
+		Name:      user.Name,
+		Email:     user.Email,
+		RUT:       user.RUT,
+		Role:      user.Role,
+		Password:  tempPassword,
+		SystemURL: systemURL,
+	}
+
+	// Enviar email con contraseña temporal
+	templatePath := filepath.Join("mailer", "templates", "temporary_password.html")
+	mailReq := mailer.NewRequest([]string{user.Email}, "¡Bienvenido a MediTrack! - Tus credenciales de acceso")
+
+	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
+		log.Printf("⚠️ Error enviando email a %s: %v", user.Email, err)
+		// Continuamos aunque falle el email - el usuario fue creado
+		ctx.JSON(http.StatusCreated, response.Response{
+			Success: true,
+			Message: "Usuario creado exitosamente, pero hubo un error al enviar el correo. Por favor, contacte al administrador para obtener su contraseña temporal.",
+			Data:    user.ToResponse(),
+		})
+		return
+	}
+
+	log.Printf("✅ Usuario creado y correo enviado exitosamente a: %s", user.Email)
+
 	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,
-		Message: "Usuario creado exitosamente",
+		Message: "Usuario creado exitosamente. Se ha enviado un correo con la contraseña temporal.",
 		Data:    user.ToResponse(),
 	})
 }
@@ -200,6 +306,8 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		Password        string `json:"password"`
 		Role            string `json:"role"`
 		MedicalCenterID int    `json:"medical_center_id"`
+		PavilionID      *int   `json:"pavilion_id"`
+		SpecialtyID     *int   `json:"specialty_id"`
 		IsActive        *bool  `json:"is_active"`
 	}
 
@@ -223,14 +331,36 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		}
 	}
 
+	// Hashear la contraseña si se proporciona
+	passwordToSave := userRequest.Password
+	if userRequest.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRequest.Password), bcrypt.DefaultCost)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, response.Response{
+				Success: false,
+				Error:   "Error al procesar contraseña: " + err.Error(),
+			})
+			return
+		}
+		passwordToSave = string(hashedPassword)
+	}
+
 	// Crear usuario para actualización
 	user := models.User{
 		RUT:             rut,
 		Name:            userRequest.Name,
 		Email:           userRequest.Email,
-		Password:        userRequest.Password,
+		Password:        passwordToSave,
 		Role:            userRequest.Role,
 		MedicalCenterID: userRequest.MedicalCenterID,
+	}
+
+	// Asignar campos opcionales
+	if userRequest.PavilionID != nil {
+		user.PavilionID = userRequest.PavilionID
+	}
+	if userRequest.SpecialtyID != nil {
+		user.SpecialtyID = userRequest.SpecialtyID
 	}
 
 	if userRequest.IsActive != nil {

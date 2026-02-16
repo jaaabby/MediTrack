@@ -108,8 +108,8 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useNotification } from '@/composables/useNotification'
 import supplyRequestService from '@/services/requests/supplyRequestService'
-import Swal from 'sweetalert2'
 
 const props = defineProps({
   show: {
@@ -124,6 +124,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'resubmitted'])
 
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const loading = ref(false)
 const items = ref([])
 
@@ -146,11 +147,7 @@ const loadItems = async () => {
     }))
   } catch (error) {
     console.error('Error cargando items:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'No se pudieron cargar los items de la solicitud'
-    })
+    showError('No se pudieron cargar los items de la solicitud')
   }
 }
 
@@ -189,11 +186,7 @@ const resubmitRequest = async () => {
   const invalidItems = returnedItems.filter(item => !item.new_quantity || item.new_quantity < 1)
   
   if (invalidItems.length > 0) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Cantidades inválidas',
-      text: 'Todos los items devueltos deben tener una cantidad válida (mayor a 0)'
-    })
+    showWarning('Todos los items devueltos deben tener una cantidad válida (mayor a 0)')
     return
   }
 
@@ -207,23 +200,13 @@ const resubmitRequest = async () => {
 
     await supplyRequestService.resubmitReturnedRequest(props.request.id, updatedItems)
 
-    await Swal.fire({
-      icon: 'success',
-      title: 'Solicitud Reenviada',
-      text: 'La solicitud ha sido reenviada al encargado de bodega',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess('La solicitud ha sido reenviada al encargado de bodega')
 
     emit('resubmitted')
     closeModal()
   } catch (error) {
     console.error('Error reenviando solicitud:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: error.response?.data?.error || 'No se pudo reenviar la solicitud'
-    })
+    showError(error.response?.data?.error || 'No se pudo reenviar la solicitud')
   } finally {
     loading.value = false
   }

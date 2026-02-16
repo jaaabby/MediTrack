@@ -680,7 +680,8 @@ import pavilionService from '@/services/config/pavilionService'
 import inventoryService from '@/services/inventory/inventoryService'
 import surgeryService from '@/services/management/surgeryService'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
-import Swal from 'sweetalert2'
+import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
 
 // Props
 const props = defineProps({
@@ -699,6 +700,8 @@ const emit = defineEmits(['success', 'cancel', 'error'])
 
 // Stores
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError, info: showInfo, warning: showWarning } = useNotification()
+const { confirm } = useAlert()
 
 // Estado reactivo
 const submitting = ref(false)
@@ -976,13 +979,7 @@ const addTypicalSupply = (typicalSupply) => {
   if (existingIndex !== -1) {
     // Si ya existe, actualizar la cantidad sumando la cantidad típica
     requestForm.items[existingIndex].quantity_requested += typicalSupply.typical_quantity || 1
-    Swal.fire({
-      icon: 'info',
-      title: 'Insumo ya agregado',
-      text: `Se sumó la cantidad típica (${typicalSupply.typical_quantity || 1}) al insumo existente`,
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showInfo(`Se sumó la cantidad típica (${typicalSupply.typical_quantity || 1}) al insumo existente`)
   } else {
     // Buscar el nombre del insumo en la lista de medicalSupplies
     const supplyInfo = medicalSupplies.value.find(s => s.code === typicalSupply.supply_code)
@@ -1104,13 +1101,7 @@ const addAllTypicalSupplies = () => {
     supplyListSearchTerms.value.unshift(...newListSearchTerms)
   }
 
-  Swal.fire({
-    icon: 'success',
-    title: 'Insumos agregados',
-    html: `${addedCount} insumo(s) agregado(s)<br/>${updatedCount > 0 ? `${updatedCount} insumo(s) actualizado(s)` : ''}`,
-    timer: 2000,
-    showConfirmButton: false
-  })
+  showSuccess(`${addedCount} insumo(s) agregado(s)${updatedCount > 0 ? `. ${updatedCount} insumo(s) actualizado(s)` : ''}`)
   
   // Minimizar la sección después de agregar todos
   typicalSuppliesExpanded.value = false
@@ -1119,13 +1110,7 @@ const addAllTypicalSupplies = () => {
 const removeSupplyItem = (index) => {
   // No permitir eliminar items aceptados en modo edición
   if (props.editMode && requestForm.items[index]?.item_status === 'aceptado') {
-    Swal.fire({
-      icon: 'warning',
-      title: 'No se puede eliminar',
-      text: 'Este insumo ya fue aceptado por bodega y no puede ser eliminado.',
-      timer: 3000,
-      showConfirmButton: false
-    })
+    showWarning('Este insumo ya fue aceptado por bodega y no puede ser eliminado.')
     return
   }
   
@@ -1354,14 +1339,7 @@ const validateForm = () => {
     supplyListSearchTerms.value = requestForm.items.map(() => '')
     
     // Mostrar mensaje informativo
-    Swal.fire({
-      icon: 'info',
-      title: 'Items Consolidados',
-      html: `Se detectaron <strong>${duplicateCount}</strong> insumo(s) duplicado(s).<br/>Las cantidades fueron sumadas automáticamente.`,
-      timer: 3000,
-      showConfirmButton: true,
-      confirmButtonText: 'Entendido'
-    })
+    showInfo(`Se detectaron ${duplicateCount} insumo(s) duplicado(s). Las cantidades fueron sumadas automáticamente.`)
   }
   
   // Validar el formulario (con items consolidados si se aplicó)
@@ -1393,22 +1371,11 @@ const submitRequest = async () => {
   // Verificar anticipación mínima antes de enviar
   if (!props.editMode && isNotProgrammed.value) {
     const days = Math.ceil(daysUntilSurgery.value)
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: 'Anticipación recomendada',
-      html: `
-        <p>La cirugía está programada en <strong>${days} día(s)</strong>, menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.</p>
-        <p class="mt-2">¿Deseas continuar con la solicitud?</p>
-        <p class="text-sm text-gray-600 mt-2">Esta solicitud será marcada como urgente y procesada con prioridad.</p>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Sí, continuar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33'
-    })
-
-    if (!result.isConfirmed) {
+    const confirmed = await confirm(
+      `La cirugía está programada en ${days} día(s), menos de los ${MINIMUM_ADVANCE_DAYS} días recomendados.\n\n¿Deseas continuar con la solicitud?\n\nEsta solicitud será marcada como urgente y procesada con prioridad.`,
+      'Advertencia: Fecha cercana'
+    )
+    if (!confirmed) {
       return
     }
   }
@@ -1502,13 +1469,7 @@ const resubmitRequest = async () => {
   if (result.success) {
     console.log('Solicitud reenviada exitosamente')
     
-    await Swal.fire({
-      icon: 'success',
-      title: 'Solicitud Reenviada',
-      text: 'La solicitud ha sido reenviada al encargado de bodega',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    showSuccess('La solicitud ha sido reenviada al encargado de bodega')
     
     emit('success', { id: props.id })
   } else {
@@ -1658,11 +1619,7 @@ const loadRequestForEdit = async () => {
     }
   } catch (error) {
     console.error('Error cargando solicitud:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'No se pudo cargar la solicitud para editar'
-    })
+    showError('No se pudo cargar la solicitud para editar')
   }
 }
 

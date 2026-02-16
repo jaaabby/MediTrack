@@ -97,7 +97,7 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Notas
               </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 Acciones
               </th>
             </tr>
@@ -128,17 +128,18 @@
               <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" :title="supply.notes">
                 {{ supply.notes || '-' }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <div class="flex justify-end space-x-2">
                   <button @click="openEditModal(supply)" 
-                    class="btn-primary text-xs px-3 py-1.5"
+                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
                     title="Editar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
+                    <span class="font-medium text-xs">Editar</span>
                   </button>
                   <button @click="confirmDelete(supply)" 
-                    class="btn-danger text-xs px-3 py-1.5"
+                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
                     title="Eliminar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -388,7 +389,6 @@
                           class="form-input" 
                           placeholder="Ej: 5" 
                           required
-                          :disabled="isEditing"
                         />
                         <p class="mt-1 text-xs text-gray-500">Cantidad típica para este insumo</p>
                       </div>
@@ -400,7 +400,6 @@
                             v-model="supply.is_required" 
                             type="checkbox" 
                             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            :disabled="isEditing"
                           />
                           <span class="text-sm font-medium text-gray-700">Insumo requerido</span>
                         </label>
@@ -417,7 +416,6 @@
                         rows="2" 
                         class="form-input text-sm" 
                         placeholder="Notas específicas para este insumo..."
-                        :disabled="isEditing"
                       ></textarea>
                     </div>
                   </div>
@@ -454,7 +452,11 @@ import { ref, computed, onMounted } from 'vue'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
 import surgeryService from '@/services/management/surgeryService'
 import supplyCodeService from '@/services/config/supplyCodeService'
-import Swal from 'sweetalert2'
+import { useNotification } from '@/composables/useNotification'
+import { useAlert } from '@/composables/useAlert'
+
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
+const { confirmDanger } = useAlert()
 
 const typicalSupplies = ref([])
 const surgeries = ref([])
@@ -615,12 +617,7 @@ const resetForm = () => {
 
 const openSupplySelectionModal = () => {
   if (!typicalSupplyForm.value.surgery_id) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Seleccione una cirugía',
-      text: 'Debe seleccionar una cirugía antes de elegir insumos',
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning('Debe seleccionar una cirugía antes de elegir insumos')
     return
   }
   
@@ -740,12 +737,7 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
   // Validaciones
   const validation = validateForm()
   if (!validation.valid) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Campo requerido',
-      text: validation.message,
-      confirmButtonText: 'Aceptar'
-    })
+    showWarning(validation.message)
     return
   }
 
@@ -753,12 +745,15 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
   try {
     if (isEditing.value) {
       // Modo edición: solo actualizar el insumo existente
+      // Tomar los valores desde selectedSupplies que es donde el usuario edita
+      const editedSupply = selectedSupplies.value[0]
+      
       const supplyData = {
         surgery_id: parseInt(typicalSupplyForm.value.surgery_id),
         supply_code: parseInt(typicalSupplyForm.value.supply_code),
-        typical_quantity: parseInt(typicalSupplyForm.value.typical_quantity),
-        is_required: typicalSupplyForm.value.is_required || false,
-        notes: typicalSupplyForm.value.notes.trim() || null
+        typical_quantity: parseInt(editedSupply.typical_quantity),
+        is_required: editedSupply.is_required || false,
+        notes: (editedSupply.notes || '').trim() || null
       }
       
       await surgeryTypicalSupplyService.updateTypicalSupply(typicalSupplyForm.value.id, supplyData)
@@ -766,22 +761,11 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
       if (closeAfterSave) {
         closeModal()
       }
-      await Swal.fire({
-        icon: 'success',
-        title: 'Actualizado',
-        text: 'Insumo típico actualizado exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
+      showSuccess('Insumo típico actualizado exitosamente')
     } else {
       // Modo creación: crear múltiples insumos si hay varios seleccionados
       if (selectedSupplies.value.length === 0) {
-        await Swal.fire({
-          icon: 'warning',
-          title: 'Seleccione insumos',
-          text: 'Debe seleccionar al menos un insumo',
-          confirmButtonText: 'Aceptar'
-        })
+        showWarning('Debe seleccionar al menos un insumo')
         saving.value = false
         return
       }
@@ -815,26 +799,9 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
       await loadTypicalSupplies()
 
       if (errorCount === 0) {
-        await Swal.fire({
-          icon: 'success',
-          title: 'Creado',
-          html: `Se crearon exitosamente <strong>${successCount}</strong> asociación(es) de insumo(s)`,
-          timer: 2000,
-          showConfirmButton: false
-        })
+        showSuccess(`${successCount} insumo(s) asociado(s) exitosamente`)
       } else {
-        await Swal.fire({
-          icon: 'warning',
-          title: 'Proceso completado con errores',
-          html: `
-            <p>Se crearon <strong>${successCount}</strong> asociación(es) exitosamente.</p>
-            <p class="mt-2">Errores (${errorCount}):</p>
-            <ul class="text-left mt-2 text-sm">
-              ${errors.map(e => `<li>${e}</li>`).join('')}
-            </ul>
-          `,
-          confirmButtonText: 'Aceptar'
-        })
+        showWarning(`Se crearon ${successCount} asociación(es), pero ${errorCount} fallaron. Errores: ${errors.join('; ')}`)
       }
       
       if (closeAfterSave) {
@@ -858,12 +825,7 @@ const saveTypicalSupply = async (closeAfterSave = true) => {
       errorMessage = err.message
     }
 
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error al guardar',
-      text: errorMessage,
-      confirmButtonText: 'Aceptar'
-    })
+    showError('Error al guardar: ' + errorMessage)
   } finally {
     saving.value = false
   }
@@ -877,38 +839,21 @@ const confirmDelete = async (supply) => {
   const surgeryName = getSurgeryName(supply.surgery_id)
   const supplyName = getSupplyName(supply.supply_code)
   
-  const result = await Swal.fire({
-    title: '¿Estás seguro?',
-    html: `¿Deseas eliminar la asociación entre <strong>"${surgeryName}"</strong> y <strong>"${supplyName}"</strong>?<br><small class="text-gray-600">Esta acción no se puede deshacer.</small>`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#dc2626',
-    cancelButtonColor: '#6b7280',
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true
-  })
+  const confirmed = await confirmDanger(
+    `¿Deseas eliminar la asociación entre "${surgeryName}" y "${supplyName}"?\n\nEsta acción no se puede deshacer.`,
+    'Confirmar eliminación'
+  )
+  if (!confirmed) {
+    return
+  }
 
-  if (result.isConfirmed) {
-    try {
-      await surgeryTypicalSupplyService.deleteTypicalSupply(supply.id)
-      await loadTypicalSupplies()
-      await Swal.fire({
-        icon: 'success',
-        title: 'Eliminado',
-        text: 'Asociación eliminada exitosamente',
-        timer: 2000,
-        showConfirmButton: false
-      })
-    } catch (err) {
-      console.error('Error al eliminar:', err)
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Error al eliminar: ' + (err.response?.data?.error || err.message),
-        confirmButtonText: 'Aceptar'
-      })
-    }
+  try {
+    await surgeryTypicalSupplyService.deleteTypicalSupply(supply.id)
+    await loadTypicalSupplies()
+    showSuccess('Asociación eliminada exitosamente')
+  } catch (err) {
+    console.error('Error al eliminar:', err)
+    showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
   }
 }
 

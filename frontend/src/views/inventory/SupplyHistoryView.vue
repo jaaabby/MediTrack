@@ -24,22 +24,32 @@
 
     <!-- Filtros -->
     <div class="card">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
+      <div class="flex flex-col md:flex-row gap-4 items-end">
+        <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
           <input type="text" v-model="searchTerm" placeholder="Nombre, QR, estado, usuario..." class="form-input" />
         </div>
-        <div>
+        <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Desde</label>
           <input type="date" v-model="filters.from_date" class="form-input" />
         </div>
-        <div>
+        <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Hasta</label>
           <input type="date" v-model="filters.to_date" class="form-input" />
         </div>
-      </div>
-      <div class="mt-4 flex justify-end">
-        <button @click="loadHistory" class="btn-primary">Aplicar Filtros</button>
+        <div>
+          <button 
+            @click="clearFilters" 
+            :disabled="!hasActiveFilters"
+            class="btn-secondary flex items-center justify-center whitespace-nowrap"
+            :class="{ 'opacity-50 cursor-not-allowed': !hasActiveFilters }"
+          >
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Limpiar Filtros
+          </button>
+        </div>
       </div>
     </div>
 
@@ -183,14 +193,14 @@
                   </span>
                 </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 Detalles
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedHistory" :key="item.id" class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#{{ item.id }}</td>
+            <tr v-for="(item, index) in paginatedHistory" :key="item.id" class="hover:bg-gray-50 transition-colors duration-150">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#{{ startIndex + index + 1 }}</td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm">
                   <div class="font-medium text-gray-900">{{ item.supply_name || 'Sin nombre' }}</div>
@@ -211,9 +221,9 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.user_rut || 'SYSTEM' }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDateTime(item.date_time) }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <button @click="viewDetails(item)" 
-                  class="btn-primary text-xs px-3 py-1.5"
+                  class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
                   title="Ver detalles">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -411,13 +421,14 @@ import supplyHistoryService from '@/services/inventory/supplyHistoryService'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import Swal from 'sweetalert2'
+import { useNotification } from '@/composables/useNotification'
 
 const history = ref([])
 const loading = ref(false)
 const searchTerm = ref('')
 const showDetailsModal = ref(false)
 const selectedItem = ref(null)
+const { success: showSuccess, error: showError } = useNotification()
 
 const filters = ref({
   from_date: '',
@@ -432,17 +443,62 @@ const sortOrder = ref('desc')
 const currentPage = ref(1)
 const itemsPerPage = 10
 
+// Computed para verificar si hay filtros activos
+// Helper para parsear fechas consistentemente
+const parseDateTimeToLocal = (dateStr) => {
+  if (!dateStr) return null
+  if (typeof dateStr === 'string') {
+    // Si no tiene información de zona horaria, asumir que es hora local
+    if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+      // Reemplazar espacio por 'T' para formato ISO compatible con hora local
+      return new Date(dateStr.replace(' ', 'T'))
+    }
+  }
+  return new Date(dateStr)
+}
+
+const hasActiveFilters = computed(() => {
+  return searchTerm.value !== '' || filters.value.from_date !== '' || filters.value.to_date !== ''
+})
+
 const filteredHistory = computed(() => {
-  if (!searchTerm.value) return history.value
-  const term = searchTerm.value.toLowerCase()
-  return history.value.filter(item => 
-    item.supply_name?.toLowerCase().includes(term) ||
-    item.qr_code?.toLowerCase().includes(term) ||
-    item.medical_supply_id?.toString().includes(term) ||
-    item.status?.toLowerCase().includes(term) ||
-    item.user_rut?.toLowerCase().includes(term) ||
-    item.destination_type?.toLowerCase().includes(term)
-  )
+  let filtered = [...history.value]
+  
+  // Filtrar por búsqueda de texto
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase()
+    filtered = filtered.filter(item => 
+      item.supply_name?.toLowerCase().includes(term) ||
+      item.qr_code?.toLowerCase().includes(term) ||
+      item.medical_supply_id?.toString().includes(term) ||
+      item.status?.toLowerCase().includes(term) ||
+      item.user_rut?.toLowerCase().includes(term) ||
+      item.destination_type?.toLowerCase().includes(term)
+    )
+  }
+  
+  // Filtrar por rango de fechas
+  if (filters.value.from_date) {
+    // Crear fecha local a las 00:00:00
+    const fromDate = new Date(filters.value.from_date + 'T00:00:00')
+    filtered = filtered.filter(item => {
+      if (!item.date_time) return false
+      const itemDate = parseDateTimeToLocal(item.date_time)
+      return itemDate >= fromDate
+    })
+  }
+  
+  if (filters.value.to_date) {
+    // Crear fecha local a las 23:59:59.999
+    const toDate = new Date(filters.value.to_date + 'T23:59:59.999')
+    filtered = filtered.filter(item => {
+      if (!item.date_time) return false
+      const itemDate = parseDateTimeToLocal(item.date_time)
+      return itemDate <= toDate
+    })
+  }
+  
+  return filtered
 })
 
 // Computed para obtener la lista ordenada
@@ -508,16 +564,17 @@ const loadHistory = async () => {
     history.value = data
   } catch (err) {
     console.error('Error al cargar historial:', err)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al cargar historial',
-      text: err.message || 'Ocurrió un error al cargar el historial',
-      timer: 3000,
-      showConfirmButton: false
-    })
+    showError(err.message || 'Ocurrió un error al cargar el historial')
   } finally {
     loading.value = false
   }
+}
+
+const clearFilters = () => {
+  searchTerm.value = ''
+  filters.value.from_date = ''
+  filters.value.to_date = ''
+  currentPage.value = 1
 }
 
 const viewDetails = (item) => {
@@ -596,7 +653,7 @@ const getStatusClass = (status) => {
   return classes[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
 }
 
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'id', label: 'ID' },
@@ -615,21 +672,11 @@ const exportToExcel = () => {
       { key: 'notes', label: 'Notas' }
     ]
     
-    exportExcel(sortedHistory.value, columns, 'historial_insumos')
-    Swal.fire({
-      icon: 'success',
-      title: 'Exportación completada',
-      text: 'El archivo Excel se ha descargado exitosamente',
-      timer: 2000,
-      showConfirmButton: false
-    })
+    await exportExcel(sortedHistory.value, columns, 'historial_insumos')
+    showSuccess('El archivo Excel se ha descargado exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Error al exportar',
-      text: 'Ocurrió un error al exportar a Excel: ' + error.message
-    })
+    showError('Ocurrió un error al exportar a Excel: ' + error.message)
   }
 }
 

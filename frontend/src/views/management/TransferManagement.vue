@@ -185,7 +185,7 @@
                   </span>
                 </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 Acciones
               </th>
             </tr>
@@ -204,10 +204,10 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(transfer.created_at) }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <div class="flex justify-end space-x-2">
                   <button @click="viewDetails(transfer)" 
-                    class="btn-primary text-xs px-3 py-1.5"
+                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
                     title="Ver detalles">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -216,7 +216,7 @@
                   </button>
                   <button v-if="transfer.status === 'pendiente' || transfer.status === 'en_transito'" 
                     @click="openConfirmModal(transfer)" 
-                    class="btn-success text-xs px-3 py-1.5"
+                    class="text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded transition-colors"
                     title="Confirmar recepción">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -224,7 +224,7 @@
                   </button>
                   <button v-if="transfer.status === 'pendiente'" 
                     @click="openCancelModal(transfer)" 
-                    class="btn-danger text-xs px-3 py-1.5"
+                    class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded transition-colors"
                     title="Cancelar">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -768,51 +768,16 @@
       </div>
     </Teleport>
 
-    <!-- Sistema de Notificaciones Toast -->
-    <Teleport to="body">
-      <div class="fixed top-4 right-4 z-[60] space-y-2">
-      <transition-group name="notification">
-        <div
-          v-for="notification in notifications"
-          :key="notification.id"
-          class="notification-toast shadow-lg rounded-lg p-4 min-w-[300px] max-w-md flex items-start space-x-3"
-          :class="getNotificationClass(notification.type)"
-        >
-          <!-- Icono -->
-          <div class="flex-shrink-0">
-            <svg v-if="notification.type === 'success'" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <svg v-else-if="notification.type === 'error'" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <svg v-else-if="notification.type === 'warning'" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <!-- Mensaje -->
-          <p class="flex-1 text-sm font-medium">{{ notification.message }}</p>
-          <!-- Botón cerrar -->
-          <button @click="removeNotification(notification.id)" class="flex-shrink-0 opacity-70 hover:opacity-100">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      </transition-group>
-      </div>
-    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useNotification } from '@/composables/useNotification'
 import supplyTransferService from '@/services/management/supplyTransferService'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
-import Swal from 'sweetalert2'
+
+const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 
 const transfers = ref([])
 const loading = ref(false)
@@ -825,10 +790,6 @@ const confirmationNotes = ref('')
 const cancellationReason = ref('')
 const isConfirming = ref(false)
 const activeTab = ref('general')
-
-// Sistema de notificaciones
-const notifications = ref([])
-let notificationId = 0
 
 const filters = ref({
   code: '',
@@ -1078,35 +1039,20 @@ const getStatusLabel = (status) => {
   return labels[status] || status
 }
 
+// Función helper para mantener compatibilidad con código existente
 const showNotification = (message, type = 'info') => {
-  const id = notificationId++
-  const notification = { id, message, type }
-  notifications.value.push(notification)
-  
-  // Auto-remover después de 5 segundos
-  setTimeout(() => {
-    removeNotification(id)
-  }, 5000)
-}
-
-const removeNotification = (id) => {
-  const index = notifications.value.findIndex(n => n.id === id)
-  if (index > -1) {
-    notifications.value.splice(index, 1)
+  if (type === 'success') {
+    showSuccess(message)
+  } else if (type === 'error') {
+    showError(message)
+  } else if (type === 'warning') {
+    showWarning(message)
+  } else {
+    showInfo(message)
   }
 }
 
-const getNotificationClass = (type) => {
-  const classes = {
-    success: 'bg-green-50 text-green-800 border border-green-200',
-    error: 'bg-red-50 text-red-800 border border-red-200',
-    warning: 'bg-yellow-50 text-yellow-800 border border-yellow-200',
-    info: 'bg-blue-50 text-blue-800 border border-blue-200'
-  }
-  return classes[type] || classes.info
-}
-
-const exportToExcel = () => {
+const exportToExcel = async () => {
   try {
     const columns = [
       { key: 'transfer_code', label: 'Código de Transferencia' },
@@ -1126,7 +1072,7 @@ const exportToExcel = () => {
       { key: 'rejection_reason', label: 'Motivo de Rechazo' }
     ]
     
-    exportExcel(sortedTransfers.value, columns, 'transferencias')
+    await exportExcel(sortedTransfers.value, columns, 'transferencias')
     showNotification('Exportación a Excel completada exitosamente', 'success')
   } catch (error) {
     console.error('Error al exportar:', error)

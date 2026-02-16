@@ -517,6 +517,7 @@ import surgeryService from '@/services/management/surgeryService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import doctorInfoService from '@/services/config/doctorInfoService'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
+import supplyHistoryService from '@/services/inventory/supplyHistoryService'
 
 const router = useRouter()
 
@@ -566,6 +567,7 @@ const mainMetrics = computed(() => ({
 const bySurgery = ref([])
 const surgeries = ref([])
 const completedRequests = ref([])
+const realConsumptionStats = ref([])
 const avgSurgeryDuration = computed(() => {
   if (!surgeries.value.length) return 0
   const sum = surgeries.value.reduce((a, s) => a + Number(s.duration || 0), 0)
@@ -588,7 +590,8 @@ const surgeriesWithTotals = computed(() => {
 
 // Estadísticas por cirugía: ordenadas por cantidad de procedimientos realizados
 const surgeryStatistics = computed(() => {
-  if (!completedRequests.value.length || !surgeries.value.length) return []
+  if (!realConsumptionStats.value.length && !completedRequests.value.length) return []
+  if (!surgeries.value.length) return []
   
   // Crear mapa de cirugías por ID
   const surgeryMap = new Map()
@@ -596,7 +599,7 @@ const surgeryStatistics = computed(() => {
     surgeryMap.set(s.id, s.name)
   })
   
-  // Agrupar solicitudes completadas por surgery_id
+  // Agrupar solicitudes completadas por surgery_id para contar procedimientos
   const bySurgeryId = new Map()
   completedRequests.value.forEach(req => {
     if (!req.surgery_id) return
@@ -607,7 +610,6 @@ const surgeryStatistics = computed(() => {
         surgery_name: surgeryMap.get(surgeryId) || 'Sin nombre',
         procedures_count: 0,
         request_ids: [],
-        consumption_by_type: new Map()
       })
     }
     const stat = bySurgeryId.get(surgeryId)
@@ -615,40 +617,49 @@ const surgeryStatistics = computed(() => {
     stat.request_ids.push(req.id)
   })
   
-  // Calcular consumo por tipo de insumo para cada cirugía
-  // Nota: Esto requiere datos de consumo, que podrían venir de supply_history o de los items consumidos
-  // Por ahora, usamos los items de las solicitudes como aproximación
+  // Procesar datos REALES de consumo desde supply_history
+  realConsumptionStats.value.forEach(consumption => {
+    const surgeryId = consumption.surgery_id
+    if (!surgeryId) return
+    
+    // Si la cirugía no está en el mapa (porque no tiene solicitudes completadas), agregarla
+    if (!bySurgeryId.has(surgeryId)) {
+      bySurgeryId.set(surgeryId, {
+        surgery_id: surgeryId,
+        surgery_name: consumption.surgery_name || surgeryMap.get(surgeryId) || 'Sin nombre',
+        procedures_count: 0, // Sin procedimientos registrados
+        request_ids: [],
+      })
+    }
+  })
+  
   const stats = Array.from(bySurgeryId.values())
   
   // Ordenar por cantidad de procedimientos (descendente)
   stats.sort((a, b) => b.procedures_count - a.procedures_count)
   
-  // Calcular total consumido (aproximación basada en items entregados)
+  // Calcular total consumido REAL desde supply_history
   stats.forEach(stat => {
-    const requestsForSurgery = completedRequests.value.filter(r => r.surgery_id === stat.surgery_id)
+    // Obtener consumos reales para esta cirugía desde supply_history
+    const consumptionsForSurgery = realConsumptionStats.value.filter(c => c.surgery_id === stat.surgery_id)
     let totalConsumed = 0
     const consumptionMap = new Map()
     
-    // Si las solicitudes tienen items, procesarlos
-    requestsForSurgery.forEach(req => {
-      if (req.items && Array.isArray(req.items)) {
-        req.items.forEach(item => {
-          const supplyCode = item.supply_code || item.supplyCode
-          const supplyName = item.supply_name || item.supplyName || `Código ${supplyCode}`
-          const quantity = Number(item.quantity_delivered || item.quantityDelivered || item.quantity_approved || item.quantityApproved || 0)
-          
-          if (quantity > 0) {
-            totalConsumed += quantity
-            if (!consumptionMap.has(supplyCode)) {
-              consumptionMap.set(supplyCode, {
-                supply_code: supplyCode,
-                supply_name: supplyName,
-                count: 0
-              })
-            }
-            consumptionMap.get(supplyCode).count += quantity
-          }
-        })
+    consumptionsForSurgery.forEach(consumption => {
+      const supplyCode = consumption.supply_code
+      const supplyName = consumption.supply_name || `Código ${supplyCode}`
+      const count = Number(consumption.consumed_count || 0)
+      
+      if (count > 0) {
+        totalConsumed += count
+        if (!consumptionMap.has(supplyCode)) {
+          consumptionMap.set(supplyCode, {
+            supply_code: supplyCode,
+            supply_name: supplyName,
+            count: 0
+          })
+        }
+        consumptionMap.get(supplyCode).count += count
       }
     })
     
@@ -941,7 +952,7 @@ async function loadMedicalMetrics() {
 
     medicalMetrics.value.totalSpecialties = Array.isArray(specialties) ? specialties.filter(s => s.is_active).length : 0
     medicalMetrics.value.totalSurgeries = Array.isArray(surgeries) ? surgeries.length : 0
-    medicalMetrics.value.totalDoctors = Array.isArray(doctors) ? doctors.filter(d => d.is_available).length : 0
+    medicalMetrics.value.totalDoctors = Array.isArray(doctors) ? doctors.length : 0
     medicalMetrics.value.totalTypicalSupplies = Number(typicalSuppliesCount) || 0
 
     // Cargar solicitudes por especialidad (si hay datos disponibles)
@@ -976,17 +987,19 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const [summaryResp, bySurgResp, surgResp, lowStockResp] = await Promise.all([
+    const [summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp] = await Promise.all([
       inventoryService.getInventorySummary(),
       inventoryService.getInventoryBySurgeryType(),
       surgeryService.getAllSurgeries(),
       inventoryService.getStoreInventory({ low_stock: true, page: 1, page_size: 8 }),
+      supplyHistoryService.getConsumptionStatsBySurgery(),
     ])
 
     summary.value = summaryResp || summary.value
     bySurgery.value = Array.isArray(bySurgResp) ? bySurgResp : []
     surgeries.value = Array.isArray(surgResp) ? surgResp : []
     lowStockList.value = Array.isArray(lowStockResp) ? lowStockResp : []
+    realConsumptionStats.value = Array.isArray(consumptionStatsResp) ? consumptionStatsResp : []
 
     await Promise.all([
       loadTrend(), 

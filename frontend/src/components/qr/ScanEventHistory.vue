@@ -305,6 +305,7 @@
 import { ref, computed, watch } from 'vue'
 import { format, isToday, isYesterday, isThisWeek, isThisMonth, startOfDay, endOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useNotification } from '@/composables/useNotification'
 
 // Props
 const props = defineProps({
@@ -324,6 +325,9 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits(['view-details', 'scan-again', 'export'])
+
+// Notificaciones
+const { success: showSuccess, error: showError } = useNotification()
 
 // Estado reactivo
 const filtersVisible = ref(false)
@@ -459,24 +463,35 @@ const scanAgain = (qrCode) => {
 }
 
 const exportEvents = () => {
-  const data = {
-    export_date: new Date().toISOString(),
-    total_events: filteredEvents.value.length,
-    filters_applied: hasActiveFilters.value ? filters.value : null,
-    events: filteredEvents.value
+  if (filteredEvents.value.length === 0) {
+    showError('No hay eventos para exportar')
+    return
   }
   
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `scan-events-${format(new Date(), 'yyyy-MM-dd-HHmm')}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-  
-  emit('export', data)
+  try {
+    const data = {
+      export_date: new Date().toISOString(),
+      total_events: filteredEvents.value.length,
+      filters_applied: hasActiveFilters.value ? filters.value : null,
+      events: filteredEvents.value
+    }
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `scan-events-${format(new Date(), 'yyyy-MM-dd-HHmm')}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    showSuccess(`${filteredEvents.value.length} eventos exportados exitosamente`)
+    emit('export', data)
+  } catch (err) {
+    console.error('Error al exportar eventos:', err)
+    showError('Error al exportar los eventos')
+  }
 }
 
 // Funciones de utilidad

@@ -36,6 +36,22 @@ class MedicalCenterService {
       throw error
     }
   }
+
+  async getAllMedicalCenters() {
+    try {
+      const response = await this.api.get('/medical-centers/')
+      return {
+        success: true,
+        data: response.data.data || response.data || []
+      }
+    } catch (error) {
+      console.error('Error al obtener centros médicos:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      }
+    }
+  }
 }
 
 export default new MedicalCenterService()

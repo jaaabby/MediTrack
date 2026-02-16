@@ -20,7 +20,7 @@
 
       <!-- Formulario de Login -->
       <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
-        <div class="rounded-md shadow-sm -space-y-px">
+        <div class="space-y-4">
           <!-- Campo Email -->
           <div>
             <label for="email" class="sr-only">Email</label>
@@ -30,12 +30,12 @@
               name="email"
               type="email"
               autocomplete="email"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-brand-blue-dark focus:border-brand-blue-dark focus:z-10 sm:text-sm"
-              :class="{ 'border-red-500': errors.email }"
+              @blur="validateEmail"
+              class="appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-blue-dark focus:border-brand-blue-dark focus:z-10 sm:text-sm"
+              :class="errors.email ? 'border-red-500' : 'border-gray-300'"
               placeholder="Correo electrónico"
             />
-            <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email }}</p>
+            <p v-if="errors.email" class="mt-2 text-sm text-red-600 font-medium">{{ errors.email }}</p>
           </div>
 
           <!-- Campo Contraseña -->
@@ -47,13 +47,22 @@
               name="password"
               type="password"
               autocomplete="current-password"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-brand-blue-dark focus:border-brand-blue-dark focus:z-10 sm:text-sm"
-              :class="{ 'border-red-500': errors.password }"
+              class="appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-brand-blue-dark focus:border-brand-blue-dark focus:z-10 sm:text-sm"
+              :class="errors.password ? 'border-red-500' : 'border-gray-300'"
               placeholder="Contraseña"
             />
-            <p v-if="errors.password" class="mt-1 text-sm text-red-600">{{ errors.password }}</p>
+            <p v-if="errors.password" class="mt-2 text-sm text-red-600 font-medium">{{ errors.password }}</p>
           </div>
+        </div>
+
+        <!-- Enlace para recuperación de contraseña -->
+        <div class="flex items-center justify-end">
+          <router-link
+            to="/forgot-password"
+            class="text-sm font-medium text-brand-blue-dark hover:text-brand-blue"
+          >
+            ¿Olvidaste tu contraseña?
+          </router-link>
         </div>
 
         <!-- Mensaje de Error General -->
@@ -91,23 +100,13 @@
             {{ isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
           </button>
         </div>
-
-        <!-- Enlace al registro -->
-        <div class="text-center">
-          <router-link
-            to="/register"
-            class="text-sm text-brand-blue-dark hover:text-brand-blue-medium font-medium"
-          >
-            ¿No tienes cuenta? Regístrate
-          </router-link>
-        </div>
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -128,28 +127,50 @@ const errors = reactive({
   password: ''
 })
 
+// Limpiar errores cuando el usuario modifica los campos
+watch(() => loginForm.email, () => {
+  errors.email = ''
+  errorMessage.value = ''
+})
+
+watch(() => loginForm.password, () => {
+  errors.password = ''
+  errorMessage.value = ''
+})
+
+// Validar email cuando el usuario sale del campo
+const validateEmail = () => {
+  if (!loginForm.email) {
+    return // No mostrar error si está vacío al salir del campo
+  }
+  
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  
+  if (!emailRegex.test(loginForm.email)) {
+    errors.email = 'El email debe ser válido'
+  }
+}
+
 // Validación del formulario
 const validateForm = () => {
   errors.email = ''
   errors.password = ''
+  
+  // Regex para validar email
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
   
   if (!loginForm.email) {
     errors.email = 'El email es requerido'
     return false
   }
   
-  if (!loginForm.email.includes('@')) {
+  if (!emailRegex.test(loginForm.email)) {
     errors.email = 'El email debe ser válido'
     return false
   }
   
   if (!loginForm.password) {
     errors.password = 'La contraseña es requerida'
-    return false
-  }
-  
-  if (loginForm.password.length < 6) {
-    errors.password = 'La contraseña debe tener al menos 6 caracteres'
     return false
   }
   
@@ -168,6 +189,13 @@ const handleLogin = async () => {
   try {
     await authStore.login(loginForm.email, loginForm.password)
     
+    // Verificar si el usuario debe cambiar su contraseña
+    if (authStore.user?.must_change_password) {
+      console.log('Usuario debe cambiar contraseña temporal, redirigiendo...')
+      await router.replace('/first-time-password-change')
+      return
+    }
+    
     // Redirigir al usuario después del login exitoso
     const redirectTo = router.currentRoute.value.query.redirect || '/home'
     console.log('Redirigiendo a:', redirectTo)
@@ -178,7 +206,7 @@ const handleLogin = async () => {
     
   } catch (error) {
     console.error('Error en login:', error)
-    errorMessage.value = error.message || 'Error al iniciar sesión. Verifica tus credenciales.'
+    errorMessage.value = error.message || 'Las credenciales ingresadas son inválidas. Verifica tu correo y contraseña.'
   } finally {
     isLoading.value = false
   }

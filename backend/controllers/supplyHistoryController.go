@@ -111,3 +111,22 @@ func (c *SupplyHistoryController) GetAllSupplyHistoriesWithDetails(ctx *gin.Cont
 	}
 	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
 }
+
+// GetConsumptionStatsBySurgery obtiene estadísticas de consumo real por cirugía
+func (c *SupplyHistoryController) GetConsumptionStatsBySurgery(ctx *gin.Context) {
+	stats, err := c.supplyHistoryService.GetConsumptionStatsBySurgery()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Error:   "Error al obtener estadísticas de consumo: " + err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Data: gin.H{
+			"consumption_stats": stats,
+			"count":             len(stats),
+		},
+	})
+}

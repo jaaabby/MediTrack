@@ -317,7 +317,17 @@ func (s *QRService) GetCompleteTraceability(qrCode string) (*QRTraceability, err
 				WHEN sh.destination_type = 'pavilion' THEN mc.name
 				ELSE NULL
 			END as medical_center_name,
-			u.name as user_name`).
+			u.name as user_name,
+			COALESCE(
+				sh.location,
+				CASE
+					WHEN sh.destination_type = 'pavilion' THEN 
+						COALESCE('Pabellon: ' || p.name || COALESCE(' (' || mc.name || ')', ''), 'Ubicacion no especificada')
+					WHEN sh.destination_type = 'store' THEN 
+						COALESCE('Almacen: ' || st.name, 'Ubicacion no especificada')
+					ELSE 'Ubicacion no especificada'
+				END
+			) as location`).
 		Joins("LEFT JOIN pavilion p ON sh.destination_type = 'pavilion' AND sh.destination_id = p.id").
 		Joins("LEFT JOIN store st ON sh.destination_type = 'store' AND sh.destination_id = st.id").
 		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
@@ -327,8 +337,6 @@ func (s *QRService) GetCompleteTraceability(qrCode string) (*QRTraceability, err
 		Find(&traceability.SupplyHistory).Error; err != nil {
 		return nil, fmt.Errorf("error obteniendo historial de movimientos: %v", err)
 	}
-
-	// Obtener historial de escaneos
 	if err := s.DB.Where("qr_code = ?", qrCode).
 		Order("scanned_at DESC").
 		Find(&traceability.ScanHistory).Error; err != nil {
@@ -639,7 +647,17 @@ func (s *QRService) GetQRTraceability(qrCode string) (*QRTraceability, error) {
 				WHEN sh.destination_type = 'pavilion' THEN mc.name
 				ELSE NULL
 			END as medical_center_name,
-			u.name as user_name`).
+			u.name as user_name,
+			COALESCE(
+				sh.location,
+				CASE
+					WHEN sh.destination_type = 'pavilion' THEN 
+						COALESCE('Pabellon: ' || p.name || COALESCE(' (' || mc.name || ')', ''), 'Ubicacion no especificada')
+					WHEN sh.destination_type = 'store' THEN 
+						COALESCE('Almacen: ' || st.name, 'Ubicacion no especificada')
+					ELSE 'Ubicacion no especificada'
+				END
+			) as location`).
 		Joins("LEFT JOIN pavilion p ON sh.destination_type = 'pavilion' AND sh.destination_id = p.id").
 		Joins("LEFT JOIN store st ON sh.destination_type = 'store' AND sh.destination_id = st.id").
 		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
