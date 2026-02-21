@@ -66,11 +66,11 @@
             </div>
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
-                Stock Bajo
+                Stock Crítico
                 <span class="text-brand-pink opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
               <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-pink transition-colors">{{ mainMetrics.lowStock.toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-pink truncate">Bajo 20% del stock</p>
+              <p class="text-xs text-brand-pink truncate">Lotes en stock crítico</p>
             </div>
           </div>
         </button>
@@ -523,9 +523,6 @@ const router = useRouter()
 
 const loading = ref(false)
 const error = ref('')
-const autoRefreshInterval = ref(null)
-const autoRefreshEnabled = ref(true)
-const refreshIntervalSeconds = 60 // Actualizar cada 60 segundos
 
 const tooltipVisible = ref(false)
 const tooltipText = ref('')
@@ -1020,37 +1017,12 @@ async function loadData() {
   }
 }
 
-// Funciones para actualización automática
-const startAutoRefresh = () => {
-  if (autoRefreshInterval.value) {
-    clearInterval(autoRefreshInterval.value)
-  }
-  
-  autoRefreshInterval.value = setInterval(() => {
-    if (autoRefreshEnabled.value && !loading.value) {
-      loadData()
-    }
-  }, refreshIntervalSeconds * 1000)
-}
-
-const stopAutoRefresh = () => {
-  if (autoRefreshInterval.value) {
-    clearInterval(autoRefreshInterval.value)
-    autoRefreshInterval.value = null
-  }
-}
-
 watch(transferRange, () => {
   loadTrend()
 })
 
 onMounted(() => {
   loadData()
-  startAutoRefresh()
-})
-
-onUnmounted(() => {
-  stopAutoRefresh()
 })
 </script>
 

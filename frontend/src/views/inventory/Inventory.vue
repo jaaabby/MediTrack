@@ -275,9 +275,11 @@
                 </span>
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span :class="getAmountClass(supply.amount)" class="font-medium text-xs sm:text-sm">{{ supply.amount
-                  }}</span>
-                <span :class="getAmountClass(supply.amount)" class="text-xs ml-1">unidades</span>
+                <span :class="getAmountClass(supply.amount, supply.critical_stock)" class="font-medium text-xs sm:text-sm">{{ supply.amount }}</span>
+                <span :class="getAmountClass(supply.amount, supply.critical_stock)" class="text-xs ml-1">unidades</span>
+                <span v-if="supply.critical_stock" class="text-xs text-gray-500 block mt-0.5">
+                  crítico: {{ supply.critical_stock }}
+                </span>
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                 <span class="text-gray-700 text-xs sm:text-sm">{{ supply.supplier }}</span>
@@ -1692,11 +1694,20 @@ const getExpirationClass = (expirationDate) => {
   return 'text-gray-900'
 }
 
-const getAmountClass = (amount) => {
-
-  if (amount < 5) return 'text-red-600 font-semibold'
-  if (amount < 10) return 'text-orange-600 font-semibold'
-  return 'text-gray-900'
+const getAmountClass = (currentAmount, criticalStock) => {
+  // Usar el critical_stock definido para el insumo
+  const critical = criticalStock || 1 // Por defecto 1 si no está definido
+  
+  // Definir umbrales basados en el stock crítico
+  const warningThreshold = critical * 2 // El doble del stock crítico como advertencia
+  
+  if (currentAmount <= critical) {
+    return 'text-red-600 font-semibold' // Stock crítico o menor - ROJO
+  }
+  if (currentAmount <= warningThreshold) {
+    return 'text-orange-600 font-semibold' // Entre crítico y el doble - NARANJA
+  }
+  return 'text-gray-900' // Por encima del doble del crítico - NORMAL
 }
 
 const getStatusBadgeClass = (status) => {

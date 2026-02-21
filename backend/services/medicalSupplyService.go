@@ -153,10 +153,17 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 				 WHERE sis2.batch_id = b.id),
 				b.amount
 			) AS amount,
+			COALESCE(
+				(SELECT MAX(sis2.original_amount)
+				 FROM store_inventory_summary sis2
+				 WHERE sis2.batch_id = b.id),
+				b.amount
+			) AS original_amount,
 			b.supplier,
 			b.store_id,
 			sc.code AS supply_code,
 			sc.name AS supply_name,
+			COALESCE(sc.critical_stock, 1) AS critical_stock,
 			COALESCE(ms.location_type, 'store') AS location_type,
 			COALESCE(ms.location_id, b.store_id) AS location_id,
 			CASE
@@ -188,10 +195,12 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 			batchID        int
 			expirationDate string
 			amount         int
+			originalAmount int
 			supplier       string
 			storeID        int
 			supplyCode     *int
 			supplyName     *string
+			criticalStock  int
 			locationType   string
 			locationID     int
 			locationName   *string
@@ -203,10 +212,12 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 			&batchID,
 			&expirationDate,
 			&amount,
+			&originalAmount,
 			&supplier,
 			&storeID,
 			&supplyCode,
 			&supplyName,
+			&criticalStock,
 			&locationType,
 			&locationID,
 			&locationName,
@@ -220,10 +231,12 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		item["batch_id"] = batchID
 		item["expiration_date"] = expirationDate
 		item["amount"] = amount
+		item["original_amount"] = originalAmount
 		item["supplier"] = supplier
 		item["store_id"] = storeID
 		item["code"] = supplyCode
 		item["name"] = supplyName
+		item["critical_stock"] = criticalStock
 		item["location_type"] = locationType
 		item["location_id"] = locationID
 		item["location_name"] = locationName

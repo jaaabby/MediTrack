@@ -48,6 +48,7 @@ func (s *InventoryService) GetStoreInventory(
 			sis.updated_at,
 			s.name as store_name,
 			sc.name as supply_name,
+			COALESCE(sc.critical_stock, 1) as critical_stock,
 			surg.name as surgery_name,
 			b.supplier as batch_supplier,
 			COALESCE(b.expiration_date::text, '') as expiration_date,
@@ -78,8 +79,8 @@ func (s *InventoryService) GetStoreInventory(
 		query = query.Where("b.expiration_date <= ?", expirationDate)
 	}
 	if lowStock {
-		// Stock bajo (menos del 20% del original)
-		query = query.Where("sis.current_in_store < (sis.original_amount * 0.2)")
+		// Stock bajo (basado en critical_stock del supply_code)
+		query = query.Where("sis.current_in_store <= COALESCE(sc.critical_stock, 1)")
 	}
 
 	// Contar total
@@ -370,11 +371,22 @@ func (s *InventoryService) GetInventorySummary(medicalCenterID *int) (map[string
 		Scan(&totalConsumed)
 	summary["total_consumed"] = totalConsumed
 
-	// Stock bajo en bodegas
+	// Stock crítico en bodegas: cuenta lotes (filas de store_inventory_summary)
+	// donde el stock actual está en o bajo el critical_stock del insumo.
+	// Usamos sis.supply_code directamente sin pasar por medical_supply para evitar
+	// multiplicar filas por cada unidad individual del lote.
 	var lowStockStores int64
-	query.Model(&models.StoreInventorySummary{}).
-		Where("current_in_store < (original_amount * 0.2)").
-		Count(&lowStockStores)
+	lowStockQuery := s.DB.Table("store_inventory_summary sis").
+		Joins("LEFT JOIN supply_code sc ON sis.supply_code = sc.code").
+		Where("sis.current_in_store <= COALESCE(sc.critical_stock, 1) AND sis.current_in_store > 0")
+
+	// Filtrar por centro médico si se especifica
+	if medicalCenterID != nil {
+		lowStockQuery = lowStockQuery.Joins("LEFT JOIN store s ON sis.store_id = s.id").
+			Where("s.medical_center_id = ?", *medicalCenterID)
+	}
+
+	lowStockQuery.Count(&lowStockStores)
 	summary["low_stock_stores"] = lowStockStores
 
 	// Productos próximos a vencer (90 días)
