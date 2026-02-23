@@ -37,7 +37,7 @@
             <h3 class="text-xl font-semibold text-gray-900">Inventario por Tipo de Cirugía</h3>
             <p class="text-gray-600 text-sm mt-2">Stock disponible organizado por procedimiento</p>
           </div>
-          <button @click="loadSurgeryInventory" class="btn-secondary">
+          <button @click="reloadSurgeryInventory" class="btn-secondary">
             <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
@@ -50,6 +50,20 @@
           <span class="ml-3 text-gray-600">Cargando...</span>
         </div>
 
+        <!-- Error al actualizar (solo aparece al usar el botón Actualizar, no en carga inicial) -->
+        <div v-else-if="surgeryInventoryError" class="bg-red-50 border border-red-200 rounded-md p-4">
+          <div class="flex">
+            <svg class="h-5 w-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-red-800">Error al actualizar el inventario</h3>
+              <div class="mt-1 text-sm text-red-700">{{ surgeryInventoryError }}</div>
+              <button @click="reloadSurgeryInventory" class="btn-secondary mt-3 text-sm">Reintentar</button>
+            </div>
+          </div>
+        </div>
+
         <div v-else-if="surgeryInventory.length === 0" class="text-center py-8">
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -57,7 +71,8 @@
           <p class="mt-2 text-sm text-gray-500">No hay inventario organizado por tipo de cirugía</p>
         </div>
 
-        <div v-else class="overflow-x-auto max-h-[600px] overflow-y-auto">
+        <div v-else class="overflow-x-auto">
+          <div class="max-h-[600px] overflow-y-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50 sticky top-0 z-10">
               <tr>
@@ -172,6 +187,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -225,6 +241,7 @@ const loading = ref(false)
 const error = ref(null)
 const surgeryInventory = ref([])
 const surgeryInventoryLoading = ref(false)
+const surgeryInventoryError = ref(null)
 
 // Estado de ordenamiento para tabla de cirugías
 const surgerySortKey = ref('surgery_name')
@@ -254,8 +271,19 @@ const loadSurgeryInventory = async () => {
   } catch (err) {
     console.error('Error loading surgery inventory:', err)
     surgeryInventory.value = []
+    throw err // Propagar para que el llamador decida cómo manejarlo
   } finally {
     surgeryInventoryLoading.value = false
+  }
+}
+
+// Wrapper para el botón "Actualizar": muestra error inline sin ocultar el dashboard
+const reloadSurgeryInventory = async () => {
+  surgeryInventoryError.value = null
+  try {
+    await loadSurgeryInventory()
+  } catch (err) {
+    surgeryInventoryError.value = err.message || 'Error al actualizar el inventario'
   }
 }
 
@@ -296,8 +324,11 @@ const sortSurgeryBy = (key) => {
   }
 }
 
-onMounted(() => {
-  loadDashboard()
+onMounted(async () => {
+  await loadDashboard()
+  // Prefetch del componente StoreInventoryView para acelerar la navegación
+  // al hacer clic en "Ver detalles" de cualquier fila (ID 11)
+  import('@/views/inventory/StoreInventoryView.vue')
 })
 </script>
 
