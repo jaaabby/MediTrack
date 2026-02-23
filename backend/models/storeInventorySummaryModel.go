@@ -50,11 +50,12 @@ func (sis StoreInventorySummary) GetNetStock() int {
 // StoreInventorySummaryWithDetails extiende StoreInventorySummary con información adicional
 type StoreInventorySummaryWithDetails struct {
 	StoreInventorySummary
-	StoreName         string  `json:"store_name"`
-	SupplyName        string  `json:"supply_name"`
-	SurgeryName       *string `json:"surgery_name,omitempty"`
-	BatchSupplier     string  `json:"batch_supplier"`
-	ExpirationDate    string  `json:"expiration_date"`
-	MedicalCenterID   int     `json:"medical_center_id"`
-	MedicalCenterName *string `json:"medical_center_name,omitempty"`
+	StoreName                  string  `json:"store_name"`
+	SupplyName                 string  `json:"supply_name"`
+	SurgeryName                *string `json:"surgery_name,omitempty"`
+	BatchSupplier              string  `json:"batch_supplier"`
+	ExpirationDate             string  `json:"expiration_date"`
+	MedicalCenterID            int     `json:"medical_center_id"`
+	MedicalCenterName          *string `json:"medical_center_name,omitempty"`
+	TotalConsumedFromPavilions int     `json:"total_consumed_from_pavilions"` // Total consumido desde pabellones
 }

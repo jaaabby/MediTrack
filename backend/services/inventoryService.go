@@ -52,7 +52,10 @@ func (s *InventoryService) GetStoreInventory(
 			b.supplier as batch_supplier,
 			COALESCE(b.expiration_date::text, '') as expiration_date,
 			mc.id as medical_center_id,
-			mc.name as medical_center_name`).
+			mc.name as medical_center_name,
+			COALESCE((SELECT SUM(pis.total_consumed)
+				FROM pavilion_inventory_summary pis
+				WHERE pis.batch_id = sis.batch_id), 0) AS total_consumed_from_pavilions`).
 		Joins("LEFT JOIN store s ON sis.store_id = s.id").
 		Joins("LEFT JOIN supply_code sc ON sis.supply_code = sc.code").
 		Joins("LEFT JOIN surgery surg ON sis.surgery_id = surg.id").
