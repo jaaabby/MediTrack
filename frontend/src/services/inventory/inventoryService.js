@@ -544,7 +544,7 @@ class InventoryService {
   async getInventoryBySurgeryType(storeId = null) {
     try {
       const params = storeId ? `?store_id=${storeId}` : ''
-      const response = await this.api.get(`/inventory/by-surgery${params}`)
+      const response = await this.api.get(`/inventory/by-surgery${params}`, { timeout: 8000 })
       // El backend devuelve {inventory: [...], count: ...}
       const data = response.data.data || response.data
       if (data && typeof data === 'object' && Array.isArray(data.inventory)) {
