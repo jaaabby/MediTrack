@@ -102,7 +102,7 @@ func (s *BatchHistoryService) RegisterBatchCreation(batchID int, userRUT string)
 	userRUT = s.getUserRUTOrDefault(userRUT)
 
 	var batch models.Batch
-	if err := s.DB.First(&batch, batchID).Error; err != nil {
+	if err := s.DB.Preload("SupplierConfig").First(&batch, batchID).Error; err != nil {
 		return fmt.Errorf("error obteniendo lote: %v", err)
 	}
 
@@ -154,10 +154,10 @@ func (s *BatchHistoryService) RegisterBatchUpdate(batchID int, userRUT string, p
 		previousValues["amount"] = previousBatch.Amount
 		newValues["amount"] = newBatch.Amount
 	}
-	if previousBatch.Supplier != newBatch.Supplier {
+	if previousBatch.SupplierID != newBatch.SupplierID {
 		changes = append(changes, "proveedor")
-		previousValues["supplier"] = previousBatch.Supplier
-		newValues["supplier"] = newBatch.Supplier
+		previousValues["supplier_id"] = previousBatch.SupplierID
+		newValues["supplier_id"] = newBatch.SupplierID
 	}
 	if previousBatch.StoreID != newBatch.StoreID {
 		changes = append(changes, "almacén")

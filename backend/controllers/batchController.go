@@ -71,16 +71,16 @@ func (c *BatchController) CreateBatch(ctx *gin.Context) {
 func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 	var request struct {
 		Batch struct {
-			ExpirationDate     string `json:"expiration_date" binding:"required"`
-			Amount             int    `json:"amount" binding:"required,min=1"`
-			Supplier           string `json:"supplier" binding:"required"`
-			StoreID            int    `json:"store_id" binding:"required"`
+			ExpirationDate      string `json:"expiration_date" binding:"required"`
+			Amount              int    `json:"amount" binding:"required,min=1"`
+			Supplier            string `json:"supplier" binding:"required"`
+			StoreID             int    `json:"store_id" binding:"required"`
 			ExpirationAlertDays *int   `json:"expiration_alert_days,omitempty"` // Opcional: días de alerta para el proveedor
 		} `json:"batch" binding:"required"`
 		SupplyCode struct {
-			Code         int    `json:"code" binding:"required"`
-			Name         string `json:"name" binding:"required"`
-			CodeSupplier int    `json:"code_supplier" binding:"required"`
+			Code          int    `json:"code" binding:"required"`
+			Name          string `json:"name" binding:"required"`
+			CodeSupplier  int    `json:"code_supplier" binding:"required"`
 			CriticalStock int    `json:"critical_stock" binding:"required,min=1"`
 		} `json:"supply_code" binding:"required"`
 		IndividualCount int `json:"individual_count" binding:"required,min=1"`
@@ -104,26 +104,29 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 		return
 	}
 
-	// Crear modelos SIN ID - se auto-generarán
-	batch := &models.Batch{
-		ExpirationDate: expirationDate,
-		Amount:         request.Batch.Amount,
-		Supplier:       request.Batch.Supplier,
-		StoreID:        request.Batch.StoreID,
-		// ID y QRCode se generarán automáticamente
-	}
-
-	supplyCode := &models.SupplyCode{
-		Code:         request.SupplyCode.Code,
-		Name:         request.SupplyCode.Name,
-		CodeSupplier: request.SupplyCode.CodeSupplier,
-		CriticalStock: request.SupplyCode.CriticalStock,
-	}
-
 	// Obtener días de alerta del request (si se proporciona, usar ese valor, sino usar 90 por defecto)
 	expirationAlertDays := 90 // Valor por defecto
 	if request.Batch.ExpirationAlertDays != nil && *request.Batch.ExpirationAlertDays > 0 {
 		expirationAlertDays = *request.Batch.ExpirationAlertDays
+	}
+
+	// Crear modelos SIN ID - se auto-generarán
+	batch := &models.Batch{
+		ExpirationDate:      expirationDate,
+		Amount:              request.Batch.Amount,
+		Supplier:            request.Batch.Supplier,
+		StoreID:             request.Batch.StoreID,
+		ExpirationAlertDays: expirationAlertDays,
+		LocationType:        models.BatchLocationStore,
+		LocationID:          request.Batch.StoreID, // Para lotes nuevos siempre arranca en una bodega
+		// ID y QRCode se generarán automáticamente
+	}
+
+	supplyCode := &models.SupplyCode{
+		Code:          request.SupplyCode.Code,
+		Name:          request.SupplyCode.Name,
+		CodeSupplier:  request.SupplyCode.CodeSupplier,
+		CriticalStock: request.SupplyCode.CriticalStock,
 	}
 
 	// Crear lote con insumos individuales
@@ -131,7 +134,7 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 		batch,
 		supplyCode,
 		request.IndividualCount,
-		expirationAlertDays, // Pasar días de alerta para configuración del proveedor
+		expirationAlertDays,
 	)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{

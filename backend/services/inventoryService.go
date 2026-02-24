@@ -50,7 +50,7 @@ func (s *InventoryService) GetStoreInventory(
 			sc.name as supply_name,
 			COALESCE(sc.critical_stock, 1) as critical_stock,
 			surg.name as surgery_name,
-			b.supplier as batch_supplier,
+			supc.supplier_name as batch_supplier,
 			COALESCE(b.expiration_date::text, '') as expiration_date,
 			mc.id as medical_center_id,
 			mc.name as medical_center_name,
@@ -61,6 +61,7 @@ func (s *InventoryService) GetStoreInventory(
 		Joins("LEFT JOIN supply_code sc ON sis.supply_code = sc.code").
 		Joins("LEFT JOIN surgery surg ON sis.surgery_id = surg.id").
 		Joins("LEFT JOIN batch b ON sis.batch_id = b.id").
+		Joins("LEFT JOIN supplier_config supc ON b.supplier_id = supc.id").
 		Joins("LEFT JOIN medical_center mc ON s.medical_center_id = mc.id")
 
 	// Aplicar filtros
@@ -74,7 +75,7 @@ func (s *InventoryService) GetStoreInventory(
 		query = query.Where("sis.supply_code = ?", *supplyCode)
 	}
 	if supplier != nil {
-		query = query.Where("b.supplier LIKE ?", "%"+*supplier+"%")
+		query = query.Where("supc.supplier_name LIKE ?", "%"+*supplier+"%")
 	}
 	if nearExpiration {
 		// Productos que vencen en los próximos 90 días
@@ -115,19 +116,20 @@ func (s *InventoryService) GetPavilionInventory(
 		Select(`pis.*,
 			p.name as pavilion_name,
 			sc.name as supply_name,
-			b.supplier as batch_supplier,
+			supc.supplier_name as batch_supplier,
 			b.expiration_date as expiration_date,
 			mc.id as medical_center_id,
 			mc.name as medical_center_name`).
 		Joins("LEFT JOIN pavilion p ON pis.pavilion_id = p.id").
 		Joins("LEFT JOIN supply_code sc ON pis.supply_code = sc.code").
 		Joins("LEFT JOIN batch b ON pis.batch_id = b.id").
+		Joins("LEFT JOIN supplier_config supc ON b.supplier_id = supc.id").
 		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
 		Where("pis.pavilion_id = ?", pavilionID)
 
 	// Aplicar filtro por proveedor (case-insensitive) si se especifica
 	if supplier != nil {
-		query = query.Where("LOWER(b.supplier) LIKE LOWER(?)", "%"+*supplier+"%")
+		query = query.Where("LOWER(supc.supplier_name) LIKE LOWER(?)", "%"+*supplier+"%")
 	}
 
 	if err := query.Find(&inventory).Error; err != nil {
@@ -159,19 +161,20 @@ func (s *InventoryService) GetPavilionInventory(
 				COUNT(*) AS current_available,
 				p.name AS pavilion_name,
 				sc.name AS supply_name,
-				b.supplier AS batch_supplier,
+			supc.supplier_name AS batch_supplier,
 				TO_CHAR(b.expiration_date, 'YYYY-MM-DD') AS expiration_date,
 				COALESCE(mc.id, 0) AS medical_center_id,
 				mc.name AS medical_center_name`).
 			Joins("LEFT JOIN supply_code sc ON ms.code = sc.code").
 			Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
+			Joins("LEFT JOIN supplier_config supc ON b.supplier_id = supc.id").
 			Joins("LEFT JOIN pavilion p ON ms.location_id = p.id").
 			Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
 			Where("ms.status = ? AND ms.location_type = ? AND ms.location_id = ?",
 				models.StatusEnRouteToPavilion,
 				models.SupplyLocationPavilion,
 				pavilionID).
-			Group("ms.batch_id, ms.code, ms.location_id, p.name, sc.name, b.supplier, b.expiration_date, mc.id, mc.name").
+			Group("ms.batch_id, ms.code, ms.location_id, p.name, sc.name, supc.supplier_name, b.expiration_date, mc.id, mc.name").
 			Scan(&inTransitRows).Error
 
 		if err == nil {

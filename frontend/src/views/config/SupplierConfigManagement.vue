@@ -5,7 +5,7 @@
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 class="text-2xl font-semibold text-gray-900">Configuración de Proveedores</h2>
-          <p class="text-gray-600 mt-1">Gestiona las alertas de vencimiento por proveedor</p>
+          <p class="text-gray-600 mt-1">Gestiona los proveedores del sistema</p>
           <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedConfigs.length }} configuraciones</p>
         </div>
         <div class="flex gap-2">
@@ -97,24 +97,6 @@
                   </span>
                 </div>
               </th>
-              <th scope="col" @click="sortBy('expiration_alert_days')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Días de Alerta</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'expiration_alert_days' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'expiration_alert_days' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Notas
               </th>
@@ -128,17 +110,6 @@
               class="hover:bg-gray-50 transition-colors duration-150">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ config.supplier_name }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                    :class="getDaysBadgeClass(config.expiration_alert_days)">
-                    {{ config.expiration_alert_days }} días
-                  </span>
-                  <span class="ml-2 text-xs text-gray-500">
-                    ({{ getMonthsText(config.expiration_alert_days) }})
-                  </span>
-                </div>
               </td>
               <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" :title="config.notes || '-'">
                 {{ config.notes || '-' }}
@@ -245,21 +216,10 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Días de Alerta de Vencimiento <span class="text-red-500">*</span>
-                </label>
-                <input v-model.number="configForm.expiration_alert_days" type="number" min="1" max="365" class="form-input" 
-                  placeholder="90" required />
-                <p class="mt-1 text-xs text-gray-500">
-                  Días de anticipación para alertas de vencimiento (mínimo 90 días / 3 meses recomendado)
-                </p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
                   Notas (opcional)
                 </label>
                 <textarea v-model="configForm.notes" rows="3" class="form-input" 
-                  placeholder="Notas adicionales sobre esta configuración"></textarea>
+                  placeholder="Notas adicionales sobre este proveedor"></textarea>
               </div>
 
               <div class="flex justify-end space-x-3 pt-4 border-t">
@@ -304,7 +264,6 @@ const itemsPerPage = 10
 
 const configForm = ref({
   supplier_name: '',
-  expiration_alert_days: 90,
   notes: ''
 })
 
@@ -394,7 +353,6 @@ const openCreateModal = () => {
   isEditing.value = false
   configForm.value = {
     supplier_name: '',
-    expiration_alert_days: 90,
     notes: ''
   }
   showModal.value = true
@@ -404,7 +362,6 @@ const openEditModal = (config) => {
   isEditing.value = true
   configForm.value = {
     supplier_name: config.supplier_name,
-    expiration_alert_days: config.expiration_alert_days,
     notes: config.notes || ''
   }
   showModal.value = true
@@ -415,7 +372,6 @@ const closeModal = () => {
   isEditing.value = false
   configForm.value = {
     supplier_name: '',
-    expiration_alert_days: 90,
     notes: ''
   }
 }
@@ -425,7 +381,6 @@ const saveConfig = async () => {
   try {
     if (isEditing.value) {
       await supplierConfigService.updateSupplierConfig(configForm.value.supplier_name, {
-        expiration_alert_days: configForm.value.expiration_alert_days,
         notes: configForm.value.notes
       })
       showSuccess('La configuración del proveedor ha sido actualizada exitosamente.')
@@ -460,18 +415,6 @@ const confirmDelete = async (config) => {
     const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar la configuración'
     showError(errorMessage)
   }
-}
-
-// Helper functions
-const getDaysBadgeClass = (days) => {
-  if (days >= 180) return 'bg-green-100 text-green-800'
-  if (days >= 90) return 'bg-blue-100 text-blue-800'
-  return 'bg-yellow-100 text-yellow-800'
-}
-
-const getMonthsText = (days) => {
-  const months = Math.round(days / 30)
-  return months === 1 ? '1 mes' : `${months} meses`
 }
 
 onMounted(() => {

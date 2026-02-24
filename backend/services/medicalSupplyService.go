@@ -159,7 +159,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 				 WHERE sis2.batch_id = b.id),
 				b.amount
 			) AS original_amount,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			b.store_id,
 			sc.code AS supply_code,
 			sc.name AS supply_name,
@@ -180,6 +180,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		LEFT JOIN supply_code sc ON ms.code = sc.code
 		LEFT JOIN store st ON b.store_id = st.id
 		LEFT JOIN pavilion pv ON b.location_type = 'pavilion' AND b.location_id = pv.id
+		LEFT JOIN supplier_config supc ON b.supplier_id = supc.id
 		ORDER BY b.id, sc.code
 	`
 
@@ -262,7 +263,7 @@ func (s *MedicalSupplyService) GetInventoryListAdvanced() ([]map[string]interfac
 			b.qr_code as batch_qr_code,
 			b.expiration_date,
 			b.amount as current_amount,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			sc.code as supply_code,
 			sc.name as supply_name,
 			COUNT(ms.id) as total_individual_supplies,
@@ -271,12 +272,13 @@ func (s *MedicalSupplyService) GetInventoryListAdvanced() ([]map[string]interfac
 		FROM batch b
 		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
 		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN supplier_config supc ON b.supplier_id = supc.id
 		LEFT JOIN (
 			SELECT DISTINCT sh.medical_supply_id as supply_id
 			FROM supply_history sh
 			WHERE sh.status = 'consumido'
 		) consumed_supplies ON ms.id = consumed_supplies.supply_id
-		GROUP BY b.id, b.qr_code, b.expiration_date, b.amount, b.supplier, sc.code, sc.name
+		GROUP BY b.id, b.qr_code, b.expiration_date, b.amount, supc.supplier_name, sc.code, sc.name
 		ORDER BY b.id, sc.code
 	`
 
@@ -509,13 +511,14 @@ func (s *MedicalSupplyService) GetSupplyWithBatchInfo(qrCode string) (map[string
 			sc.code_supplier,
 			b.expiration_date,
 			b.amount as batch_remaining_amount,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			st.name as store_name,
 			st.type as store_type
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
 		JOIN store st ON b.store_id = st.id
+		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE ms.qr_code = ?
 	`
 
@@ -723,13 +726,14 @@ func (s *MedicalSupplyService) GetUnconsumedSupplies() ([]map[string]interface{}
 			ms.updated_at as received_at,
 			sc.name as supply_name,
 			b.expiration_date,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			st.name as store_name,
 			EXTRACT(EPOCH FROM (NOW() - ms.updated_at))/3600 as hours_elapsed
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
 		JOIN store st ON b.store_id = st.id
+		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE ms.status = ? AND ms.updated_at < ?
 		ORDER BY ms.updated_at ASC
 	`
@@ -794,7 +798,7 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			sc.name as supply_name,
 			sc.code as supply_code,
 			b.id as batch_id,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			b.expiration_date,
 			s.name as store_name,
 			s.id as store_id,
@@ -802,6 +806,7 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
+		JOIN supplier_config supc ON b.supplier_id = supc.id
 		JOIN store s ON b.store_id = s.id
 		WHERE ms.status = ? 
 		AND ms.location_type = ?
