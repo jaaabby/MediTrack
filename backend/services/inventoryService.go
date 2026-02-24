@@ -124,25 +124,75 @@ func (s *InventoryService) GetPavilionInventory(
 		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
 		Where("pis.pavilion_id = ?", pavilionID)
 
-	// Aplicar filtro por proveedor si se especifica
+	// Aplicar filtro por proveedor (case-insensitive) si se especifica
 	if supplier != nil {
-		query = query.Where("b.supplier LIKE ?", "%"+*supplier+"%")
+		query = query.Where("LOWER(b.supplier) LIKE LOWER(?)", "%"+*supplier+"%")
 	}
 
 	if err := query.Find(&inventory).Error; err != nil {
 		return nil, err
 	}
 
-	// Si se solicita incluir productos en tránsito
+	// Si se solicita incluir productos en tránsito:
+	// Busca en medical_supply los insumos con status 'en_camino_a_pabellon'
+	// destinados a este pabellón, agrupados por lote+código.
 	if includeInTransit {
-		var inTransitCount int64
-		s.DB.Table("supply_transfer").
-			Where("destination_type = ? AND destination_id = ? AND status = ?",
-				models.TransferLocationPavilion, pavilionID, models.TransferStatusInTransit).
-			Count(&inTransitCount)
+		type inTransitRow struct {
+			PavilionID        int     `gorm:"column:pavilion_id"`
+			BatchID           int     `gorm:"column:batch_id"`
+			SupplyCode        int     `gorm:"column:supply_code"`
+			CurrentAvailable  int     `gorm:"column:current_available"`
+			PavilionName      string  `gorm:"column:pavilion_name"`
+			SupplyName        string  `gorm:"column:supply_name"`
+			BatchSupplier     string  `gorm:"column:batch_supplier"`
+			ExpirationDate    string  `gorm:"column:expiration_date"`
+			MedicalCenterID   int     `gorm:"column:medical_center_id"`
+			MedicalCenterName *string `gorm:"column:medical_center_name"`
+		}
 
-		// Agregar información de tránsito (podrías mejorar esto)
-		// Por ahora solo retornamos el inventario actual
+		var inTransitRows []inTransitRow
+		err := s.DB.Table("medical_supply ms").
+			Select(`ms.location_id AS pavilion_id,
+				ms.batch_id,
+				ms.code AS supply_code,
+				COUNT(*) AS current_available,
+				p.name AS pavilion_name,
+				sc.name AS supply_name,
+				b.supplier AS batch_supplier,
+				TO_CHAR(b.expiration_date, 'YYYY-MM-DD') AS expiration_date,
+				COALESCE(mc.id, 0) AS medical_center_id,
+				mc.name AS medical_center_name`).
+			Joins("LEFT JOIN supply_code sc ON ms.code = sc.code").
+			Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
+			Joins("LEFT JOIN pavilion p ON ms.location_id = p.id").
+			Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
+			Where("ms.status = ? AND ms.location_type = ? AND ms.location_id = ?",
+				models.StatusEnRouteToPavilion,
+				models.SupplyLocationPavilion,
+				pavilionID).
+			Group("ms.batch_id, ms.code, ms.location_id, p.name, sc.name, b.supplier, b.expiration_date, mc.id, mc.name").
+			Scan(&inTransitRows).Error
+
+		if err == nil {
+			for _, row := range inTransitRows {
+				item := models.PavilionInventorySummaryWithDetails{
+					PavilionInventorySummary: models.PavilionInventorySummary{
+						PavilionID:       row.PavilionID,
+						BatchID:          row.BatchID,
+						SupplyCode:       row.SupplyCode,
+						CurrentAvailable: row.CurrentAvailable,
+					},
+					PavilionName:      row.PavilionName,
+					SupplyName:        row.SupplyName,
+					BatchSupplier:     row.BatchSupplier,
+					ExpirationDate:    row.ExpirationDate,
+					MedicalCenterID:   row.MedicalCenterID,
+					MedicalCenterName: row.MedicalCenterName,
+					InTransit:         true,
+				}
+				inventory = append(inventory, item)
+			}
+		}
 	}
 
 	return inventory, nil

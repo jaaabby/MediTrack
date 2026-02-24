@@ -1587,6 +1587,189 @@ FROM (
 GROUP BY nivel_urgencia, orden_urgencia
 ORDER BY orden_urgencia;
 
+-- ============================================================================
+-- DATOS DE PRUEBA QA: INVENTARIO COMPLETO PABELLÓN 1 Y 2
+-- Cubre: paginación (>10 filas), todos los estados de stock, indicadores de
+--        vencimiento (vencido / próximo / ok) y cambio de pabellón.
+-- ============================================================================
+
+-- Nuevos lotes para visualización QA (IDs 51-76, NO modificar IDs anteriores)
+INSERT INTO batch (id, expiration_date, amount, supplier, store_id, qr_code, surgery_id, location_type, location_id) VALUES
+-- Pabellón 1 – 14 lotes (>10 → activa paginación)
+(51, '2025-12-01', 20, 'Proveedor Test A', 1, 'BATCH_PAB1_051', NULL, 'store', 1), -- stock 0  | VENCIDO
+(52, '2027-06-15', 20, 'Proveedor Test B', 1, 'BATCH_PAB1_052', NULL, 'store', 1), -- stock 0  | bueno
+(53, '2026-01-10', 15, 'Proveedor Test A', 1, 'BATCH_PAB1_053', NULL, 'store', 1), -- stock 2  | VENCIDO
+(54, '2026-03-10', 15, 'Proveedor Test C', 1, 'BATCH_PAB1_054', NULL, 'store', 1), -- stock 3  | próximo ~15d
+(55, '2026-03-15', 15, 'Proveedor Test C', 1, 'BATCH_PAB1_055', NULL, 'store', 1), -- stock 4  | próximo ~20d
+(56, '2026-04-14', 15, 'Proveedor Test B', 1, 'BATCH_PAB1_056', NULL, 'store', 1), -- stock 6  | próximo ~50d
+(57, '2027-09-20', 15, 'Proveedor Test D', 1, 'BATCH_PAB1_057', NULL, 'store', 1), -- stock 7  | bueno
+(58, '2028-01-15', 15, 'Proveedor Test D', 1, 'BATCH_PAB1_058', NULL, 'store', 1), -- stock 8  | bueno
+(59, '2026-03-05', 25, 'Proveedor Test E', 1, 'BATCH_PAB1_059', NULL, 'store', 1), -- stock 12 | próximo ~10d
+(60, '2027-12-31', 25, 'Proveedor Test E', 1, 'BATCH_PAB1_060', NULL, 'store', 1), -- stock 15 | bueno
+(61, '2028-06-30', 15, 'Proveedor Test F', 1, 'BATCH_PAB1_061', NULL, 'store', 1), -- stock 5  | bueno
+(62, '2028-10-15', 15, 'Proveedor Test A', 1, 'BATCH_PAB1_062', NULL, 'store', 1), -- stock 1  | bueno
+(63, '2025-08-10', 25, 'Proveedor Test F', 1, 'BATCH_PAB1_063', NULL, 'store', 1), -- stock 20 | VENCIDO
+(64, '2026-03-20', 15, 'Proveedor Test G', 1, 'BATCH_PAB1_064', NULL, 'store', 1), -- stock 9  | próximo ~25d
+-- Pabellón 2 – 12 lotes (cambio de pabellón + paginación)
+(65, '2027-08-15', 20, 'Proveedor Norte A', 1, 'BATCH_PAB2_065', NULL, 'store', 1), -- stock 15 | bueno
+(66, '2027-11-20', 20, 'Proveedor Norte A', 1, 'BATCH_PAB2_066', NULL, 'store', 1), -- stock 10 | bueno
+(67, '2028-02-10', 15, 'Proveedor Norte B', 1, 'BATCH_PAB2_067', NULL, 'store', 1), -- stock 8  | bueno
+(68, '2027-05-30', 15, 'Proveedor Norte B', 1, 'BATCH_PAB2_068', NULL, 'store', 1), -- stock 5  | bueno
+(69, '2026-04-30', 10, 'Proveedor Norte C', 1, 'BATCH_PAB2_069', NULL, 'store', 1), -- stock 3  | próximo ~66d
+(70, '2025-10-15', 15, 'Proveedor Norte C', 1, 'BATCH_PAB2_070', NULL, 'store', 1), -- stock 0  | VENCIDO
+(71, '2028-09-01', 20, 'Proveedor Norte D', 1, 'BATCH_PAB2_071', NULL, 'store', 1), -- stock 12 | bueno
+(72, '2026-02-20', 10, 'Proveedor Norte D', 1, 'BATCH_PAB2_072', NULL, 'store', 1), -- stock 2  | VENCIDO
+(73, '2027-03-10', 15, 'Proveedor Norte E', 1, 'BATCH_PAB2_073', NULL, 'store', 1), -- stock 7  | bueno
+(74, '2028-12-31', 25, 'Proveedor Norte E', 1, 'BATCH_PAB2_074', NULL, 'store', 1), -- stock 20 | bueno
+(75, '2025-11-05', 10, 'Proveedor Norte F', 1, 'BATCH_PAB2_075', NULL, 'store', 1), -- stock 4  | VENCIDO
+(76, '2027-07-20', 20, 'Proveedor Norte F', 1, 'BATCH_PAB2_076', NULL, 'store', 1)  -- stock 11 | bueno
+ON CONFLICT (id) DO NOTHING;
+
+-- Generar medical_supply para los nuevos lotes
+DO $$
+DECLARE
+    r RECORD;
+    i INTEGER;
+    bamt INTEGER;
+BEGIN
+    FOR r IN (
+        SELECT * FROM (VALUES
+            (51,1001),(52,1002),(53,1003),(54,1004),(55,1005),(56,1006),(57,1007),
+            (58,1008),(59,1009),(60,1010),(61,1101),(62,1102),(63,1103),(64,1104),
+            (65,1201),(66,1202),(67,1203),(68,1204),(69,1205),(70,1301),(71,1302),
+            (72,1303),(73,1304),(74,1305),(75,1401),(76,1402)
+        ) AS t(bid, scode)
+    ) LOOP
+        SELECT amount INTO bamt FROM batch WHERE id = r.bid;
+        FOR i IN 1..bamt LOOP
+            INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, location_id)
+            VALUES (
+                r.scode, r.bid,
+                'SUPPLY_' || r.bid || '_' || LPAD(i::TEXT, 4, '0'),
+                'disponible', 'store', 1
+            ) ON CONFLICT (qr_code) DO NOTHING;
+        END LOOP;
+    END LOOP;
+END $$;
+
+-- Inventario Pabellón 1 – 14 filas con todos los estados visuales:
+--   stock 0 (rojo) · stock 1–4 (naranja + "Stock bajo") · stock 5–9 (amarillo) · stock 10+ (verde)
+--   vencido · próximo vencimiento (≤30d) · próximo vencimiento (≤90d) · bueno
+INSERT INTO pavilion_inventory_summary (
+    pavilion_id, batch_id, supply_code,
+    total_received, current_available, total_consumed, total_returned,
+    last_received_date, created_at, updated_at
+) VALUES
+-- stock 0 – rojo
+(1, 51, 1001, 20, 0,  20, 0, NOW() - INTERVAL '2 days',  NOW(), NOW()), -- VENCIDO
+(1, 52, 1002, 20, 0,  20, 0, NOW() - INTERVAL '3 days',  NOW(), NOW()), -- bueno (agotado)
+-- stock 1–4 – naranja + "⚠️ Stock bajo"
+(1, 62, 1102, 15, 1,  14, 0, NOW() - INTERVAL '3 hours', NOW(), NOW()), -- bueno
+(1, 53, 1003, 15, 2,  13, 0, NOW() - INTERVAL '1 day',   NOW(), NOW()), -- VENCIDO
+(1, 54, 1004, 15, 3,  12, 0, NOW() - INTERVAL '6 hours', NOW(), NOW()), -- próximo 15d
+(1, 55, 1005, 15, 4,  11, 0, NOW() - INTERVAL '4 hours', NOW(), NOW()), -- próximo 20d
+-- stock 5–9 – amarillo
+(1, 61, 1101, 15, 5,  10, 0, NOW() - INTERVAL '1 hour',  NOW(), NOW()), -- bueno
+(1, 56, 1006, 15, 6,  9,  0, NOW() - INTERVAL '2 hours', NOW(), NOW()), -- próximo 50d
+(1, 57, 1007, 15, 7,  8,  0, NOW() - INTERVAL '5 hours', NOW(), NOW()), -- bueno
+(1, 58, 1008, 15, 8,  7,  0, NOW() - INTERVAL '1 day',   NOW(), NOW()), -- bueno
+(1, 64, 1104, 15, 9,  6,  0, NOW() - INTERVAL '2 days',  NOW(), NOW()), -- próximo 25d
+-- stock 10+ – verde
+(1, 59, 1009, 25, 12, 13, 0, NOW() - INTERVAL '3 hours', NOW(), NOW()), -- próximo 10d
+(1, 60, 1010, 25, 15, 10, 0, NOW() - INTERVAL '6 hours', NOW(), NOW()), -- bueno
+(1, 63, 1103, 25, 20, 5,  0, NOW() - INTERVAL '2 days',  NOW(), NOW())  -- VENCIDO
+ON CONFLICT (pavilion_id, batch_id)
+DO UPDATE SET
+    total_received     = EXCLUDED.total_received,
+    current_available  = EXCLUDED.current_available,
+    total_consumed     = EXCLUDED.total_consumed,
+    total_returned     = EXCLUDED.total_returned,
+    last_received_date = EXCLUDED.last_received_date,
+    updated_at         = NOW();
+
+-- Inventario Pabellón 2 – 12 filas (cambio de pabellón + paginación completa)
+INSERT INTO pavilion_inventory_summary (
+    pavilion_id, batch_id, supply_code,
+    total_received, current_available, total_consumed, total_returned,
+    last_received_date, created_at, updated_at
+) VALUES
+(2, 70, 1301, 15, 0,  15, 0, NOW() - INTERVAL '5 days',  NOW(), NOW()), -- stock 0  VENCIDO
+(2, 72, 1303, 10, 2,  8,  0, NOW() - INTERVAL '6 hours', NOW(), NOW()), -- stock 2  VENCIDO
+(2, 69, 1205, 10, 3,  7,  0, NOW() - INTERVAL '1 hour',  NOW(), NOW()), -- stock 3  próximo ~66d
+(2, 75, 1401, 10, 4,  6,  0, NOW() - INTERVAL '4 hours', NOW(), NOW()), -- stock 4  VENCIDO
+(2, 68, 1204, 15, 5,  10, 0, NOW() - INTERVAL '3 hours', NOW(), NOW()), -- stock 5  bueno
+(2, 67, 1203, 15, 8,  7,  0, NOW() - INTERVAL '4 hours', NOW(), NOW()), -- stock 8  bueno
+(2, 73, 1304, 15, 7,  8,  0, NOW() - INTERVAL '1 day',   NOW(), NOW()), -- stock 7  bueno
+(2, 66, 1202, 20, 10, 10, 0, NOW() - INTERVAL '2 days',  NOW(), NOW()), -- stock 10 bueno
+(2, 76, 1402, 20, 11, 9,  0, NOW() - INTERVAL '5 hours', NOW(), NOW()), -- stock 11 bueno
+(2, 71, 1302, 20, 12, 8,  0, NOW() - INTERVAL '2 hours', NOW(), NOW()), -- stock 12 bueno
+(2, 65, 1201, 20, 15, 5,  0, NOW() - INTERVAL '1 day',   NOW(), NOW()), -- stock 15 bueno
+(2, 74, 1305, 25, 20, 5,  0, NOW() - INTERVAL '3 days',  NOW(), NOW())  -- stock 20 bueno
+ON CONFLICT (pavilion_id, batch_id)
+DO UPDATE SET
+    total_received     = EXCLUDED.total_received,
+    current_available  = EXCLUDED.current_available,
+    total_consumed     = EXCLUDED.total_consumed,
+    total_returned     = EXCLUDED.total_returned,
+    last_received_date = EXCLUDED.last_received_date,
+    updated_at         = NOW();
+
+-- ============================================================================
+-- DATOS DE PRUEBA QA: INSUMOS EN TRÁNSITO AL PABELLÓN 3
+-- El backend busca medical_supply.status = 'en_camino_a_pabellon'
+-- con location_type = 'pavilion' y location_id = 3.
+-- Se usan QR codes de batches 7, 8 y 10 que no tienen transferencias previas.
+-- ============================================================================
+
+-- Marcar 7 insumos como en camino al pabellón 3
+ALTER TABLE medical_supply DISABLE TRIGGER trg_update_medical_supply_updated_at;
+
+UPDATE medical_supply SET
+    status        = 'en_camino_a_pabellon',
+    location_type = 'pavilion',
+    location_id   = 3,
+    in_transit    = TRUE,
+    transfer_date = NOW() - INTERVAL '45 minutes',
+    transferred_by = '11111111-1'
+WHERE qr_code IN (
+    'SUPPLY_7_0001',  -- Batas Quirúrgicas (code 1007)
+    'SUPPLY_7_0002',
+    'SUPPLY_7_0003',
+    'SUPPLY_8_0001',  -- Campos Quirúrgicos (code 1008)
+    'SUPPLY_8_0002',
+    'SUPPLY_10_0001', -- Mascarillas Estándar (code 1010)
+    'SUPPLY_10_0002'
+);
+
+ALTER TABLE medical_supply ENABLE TRIGGER trg_update_medical_supply_updated_at;
+
+-- Registrar las transferencias correspondientes en supply_transfer
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id,
+    origin_type, origin_id, destination_type, destination_id,
+    sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    status, transfer_reason, send_date, notes
+)
+SELECT
+    'TRANS-TRAN-PAB3-' || LPAD(ROW_NUMBER() OVER (ORDER BY ms.qr_code)::TEXT, 4, '0'),
+    ms.qr_code,
+    ms.id,
+    'store', 1, 'pavilion', 3,
+    '11111111-1', 'Encargado Bodega',
+    '22222222-2', 'María González', NOW() - INTERVAL '45 minutes',
+    'en_transito',
+    'Insumos en camino a Pabellón 3 para pruebas QA',
+    NOW() - INTERVAL '1 hour',
+    'En camino al pabellón 3'
+FROM medical_supply ms
+WHERE ms.qr_code IN (
+    'SUPPLY_7_0001','SUPPLY_7_0002','SUPPLY_7_0003',
+    'SUPPLY_8_0001','SUPPLY_8_0002',
+    'SUPPLY_10_0001','SUPPLY_10_0002'
+)
+ON CONFLICT (transfer_code) DO NOTHING;
+
 -- Inventario actual en pabellones
 SELECT 
     '

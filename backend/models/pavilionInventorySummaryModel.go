@@ -49,4 +49,5 @@ type PavilionInventorySummaryWithDetails struct {
 	ExpirationDate    string  `json:"expiration_date"`
 	MedicalCenterID   int     `json:"medical_center_id"`
 	MedicalCenterName *string `json:"medical_center_name,omitempty"`
+	InTransit         bool    `json:"in_transit" gorm:"-"`
 }
