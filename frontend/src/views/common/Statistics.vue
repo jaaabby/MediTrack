@@ -119,8 +119,8 @@
                 Por Vencer
                 <span class="text-brand-green opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-green transition-colors">{{ Number(summary.near_expiration || 0).toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-green truncate">Dentro 90 días</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-green transition-colors">{{ nearExpirationCount.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-red-500 truncate">Dentro del período de alerta</p>
             </div>
           </div>
         </button>
@@ -678,6 +678,20 @@ const surgeryStatistics = computed(() => {
 })
 
 const lowStockList = ref([])
+const inventoryItems = ref([])
+
+const nearExpirationCount = computed(() => {
+  const today = new Date()
+  return inventoryItems.value.filter(supply => {
+    if (!supply.expiration_date) return false
+    const expDate = new Date(supply.expiration_date)
+    const daysUntil = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+    const threshold = supply.expiration_alert_days && supply.expiration_alert_days > 0
+      ? supply.expiration_alert_days
+      : 90
+    return daysUntil <= threshold
+  }).length
+})
 
 const movementBars = ref({
   entradas: 0,
@@ -984,12 +998,13 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const [summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp] = await Promise.all([
+    const [summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp, inventoryResp] = await Promise.all([
       inventoryService.getInventorySummary(),
       inventoryService.getInventoryBySurgeryType(),
       surgeryService.getAllSurgeries(),
       inventoryService.getStoreInventory({ low_stock: true, page: 1, page_size: 8 }),
       supplyHistoryService.getConsumptionStatsBySurgery(),
+      inventoryService.getInventory().catch(() => []),
     ])
 
     summary.value = summaryResp || summary.value
@@ -997,6 +1012,11 @@ async function loadData() {
     surgeries.value = Array.isArray(surgResp) ? surgResp : []
     lowStockList.value = Array.isArray(lowStockResp) ? lowStockResp : []
     realConsumptionStats.value = Array.isArray(consumptionStatsResp) ? consumptionStatsResp : []
+    inventoryItems.value = Array.isArray(inventoryResp)
+      ? inventoryResp
+      : Array.isArray(inventoryResp?.inventory_items)
+        ? inventoryResp.inventory_items
+        : []
 
     await Promise.all([
       loadTrend(), 

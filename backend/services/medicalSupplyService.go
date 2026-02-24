@@ -147,6 +147,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		SELECT DISTINCT ON (b.id)
 			b.id AS batch_id,
 			b.expiration_date,
+			b.expiration_alert_days,
 			COALESCE(
 				(SELECT SUM(sis2.current_in_store)
 				 FROM store_inventory_summary sis2
@@ -192,26 +193,28 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 
 	for rows.Next() {
 		var (
-			item           = make(map[string]interface{})
-			batchID        int
-			expirationDate string
-			amount         int
-			originalAmount int
-			supplier       string
-			storeID        int
-			supplyCode     *int
-			supplyName     *string
-			criticalStock  int
-			locationType   string
-			locationID     int
-			locationName   *string
-			createdAt      *time.Time
-			updatedAt      *time.Time
+			item                = make(map[string]interface{})
+			batchID             int
+			expirationDate      string
+			expirationAlertDays int
+			amount              int
+			originalAmount      int
+			supplier            string
+			storeID             int
+			supplyCode          *int
+			supplyName          *string
+			criticalStock       int
+			locationType        string
+			locationID          int
+			locationName        *string
+			createdAt           *time.Time
+			updatedAt           *time.Time
 		)
 
 		err := rows.Scan(
 			&batchID,
 			&expirationDate,
+			&expirationAlertDays,
 			&amount,
 			&originalAmount,
 			&supplier,
@@ -231,6 +234,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 
 		item["batch_id"] = batchID
 		item["expiration_date"] = expirationDate
+		item["expiration_alert_days"] = expirationAlertDays
 		item["amount"] = amount
 		item["original_amount"] = originalAmount
 		item["supplier"] = supplier

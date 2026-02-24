@@ -55,11 +55,30 @@
             </button>
           </div>
 
+          <!-- Toggle próximos a vencer -->
+          <div class="flex-shrink-0">
+            <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Filtro</label>
+            <button
+              @click="expiringFilter = !expiringFilter; currentPage = 1"
+              :class="expiringFilter
+                ? 'bg-orange-100 border-orange-400 text-orange-700 hover:bg-orange-200'
+                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'"
+              class="flex items-center gap-2 px-3 py-2 text-sm font-medium border rounded-md transition-colors h-10 w-full sm:w-auto"
+            >
+              <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Por Vencer
+              <span v-if="expiringFilter" class="bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">ON</span>
+            </button>
+          </div>
+
           <!-- Limpiar filtros -->
           <div class="flex-shrink-0">
             <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Acción</label>
             <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearSearch"
-              :disabled="!searchTerm && !dateFilterFrom && !dateFilterTo && sortField === 'none' && !lowStockFilter"
+              :disabled="!searchTerm && !dateFilterFrom && !dateFilterTo && sortField === 'none' && !lowStockFilter && !expiringFilter"
             >
               <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -282,7 +301,7 @@
                 <span class="text-gray-700 text-xs sm:text-sm">{{ supply.code }}</span>
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span :class="getExpirationClass(supply.expiration_date)" class="text-xs sm:text-sm">
+                <span :class="getExpirationClass(supply.expiration_date, supply.expiration_alert_days)" class="text-xs sm:text-sm">
                   {{ formatDate(supply.expiration_date) }}
                 </span>
               </td>
@@ -1377,6 +1396,7 @@ const itemsPerPage = 10
 const dateFilterFrom = ref('')
 const dateFilterTo = ref('')
 const lowStockFilter = ref(false)
+const expiringFilter = ref(false)
 
 // Estado del modal de edición
 const showEditModal = ref(false)
@@ -1424,6 +1444,20 @@ const filteredSupplies = computed(() => {
     filtered = filtered.filter(supply => {
       const critical = supply.critical_stock || 1
       return supply.amount <= critical
+    })
+  }
+
+  // Filtro de próximos a vencer (usa los días de alerta de cada lote)
+  if (expiringFilter.value) {
+    const today = new Date()
+    filtered = filtered.filter(supply => {
+      if (!supply.expiration_date) return false
+      const expDate = new Date(supply.expiration_date)
+      const daysUntil = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+      const threshold = supply.expiration_alert_days && supply.expiration_alert_days > 0
+        ? supply.expiration_alert_days
+        : 90
+      return daysUntil <= threshold
     })
   }
 
@@ -1674,6 +1708,7 @@ const clearSearch = () => {
   dateFilterFrom.value = ''
   dateFilterTo.value = ''
   lowStockFilter.value = false
+  expiringFilter.value = false
   currentPage.value = 1
 }
 
@@ -1705,14 +1740,14 @@ const formatFilterDate = (dateString) => {
   }
 }
 
-const getExpirationClass = (expirationDate) => {
+const getExpirationClass = (expirationDate, alertDays) => {
   const today = new Date()
   const expDate = new Date(expirationDate)
   const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+  const threshold = alertDays && alertDays > 0 ? alertDays : 90
 
   if (daysUntilExpiration < 0) return 'text-red-600 font-semibold'
-  if (daysUntilExpiration <= 15) return 'text-red-600 font-semibold'
-  if (daysUntilExpiration <= 30) return 'text-orange-600 font-semibold'
+  if (daysUntilExpiration <= threshold) return 'text-red-600 font-semibold'
   return 'text-gray-900'
 }
 
@@ -2268,6 +2303,10 @@ onMounted(() => {
   // Si viene desde Statistics con filtro de stock crítico
   if (route.query.lowStock === 'true') {
     lowStockFilter.value = true
+  }
+  // Si viene desde Statistics con filtro de próximos a vencer
+  if (route.query.expiring === 'true') {
+    expiringFilter.value = true
   }
   // No aplicar ordenamiento por defecto, mantener el orden de la base de datos
   loadInventory()
