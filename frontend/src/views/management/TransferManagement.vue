@@ -42,7 +42,7 @@
           <select v-model="filters.status" class="form-input">
             <option value="">Todos</option>
             <option value="pending">Pendiente</option>
-            <option value="in_transit">En Tránsito</option>
+            <option value="en_transito">En Tránsito</option>
             <option value="completed">Completado</option>
             <option value="cancelled">Cancelado</option>
           </select>
@@ -773,11 +773,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import supplyTransferService from '@/services/management/supplyTransferService'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
+const route = useRoute()
 
 const transfers = ref([])
 const loading = ref(false)
@@ -1081,6 +1083,9 @@ const exportToExcel = async () => {
 }
 
 onMounted(() => {
+  if (route.query.status) {
+    filters.value.status = route.query.status
+  }
   loadTransfers()
 })
 </script>
