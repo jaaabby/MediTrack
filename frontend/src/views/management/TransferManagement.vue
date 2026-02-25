@@ -31,13 +31,22 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar por código</label>
-          <input type="text" v-model="filters.code" placeholder="Código de transferencia" class="form-input" />
+    <div class="card space-y-4">
+      <!-- Buscador -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Buscar por código</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input type="text" v-model="filters.code" placeholder="Código de transferencia" class="form-input pl-10 w-full" />
         </div>
-        <div>
+      </div>
+      <!-- Filtros adicionales + Limpiar -->
+      <div class="flex flex-wrap gap-4 items-end">
+        <div class="flex-1 min-w-[160px]">
           <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
           <select v-model="filters.status" class="form-input">
             <option value="">Todos</option>
@@ -47,18 +56,25 @@
             <option value="cancelled">Cancelado</option>
           </select>
         </div>
-        <div>
+        <div class="flex-1 min-w-[140px]">
           <label class="block text-sm font-medium text-gray-700 mb-2">Desde</label>
           <input type="date" v-model="filters.from_date" class="form-input" />
         </div>
-        <div>
+        <div class="flex-1 min-w-[140px]">
           <label class="block text-sm font-medium text-gray-700 mb-2">Hasta</label>
           <input type="date" v-model="filters.to_date" class="form-input" />
         </div>
-      </div>
-      <div class="mt-4 flex justify-end space-x-2">
-        <button @click="clearFilters" class="btn-secondary">Limpiar</button>
-        <button @click="loadTransfers" class="btn-primary">Aplicar Filtros</button>
+        <div class="flex-shrink-0">
+          <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Acción</label>
+          <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearFilters"
+            :disabled="!filters.code && !filters.status && !filters.from_date && !filters.to_date"
+          >
+            <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Limpiar
+          </button>
+        </div>
       </div>
     </div>
 
@@ -772,7 +788,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import supplyTransferService from '@/services/management/supplyTransferService'
@@ -813,8 +829,17 @@ const itemsPerPage = 10
 // Computed para obtener la lista ordenada
 const sortedTransfers = computed(() => {
   if (!transfers.value || transfers.value.length === 0) return []
+
+  // Filtro client-side por código
+  const codeFilter = filters.value.code?.trim().toLowerCase()
+  const filtered = codeFilter
+    ? transfers.value.filter(t => {
+        const code = (t.transfer_code || t.code || '').toLowerCase()
+        return code.includes(codeFilter)
+      })
+    : transfers.value
   
-  const sorted = [...transfers.value].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     let aVal = a[sortKey.value]
     let bVal = b[sortKey.value]
     
@@ -865,6 +890,14 @@ const sortBy = (key) => {
   }
   currentPage.value = 1 // Resetear a la primera página al ordenar
 }
+
+// Resetear página al cambiar el filtro de código (búsqueda en tiempo real, client-side)
+watch(() => filters.value.code, () => { currentPage.value = 1 })
+
+// Aplicar filtros automáticamente al cambiar estado o fechas (requieren llamada al backend)
+watch(() => filters.value.status, () => loadTransfers())
+watch(() => filters.value.from_date, () => loadTransfers())
+watch(() => filters.value.to_date, () => loadTransfers())
 
 const loadTransfers = async () => {
   loading.value = true
