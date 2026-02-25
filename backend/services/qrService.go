@@ -116,6 +116,7 @@ type MedicalSupplyWithDetails struct {
 	IsConsumed   bool                  `json:"is_consumed"`
 	LastMovement *models.SupplyHistory `json:"last_movement,omitempty"`
 	DaysToExpire *int                  `json:"days_to_expire,omitempty"`
+	StoreName    string                `json:"store_name,omitempty"`
 }
 
 // =============================================
@@ -742,6 +743,12 @@ func (s *QRService) GetMedicalSupplyWithDetails(supplyID int) (*MedicalSupplyWit
 		// Calcular días hasta vencimiento
 		daysToExpire := int(time.Until(batch.ExpirationDate).Hours() / 24)
 		result.DaysToExpire = &daysToExpire
+
+		// Obtener nombre de la bodega del lote
+		var store models.Store
+		if err := s.DB.Select("id, name").First(&store, batch.StoreID).Error; err == nil {
+			result.StoreName = store.Name
+		}
 	}
 
 	// Obtener información del código de insumo
@@ -930,6 +937,13 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 		// Agregar información del batch dentro de supply_info
 		if qrInfo.SupplyInfo.BatchInfo != nil {
 			supplyInfoMap["batch"] = qrInfo.SupplyInfo.BatchInfo
+
+			// Obtener el nombre de la bodega desde el store_id del lote
+			var store models.Store
+			if err := s.DB.Select("id, name").First(&store, qrInfo.SupplyInfo.BatchInfo.StoreID).Error; err == nil {
+				supplyInfoMap["store_name"] = store.Name
+				supplyInfoMap["store_id"] = store.ID
+			}
 		}
 
 		// Agregar información del código de insumo
@@ -944,7 +958,22 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 	}
 
 	if qrInfo.BatchInfo != nil {
-		result["batch_info"] = qrInfo.BatchInfo
+		// Enriquecer batch_info con el nombre de la bodega
+		batchInfoMap := map[string]interface{}{
+			"id":              qrInfo.BatchInfo.ID,
+			"expiration_date": qrInfo.BatchInfo.ExpirationDate,
+			"amount":          qrInfo.BatchInfo.Amount,
+			"supplier":        qrInfo.BatchInfo.Supplier,
+			"store_id":        qrInfo.BatchInfo.StoreID,
+			"qr_code":         qrInfo.BatchInfo.QRCode,
+			"location_type":   qrInfo.BatchInfo.LocationType,
+			"location_id":     qrInfo.BatchInfo.LocationID,
+		}
+		var batchStore models.Store
+		if err := s.DB.Select("id, name").First(&batchStore, qrInfo.BatchInfo.StoreID).Error; err == nil {
+			batchInfoMap["store_name"] = batchStore.Name
+		}
+		result["batch_info"] = batchInfoMap
 		result["batch_status"] = "active"
 	}
 

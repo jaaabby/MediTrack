@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/base64"
 	"fmt"
 	"meditrack/models"
 	"meditrack/services"
@@ -144,6 +145,7 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 			"IsConsumed":   qrInfo.SupplyInfo.IsConsumed,
 			"LastMovement": qrInfo.SupplyInfo.LastMovement,
 			"DaysToExpire": qrInfo.SupplyInfo.DaysToExpire,
+			"store_name":   qrInfo.SupplyInfo.StoreName,
 		}
 
 		// Agregar nombre del insumo directamente
@@ -1296,6 +1298,68 @@ func (c *QRController) ReturnSupplyToStore(ctx *gin.Context) {
 		Data: map[string]interface{}{
 			"qr_code": request.QRCode,
 			"status":  "en_camino_a_bodega",
+		},
+	})
+}
+
+// NotifyPavilionForReturn envía un correo al pabellón donde está el insumo para que devuelvan el insumo a bodega.
+// Adjunta el PDF del insumo si se provee en base64.
+func (c *QRController) NotifyPavilionForReturn(ctx *gin.Context) {
+	var request struct {
+		QRCode    string `json:"qr_code" binding:"required"`
+		PDFBase64 string `json:"pdf_base64,omitempty"`
+	}
+
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	// Decodificar el PDF adjunto si viene en base64
+	var pdfBytes []byte
+	if request.PDFBase64 != "" {
+		var decodeErr error
+		pdfBytes, decodeErr = base64.StdEncoding.DecodeString(request.PDFBase64)
+		if decodeErr != nil {
+			// Intentar con RawStdEncoding si el padding falta
+			pdfBytes, decodeErr = base64.RawStdEncoding.DecodeString(request.PDFBase64)
+			if decodeErr != nil {
+				ctx.JSON(http.StatusBadRequest, response.Response{
+					Success: false,
+					Error:   "PDF base64 inválido: " + decodeErr.Error(),
+				})
+				return
+			}
+		}
+	}
+
+	emails, err := c.medicalSupplyService.NotifyPavilionForReturn(request.QRCode, pdfBytes)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "no encontrado") {
+			statusCode = http.StatusNotFound
+		} else if strings.Contains(err.Error(), "no se encuentra en un pabellón") {
+			statusCode = http.StatusConflict
+		} else if strings.Contains(err.Error(), "no se encontraron usuarios") || strings.Contains(err.Error(), "no tienen correo") {
+			statusCode = http.StatusUnprocessableEntity
+		}
+		ctx.JSON(statusCode, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: fmt.Sprintf("Notificación de devolución enviada a %d usuario(s) del pabellón", len(emails)),
+		Data: map[string]interface{}{
+			"qr_code":         request.QRCode,
+			"notified_emails": emails,
+			"email_count":     len(emails),
 		},
 	})
 }

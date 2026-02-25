@@ -398,7 +398,13 @@ export function useQRPdfDownload() {
       // Información del usuario (si está disponible)
       pdf.text(`Sistema: MediTrack v1.0`, pageWidth - margin - 40, currentY)
 
-      // ===== GUARDAR PDF =====
+      // ===== GUARDAR / RETORNAR PDF =====
+      if (options.returnAsBase64) {
+        // Retornar solo la parte base64 (sin el prefijo 'data:application/pdf;base64,')
+        const dataUri = pdf.output('datauristring')
+        return dataUri.split(',')[1]
+      }
+
       const fileName = `QR-${qrInfo.qr_code}-${format(new Date(), 'yyyy-MM-dd-HHmm')}.pdf`
       pdf.save(fileName)
 
@@ -413,8 +419,18 @@ export function useQRPdfDownload() {
     }
   }
 
+  /**
+   * Genera el PDF del QR y lo retorna como base64 (sin descargarlo)
+   * @param {Object} qrInfo - Información del código QR
+   * @returns {Promise<string|null>} Base64 del PDF, o null en caso de error
+   */
+  const generateQRPdfAsBase64 = async (qrInfo) => {
+    return downloadQRAsPDF(qrInfo, { returnAsBase64: true })
+  }
+
   return {
     downloadQRAsPDF,
+    generateQRPdfAsBase64,
     isGenerating,
     error
   }

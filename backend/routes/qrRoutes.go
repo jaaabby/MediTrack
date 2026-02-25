@@ -75,6 +75,9 @@ func SetupQRRoutes(router *gin.RouterGroup, qrService services.QRService, medica
 		// Regresar un insumo a bodega manualmente
 		qr.POST("/return-to-store", qrController.ReturnSupplyToStore)
 
+		// Notificar al pabellón para que devuelva un insumo a bodega (envía correo con PDF adjunto)
+		qr.POST("/notify-pavilion-return", qrController.NotifyPavilionForReturn)
+
 		// Confirmar llegada de insumo a bodega
 		qr.POST("/confirm-arrival-to-store", qrController.ConfirmArrivalToStore)
 
