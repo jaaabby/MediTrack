@@ -201,7 +201,7 @@
                   </span>
                 </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
+              <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16 sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 Acciones
               </th>
             </tr>
@@ -220,33 +220,15 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(transfer.created_at) }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <div class="flex justify-end space-x-2">
-                  <button @click="viewDetails(transfer)" 
-                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
-                    title="Ver detalles">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </button>
-                  <button v-if="transfer.status === 'pendiente' || transfer.status === 'en_transito'" 
-                    @click="openConfirmModal(transfer)" 
-                    class="text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded transition-colors"
-                    title="Confirmar recepción">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </button>
-                  <button v-if="transfer.status === 'pendiente'" 
-                    @click="openCancelModal(transfer)" 
-                    class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded transition-colors"
-                    title="Cancelar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+              <td class="px-4 py-4 text-center text-sm font-medium w-16 sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
+                <button @click="viewDetails(transfer)" 
+                  class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
+                  title="Ver detalles">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
               </td>
             </tr>
           </tbody>
@@ -617,172 +599,14 @@
         </div>
 
         <!-- Footer del modal -->
-        <div class="flex justify-end space-x-3 pt-6 border-t mt-6">
+        <div class="flex justify-end pt-6 border-t mt-6">
           <button @click="closeDetailsModal" class="btn-secondary">Cerrar</button>
-          <button v-if="selectedTransfer.status === 'pendiente' || selectedTransfer.status === 'en_transito'" 
-            @click="openConfirmModal(selectedTransfer); closeDetailsModal()" 
-            class="btn-success flex items-center">
-            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            Confirmar Recepción
-          </button>
         </div>
       </div>
       </div>
     </Teleport>
 
-    <!-- Modal de confirmación de recepción -->
-    <Teleport to="body">
-      <div v-if="showConfirmModal && selectedTransfer" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeConfirmModal">
-        <div class="w-full max-w-md p-5 border shadow-lg rounded-md bg-white">
-        <div class="space-y-4">
-          <!-- Header -->
-          <div class="flex justify-between items-start border-b pb-3">
-            <div class="flex items-center">
-              <div class="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <h3 class="text-lg font-semibold text-gray-900">Confirmar Recepción</h3>
-                <p class="text-sm text-gray-500">{{ selectedTransfer.transfer_code }}</p>
-              </div>
-            </div>
-            <button @click="closeConfirmModal" class="text-gray-400 hover:text-gray-600">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
 
-          <!-- Contenido -->
-          <div class="space-y-4">
-            <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
-              <div class="flex">
-                <svg class="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div class="ml-3">
-                  <p class="text-sm text-blue-700">
-                    ¿Confirmar que has recibido esta transferencia?
-                  </p>
-                  <div class="mt-2 text-xs text-blue-600">
-                    <p><strong>Origen:</strong> {{ getOriginName(selectedTransfer) }}</p>
-                    <p><strong>Destino:</strong> {{ getDestinationName(selectedTransfer) }}</p>
-                    <p><strong>QR:</strong> {{ selectedTransfer.qr_code }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Notas opcionales -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Notas de recepción (opcional)
-              </label>
-              <textarea 
-                v-model="confirmationNotes" 
-                rows="3" 
-                class="form-input" 
-                placeholder="Agregar notas sobre la recepción..."
-              ></textarea>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="flex justify-end space-x-3 pt-4 border-t">
-            <button @click="closeConfirmModal" class="btn-secondary" :disabled="isConfirming">
-              Cancelar
-            </button>
-            <button @click="confirmReception" class="btn-success" :disabled="isConfirming">
-              <span v-if="isConfirming">Confirmando...</span>
-              <span v-else>Confirmar Recepción</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      </div>
-    </Teleport>
-
-    <!-- Modal de cancelación de transferencia -->
-    <Teleport to="body">
-      <div v-if="showCancelModal && selectedTransfer" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeCancelModal">
-        <div class="w-full max-w-md p-5 border shadow-lg rounded-md bg-white">
-        <div class="space-y-4">
-          <!-- Header -->
-          <div class="flex justify-between items-start border-b pb-3">
-            <div class="flex items-center">
-              <div class="flex-shrink-0 h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <h3 class="text-lg font-semibold text-gray-900">Cancelar Transferencia</h3>
-                <p class="text-sm text-gray-500">{{ selectedTransfer.transfer_code }}</p>
-              </div>
-            </div>
-            <button @click="closeCancelModal" class="text-gray-400 hover:text-gray-600">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- Contenido -->
-          <div class="space-y-4">
-            <div class="bg-red-50 border border-red-200 rounded-md p-4">
-              <div class="flex">
-                <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <div class="ml-3">
-                  <p class="text-sm text-red-700">
-                    ¿Estás seguro de cancelar esta transferencia?
-                  </p>
-                  <div class="mt-2 text-xs text-red-600">
-                    <p><strong>QR:</strong> {{ selectedTransfer.qr_code }}</p>
-                    <p><strong>Destino:</strong> {{ getDestinationName(selectedTransfer) }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Motivo de cancelación -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Motivo de cancelación <span class="text-red-500">*</span>
-              </label>
-              <textarea 
-                v-model="cancellationReason" 
-                rows="3" 
-                class="form-input" 
-                placeholder="Explica por qué se cancela esta transferencia..."
-                required
-              ></textarea>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="flex justify-end space-x-3 pt-4 border-t">
-            <button @click="closeCancelModal" class="btn-secondary" :disabled="isConfirming">
-              Volver
-            </button>
-            <button 
-              @click="cancelTransfer" 
-              class="btn-danger" 
-              :disabled="isConfirming || !cancellationReason.trim()"
-            >
-              <span v-if="isConfirming">Cancelando...</span>
-              <span v-else>Cancelar Transferencia</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      </div>
-    </Teleport>
 
   </div>
 </template>
@@ -801,12 +625,7 @@ const transfers = ref([])
 const loading = ref(false)
 const error = ref(null)
 const showDetailsModal = ref(false)
-const showConfirmModal = ref(false)
-const showCancelModal = ref(false)
 const selectedTransfer = ref(null)
-const confirmationNotes = ref('')
-const cancellationReason = ref('')
-const isConfirming = ref(false)
 const activeTab = ref('general')
 
 const filters = ref({
@@ -913,70 +732,6 @@ const loadTransfers = async () => {
     console.error('Error loading transfers:', err)
   } finally {
     loading.value = false
-  }
-}
-
-const openConfirmModal = (transfer) => {
-  selectedTransfer.value = transfer
-  confirmationNotes.value = ''
-  showConfirmModal.value = true
-}
-
-const closeConfirmModal = () => {
-  showConfirmModal.value = false
-  selectedTransfer.value = null
-  confirmationNotes.value = ''
-}
-
-const confirmReception = async () => {
-  if (!selectedTransfer.value) return
-  
-  isConfirming.value = true
-  const code = selectedTransfer.value.transfer_code || selectedTransfer.value.code
-  
-  try {
-    await supplyTransferService.confirmReception(code, {
-      notes: confirmationNotes.value
-    })
-    await loadTransfers()
-    closeConfirmModal()
-    showNotification('Recepción confirmada exitosamente', 'success')
-  } catch (err) {
-    showNotification('Error al confirmar recepción: ' + err.message, 'error')
-  } finally {
-    isConfirming.value = false
-  }
-}
-
-const openCancelModal = (transfer) => {
-  selectedTransfer.value = transfer
-  cancellationReason.value = ''
-  showCancelModal.value = true
-}
-
-const closeCancelModal = () => {
-  showCancelModal.value = false
-  selectedTransfer.value = null
-  cancellationReason.value = ''
-}
-
-const cancelTransfer = async () => {
-  if (!selectedTransfer.value) return
-  
-  isConfirming.value = true
-  const code = selectedTransfer.value.transfer_code || selectedTransfer.value.code
-  
-  try {
-    await supplyTransferService.cancelTransfer(code, {
-      reason: cancellationReason.value
-    })
-    await loadTransfers()
-    closeCancelModal()
-    showNotification('Transferencia cancelada exitosamente', 'success')
-  } catch (err) {
-    showNotification('Error al cancelar: ' + err.message, 'error')
-  } finally {
-    isConfirming.value = false
   }
 }
 
