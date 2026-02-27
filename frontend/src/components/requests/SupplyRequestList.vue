@@ -828,15 +828,15 @@ const loadSupplyRequests = async () => {
     }
     // Admin ve todas las solicitudes
     else if (authStore.isAdmin) {
-      result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+      result = await supplyRequestService.getAllSupplyRequests(9999, 0, filters.value.status)
     }
     // Consignación ve todas las solicitudes (mismo comportamiento que encargado de bodega)
     else if (authStore.isConsignation) {
-      result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+      result = await supplyRequestService.getAllSupplyRequests(9999, 0, filters.value.status)
     }
     // Doctor ve solo sus solicitudes
     else if (authStore.canCreateRequests) {
-      result = await supplyRequestService.getAllSupplyRequests(100, 0, filters.value.status)
+      result = await supplyRequestService.getAllSupplyRequests(9999, 0, filters.value.status)
     }
     else {
       result = { success: true, data: { requests: [] } }
