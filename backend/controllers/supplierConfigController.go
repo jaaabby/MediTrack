@@ -38,14 +38,6 @@ func (c *SupplierConfigController) CreateSupplierConfig(ctx *gin.Context) {
 		return
 	}
 
-	if config.ExpirationAlertDays < 1 {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "Los días de alerta deben ser mayor a 0",
-		})
-		return
-	}
-
 	if err := c.supplierConfigService.CreateSupplierConfig(&config); err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
 			Success: false,
@@ -124,14 +116,6 @@ func (c *SupplierConfigController) UpdateSupplierConfig(ctx *gin.Context) {
 		return
 	}
 
-	if config.ExpirationAlertDays < 1 {
-		ctx.JSON(http.StatusBadRequest, Response{
-			Success: false,
-			Error:   "Los días de alerta deben ser mayor a 0",
-		})
-		return
-	}
-
 	updatedConfig, err := c.supplierConfigService.UpdateSupplierConfig(supplierName, &config)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{
@@ -172,4 +156,3 @@ func (c *SupplierConfigController) DeleteSupplierConfig(ctx *gin.Context) {
 		Message: "Configuración de proveedor eliminada exitosamente",
 	})
 }
-

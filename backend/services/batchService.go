@@ -51,6 +51,21 @@ func (s *BatchService) CreateBatch(batch *models.Batch) error {
 	batch.ID = 0
 	batch.QRCode = ""
 
+	// La ubicación inicial siempre es la bodega de origen
+	if batch.LocationID == 0 {
+		batch.LocationType = models.BatchLocationStore
+		batch.LocationID = batch.StoreID
+	}
+
+	// Resolver nombre de proveedor a ID antes de guardar en BD
+	if batch.Supplier != "" && batch.SupplierID == 0 {
+		supplierID, err := s.ensureSupplierConfig(batch.Supplier)
+		if err != nil {
+			return fmt.Errorf("error resolviendo proveedor '%s': %v", batch.Supplier, err)
+		}
+		batch.SupplierID = supplierID
+	}
+
 	if err := s.DB.Create(batch).Error; err != nil {
 		return fmt.Errorf("error creating batch: %v", err)
 	}
@@ -60,13 +75,12 @@ func (s *BatchService) CreateBatch(batch *models.Batch) error {
 		log.Printf("Warning: Could not update QR code for batch %d: %v", batch.ID, err)
 	}
 
-	s.ensureSupplierConfig(batch.Supplier, batch.ID, DefaultExpirationAlertDays)
 	return nil
 }
 
 func (s *BatchService) GetBatchByID(id int) (*models.Batch, error) {
 	var batch models.Batch
-	if err := s.DB.First(&batch, id).Error; err != nil {
+	if err := s.DB.Preload("SupplierConfig").First(&batch, id).Error; err != nil {
 		return nil, err
 	}
 	return &batch, nil
@@ -81,7 +95,7 @@ func (s *BatchService) GetAllBatches() ([]models.Batch, error) {
 }
 
 func (s *BatchService) GetBatchesWithFilters(surgeryID *int, storeID *int, supplier string) ([]models.Batch, error) {
-	query := s.DB.Model(&models.Batch{})
+	query := s.DB.Model(&models.Batch{}).Preload("SupplierConfig")
 
 	if surgeryID != nil {
 		query = query.Where("surgery_id = ?", *surgeryID)
@@ -90,7 +104,8 @@ func (s *BatchService) GetBatchesWithFilters(surgeryID *int, storeID *int, suppl
 		query = query.Where("store_id = ?", *storeID)
 	}
 	if supplier != "" {
-		query = query.Where("supplier ILIKE ?", "%"+supplier+"%")
+		query = query.Joins("JOIN supplier_config ON supplier_config.id = batch.supplier_id").
+			Where("supplier_config.supplier_name ILIKE ?", "%"+supplier+"%")
 	}
 
 	var batches []models.Batch
@@ -288,6 +303,24 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		batch.ID = 0
 		batch.QRCode = ""
+		if batch.ExpirationAlertDays <= 0 {
+			batch.ExpirationAlertDays = expirationAlertDays
+		}
+
+		// La ubicación inicial siempre es la bodega de origen
+		if batch.LocationID == 0 {
+			batch.LocationType = models.BatchLocationStore
+			batch.LocationID = batch.StoreID
+		}
+
+		// Resolver nombre de proveedor a ID ANTES de crear el lote (requerido por la FK)
+		if batch.Supplier != "" && batch.SupplierID == 0 {
+			supplierID, err := s.ensureSupplierConfigTx(tx, batch.Supplier)
+			if err != nil {
+				return fmt.Errorf("error resolviendo proveedor '%s': %v", batch.Supplier, err)
+			}
+			batch.SupplierID = supplierID
+		}
 
 		if err := tx.Create(batch).Error; err != nil {
 			return fmt.Errorf("error creando lote: %v", err)
@@ -305,12 +338,6 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 
 		if err := s.upsertSupplyCodeTx(tx, supplyCode); err != nil {
 			return err
-		}
-
-		// Intentar crear configuración del proveedor (pero no fallar la transacción completa)
-		if err := s.ensureSupplierConfigTx(tx, batch.Supplier, batch.ID, expirationAlertDays); err != nil {
-			log.Printf("⚠️  ADVERTENCIA: No se pudo crear configuración para proveedor '%s': %v", batch.Supplier, err)
-			// No retornamos el error para no bloquear la creación del lote
 		}
 
 		supplies, err := s.createIndividualSuppliesTx(tx, batch, supplyCode, individualCount)
@@ -334,50 +361,55 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 // HELPERS PRIVADOS
 // ========================
 
-func (s *BatchService) ensureSupplierConfig(supplierName string, batchID, expirationAlertDays int) {
+func (s *BatchService) ensureSupplierConfig(supplierName string) (int, error) {
 	if supplierName == "" {
-		return
+		return 0, fmt.Errorf("nombre de proveedor vacío")
 	}
 
 	var config models.SupplierConfig
 	if err := s.DB.Where("supplier_name = ?", supplierName).First(&config).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			config = models.SupplierConfig{
-				SupplierName:        supplierName,
-				ExpirationAlertDays: expirationAlertDays,
-				Notes:               fmt.Sprintf("Auto-creado con lote %d", batchID),
+				SupplierName: supplierName,
+				Notes:        "Auto-creado automáticamente",
 			}
 			if err := s.DB.Create(&config).Error; err != nil {
 				log.Printf("Error creando config de proveedor: %v", err)
+				return 0, err
 			}
+		} else {
+			return 0, err
 		}
 	}
+	return config.ID, nil
 }
 
-func (s *BatchService) ensureSupplierConfigTx(tx *gorm.DB, supplierName string, batchID, expirationAlertDays int) error {
+func (s *BatchService) ensureSupplierConfigTx(tx *gorm.DB, supplierName string) (int, error) {
 	if supplierName == "" {
-		return nil
+		return 0, fmt.Errorf("nombre de proveedor vacío")
 	}
 
 	// Limpiar espacios en blanco del nombre del proveedor
 	supplierName = strings.TrimSpace(supplierName)
 	if supplierName == "" {
-		return nil
+		return 0, fmt.Errorf("nombre de proveedor vacío")
 	}
 
 	var config models.SupplierConfig
 	if err := tx.Where("supplier_name = ?", supplierName).First(&config).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			config = models.SupplierConfig{
-				SupplierName:        supplierName,
-				ExpirationAlertDays: expirationAlertDays,
-				Notes:               fmt.Sprintf("Auto-creado con lote %d", batchID),
+				SupplierName: supplierName,
+				Notes:        "Auto-creado automáticamente",
 			}
-			return tx.Create(&config).Error
+			if err := tx.Create(&config).Error; err != nil {
+				return 0, err
+			}
+		} else {
+			return 0, err
 		}
-		return err
 	}
-	return nil
+	return config.ID, nil
 }
 
 func (s *BatchService) upsertSupplyCodeTx(tx *gorm.DB, supplyCode *models.SupplyCode) error {
@@ -537,21 +569,16 @@ func (s *BatchService) checkAndSendAlerts(batch *models.Batch) {
 		}
 	}
 
-	alertDays := s.getExpirationAlertDays(batch.Supplier)
+	alertDays := batch.ExpirationAlertDays
+	if alertDays <= 0 {
+		alertDays = DefaultExpirationAlertDays
+	}
 	expirationThreshold := time.Now().AddDate(0, 0, alertDays)
 	if batch.ExpirationDate.Before(expirationThreshold) && batch.ExpirationDate.After(time.Now()) {
 		if err := s.sendAlert(*batch, *supplyCode, "expiration"); err != nil {
 			log.Printf("Error enviando alerta vencimiento: %v", err)
 		}
 	}
-}
-
-func (s *BatchService) getExpirationAlertDays(supplierName string) int {
-	var config models.SupplierConfig
-	if err := s.DB.Where("supplier_name = ?", supplierName).First(&config).Error; err != nil {
-		return DefaultExpirationAlertDays
-	}
-	return config.ExpirationAlertDays
 }
 
 func (s *BatchService) sendAlert(batch models.Batch, supplyCode models.SupplyCode, alertType string) error {
@@ -626,7 +653,10 @@ func (s *BatchService) CheckExpirationAlert(batchID int, daysThreshold int) erro
 	}
 
 	if daysThreshold <= 0 {
-		daysThreshold = s.getExpirationAlertDays(batch.Supplier)
+		daysThreshold = batch.ExpirationAlertDays
+		if daysThreshold <= 0 {
+			daysThreshold = DefaultExpirationAlertDays
+		}
 	}
 
 	daysUntilExpiration := int(time.Until(batch.ExpirationDate).Hours() / 24)
@@ -650,19 +680,20 @@ func (s *BatchService) GetBatchesNeedingSync() ([]map[string]interface{}, error)
 			b.id,
 			b.qr_code,
 			b.amount as batch_amount,
-			b.supplier,
+			sc.supplier_name as supplier,
 			b.expiration_date,
 			COUNT(ms.id) as total_supplies,
 			COUNT(CASE WHEN consumed.supply_id IS NOT NULL THEN 1 END) as consumed_supplies,
 			(COUNT(ms.id) - COUNT(CASE WHEN consumed.supply_id IS NOT NULL THEN 1 END)) as available_supplies
 		FROM batch b
+		LEFT JOIN supplier_config sc ON b.supplier_id = sc.id
 		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
 		LEFT JOIN (
 			SELECT DISTINCT sh.medical_supply_id as supply_id
 			FROM supply_history sh
 			WHERE sh.status = 'consumido'
 		) consumed ON ms.id = consumed.supply_id
-		GROUP BY b.id, b.qr_code, b.amount, b.supplier, b.expiration_date
+		GROUP BY b.id, b.qr_code, b.amount, sc.supplier_name, b.expiration_date
 		HAVING b.amount != (COUNT(ms.id) - COUNT(CASE WHEN consumed.supply_id IS NOT NULL THEN 1 END))
 		ORDER BY b.id
 	`
@@ -813,10 +844,11 @@ func (s *BatchService) GetLowStockSummary() ([]map[string]interface{}, error) {
 			SUM(b.amount) as total_current_stock,
 			COUNT(DISTINCT b.id) as batch_count,
 			MIN(b.expiration_date) as nearest_expiration,
-			ARRAY_AGG(DISTINCT b.supplier) as suppliers
+			ARRAY_AGG(DISTINCT supc.supplier_name) as suppliers
 		FROM supply_code sc
 		JOIN medical_supply ms ON sc.code = ms.code
 		JOIN batch b ON ms.batch_id = b.id
+		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE b.amount > 0
 		GROUP BY sc.code, sc.name, sc.critical_stock
 		HAVING SUM(b.amount) <= sc.critical_stock

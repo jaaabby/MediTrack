@@ -1859,7 +1859,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 
 		// Obtener información del lote antes de la actualización
 		var batch models.Batch
-		if err := tx.Where("id = ?", supply.BatchID).First(&batch).Error; err != nil {
+		if err := tx.Preload("SupplierConfig").Where("id = ?", supply.BatchID).First(&batch).Error; err != nil {
 			return fmt.Errorf("lote no encontrado: %v", err)
 		}
 
@@ -2225,13 +2225,14 @@ func (s *QRService) getSupplyWithBatchInfo(qrCode string) (map[string]interface{
 			sc.code_supplier,
 			b.expiration_date,
 			b.amount as batch_remaining_amount,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			st.name as store_name,
 			st.type as store_type
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
 		JOIN store st ON b.store_id = st.id
+		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE ms.qr_code = ?
 	`
 

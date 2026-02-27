@@ -230,12 +230,3 @@ DROP SEQUENCE IF EXISTS pavilion_inventory_summary_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS store_inventory_summary_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS supply_cart_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS supply_cart_item_id_seq CASCADE;
-
--- =======================
--- MENSAJE DE CONFIRMACIÓN
--- =======================
-DO $$
-BEGIN
-    RAISE NOTICE 'Base de datos MediTrack eliminada completamente.';
-    RAISE NOTICE 'Todas las tablas, vistas, funciones, triggers, índices y secuencias han sido eliminadas.';
-END $$;
