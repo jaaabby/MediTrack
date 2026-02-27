@@ -1246,8 +1246,9 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 			return fmt.Errorf("el insumo debe estar en estado 'pendiente_retiro' para ser retirado, estado actual: %s", supply.Status)
 		}
 
-		// 3. Buscar la transferencia pendiente asociada a este QR
+		// 3. Buscar la transferencia pendiente asociada a este QR (la más reciente)
 		if err := tx.Where("qr_code = ? AND status = ?", qrCode, models.TransferStatusPending).
+			Order("id DESC").
 			First(&transfer).Error; err != nil {
 			return fmt.Errorf("transferencia pendiente no encontrada para QR %s: %v", qrCode, err)
 		}
@@ -1336,98 +1337,91 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 			var cartItem models.SupplyCartItem
 			if err := tx.Where("supply_request_qr_assignment_id = ? AND is_active = ?", cartAssignment.ID, true).
 				First(&cartItem).Error; err == nil {
-				// Obtener todos los items activos del carrito
-				var cartItems []models.SupplyCartItem
-				if err := tx.Where("supply_cart_id = ? AND is_active = ?", cartItem.SupplyCartID, true).
-					Preload("SupplyRequestQRAssignment").
-					Preload("SupplyRequestQRAssignment.MedicalSupply").
-					Find(&cartItems).Error; err == nil {
+				// Obtener los QR codes de todos los items activos del carrito, excluyendo el ya procesado
+				var otherQRCodes []string
+				rawSQL := `SELECT ms.qr_code FROM supply_cart_item sci
+					INNER JOIN supply_request_qr_assignment sqa ON sci.supply_request_qr_assignment_id = sqa.id
+					INNER JOIN medical_supply ms ON sqa.medical_supply_id = ms.id
+					WHERE sci.supply_cart_id = ? AND sci.is_active = true AND ms.id != ? AND ms.status = ?`
+				if err := tx.Raw(rawSQL, cartItem.SupplyCartID, supply.ID, models.StatusPendingPickup).Scan(&otherQRCodes).Error; err != nil {
+					fmt.Printf("⚠️ Error buscando otros items del carrito: %v\n", err)
+					return nil
+				}
+				fmt.Printf("🔍 Items pendientes en el mismo carrito: %d (cart_id=%d)\n", len(otherQRCodes), cartItem.SupplyCartID)
+				if len(otherQRCodes) == 0 {
+					return nil
+				}
 
-					// Retirar todos los insumos del carrito que estén pendientes de retiro
-					retiradosCount := 0
-					for _, item := range cartItems {
-						// Saltar el insumo que ya fue retirado
-						if item.SupplyRequestQRAssignment.MedicalSupplyID == supply.ID {
-							continue
-						}
-
-						otherSupply := item.SupplyRequestQRAssignment.MedicalSupply
-
-						// Solo retirar insumos que estén pendientes de retiro y pertenezcan al mismo pabellón
-						if otherSupply.Status == models.StatusPendingPickup &&
-							!otherSupply.InTransit &&
-							otherSupply.LocationType == models.SupplyLocationStore {
-
-							// Buscar la transferencia pendiente asociada
-							var otherTransfer models.SupplyTransfer
-							if err := tx.Where("qr_code = ? AND status = ?", otherSupply.QRCode, models.TransferStatusPending).
-								First(&otherTransfer).Error; err == nil {
-
-								// Verificar que el destino sea el mismo pabellón
-								if otherTransfer.DestinationType == transfer.DestinationType &&
-									otherTransfer.DestinationID == transfer.DestinationID {
-
-									// Actualizar la transferencia con información de retiro
-									otherTransfer.Status = models.TransferStatusInTransit
-									otherTransfer.PickedUpBy = &userRUT
-									otherTransfer.PickedUpByName = &userName
-									otherTransfer.PickedUpDate = &now
-									if notes != "" {
-										if otherTransfer.Notes != "" {
-											otherTransfer.Notes = otherTransfer.Notes + "\n" + notes + " (retirado automáticamente con el carrito)"
-										} else {
-											otherTransfer.Notes = notes + " (retirado automáticamente con el carrito)"
-										}
-									} else {
-										otherTransfer.Notes = "Retirado automáticamente con otros insumos del carrito"
-									}
-
-									if err := tx.Save(&otherTransfer).Error; err != nil {
-										continue
-									}
-
-									// Actualizar el estado del insumo
-									otherSupply.Status = models.StatusEnRouteToPavilion
-									otherSupply.LocationType = models.SupplyLocationPavilion
-									otherSupply.LocationID = transfer.DestinationID
-									otherSupply.InTransit = true
-									otherSupply.UpdatedAt = now
-
-									if err := tx.Save(&otherSupply).Error; err != nil {
-										continue
-									}
-
-									// Crear historial para el retiro automático
-									// IMPORTANTE: Usar OriginType y OriginID de la transferencia para registrar correctamente
-									// la bodega de origen (puede ser bodega secundaria, no necesariamente la principal)
-									otherOriginType := otherTransfer.OriginType
-									otherOriginID := otherTransfer.OriginID
-									otherHistory := models.SupplyHistory{
-										DateTime:        now,
-										Status:          models.StatusEnRouteToPavilion,
-										DestinationType: transfer.DestinationType,
-										DestinationID:   transfer.DestinationID,
-										MedicalSupplyID: otherSupply.ID,
-										UserRUT:         userRUT,
-										Notes:           fmt.Sprintf("Retirado automáticamente con el carrito. En camino a pabellón."),
-										OriginType:      &otherOriginType,
-										OriginID:        &otherOriginID,
-									}
-
-									if err := tx.Create(&otherHistory).Error; err != nil {
-										continue
-									}
-
-									retiradosCount++
-								}
-							}
-						}
+				retiradosCount := 0
+				for _, otherQR := range otherQRCodes {
+					var otherSupply models.MedicalSupply
+					if err := tx.Where("qr_code = ?", otherQR).First(&otherSupply).Error; err != nil {
+						continue
 					}
 
-					// Log de cuántos insumos adicionales fueron retirados
-					if retiradosCount > 0 {
-						fmt.Printf("✅ Retirados automáticamente %d insumos adicionales del carrito\n", retiradosCount)
+					// Buscar la transferencia pendiente asociada (la más reciente)
+					var otherTransfer models.SupplyTransfer
+					if err := tx.Where("qr_code = ? AND status = ?", otherQR, models.TransferStatusPending).
+						Order("id DESC").
+						First(&otherTransfer).Error; err != nil {
+						fmt.Printf("⚠️ Sin transfer pendiente para %s, saltando\n", otherQR)
+						continue
 					}
+
+					// Verificar que el destino sea el mismo pabellón
+					if otherTransfer.DestinationType != transfer.DestinationType ||
+						otherTransfer.DestinationID != transfer.DestinationID {
+						continue
+					}
+
+					// Actualizar la transferencia con información de retiro
+					otherTransfer.Status = models.TransferStatusInTransit
+					otherTransfer.PickedUpBy = &userRUT
+					otherTransfer.PickedUpByName = &userName
+					otherTransfer.PickedUpDate = &now
+					if notes != "" {
+						otherTransfer.Notes = otherTransfer.Notes + "\n" + notes + " (retirado automáticamente con el carrito)"
+					} else {
+						otherTransfer.Notes = "Retirado automáticamente con otros insumos del carrito"
+					}
+					if err := tx.Save(&otherTransfer).Error; err != nil {
+						continue
+					}
+
+					// Actualizar el estado del insumo
+					otherSupply.Status = models.StatusEnRouteToPavilion
+					otherSupply.LocationType = models.SupplyLocationPavilion
+					otherSupply.LocationID = transfer.DestinationID
+					otherSupply.InTransit = true
+					otherSupply.UpdatedAt = now
+					if err := tx.Save(&otherSupply).Error; err != nil {
+						continue
+					}
+
+					// Crear historial para el retiro automático
+					otherOriginType := otherTransfer.OriginType
+					otherOriginID := otherTransfer.OriginID
+					otherHistory := models.SupplyHistory{
+						DateTime:        now,
+						Status:          models.StatusEnRouteToPavilion,
+						DestinationType: transfer.DestinationType,
+						DestinationID:   transfer.DestinationID,
+						MedicalSupplyID: otherSupply.ID,
+						UserRUT:         userRUT,
+						Notes:           fmt.Sprintf("Retirado automáticamente con el carrito. En camino a pabellón."),
+						OriginType:      &otherOriginType,
+						OriginID:        &otherOriginID,
+					}
+					if err := tx.Create(&otherHistory).Error; err != nil {
+						continue
+					}
+
+					retiradosCount++
+				}
+
+				// Log de cuántos insumos adicionales fueron retirados
+				if retiradosCount > 0 {
+					fmt.Printf("✅ Retirados automáticamente %d insumos adicionales del carrito\n", retiradosCount)
 				}
 			}
 		}

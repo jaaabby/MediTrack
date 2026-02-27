@@ -1,38 +1,57 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <!-- Overlay -->
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="closeModal"></div>
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="closeModal"></div>
 
-      <!-- Centrado del modal -->
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-      <!-- Contenido del modal - Más ancho para la tabla de items -->
-      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
-          <div class="sm:flex sm:items-start mb-4">
-            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-              <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </div>
-            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-              <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+      <!-- Contenido del modal -->
+      <div class="relative bg-white rounded-lg text-left shadow-xl transform transition-all w-full max-w-4xl flex flex-col max-h-[90vh]">
+        <!-- Sticky header -->
+        <div class="bg-white px-4 pt-5 pb-4 sm:px-6 border-b border-gray-200 flex-shrink-0">
+          <!-- Fila principal: icono + título + botones masivos -->
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-blue-100">
+                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-medium text-gray-900 truncate" id="modal-title">
                 Revisar Insumos de la Solicitud
               </h3>
-              <div class="mt-2">
-                <p class="text-sm text-gray-500">
-                  Solicitud: <span class="font-semibold text-gray-900">{{ request?.request_number }}</span>
-                </p>
-                <p class="text-sm text-gray-500 mt-1">
-                  Solicitante: <span class="font-semibold text-gray-900">{{ request?.requested_by_name }}</span>
-                </p>
-              </div>
+            </div>
+            <!-- Botones masivos -->
+            <div v-if="hasPendingItems" class="flex flex-shrink-0 gap-2">
+              <button
+                @click="openBulkActionModal('aceptado')"
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors"
+              >
+                Aprobar todo
+              </button>
+              <button
+                @click="openBulkActionModal('rechazado')"
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+              >
+                Rechazar todo
+              </button>
+              <button
+                @click="openBulkActionModal('devuelto')"
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 transition-colors"
+              >
+                Devolver todo
+              </button>
             </div>
           </div>
+          <!-- Meta info -->
+          <div class="mt-2 ml-13 pl-1 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+            <span>Solicitud: <span class="font-semibold text-gray-900">{{ request?.request_number }}</span></span>
+            <span>Solicitante: <span class="font-semibold text-gray-900">{{ request?.requested_by_name }}</span></span>
+          </div>
+        </div>
 
+        <!-- Scrollable body -->
+        <div class="overflow-y-auto flex-1 px-4 sm:px-6 py-4">
           <!-- Tabla de items -->
-          <div class="mt-4 overflow-x-auto">
+          <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
@@ -111,8 +130,8 @@
           </div>
         </div>
 
-        <!-- Botones -->
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <!-- Sticky footer -->
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200 flex-shrink-0">
           <button
             type="button"
             @click="closeModal"
@@ -122,7 +141,6 @@
           </button>
         </div>
       </div>
-    </div>
 
     <!-- Modal de confirmación de acción -->
     <div v-if="showActionModal" class="fixed inset-0 z-[60] overflow-y-auto">
@@ -135,12 +153,27 @@
           </h4>
           
           <div class="mb-4">
-            <p class="text-sm text-gray-600 mb-2">
-              <span class="font-semibold">Insumo:</span> {{ selectedItem?.supply_name }}
-            </p>
-            <p class="text-sm text-gray-600">
-              <span class="font-semibold">Cantidad:</span> {{ selectedItem?.quantity_requested }}
-            </p>
+            <template v-if="isBulkAction">
+              <p class="text-sm text-gray-600 mb-2">Se aplicará a los siguientes insumos:</p>
+              <ul class="divide-y divide-gray-100 border border-gray-200 rounded-md overflow-hidden text-sm">
+                <li
+                  v-for="item in items.filter(i => i.item_status === 'pendiente')"
+                  :key="item.id"
+                  class="flex items-center justify-between px-3 py-2 bg-white"
+                >
+                  <span class="text-gray-800 font-medium">{{ item.supply_name }}</span>
+                  <span class="text-gray-500 ml-4 whitespace-nowrap">Cant: {{ item.quantity_requested }}</span>
+                </li>
+              </ul>
+            </template>
+            <template v-else>
+              <p class="text-sm text-gray-600 mb-2">
+                <span class="font-semibold">Insumo:</span> {{ selectedItem?.supply_name }}
+              </p>
+              <p class="text-sm text-gray-600">
+                <span class="font-semibold">Cantidad:</span> {{ selectedItem?.quantity_requested }}
+              </p>
+            </template>
           </div>
 
           <!-- Campo de comentario (obligatorio para rechazar/devolver) -->
@@ -181,7 +214,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import supplyRequestService from '@/services/requests/supplyRequestService'
@@ -211,6 +244,11 @@ const selectedItem = ref(null)
 const selectedAction = ref('')
 const actionComment = ref('')
 const commentError = ref('')
+const isBulkAction = ref(false)
+
+// Computed
+const hasPendingItems = computed(() => items.value.some(i => i.item_status === 'pendiente'))
+const pendingItemsCount = computed(() => items.value.filter(i => i.item_status === 'pendiente').length)
 
 // Métodos
 const loadItems = async () => {
@@ -235,7 +273,17 @@ const loadItems = async () => {
 }
 
 const openActionModal = (item, action) => {
+  isBulkAction.value = false
   selectedItem.value = item
+  selectedAction.value = action
+  actionComment.value = ''
+  commentError.value = ''
+  showActionModal.value = true
+}
+
+const openBulkActionModal = (action) => {
+  isBulkAction.value = true
+  selectedItem.value = null
   selectedAction.value = action
   actionComment.value = ''
   commentError.value = ''
@@ -248,9 +296,18 @@ const closeActionModal = () => {
   selectedAction.value = ''
   actionComment.value = ''
   commentError.value = ''
+  isBulkAction.value = false
 }
 
 const getActionTitle = () => {
+  if (isBulkAction.value) {
+    const actions = {
+      'aceptado': 'Aprobar todos los insumos pendientes',
+      'rechazado': 'Rechazar todos los insumos pendientes',
+      'devuelto': 'Devolver todos los insumos pendientes'
+    }
+    return actions[selectedAction.value] || 'Acción masiva'
+  }
   const actions = {
     'aceptado': 'Aceptar Insumo',
     'rechazado': 'Rechazar Insumo',
@@ -295,9 +352,19 @@ const confirmAction = async () => {
       comment: actionComment.value.trim() || null
     }
 
-    await supplyRequestService.reviewSupplyRequestItem(selectedItem.value.id, reviewData)
-
-    showSuccess(`El insumo ha sido ${getStatusLabel(selectedAction.value).toLowerCase()}`)
+    if (isBulkAction.value) {
+      const pendingItems = items.value.filter(i => i.item_status === 'pendiente')
+      // Procesar secuencialmente para evitar race conditions en el backend
+      // (transacciones concurrentes sobre la misma solicitud causan conflictos en
+      //  la creación del carrito y en la actualización del estado de la solicitud)
+      for (const item of pendingItems) {
+        await supplyRequestService.reviewSupplyRequestItem(item.id, reviewData)
+      }
+      showSuccess(`${pendingItems.length} insumo${pendingItems.length !== 1 ? 's' : ''} ${getStatusLabel(selectedAction.value).toLowerCase()}${pendingItems.length !== 1 ? 's' : ''}`)
+    } else {
+      await supplyRequestService.reviewSupplyRequestItem(selectedItem.value.id, reviewData)
+      showSuccess(`El insumo ha sido ${getStatusLabel(selectedAction.value).toLowerCase()}`)
+    }
 
     closeActionModal()
     await loadItems() // Recargar items
