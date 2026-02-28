@@ -955,13 +955,13 @@ async function loadCompletedRequests() {
 async function loadMedicalMetrics() {
   try {
     const [specialties, surgeries, doctors, typicalSuppliesCount] = await Promise.all([
-      medicalSpecialtyService.getAllSpecialties().catch(() => []),
+      medicalSpecialtyService.getActiveSpecialties().catch(() => []),
       surgeryService.getAllSurgeries().catch(() => []),
       doctorInfoService.getAllDoctors().catch(() => []),
       surgeryTypicalSupplyService.getTypicalSuppliesCount().catch(() => 0)
     ])
 
-    medicalMetrics.value.totalSpecialties = Array.isArray(specialties) ? specialties.filter(s => s.is_active).length : 0
+    medicalMetrics.value.totalSpecialties = Array.isArray(specialties) ? specialties.length : 0
     medicalMetrics.value.totalSurgeries = Array.isArray(surgeries) ? surgeries.length : 0
     medicalMetrics.value.totalDoctors = Array.isArray(doctors) ? doctors.length : 0
     medicalMetrics.value.totalTypicalSupplies = Number(typicalSuppliesCount) || 0

@@ -37,6 +37,16 @@ class MedicalSpecialtyService {
     }
   }
 
+  async getActiveSpecialties() {
+    try {
+      const response = await this.api.get('/medical-specialties/active')
+      return response.data.data?.specialties || response.data.specialties || []
+    } catch (error) {
+      console.error('Error en getActiveSpecialties:', error)
+      throw error
+    }
+  }
+
   async createSpecialty(specialtyData) {
     try {
       const response = await this.api.post('/medical-specialties/', specialtyData)
