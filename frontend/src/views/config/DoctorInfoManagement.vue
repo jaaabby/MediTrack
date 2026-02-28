@@ -2,18 +2,10 @@
   <div class="space-y-6">
     <!-- Header -->
     <div class="bg-white rounded-lg shadow-sm border p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 class="text-2xl font-semibold text-gray-900">Gestión de Doctores</h2>
-          <p class="text-gray-600 mt-1">Gestiona los doctores del sistema directamente desde la tabla de usuarios</p>
-          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedDoctors.length }} doctores</p>
-        </div>
-        <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
-          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Nuevo Doctor
-        </button>
+      <div>
+        <h2 class="text-2xl font-semibold text-gray-900">Gestión de Doctores</h2>
+        <p class="text-gray-600 mt-1">Gestiona los doctores del sistema directamente desde la tabla de usuarios</p>
+        <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedDoctors.length }} doctores</p>
       </div>
     </div>
 
@@ -183,25 +175,17 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
       <h3 class="mt-2 text-sm font-medium text-gray-900">No hay doctores registrados</h3>
-      <p class="mt-1 text-sm text-gray-500">{{ selectedSpecialtyId || searchTerm ? 'No se encontraron resultados con los filtros aplicados.' : 'Comienza registrando un doctor.' }}</p>
-      <div class="mt-6" v-if="!selectedSpecialtyId && !searchTerm">
-        <button @click="openCreateModal" class="btn-primary">
-          <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Registrar Doctor
-        </button>
-      </div>
+      <p class="mt-1 text-sm text-gray-500">{{ selectedSpecialtyId || searchTerm ? 'No se encontraron resultados con los filtros aplicados.' : 'No hay doctores registrados. Crea doctores desde la gestión de usuarios.' }}</p>
     </div>
 
-    <!-- Modal para crear/editar -->
+    <!-- Modal para editar -->
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click.self="closeModal">
         <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
           <div class="space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
               <h3 class="text-xl font-semibold text-gray-900">
-                {{ isEditing ? 'Editar Doctor' : 'Registrar Nuevo Doctor' }}
+                Editar Doctor
               </h3>
               <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,8 +200,8 @@
                   RUT <span class="text-red-500">*</span>
                 </label>
                 <input v-model="doctorForm.rut" type="text" class="form-input" 
-                  placeholder="Ej: 12345678-9" required :disabled="isEditing" />
-                <p class="mt-1 text-xs text-gray-500">El RUT debe ser único y no puede modificarse después de crear</p>
+                  placeholder="Ej: 12345678-9" required disabled />
+                <p class="mt-1 text-xs text-gray-500">El RUT no puede modificarse</p>
               </div>
 
               <div>
@@ -234,15 +218,6 @@
                 </label>
                 <input v-model="doctorForm.email" type="email" class="form-input" 
                   placeholder="Ej: doctor@meditrack.com" required />
-              </div>
-
-              <div v-if="!isEditing">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Contraseña <span class="text-red-500">*</span>
-                </label>
-                <input v-model="doctorForm.password" type="password" class="form-input" 
-                  placeholder="Contraseña temporal" required />
-                <p class="mt-1 text-xs text-gray-500">El doctor deberá cambiar su contraseña en el primer inicio de sesión</p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -282,7 +257,7 @@
                 <button type="button" @click="closeModal" class="btn-secondary">Cancelar</button>
                 <button type="submit" :disabled="saving" class="btn-primary">
                   <span v-if="saving">Guardando...</span>
-                  <span v-else>{{ isEditing ? 'Actualizar' : 'Crear' }}</span>
+                  <span v-else>Actualizar</span>
                 </button>
               </div>
             </form>
@@ -430,21 +405,6 @@ const clearFilters = () => {
   currentPage.value = 1
 }
 
-const openCreateModal = () => {
-  isEditing.value = false
-  doctorForm.value = {
-    rut: '',
-    name: '',
-    email: '',
-    password: '',
-    role: 'doctor',
-    medical_center_id: null,
-    specialty_id: null,
-    is_active: true
-  }
-  showModal.value = true
-}
-
 const openEditModal = (doctor) => {
   isEditing.value = true
   doctorForm.value = {
@@ -498,11 +458,6 @@ const saveDoctor = async () => {
     return
   }
 
-  if (!isEditing.value && (!doctorForm.value.password || !doctorForm.value.password.trim())) {
-    showWarning('La contraseña es obligatoria para nuevos doctores')
-    return
-  }
-
   if (!doctorForm.value.medical_center_id) {
     showWarning('Debe seleccionar un centro médico')
     return
@@ -527,18 +482,10 @@ const saveDoctor = async () => {
       is_active: doctorForm.value.is_active !== undefined ? doctorForm.value.is_active : true
     }
 
-    if (!isEditing.value) {
-      doctorData.password = doctorForm.value.password
-      await doctorInfoService.createDoctor(doctorData)
-      await loadDoctors()
-      closeModal()
-      showSuccess('Doctor registrado exitosamente')
-    } else {
-      await doctorInfoService.updateDoctor(doctorForm.value.rut, doctorData)
-      await loadDoctors()
-      closeModal()
-      showSuccess('Doctor actualizado exitosamente')
-    }
+    await doctorInfoService.updateDoctor(doctorForm.value.rut, doctorData)
+    await loadDoctors()
+    closeModal()
+    showSuccess('Doctor actualizado exitosamente')
   } catch (err) {
     console.error('Error al guardar:', err)
     let errorMessage = 'Error desconocido al guardar'
@@ -561,8 +508,8 @@ const confirmDelete = async (doctor) => {
   const doctorName = doctor.name || doctor.rut
   
   const confirmed = await confirmDanger(
-    `¿Deseas eliminar (desactivar) al doctor "${doctorName}"?\n\nEl doctor será desactivado y no podrá iniciar sesión.`,
-    'Confirmar desactivación'
+    `¿Deseas eliminar al doctor "${doctorName}"?\n\nEsta acción no se puede deshacer.`,
+    'Confirmar eliminación'
   )
   if (!confirmed) {
     return
@@ -571,7 +518,7 @@ const confirmDelete = async (doctor) => {
   try {
     await doctorInfoService.deleteDoctor(doctor.rut)
     await loadDoctors()
-    showSuccess('Doctor eliminado (desactivado) exitosamente')
+    showSuccess('Doctor eliminado exitosamente')
   } catch (err) {
     console.error('Error al eliminar:', err)
     showError('Error al eliminar: ' + (err.response?.data?.error || err.message))

@@ -84,6 +84,8 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	if userRequest.SpecialtyID != nil {
 		user.SpecialtyID = userRequest.SpecialtyID
 	}
+	// Los usuarios siempre se crean como activos
+	user.IsActive = true
 
 	// Crear usuario con contraseña temporal
 	tempPassword, err := c.userService.CreateUserWithTemporaryPassword(&user)

@@ -182,11 +182,11 @@ func (c *DoctorInfoController) GetDoctorsPaginated(ctx *gin.Context) {
 		Success: true,
 		Message: "Doctores obtenidos",
 		Data: gin.H{
-			"doctors":      doctors,
-			"total":        total,
-			"page":         page,
-			"page_size":    pageSize,
-			"total_pages":  (int(total) + pageSize - 1) / pageSize,
+			"doctors":     doctors,
+			"total":       total,
+			"page":        page,
+			"page_size":   pageSize,
+			"total_pages": (int(total) + pageSize - 1) / pageSize,
 		},
 	})
 }
@@ -229,7 +229,7 @@ func (c *DoctorInfoController) UpdateDoctor(ctx *gin.Context) {
 	})
 }
 
-// DeleteDoctor elimina (desactiva) un doctor
+// DeleteDoctor elimina un doctor de la base de datos
 func (c *DoctorInfoController) DeleteDoctor(ctx *gin.Context) {
 	rut := ctx.Param("rut")
 	if rut == "" {
