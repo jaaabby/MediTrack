@@ -16,7 +16,7 @@ func NewMedicalSpecialtyService(db *gorm.DB) *MedicalSpecialtyService {
 
 // CreateMedicalSpecialty crea una nueva especialidad médica
 func (s *MedicalSpecialtyService) CreateMedicalSpecialty(specialty *models.MedicalSpecialty) error {
-	return s.DB.Create(specialty).Error
+	return s.DB.Select("Name", "Code", "Description", "IsActive").Create(specialty).Error
 }
 
 // GetMedicalSpecialtyByID obtiene una especialidad médica por ID
@@ -28,10 +28,10 @@ func (s *MedicalSpecialtyService) GetMedicalSpecialtyByID(id int) (*models.Medic
 	return &specialty, nil
 }
 
-// GetAllMedicalSpecialties obtiene todas las especialidades médicas
+// GetAllMedicalSpecialties obtiene todas las especialidades médicas (activas e inactivas)
 func (s *MedicalSpecialtyService) GetAllMedicalSpecialties() ([]models.MedicalSpecialty, error) {
 	var specialties []models.MedicalSpecialty
-	if err := s.DB.Where("is_active = ?", true).Order("name ASC").Find(&specialties).Error; err != nil {
+	if err := s.DB.Order("name ASC").Find(&specialties).Error; err != nil {
 		return nil, err
 	}
 	return specialties, nil
@@ -74,7 +74,7 @@ func (s *MedicalSpecialtyService) UpdateMedicalSpecialty(id int, specialty *mode
 	}
 
 	// Actualizar campos omitiendo ID, CreatedAt y UpdatedAt
-	if err := s.DB.Model(&existingSpecialty).Omit("id", "created_at", "updated_at").Updates(specialty).Error; err != nil {
+	if err := s.DB.Model(&existingSpecialty).Select("Name", "Code", "Description", "IsActive").Updates(specialty).Error; err != nil {
 		return nil, err
 	}
 
