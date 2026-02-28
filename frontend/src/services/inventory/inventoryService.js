@@ -492,7 +492,8 @@ class InventoryService {
       if (filters.near_expiration) params.append('near_expiration', 'true')
       if (filters.low_stock) params.append('low_stock', 'true')
       if (filters.page) params.append('page', filters.page)
-      if (filters.page_size) params.append('page_size', filters.page_size)
+      // Solicitar todos los registros ya que la paginación se maneja en el cliente
+      params.append('page_size', filters.page_size || 9999)
 
       const response = await this.api.get(`/inventory/store?${params.toString()}`)
       // El backend devuelve {inventory: [...], total: ..., page: ...}

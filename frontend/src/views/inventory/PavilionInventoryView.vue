@@ -297,7 +297,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="item in paginatedInventory" :key="item.id"
-                :class="item.in_transit ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'">
+                :class="isExpired(item.expiration_date) ? 'bg-red-50 hover:bg-red-100' : item.in_transit ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
@@ -345,7 +345,10 @@
                   <span :class="getExpirationClass(item.expiration_date)" class="text-sm font-medium">
                     {{ formatDate(item.expiration_date) }}
                   </span>
-                  <div v-if="isNearExpiration(item.expiration_date)" class="text-xs text-orange-600 font-medium">
+                  <div v-if="isExpired(item.expiration_date)" class="text-xs text-red-700 font-medium">
+                    🚨 Vencido
+                  </div>
+                  <div v-else-if="isNearExpiration(item.expiration_date)" class="text-xs text-orange-600 font-medium">
                     ⚠️ Vence pronto
                   </div>
                 </td>
@@ -552,6 +555,13 @@ const formatDate = (dateString) => {
   } catch {
     return dateString
   }
+}
+
+const isExpired = (expirationDate) => {
+  if (!expirationDate) return false
+  const today = new Date()
+  const expDate = new Date(expirationDate)
+  return Math.ceil((expDate - today) / (1000 * 60 * 60 * 24)) < 0
 }
 
 const isNearExpiration = (expirationDate) => {

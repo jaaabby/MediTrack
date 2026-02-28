@@ -12,6 +12,7 @@ class ReturnToBodegaService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
+      timeout: 8000, // ID 2: Timeout de 8s para detectar errores de red rápidamente
       headers: {
         'Content-Type': 'application/json'
       }
@@ -156,6 +157,32 @@ class ReturnToBodegaService {
   }
 
   /**
+   * Envía una notificación por correo al pabellón donde está el insumo,
+   * adjuntando el PDF del insumo, para que realicen la devolución a bodega.
+   * @param {string} qrCode - Código QR del insumo
+   * @param {string} pdfBase64 - PDF en base64 (opcional, generado en el frontend)
+   * @returns {Promise<Object>} Resultado con emails notificados
+   */
+  async notifyPavilionForReturn(qrCode, pdfBase64 = '') {
+    try {
+      const response = await this.api.post('/qr/notify-pavilion-return', {
+        qr_code: qrCode,
+        pdf_base64: pdfBase64 || ''
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error notificando al pabellón para devolución:', error)
+      if (error.response) {
+        throw new Error(error.response.data?.error || `Error HTTP: ${error.response.status}`)
+      } else if (error.request) {
+        throw new Error('No se pudo conectar con el servidor')
+      } else {
+        throw error
+      }
+    }
+  }
+
+  /**
    * Ejecuta manualmente el proceso automático de retornos
    * @returns {Promise<Object>} Resultado del proceso
    */
@@ -255,9 +282,14 @@ class ReturnToBodegaService {
       storeId: supply.store_id || supply.storeId || null,
       receivedAt: supply.received_at || supply.receivedAt || null,
       businessHoursElapsed: supply.business_hours_elapsed || supply.businessHoursElapsed || 0,
-      daysElapsed: supply.days_elapsed || supply.daysElapsed || (supply.business_hours_elapsed || supply.businessHoursElapsed || 0) / 8, // Convertir horas a días aproximados
+      daysElapsed: supply.days_elapsed || supply.daysElapsed || (supply.business_hours_elapsed || supply.businessHoursElapsed || 0) / 8,
       shouldReturn: supply.should_return || supply.shouldReturn || false,
-      canReturn: supply.should_return || supply.shouldReturn || false // Usar shouldReturn directamente
+      canReturn: supply.should_return || supply.shouldReturn || false,
+      pavilionId: supply.pavilion_id != null ? supply.pavilion_id : (supply.pavilionId != null ? supply.pavilionId : null),
+      pavilionName: supply.pavilion_name || supply.pavilionName || null,
+      supplyCode: supply.supply_code != null ? supply.supply_code : (supply.supplyCode != null ? supply.supplyCode : null),
+      supplyCodeSupplier: supply.supply_code_supplier != null ? supply.supply_code_supplier : (supply.supplyCodeSupplier != null ? supply.supplyCodeSupplier : null),
+      batchAmount: supply.batch_amount != null ? supply.batch_amount : (supply.batchAmount != null ? supply.batchAmount : null)
     }
   }
 }

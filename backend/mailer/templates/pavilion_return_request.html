@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de Devolución de Insumo a Bodega</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 620px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .email-wrapper {
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #1a56db;
+            color: white;
+            padding: 24px 28px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0 0 6px 0;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 0;
+            font-size: 13px;
+            opacity: 0.85;
+        }
+        .content {
+            padding: 28px;
+        }
+        .alert-banner {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-left: 5px solid #f59e0b;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+        }
+        .alert-banner p {
+            margin: 0;
+            font-size: 14px;
+            color: #92400e;
+        }
+        .section-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1a56db;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 6px;
+            margin: 22px 0 14px 0;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+        }
+        .info-table tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        .info-table td {
+            padding: 9px 12px;
+            border: 1px solid #e5e7eb;
+        }
+        .info-table td:first-child {
+            font-weight: bold;
+            color: #374151;
+            width: 42%;
+            background-color: #f3f4f6;
+        }
+        .qr-section {
+            text-align: center;
+            padding: 16px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin: 18px 0;
+        }
+        .qr-code-text {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: bold;
+            color: #1e40af;
+            background: #eff6ff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }
+        .action-box {
+            background-color: #ecfdf5;
+            border: 1px solid #6ee7b7;
+            border-left: 5px solid #10b981;
+            border-radius: 6px;
+            padding: 16px 18px;
+            margin: 20px 0;
+        }
+        .action-box h3 {
+            margin: 0 0 10px 0;
+            color: #065f46;
+            font-size: 14px;
+        }
+        .action-box ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 13.5px;
+            color: #047857;
+        }
+        .action-box ul li {
+            margin-bottom: 5px;
+        }
+        .footer {
+            text-align: center;
+            padding: 18px 28px;
+            background-color: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            font-size: 11.5px;
+            color: #6b7280;
+        }
+        .footer a {
+            color: #1a56db;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <!-- Encabezado -->
+        <div class="header">
+            <h1>📦 Solicitud de Devolución de Insumo</h1>
+            <p><a href="http://localhost:3000" style="color: white; text-decoration: none;">MediTrack — Sistema de Trazabilidad Médica</a></p>
+        </div>
+
+        <div class="content">
+            <!-- Aviso principal -->
+            <p>Estimado equipo de <strong>{{ .PavilionName }}</strong>,</p>
+
+            <p>Les informamos que el siguiente insumo médico <strong>lleva más de 8 horas laborales sin ser consumido</strong> en su pabellón.
+            Por favor, procedan con la devolución a bodega a la brevedad posible.</p>
+
+            <div class="alert-banner">
+                <p>⚠️ <strong>Acción requerida:</strong> El insumo adjunto en este correo debe ser devuelto a la bodega de origen.
+                En el PDF adjunto encontrarán el código QR necesario para identificar y registrar la devolución en el sistema.</p>
+            </div>
+
+            <!-- Información del insumo -->
+            <div class="section-title">📋 Información del Insumo</div>
+            <table class="info-table">
+                <tr>
+                    <td>Nombre del insumo</td>
+                    <td>{{ .SupplyName }}</td>
+                </tr>
+                <tr>
+                    <td>Código interno</td>
+                    <td>{{ .SupplyCode }}</td>
+                </tr>
+                <tr>
+                    <td>Código QR</td>
+                    <td><span style="font-family: monospace; font-size: 12px;">{{ .QRCode }}</span></td>
+                </tr>
+                <tr>
+                    <td>ID de Lote</td>
+                    <td>{{ .BatchID }}</td>
+                </tr>
+                <tr>
+                    <td>Proveedor</td>
+                    <td>{{ .Supplier }}</td>
+                </tr>
+                <tr>
+                    <td>Fecha de vencimiento</td>
+                    <td>{{ .ExpirationDate }}</td>
+                </tr>
+                <tr>
+                    <td>Fecha de recepción en pabellón</td>
+                    <td>{{ .ReceivedAt }}</td>
+                </tr>
+            </table>
+
+            <!-- Información del pabellón y destino -->
+            <div class="section-title">🏥 Ubicación y Destino</div>
+            <table class="info-table">
+                <tr>
+                    <td>Pabellón actual</td>
+                    <td><strong>{{ .PavilionName }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Bodega de destino</td>
+                    <td>{{ .StoreName }}</td>
+                </tr>
+            </table>
+
+            <!-- QR reference display -->
+            <div class="qr-section">
+                <p style="margin: 0 0 6px 0; font-size: 13px; color: #374151; font-weight: bold;">Código QR del Insumo</p>
+                <div class="qr-code-text">{{ .QRCode }}</div>
+                <p style="margin: 8px 0 0 0; font-size: 12px; color: #6b7280;">El PDF adjunto contiene el código QR para escanear en el sistema</p>
+            </div>
+
+            <!-- Pasos a seguir -->
+            <div class="action-box">
+                <h3>✅ Pasos para completar la devolución</h3>
+                <ul>
+                    <li>Localice el insumo indicado en su pabellón.</li>
+                    <li>Trasládelo físicamente a la bodega: <strong>{{ .StoreName }}</strong>.</li>
+                    <li>Escanee el código QR adjunto en el sistema MediTrack para registrar la devolución.</li>
+                    <li>Confirme la llegada del insumo a bodega desde la vista de detalles del QR.</li>
+                </ul>
+            </div>
+
+            <p style="font-size: 13px; color: #6b7280;">Si tiene dudas o el insumo ya fue devuelto previamente, por favor ignore este mensaje o contacte al administrador del sistema.</p>
+
+            <p>Saludos,<br><strong>Equipo de <a href="http://localhost:3000" style="color: #1a56db; text-decoration: none;">MediTrack</a></strong></p>
+        </div>
+
+        <div class="footer">
+            <p>Este correo fue generado automáticamente por el sistema <a href="http://localhost:3000">MediTrack</a>. No responda directamente a este mensaje.</p>
+            <p>Fecha de envío: {{ .Date }}</p>
+        </div>
+    </div>
+</body>
+</html>

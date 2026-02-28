@@ -98,8 +98,9 @@ class SupplyTransferService {
       if (filters.to_date) queryParams.append('to_date', filters.to_date)
       if (filters.pavilion_id) queryParams.append('pavilion_id', filters.pavilion_id)
       if (filters.store_id) queryParams.append('store_id', filters.store_id)
-      if (filters.limit) queryParams.append('limit', filters.limit)
-      if (filters.offset) queryParams.append('offset', filters.offset)
+      // Solicitar todos los registros ya que la paginación se maneja en el cliente
+      queryParams.append('page_size', filters.page_size || 9999)
+      if (filters.page) queryParams.append('page', filters.page)
       
       const queryString = queryParams.toString()
       const url = queryString ? `/transfers?${queryString}` : '/transfers'

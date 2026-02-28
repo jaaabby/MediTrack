@@ -397,8 +397,8 @@ const loadDoctors = async () => {
 
 const loadSpecialties = async () => {
   try {
-    const data = await medicalSpecialtyService.getAllSpecialties()
-    specialties.value = data.filter(s => s.is_active)
+    const data = await medicalSpecialtyService.getActiveSpecialties()
+    specialties.value = data
   } catch (err) {
     console.error('Error loading specialties:', err)
   }

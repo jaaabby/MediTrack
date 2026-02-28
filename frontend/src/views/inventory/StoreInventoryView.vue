@@ -31,24 +31,57 @@
             </option>
           </select>
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Cirugía</label>
-          <select v-model="filters.surgery_id" class="form-input" @change="applyFilters">
-            <option value="">Todos los tipos</option>
-            <option v-for="surgery in surgeries" :key="surgery.id" :value="surgery.id">
+          <input
+            type="text"
+            v-model="surgerySearch"
+            placeholder="Buscar tipo de cirugía..."
+            class="form-input"
+            @input="onSurgerySearch"
+            @focus="showSurgeryOptions = true"
+            @blur="hideSurgeryOptions"
+            autocomplete="off"
+          />
+          
+          <!-- Dropdown de opciones de cirugía -->
+          <div v-if="showSurgeryOptions && filteredSurgeries.length > 0"
+            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            <button
+              v-for="surgery in filteredSurgeries"
+              :key="surgery.id"
+              @mousedown.prevent="selectSurgery(surgery)"
+              class="w-full text-left px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-b-0"
+            >
               {{ surgery.name }}
-            </option>
-          </select>
+            </button>
+          </div>
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-2">Proveedor</label>
           <input
             type="text"
-            v-model="filters.supplier"
+            v-model="supplierSearch"
             placeholder="Buscar proveedor..."
             class="form-input"
-            @input="debouncedApplyFilters"
+            @input="onSupplierSearch"
+            @focus="showSupplierOptions = true"
+            @blur="hideSupplierOptions"
+            autocomplete="off"
           />
+          
+          <!-- Dropdown de opciones de proveedor -->
+          <div v-if="showSupplierOptions && filteredSuppliers.length > 0"
+            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            <button
+              v-for="supplier in filteredSuppliers"
+              :key="supplier"
+              @mousedown.prevent="selectSupplier(supplier)"
+              class="w-full text-left px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-b-0"
+            >
+              {{ supplier }}
+            </button>
+          </div>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Alertas</label>
@@ -411,6 +444,12 @@ const filters = ref({
   near_expiration: false
 })
 
+// Estados para autocompletado
+const surgerySearch = ref('')
+const showSurgeryOptions = ref(false)
+const supplierSearch = ref('')
+const showSupplierOptions = ref(false)
+
 // Paginación
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -427,6 +466,37 @@ const normalizeText = (text) => {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 }
+
+// Computed para proveedores únicos del inventario
+const uniqueSuppliers = computed(() => {
+  if (!inventory.value || inventory.value.length === 0) return []
+  const suppliers = inventory.value
+    .map(item => item.batch_supplier)
+    .filter(supplier => supplier && supplier.trim())
+  return [...new Set(suppliers)].sort()
+})
+
+// Computed para cirugías filtradas
+const filteredSurgeries = computed(() => {
+  if (!surgerySearch.value.trim()) {
+    return surgeries.value.slice(0, 10)
+  }
+  const search = surgerySearch.value.toLowerCase().trim()
+  return surgeries.value.filter(surgery => 
+    surgery.name.toLowerCase().includes(search)
+  ).slice(0, 10)
+})
+
+// Computed para proveedores filtrados
+const filteredSuppliers = computed(() => {
+  if (!supplierSearch.value.trim()) {
+    return uniqueSuppliers.value.slice(0, 10)
+  }
+  const search = normalizeText(supplierSearch.value)
+  return uniqueSuppliers.value.filter(supplier => 
+    normalizeText(supplier).includes(search)
+  ).slice(0, 10)
+})
 
 // Computed para ordenar inventario
 const sortedInventory = computed(() => {
@@ -544,7 +614,65 @@ const clearFilters = () => {
     low_stock: false,
     near_expiration: false
   }
+  surgerySearch.value = ''
+  supplierSearch.value = ''
   applyFilters()
+}
+
+// Funciones para manejar autocompletado de cirugía
+const onSurgerySearch = () => {
+  showSurgeryOptions.value = true
+  // Si el texto coincide exactamente con una cirugía, seleccionarla automáticamente
+  const exactMatch = surgeries.value.find(surgery => 
+    surgery.name.toLowerCase() === surgerySearch.value.toLowerCase()
+  )
+  if (exactMatch) {
+    filters.value.surgery_id = exactMatch.id.toString()
+  } else if (surgerySearch.value.trim() === '') {
+    filters.value.surgery_id = ''
+  }
+}
+
+const selectSurgery = (surgery) => {
+  filters.value.surgery_id = surgery.id.toString()
+  surgerySearch.value = surgery.name
+  showSurgeryOptions.value = false
+  applyFilters()
+}
+
+const hideSurgeryOptions = () => {
+  setTimeout(() => {
+    showSurgeryOptions.value = false
+    // Si hay una cirugía seleccionada, mostrar su nombre completo
+    if (filters.value.surgery_id) {
+      const selectedSurgery = surgeries.value.find(s => s.id === parseInt(filters.value.surgery_id))
+      if (selectedSurgery) {
+        surgerySearch.value = selectedSurgery.name
+      }
+    } else if (!surgerySearch.value.trim()) {
+      surgerySearch.value = ''
+    }
+  }, 200)
+}
+
+// Funciones para manejar autocompletado de proveedor
+const onSupplierSearch = () => {
+  showSupplierOptions.value = true
+  filters.value.supplier = supplierSearch.value
+  debouncedApplyFilters()
+}
+
+const selectSupplier = (supplier) => {
+  supplierSearch.value = supplier
+  filters.value.supplier = supplier
+  showSupplierOptions.value = false
+  applyFilters()
+}
+
+const hideSupplierOptions = () => {
+  setTimeout(() => {
+    showSupplierOptions.value = false
+  }, 200)
 }
 
 const formatDate = (dateString) => {
@@ -621,6 +749,11 @@ onMounted(async () => {
   // Aplicar filtros de la URL si existen
   if (route.query.surgery_id) {
     filters.value.surgery_id = route.query.surgery_id
+    // Establecer el nombre de la cirugía en el campo de búsqueda
+    const selectedSurgery = surgeries.value.find(s => s.id === parseInt(route.query.surgery_id))
+    if (selectedSurgery) {
+      surgerySearch.value = selectedSurgery.name
+    }
   }
   if (route.query.store_id) {
     filters.value.store_id = route.query.store_id

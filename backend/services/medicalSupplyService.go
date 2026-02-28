@@ -806,12 +806,17 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			b.expiration_date,
 			s.name as store_name,
 			s.id as store_id,
-			ms.updated_at as received_at
+			ms.updated_at as received_at,
+			ms.location_id as pavilion_id,
+			COALESCE(p.name, CONCAT('Pabellón ', ms.location_id::text)) as pavilion_name,
+			b.amount as batch_amount,
+			sc.code_supplier as supply_code_supplier
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
 		JOIN supplier_config supc ON b.supplier_id = supc.id
 		JOIN store s ON b.store_id = s.id
+		LEFT JOIN pavilion p ON p.id = ms.location_id
 		WHERE ms.status = ? 
 		AND ms.location_type = ?
 		AND ms.location_id > 0
@@ -833,20 +838,24 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 	for rows.Next() {
 		count++
 		var (
-			id             int
-			qrCode         string
-			status         string
-			supplyName     string
-			supplyCode     int
-			batchID        int
-			supplier       string
-			expirationDate time.Time
-			storeName      string
-			storeID        int
-			receivedAt     time.Time
+			id                 int
+			qrCode             string
+			status             string
+			supplyName         string
+			supplyCode         int
+			batchID            int
+			supplier           string
+			expirationDate     time.Time
+			storeName          string
+			storeID            int
+			receivedAt         time.Time
+			pavilionID         int
+			pavilionName       string
+			batchAmount        int
+			supplyCodeSupplier int
 		)
 
-		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt); err != nil {
+		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt, &pavilionID, &pavilionName, &batchAmount, &supplyCodeSupplier); err != nil {
 			fmt.Printf("⚠️ Error escaneando fila %d: %v\n", count, err)
 			continue
 		}
@@ -902,6 +911,10 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			"received_at":            receivedAt.Format("2006-01-02 15:04:05"),
 			"business_hours_elapsed": businessHoursElapsed,
 			"should_return":          shouldReturn,
+			"pavilion_id":            pavilionID,
+			"pavilion_name":          pavilionName,
+			"batch_amount":           batchAmount,
+			"supply_code_supplier":   supplyCodeSupplier,
 		}
 
 		// Solo agregar si debe retornarse (8 horas laborales o más)
@@ -916,6 +929,115 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 
 	fmt.Printf("📊 Total filas encontradas: %d, Total insumos para retorno: %d\n", count, len(results))
 	return results, nil
+}
+
+// NotifyPavilionForReturn envía un correo electrónico al pabellón donde está el insumo, adjuntando su PDF/QR,
+// para que el personal realice la devolución física a bodega.
+// pdfBytes puede ser nil; en ese caso se envía sólo el cuerpo del correo sin adjunto.
+func (s *MedicalSupplyService) NotifyPavilionForReturn(qrCode string, pdfBytes []byte) ([]string, error) {
+	// 1. Buscar el insumo por QR
+	var supply models.MedicalSupply
+	if err := s.DB.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+		return nil, fmt.Errorf("insumo no encontrado con QR %s", qrCode)
+	}
+
+	// 2. Verificar que está en un pabellón
+	if supply.LocationType != models.SupplyLocationPavilion {
+		return nil, fmt.Errorf("el insumo no se encuentra en un pabellón (ubicación: %s)", supply.LocationType)
+	}
+
+	pavilionID := supply.LocationID
+
+	// 3. Obtener nombre del insumo
+	var supplyCode models.SupplyCode
+	s.DB.Where("code = ?", supply.Code).First(&supplyCode)
+
+	// 4. Obtener datos del lote y bodega
+	var batch models.Batch
+	s.DB.First(&batch, supply.BatchID)
+
+	var store models.Store
+	s.DB.First(&store, batch.StoreID)
+
+	// 5. Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, pavilionID)
+
+	pavilionName := pavilion.Name
+	if pavilionName == "" {
+		pavilionName = fmt.Sprintf("Pabellón %d", pavilionID)
+	}
+
+	// 6. Buscar usuarios del pabellón con email
+	var users []models.User
+	s.DB.Where(
+		"pavilion_id = ? AND role = ? AND is_active = true AND email != ''",
+		pavilionID, models.RolePavilion,
+	).Find(&users)
+
+	if len(users) == 0 {
+		return nil, fmt.Errorf("no se encontraron usuarios con correo en el pabellón '%s' (ID %d)", pavilionName, pavilionID)
+	}
+
+	emails := make([]string, 0, len(users))
+	for _, u := range users {
+		if u.Email != "" {
+			emails = append(emails, u.Email)
+		}
+	}
+	if len(emails) == 0 {
+		return nil, fmt.Errorf("los usuarios del pabellón '%s' no tienen correo registrado", pavilionName)
+	}
+
+	// 7. Preparar datos del correo
+	emailData := struct {
+		PavilionName   string
+		SupplyName     string
+		SupplyCode     string
+		QRCode         string
+		BatchID        int
+		Supplier       string
+		ExpirationDate string
+		ReceivedAt     string
+		StoreName      string
+		Date           string
+	}{
+		PavilionName:   pavilionName,
+		SupplyName:     supplyCode.Name,
+		SupplyCode:     fmt.Sprintf("%d", supply.Code),
+		QRCode:         qrCode,
+		BatchID:        supply.BatchID,
+		Supplier:       batch.Supplier,
+		ExpirationDate: batch.ExpirationDate.Format("02/01/2006"),
+		ReceivedAt:     supply.UpdatedAt.Format("02/01/2006 15:04"),
+		StoreName:      store.Name,
+		Date:           time.Now().Format("02/01/2006 15:04:05"),
+	}
+
+	// 8. Enviar correo
+	subject := fmt.Sprintf("⚠️ Solicitud de Devolución de Insumo — %s", pavilionName)
+	req := mailer.NewRequest(emails, subject)
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo directorio de trabajo: %v", err)
+	}
+	templatePath := filepath.Join(wd, "mailer", "templates", "pavilion_return_request.html")
+
+	if len(pdfBytes) > 0 {
+		filename := fmt.Sprintf("insumo-%s.pdf", strings.ReplaceAll(qrCode, "_", "-"))
+		if err := req.SendMailWithAttachment(templatePath, emailData, filename, pdfBytes); err != nil {
+			return nil, fmt.Errorf("error enviando correo con adjunto: %v", err)
+		}
+	} else {
+		if err := req.SendMailSkipTLS(templatePath, emailData); err != nil {
+			return nil, fmt.Errorf("error enviando correo: %v", err)
+		}
+	}
+
+	fmt.Printf("✉️ Notificación de devolución enviada a %v para insumo QR=%s en pabellón '%s'\n",
+		emails, qrCode, pavilionName)
+	return emails, nil
 }
 
 // ReturnSupplyToStore regresa un insumo a bodega

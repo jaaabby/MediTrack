@@ -471,10 +471,10 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Modal de confirmación de eliminación -->
-  <div v-if="showDeleteModal && userToDelete" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeDeleteModal">
+  
+    <!-- Modal de confirmación de eliminación -->
+    <Teleport to="body">
+      <div v-if="showDeleteModal && userToDelete" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeDeleteModal">
     <div class="w-full max-w-md p-5 border shadow-lg rounded-md bg-white">
       <div class="space-y-4">
         <!-- Header -->
@@ -534,6 +534,8 @@
         </div>
       </div>
     </div>
+  </div>
+  </Teleport>
   </div>
 </template>
 
@@ -787,7 +789,7 @@ const loadPavilions = async () => {
 // Cargar especialidades médicas
 const loadSpecialties = async () => {
   try {
-    const data = await medicalSpecialtyService.getAllSpecialties()
+    const data = await medicalSpecialtyService.getActiveSpecialties()
     medicalSpecialties.value = data || []
   } catch (error) {
     console.error('Error al cargar especialidades:', error)

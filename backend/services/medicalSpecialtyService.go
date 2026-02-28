@@ -37,6 +37,15 @@ func (s *MedicalSpecialtyService) GetAllMedicalSpecialties() ([]models.MedicalSp
 	return specialties, nil
 }
 
+// GetActiveMedicalSpecialties obtiene solo las especialidades médicas activas
+func (s *MedicalSpecialtyService) GetActiveMedicalSpecialties() ([]models.MedicalSpecialty, error) {
+	var specialties []models.MedicalSpecialty
+	if err := s.DB.Where("is_active = ?", true).Order("name ASC").Find(&specialties).Error; err != nil {
+		return nil, err
+	}
+	return specialties, nil
+}
+
 // GetMedicalSpecialtiesPaginated obtiene especialidades médicas con paginación
 func (s *MedicalSpecialtyService) GetMedicalSpecialtiesPaginated(page int, pageSize int, search *string) ([]models.MedicalSpecialty, int64, error) {
 	var specialties []models.MedicalSpecialty
@@ -73,8 +82,20 @@ func (s *MedicalSpecialtyService) UpdateMedicalSpecialty(id int, specialty *mode
 		return nil, err
 	}
 
-	// Actualizar campos omitiendo ID, CreatedAt y UpdatedAt
-	if err := s.DB.Model(&existingSpecialty).Select("Name", "Code", "Description", "IsActive").Updates(specialty).Error; err != nil {
+	// Usar Updates con Select para incluir explícitamente is_active (ya que false es valor zero)
+	if err := s.DB.Model(&existingSpecialty).
+		Select("name", "description", "code", "is_active").
+		Updates(map[string]interface{}{
+			"name":        specialty.Name,
+			"description": specialty.Description,
+			"code":        specialty.Code,
+			"is_active":   specialty.IsActive,
+		}).Error; err != nil {
+		return nil, err
+	}
+
+	// Recargar para obtener los datos actualizados
+	if err := s.DB.First(&existingSpecialty, id).Error; err != nil {
 		return nil, err
 	}
 

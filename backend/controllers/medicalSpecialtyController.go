@@ -99,6 +99,28 @@ func (c *MedicalSpecialtyController) GetAllMedicalSpecialties(ctx *gin.Context) 
 	})
 }
 
+// GetActiveMedicalSpecialties obtiene solo las especialidades médicas activas
+func (c *MedicalSpecialtyController) GetActiveMedicalSpecialties(ctx *gin.Context) {
+	specialties, err := c.specialtyService.GetActiveMedicalSpecialties()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{
+			Success: false,
+			Message: "Error al obtener especialidades médicas activas",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: "Especialidades médicas activas obtenidas",
+		Data: gin.H{
+			"specialties": specialties,
+			"count":       len(specialties),
+		},
+	})
+}
+
 // GetMedicalSpecialtiesPaginated obtiene especialidades médicas con paginación
 func (c *MedicalSpecialtyController) GetMedicalSpecialtiesPaginated(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
@@ -123,11 +145,11 @@ func (c *MedicalSpecialtyController) GetMedicalSpecialtiesPaginated(ctx *gin.Con
 		Success: true,
 		Message: "Especialidades médicas obtenidas",
 		Data: gin.H{
-			"specialties":   specialties,
-			"total":          total,
-			"page":           page,
-			"page_size":      pageSize,
-			"total_pages":    (int(total) + pageSize - 1) / pageSize,
+			"specialties": specialties,
+			"total":       total,
+			"page":        page,
+			"page_size":   pageSize,
+			"total_pages": (int(total) + pageSize - 1) / pageSize,
 		},
 	})
 }
@@ -228,4 +250,3 @@ func (c *MedicalSpecialtyController) SearchMedicalSpecialties(ctx *gin.Context) 
 		},
 	})
 }
-
