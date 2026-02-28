@@ -29,10 +29,38 @@ class SurgeryTypicalSupplyService {
 
   async getAllTypicalSupplies() {
     try {
+      console.log('🔸 Llamando a GET /surgery-typical-supplies/')
       const response = await this.api.get('/surgery-typical-supplies/')
-      return response.data.data?.typical_supplies || response.data.typical_supplies || []
+      console.log('🔸 Respuesta completa:', response)
+      console.log('🔸 response.data:', response.data)
+      console.log('🔸 response.data.data:', response.data.data)
+      
+      // Intentar múltiples estructuras de respuesta
+      let supplies = null
+      if (response.data.data && response.data.data.typical_supplies) {
+        supplies = response.data.data.typical_supplies
+        console.log('✅ Datos encontrados en response.data.data.typical_supplies')
+      } else if (response.data.typical_supplies) {
+        supplies = response.data.typical_supplies
+        console.log('✅ Datos encontrados en response.data.typical_supplies')
+      } else if (Array.isArray(response.data)) {
+        supplies = response.data
+        console.log('✅ Datos encontrados en response.data (array directo)')
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        supplies = response.data.data
+        console.log('✅ Datos encontrados en response.data.data (array)')
+      } else {
+        console.warn('⚠️ Estructura de respuesta no reconocida, devolviendo array vacío')
+        supplies = []
+      }
+      
+      console.log('🔸 Total de insumos típicos:', supplies ? supplies.length : 0)
+      return supplies || []
     } catch (error) {
-      console.error('Error en getAllTypicalSupplies:', error)
+      console.error('❌ Error en getAllTypicalSupplies:', error)
+      console.error('❌ Error response:', error.response)
+      console.error('❌ Error status:', error.response?.status)
+      console.error('❌ Error data:', error.response?.data)
       throw error
     }
   }

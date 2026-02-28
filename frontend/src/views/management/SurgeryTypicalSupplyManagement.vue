@@ -20,14 +20,43 @@
     <!-- Filtros -->
     <div class="card">
       <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
+        <div class="flex-1 relative">
           <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Cirugía</label>
-          <select v-model="selectedSurgeryId" @change="filterBySurgery" class="form-select">
-            <option value="">Todas las cirugías</option>
-            <option v-for="surgery in surgeries" :key="surgery.id" :value="surgery.id">
+          <input
+            type="text"
+            v-model="surgerySearch"
+            placeholder="Buscar cirugía..."
+            class="form-input w-full"
+            @input="onSurgerySearch"
+            @focus="showSurgeryOptions = true"
+            @blur="hideSurgeryOptions"
+            autocomplete="off"
+          />
+          
+          <!-- Dropdown de opciones de cirugía -->
+          <div v-if="showSurgeryOptions && filteredSurgeries.length > 0"
+            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            <button
+              v-for="surgery in filteredSurgeries"
+              :key="surgery.id"
+              @mousedown.prevent="selectSurgery(surgery)"
+              class="w-full text-left px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-b-0"
+            >
               {{ surgery.name }}
-            </option>
-          </select>
+            </button>
+          </div>
+          
+          <!-- Botón para limpiar cirugía seleccionada -->
+          <button
+            v-if="surgerySearch"
+            @click="clearSurgeryFilter"
+            class="absolute right-2 top-9 text-gray-400 hover:text-gray-600"
+            type="button"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
         <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Buscar por Insumo</label>
@@ -42,7 +71,11 @@
           </div>
         </div>
         <div class="flex items-end">
-          <button class="btn-secondary px-4 py-2 h-10" @click="clearFilters" :disabled="!selectedSurgeryId && !searchTerm">
+          <button 
+            class="btn-secondary px-4 py-2 h-10" 
+            @click="clearFilters" 
+            :disabled="!selectedSurgeryId && !searchTerm && !surgerySearch && sortField === 'none'"
+          >
             Limpiar Filtros
           </button>
         </div>
@@ -74,27 +107,107 @@
     </div>
 
     <!-- Tabla de insumos típicos -->
-    <div v-else class="card overflow-hidden">
+    <div v-if="!loading && !error && filteredTypicalSupplies.length > 0" class="card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Cirugía
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                <div class="flex items-center justify-between">
+                  <span>Cirugía</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('surgery', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'surgery' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('surgery', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'surgery' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Código Insumo
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                <div class="flex items-center justify-between">
+                  <span>Código Insumo</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('supply_code', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'supply_code' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('supply_code', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'supply_code' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre Insumo
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                <div class="flex items-center justify-between">
+                  <span>Nombre Insumo</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('supply_name', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'supply_name' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('supply_name', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'supply_name' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Cantidad Típica
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                <div class="flex items-center justify-between">
+                  <span>Cantidad Típica</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('typical_quantity', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'typical_quantity' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('typical_quantity', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'typical_quantity' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Requerido
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                <div class="flex items-center justify-between">
+                  <span>Requerido</span>
+                  <div class="flex flex-col ml-2">
+                    <button @click="sortBy('is_required', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'is_required' && sortDirection === 'asc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button @click="sortBy('is_required', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
+                      :class="{ 'text-blue-600': sortField === 'is_required' && sortDirection === 'desc' }">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                 Notas
               </th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
@@ -103,7 +216,7 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="supply in filteredTypicalSupplies" :key="supply.id" 
+            <tr v-for="supply in paginatedTypicalSupplies" :key="supply.id" 
               class="hover:bg-gray-50 transition-colors duration-150">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ getSurgeryName(supply.surgery_id) }}</div>
@@ -150,6 +263,34 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      
+      <!-- Paginación -->
+      <div v-if="filteredTypicalSupplies.length > itemsPerPage" class="px-6 py-4 border-t border-gray-200">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="text-sm text-gray-700">
+            Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ filteredTypicalSupplies.length }} asociaciones
+          </div>
+          <div class="flex items-center gap-2">
+            <button 
+              class="btn-secondary px-3 py-2 text-sm min-w-[80px]" 
+              :disabled="currentPage === 1"
+              @click="currentPage--"
+            >
+              Anterior
+            </button>
+            <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[100px] text-center">
+              Página {{ currentPage }} de {{ totalPages }}
+            </span>
+            <button 
+              class="btn-secondary px-3 py-2 text-sm min-w-[80px]" 
+              :disabled="currentPage === totalPages"
+              @click="currentPage++"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -323,12 +464,19 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Cirugía <span class="text-red-500">*</span>
                 </label>
-                <select v-model="typicalSupplyForm.surgery_id" class="form-select" required :disabled="isEditing">
+                <select 
+                  v-model="typicalSupplyForm.surgery_id" 
+                  class="form-select" 
+                  :class="{ 'border-red-500': formErrors.surgery_id }"
+                  :disabled="isEditing"
+                  @change="formErrors.surgery_id = ''"
+                >
                   <option value="">Seleccione una cirugía</option>
                   <option v-for="surgery in surgeries" :key="surgery.id" :value="surgery.id">
                     {{ surgery.name }}
                   </option>
                 </select>
+                <p v-if="formErrors.surgery_id" class="mt-1 text-sm text-red-600">{{ formErrors.surgery_id }}</p>
               </div>
 
               <div>
@@ -338,16 +486,18 @@
                 <button
                   type="button"
                   @click="openSupplySelectionModal"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                  class="w-full px-4 py-2 border rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                  :class="formErrors.supplies ? 'border-red-500' : 'border-gray-300'"
                   :disabled="isEditing || !typicalSupplyForm.surgery_id"
                 >
                   <span v-if="selectedSupplies.length === 0">Seleccionar Insumos</span>
                   <span v-else>{{ selectedSupplies.length }} insumo(s) seleccionado(s)</span>
                 </button>
+                <p v-if="formErrors.supplies" class="text-sm text-red-600 mb-2">{{ formErrors.supplies }}</p>
                 <p v-if="!typicalSupplyForm.surgery_id" class="mt-1 text-xs text-gray-500 mb-3">
                   Primero seleccione una cirugía
                 </p>
-                <p v-else-if="selectedSupplies.length === 0" class="mt-1 text-xs text-gray-500 mb-3">
+                <p v-else-if="selectedSupplies.length === 0 && !formErrors.supplies" class="mt-1 text-xs text-gray-500 mb-3">
                   Haga clic para seleccionar uno o más insumos
                 </p>
 
@@ -387,10 +537,12 @@
                           type="number" 
                           min="1" 
                           class="form-input" 
-                          placeholder="Ej: 5" 
-                          required
+                          :class="{ 'border-red-500': formErrors.supply_quantities[supply.code] }"
+                          placeholder="Ej: 5"
+                          @input="delete formErrors.supply_quantities[supply.code]"
                         />
-                        <p class="mt-1 text-xs text-gray-500">Cantidad típica para este insumo</p>
+                        <p v-if="formErrors.supply_quantities[supply.code]" class="mt-1 text-sm text-red-600">{{ formErrors.supply_quantities[supply.code] }}</p>
+                        <p v-else class="mt-1 text-xs text-gray-500">Cantidad típica para este insumo</p>
                       </div>
 
                       <!-- Insumo Requerido -->
@@ -434,7 +586,7 @@
                   <span v-if="saving">Guardando...</span>
                   <span v-else>Crear y Agregar Más</span>
                 </button>
-                <button type="submit" :disabled="saving" class="btn-primary">
+                <button type="button" @click="saveTypicalSupply" :disabled="saving" class="btn-primary">
                   <span v-if="saving">Guardando...</span>
                   <span v-else>{{ isEditing ? 'Actualizar' : 'Crear' }}</span>
                 </button>
@@ -469,6 +621,25 @@ const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
 
+// Estado de errores de validación
+const formErrors = ref({
+  surgery_id: '',
+  supplies: '',
+  supply_quantities: {}
+})
+
+// Estados para paginación
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+// Estados para ordenamiento
+const sortField = ref('none')
+const sortDirection = ref('asc')
+
+// Estados para autocomplete de cirugías
+const surgerySearch = ref('')
+const showSurgeryOptions = ref(false)
+
 // Estados para el modal de selección de insumos
 const showSupplySelectionModal = ref(false)
 const loadingSupplies = ref(false)
@@ -487,6 +658,31 @@ const typicalSupplyForm = ref({
 
 let searchTimeout = null
 
+// Función auxiliar para normalizar texto (sin tildes ni mayúsculas)
+const normalizeText = (text) => {
+  if (!text) return ''
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+// Computed para cirugías filtradas (autocomplete)
+const filteredSurgeries = computed(() => {
+  if (!surgerySearch.value.trim()) {
+    return surgeries.value.slice(0, 10) // Mostrar solo primeras 10 si no hay búsqueda
+  }
+  
+  const term = normalizeText(surgerySearch.value.trim())
+  return surgeries.value
+    .filter(surgery => {
+      const name = normalizeText(surgery.name || '')
+      const id = String(surgery.id || '')
+      return name.includes(term) || id.includes(term)
+    })
+    .slice(0, 10) // Limitar a 10 resultados
+})
+
 // Computed para filtrar insumos
 const filteredTypicalSupplies = computed(() => {
   let filtered = [...typicalSupplies.value]
@@ -496,16 +692,68 @@ const filteredTypicalSupplies = computed(() => {
     filtered = filtered.filter(s => s.surgery_id === selectedSurgeryId.value)
   }
 
-  // Filtrar por búsqueda
+  // Filtrar por búsqueda (sin distinguir mayúsculas ni tildes)
   if (searchTerm.value.trim()) {
-    const term = searchTerm.value.toLowerCase().trim()
+    const term = normalizeText(searchTerm.value.trim())
     filtered = filtered.filter(s => {
-      const supplyName = getSupplyName(s.supply_code).toLowerCase()
-      return supplyName.includes(term) || String(s.supply_code).includes(term)
+      const supplyName = normalizeText(getSupplyName(s.supply_code))
+      const supplyCode = String(s.supply_code)
+      return supplyName.includes(term) || supplyCode.includes(term)
+    })
+  }
+
+  // Ordenamiento
+  if (sortField.value && sortField.value !== 'none') {
+    filtered.sort((a, b) => {
+      let aVal, bVal
+      
+      switch (sortField.value) {
+        case 'surgery':
+          aVal = getSurgeryName(a.surgery_id).toLowerCase()
+          bVal = getSurgeryName(b.surgery_id).toLowerCase()
+          break
+        case 'supply_code':
+          aVal = a.supply_code
+          bVal = b.supply_code
+          break
+        case 'supply_name':
+          aVal = getSupplyName(a.supply_code).toLowerCase()
+          bVal = getSupplyName(b.supply_code).toLowerCase()
+          break
+        case 'typical_quantity':
+          aVal = a.typical_quantity || 0
+          bVal = b.typical_quantity || 0
+          break
+        case 'is_required':
+          aVal = a.is_required ? 1 : 0
+          bVal = b.is_required ? 1 : 0
+          break
+        default:
+          return 0
+      }
+      
+      let result = 0
+      if (typeof aVal === 'string') {
+        result = aVal.localeCompare(bVal)
+      } else {
+        result = aVal - bVal
+      }
+      
+      return sortDirection.value === 'asc' ? result : -result
     })
   }
 
   return filtered
+})
+
+// Computed properties para paginación
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredTypicalSupplies.value.length / itemsPerPage)))
+
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, filteredTypicalSupplies.value.length))
+
+const paginatedTypicalSupplies = computed(() => {
+  return filteredTypicalSupplies.value.slice(startIndex.value, endIndex.value)
 })
 
 // Computed para filtrar y ordenar insumos en el modal de selección
@@ -553,12 +801,30 @@ const loadTypicalSupplies = async () => {
   loading.value = true
   error.value = null
   try {
-    // Usar el nuevo endpoint optimizado que obtiene todos los insumos típicos de una vez
+    console.log('🔄 Cargando insumos típicos...')
     const allSupplies = await surgeryTypicalSupplyService.getAllTypicalSupplies()
-    typicalSupplies.value = allSupplies
+    console.log('✅ Insumos típicos cargados:', allSupplies)
+    console.log('📊 Cantidad de insumos:', allSupplies ? allSupplies.length : 0)
+    
+    // Asegurar que siempre sea un array
+    typicalSupplies.value = Array.isArray(allSupplies) ? allSupplies : []
+    
+    if (typicalSupplies.value.length === 0) {
+      console.warn('⚠️ No se encontraron insumos típicos en la base de datos')
+    }
   } catch (err) {
-    error.value = err.message || 'Error al cargar insumos típicos'
-    console.error('Error loading typical supplies:', err)
+    console.error('❌ Error detallado al cargar insumos típicos:', err)
+    console.error('❌ Código de error:', err.response?.status)
+    console.error('❌ Mensaje del servidor:', err.response?.data)
+    
+    // Mostrar mensaje de error más descriptivo
+    if (err.response?.status === 404) {
+      error.value = 'Endpoint no encontrado. Verifique que el backend esté ejecutándose en el puerto correcto.'
+    } else if (err.response?.status === 401 || err.response?.status === 403) {
+      error.value = 'No tiene permisos para acceder a este recurso. Por favor, inicie sesión nuevamente.'
+    } else {
+      error.value = err.message || 'Error al cargar insumos típicos'
+    }
   } finally {
     loading.value = false
   }
@@ -585,17 +851,52 @@ const loadSupplyCodes = async () => {
 const handleSearch = () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
-    // La búsqueda se hace en el computed
+    currentPage.value = 1 // Resetear a la primera página al buscar
   }, 300)
 }
 
 const filterBySurgery = () => {
-  // El filtro se aplica en el computed
+  currentPage.value = 1 // Resetear a la primera página al filtrar
 }
 
 const clearFilters = () => {
   selectedSurgeryId.value = ''
   searchTerm.value = ''
+  surgerySearch.value = ''
+  sortField.value = 'none'
+  sortDirection.value = 'asc'
+  currentPage.value = 1
+}
+
+const sortBy = (field, direction) => {
+  sortField.value = field
+  sortDirection.value = direction
+  currentPage.value = 1
+}
+
+// Funciones para autocomplete de cirugías
+const onSurgerySearch = () => {
+  showSurgeryOptions.value = true
+  selectedSurgeryId.value = '' // Limpiar selección cuando se escribe
+}
+
+const selectSurgery = (surgery) => {
+  selectedSurgeryId.value = surgery.id
+  surgerySearch.value = surgery.name
+  showSurgeryOptions.value = false
+  currentPage.value = 1
+}
+
+const hideSurgeryOptions = () => {
+  setTimeout(() => {
+    showSurgeryOptions.value = false
+  }, 200)
+}
+
+const clearSurgeryFilter = () => {
+  selectedSurgeryId.value = ''
+  surgerySearch.value = ''
+  currentPage.value = 1
 }
 
 const openCreateModal = () => {
@@ -613,6 +914,13 @@ const resetForm = () => {
     notes: ''
   }
   selectedSupplies.value = []
+  
+  // Limpiar errores
+  formErrors.value = {
+    surgery_id: '',
+    supplies: '',
+    supply_quantities: {}
+  }
 }
 
 const openSupplySelectionModal = () => {
@@ -635,6 +943,9 @@ const closeSupplySelectionModal = () => {
 }
 
 const confirmSupplySelection = () => {
+  // Limpiar error de insumos al seleccionar
+  formErrors.value.supplies = ''
+  
   // Convertir códigos seleccionados a objetos de insumos con configuración inicial
   const newSelectedCodes = tempSelectedSupplyCodes.value.filter(code => 
     !selectedSupplies.value.some(s => s.code === code)
@@ -715,29 +1026,49 @@ const closeModal = () => {
 }
 
 const validateForm = () => {
+  // Resetear errores
+  formErrors.value = {
+    surgery_id: '',
+    supplies: '',
+    supply_quantities: {}
+  }
+  
+  let hasErrors = false
+  const errorMessages = []
+  
+  // Validar cirugía
   if (!typicalSupplyForm.value.surgery_id) {
-    return { valid: false, message: 'Debe seleccionar una cirugía' }
+    formErrors.value.surgery_id = 'La cirugía es obligatoria.'
+    errorMessages.push('Debe seleccionar una cirugía')
+    hasErrors = true
   }
-
+  
+  // Validar que haya al menos un insumo seleccionado
   if (selectedSupplies.value.length === 0) {
-    return { valid: false, message: 'Debe seleccionar al menos un insumo' }
+    formErrors.value.supplies = 'Debe seleccionar al menos un insumo.'
+    errorMessages.push('Debe seleccionar al menos un insumo')
+    hasErrors = true
   }
-
+  
   // Validar que cada insumo tenga una cantidad típica válida
   for (const supply of selectedSupplies.value) {
     if (!supply.typical_quantity || supply.typical_quantity < 1) {
-      return { valid: false, message: `El insumo "${supply.name}" debe tener una cantidad típica de al menos 1` }
+      formErrors.value.supply_quantities[supply.code] = 'La cantidad debe ser mayor a 0.'
+      errorMessages.push(`El insumo "${supply.name}" debe tener una cantidad típica de al menos 1`)
+      hasErrors = true
     }
   }
-
-  return { valid: true }
+  
+  return { valid: !hasErrors, errors: errorMessages }
 }
 
 const saveTypicalSupply = async (closeAfterSave = true) => {
   // Validaciones
   const validation = validateForm()
   if (!validation.valid) {
-    showWarning(validation.message)
+    // Mostrar todos los errores en una notificación
+    const errorMessage = validation.errors.join('\n• ')
+    showError('Errores en el formulario:\n• ' + errorMessage)
     return
   }
 
@@ -863,6 +1194,14 @@ onMounted(async () => {
     loadSupplyCodes(),
     loadTypicalSupplies()
   ])
+  
+  // Inicializar surgerySearch si hay una cirugía seleccionada
+  if (selectedSurgeryId.value) {
+    const surgery = surgeries.value.find(s => s.id === selectedSurgeryId.value)
+    if (surgery) {
+      surgerySearch.value = surgery.name
+    }
+  }
 })
 </script>
 
