@@ -526,7 +526,11 @@ const confirmDelete = async (supplyCode) => {
     showSuccess('El código de insumo ha sido eliminado exitosamente.')
     await loadSupplyCodes()
   } catch (err) {
-    const errorMessage = err.response?.data?.error || err.message || 'Error al eliminar el código de insumo'
+    const rawError = err.response?.data?.error || err.message || ''
+    const isForeignKeyViolation = rawError.includes('23503') || rawError.toLowerCase().includes('foreign key') || rawError.includes('llave foránea')
+    const errorMessage = isForeignKeyViolation
+      ? `No se puede eliminar el código "${supplyCode.code} - ${supplyCode.name}" porque está siendo utilizado por insumos médicos registrados en el sistema. Elimina o reasigna esos insumos antes de continuar.`
+      : rawError || 'Error al eliminar el código de insumo'
     showError(errorMessage)
   }
 }

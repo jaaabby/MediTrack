@@ -9,15 +9,6 @@
           <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedConfigs.length }} configuraciones</p>
         </div>
         <div class="flex gap-2">
-          <button 
-            @click="loadConfigs" 
-            :disabled="loading"
-            class="btn-secondary flex items-center justify-center"
-            title="Recargar configuraciones">
-            <svg class="h-5 w-5" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
           <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
