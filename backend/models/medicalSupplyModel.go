@@ -21,7 +21,7 @@ type MedicalSupply struct {
 // Constantes para los estados de insumos médicos
 const (
 	StatusAvailable         = "disponible"
-	StatusPendingPickup     = "pendiente_retiro"      // Pendiente de retiro físico de bodega
+	StatusPendingPickup     = "pendiente_retiro" // Pendiente de retiro físico de bodega
 	StatusEnRouteToPavilion = "en_camino_a_pabellon"
 	StatusReceived          = "recepcionado"
 	StatusConsumed          = "consumido"

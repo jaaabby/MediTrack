@@ -898,7 +898,7 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 					storeSummary = models.StoreInventorySummary{
 						StoreID:             originalStoreID,
 						BatchID:             batch.ID,
-					SupplyCode:          batch.SupplyCode,
+						SupplyCode:          batch.SupplyCode,
 						SurgeryID:           batch.SurgeryID,
 						OriginalAmount:      int(realCount) + 1, // +1 porque vamos a transferir uno
 						CurrentInStore:      int(realCount),     // Stock actual sin contar el que se transfiere
