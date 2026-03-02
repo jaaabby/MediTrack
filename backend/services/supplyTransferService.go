@@ -107,7 +107,7 @@ func (s *SupplyTransferService) TransferToPavilion(
 					storeSummary = models.StoreInventorySummary{
 						StoreID:             supply.LocationID,
 						BatchID:             batch.ID,
-						SupplyCode:          supply.Code,
+						SupplyCode:          batch.SupplyCode,
 						SurgeryID:           batch.SurgeryID,
 						OriginalAmount:      int(realCount) + 1, // +1 porque vamos a transferir uno
 						CurrentInStore:      int(realCount),     // Stock actual sin contar el que se transfiere
@@ -248,6 +248,11 @@ func (s *SupplyTransferService) ConfirmReception(
 		}
 
 		// 5. Incrementar contador de stock disponible en pabellón
+		// Cargar el lote para obtener supply_code
+		var supplyBatch models.Batch
+		if err := tx.First(&supplyBatch, supply.BatchID).Error; err != nil {
+			return fmt.Errorf("error al obtener lote del insumo: %v", err)
+		}
 		var pavilionSummary models.PavilionInventorySummary
 		if err := tx.Where("pavilion_id = ? AND batch_id = ?", transfer.DestinationID, supply.BatchID).
 			First(&pavilionSummary).Error; err != nil {
@@ -256,7 +261,7 @@ func (s *SupplyTransferService) ConfirmReception(
 				pavilionSummary = models.PavilionInventorySummary{
 					PavilionID:       transfer.DestinationID,
 					BatchID:          supply.BatchID,
-					SupplyCode:       supply.Code,
+					SupplyCode:       supplyBatch.SupplyCode,
 					TotalReceived:    1,
 					CurrentAvailable: 1,
 					LastReceivedDate: &now,
@@ -534,8 +539,8 @@ func (s *SupplyTransferService) GetTransferByCode(transferCode string) (*models.
 			END as destination_name,
 			mc.name as medical_center_name`).
 		Joins("LEFT JOIN medical_supply ms ON st.medical_supply_id = ms.id").
-		Joins("LEFT JOIN supply_code sc ON ms.code = sc.code").
 		Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
+		Joins("LEFT JOIN supply_code sc ON b.supply_code = sc.code").
 		Joins("LEFT JOIN store s ON st.origin_type = 'store' AND st.origin_id = s.id").
 		Joins("LEFT JOIN pavilion p ON st.origin_type = 'pavilion' AND st.origin_id = p.id").
 		Joins("LEFT JOIN store s2 ON st.destination_type = 'store' AND st.destination_id = s2.id").
@@ -580,8 +585,8 @@ func (s *SupplyTransferService) GetTransfersByFilters(
 				WHEN st.destination_type = 'pavilion' THEN p2.name
 			END as destination_name`).
 		Joins("LEFT JOIN medical_supply ms ON st.medical_supply_id = ms.id").
-		Joins("LEFT JOIN supply_code sc ON ms.code = sc.code").
 		Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
+		Joins("LEFT JOIN supply_code sc ON b.supply_code = sc.code").
 		Joins("LEFT JOIN store s ON st.origin_type = 'store' AND st.origin_id = s.id").
 		Joins("LEFT JOIN pavilion p ON st.origin_type = 'pavilion' AND st.origin_id = p.id").
 		Joins("LEFT JOIN store s2 ON st.destination_type = 'store' AND st.destination_id = s2.id").

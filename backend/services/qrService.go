@@ -213,7 +213,10 @@ func (s *QRService) logScanEvent(qrCode string, context *ScanContext, qrInfo *QR
 
 		if qrInfo.SupplyInfo != nil {
 			event.SupplyID = &qrInfo.SupplyInfo.ID
-			event.SupplyCode = &qrInfo.SupplyInfo.Code
+			if qrInfo.SupplyInfo.BatchInfo != nil {
+				supplyCodeVal := qrInfo.SupplyInfo.BatchInfo.SupplyCode
+				event.SupplyCode = &supplyCodeVal
+			}
 			if qrInfo.SupplyCode != nil {
 				event.SupplyName = &qrInfo.SupplyCode.Name
 			}
@@ -599,9 +602,9 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 	}
 
 	// Obtener código de insumo
-	if result.SupplyInfo != nil && result.SupplyInfo.Code > 0 {
+	if result.SupplyInfo != nil && result.SupplyInfo.BatchInfo != nil && result.SupplyInfo.BatchInfo.SupplyCode > 0 {
 		var supplyCode models.SupplyCode
-		if err := s.DB.First(&supplyCode, result.SupplyInfo.Code).Error; err == nil {
+		if err := s.DB.First(&supplyCode, result.SupplyInfo.BatchInfo.SupplyCode).Error; err == nil {
 			result.SupplyCode = &supplyCode
 		}
 	}
@@ -753,7 +756,7 @@ func (s *QRService) GetMedicalSupplyWithDetails(supplyID int) (*MedicalSupplyWit
 
 	// Obtener información del código de insumo
 	var supplyCode models.SupplyCode
-	if err := s.DB.First(&supplyCode, supply.Code).Error; err == nil {
+	if err := s.DB.First(&supplyCode, batch.SupplyCode).Error; err == nil {
 		result.SupplyCode = &supplyCode
 	}
 
@@ -855,11 +858,12 @@ func (s *QRService) GetAvailableQRsForSupplyCode(supplyCode int, limit int) ([]m
 		Select("qr_code").
 		Where("status NOT IN (?)", []string{models.AssignmentStatusConsumed, models.AssignmentStatusReturned})
 
-	query := s.DB.Where("code = ?", supplyCode).
-		Where("status != ?", models.StatusConsumed).
-		Where("qr_code NOT IN (?)", assignedSubQuery).
+	query := s.DB.Joins("JOIN batch b ON medical_supply.batch_id = b.id").
+		Where("b.supply_code = ?", supplyCode).
+		Where("medical_supply.status != ?", models.StatusConsumed).
+		Where("medical_supply.qr_code NOT IN (?)", assignedSubQuery).
 		Preload("Batch").
-		Order("created_at ASC")
+		Order("medical_supply.created_at ASC")
 
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -913,9 +917,13 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 
 	if qrInfo.SupplyInfo != nil {
 		// Crear una copia del SupplyInfo con la información del batch anidada
+		var supplyCodeInt int
+		if qrInfo.SupplyInfo.BatchInfo != nil {
+			supplyCodeInt = qrInfo.SupplyInfo.BatchInfo.SupplyCode
+		}
 		supplyInfoMap := map[string]interface{}{
 			"ID":           qrInfo.SupplyInfo.ID,
-			"Code":         qrInfo.SupplyInfo.Code,
+			"Code":         supplyCodeInt,
 			"BatchID":      qrInfo.SupplyInfo.BatchID,
 			"QRCode":       qrInfo.SupplyInfo.QRCode,
 			"Status":       qrInfo.SupplyInfo.Status, // ✅ CAMPO CRÍTICO AGREGADO
@@ -1162,7 +1170,7 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 					storeSummary = models.StoreInventorySummary{
 						StoreID:             storeID,
 						BatchID:             supply.BatchID,
-						SupplyCode:          supply.Code,
+						SupplyCode:          batch.SupplyCode,
 						SurgeryID:           batch.SurgeryID,
 						OriginalAmount:      batch.Amount,
 						CurrentInStore:      batch.Amount - 1,
@@ -1575,6 +1583,11 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 		}
 
 		// 6. Actualizar inventario según el tipo de destino
+		// Cargar el lote para obtener supply_code
+		var receiptBatch models.Batch
+		if err := tx.First(&receiptBatch, supply.BatchID).Error; err != nil {
+			return fmt.Errorf("error al obtener lote para inventario: %v", err)
+		}
 		if transfer.DestinationType == models.TransferLocationPavilion {
 			// Incrementar stock en pabellón
 			var pavilionSummary models.PavilionInventorySummary
@@ -1585,7 +1598,7 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 					pavilionSummary = models.PavilionInventorySummary{
 						PavilionID:       transfer.DestinationID,
 						BatchID:          supply.BatchID,
-						SupplyCode:       supply.Code,
+						SupplyCode:       receiptBatch.SupplyCode,
 						TotalReceived:    1,
 						CurrentAvailable: 1,
 						LastReceivedDate: &now,
@@ -1622,7 +1635,7 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 					storeSummary = models.StoreInventorySummary{
 						StoreID:          transfer.DestinationID,
 						BatchID:          supply.BatchID,
-						SupplyCode:       supply.Code,
+						SupplyCode:       receiptBatch.SupplyCode,
 						OriginalAmount:   batch.Amount,
 						CurrentInStore:   1,
 						TotalReturnedIn:  1,
@@ -1730,6 +1743,10 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 								}
 
 								// Actualizar inventario del pabellón
+								var otherBatch models.Batch
+								if err := tx.First(&otherBatch, otherSupply.BatchID).Error; err != nil {
+									continue
+								}
 								var otherPavilionSummary models.PavilionInventorySummary
 								if err := tx.Where("pavilion_id = ? AND batch_id = ?", transfer.DestinationID, otherSupply.BatchID).
 									First(&otherPavilionSummary).Error; err != nil {
@@ -1738,7 +1755,7 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 										otherPavilionSummary = models.PavilionInventorySummary{
 											PavilionID:       transfer.DestinationID,
 											BatchID:          otherSupply.BatchID,
-											SupplyCode:       otherSupply.Code,
+											SupplyCode:       otherBatch.SupplyCode,
 											TotalReceived:    1,
 											CurrentAvailable: 1,
 											LastReceivedDate: &now,
@@ -1839,6 +1856,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 	// Variables para guardar información del batch fuera de la transacción
 	var batchID int
 	var previousAmount int
+	var newAmount int
 
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		// Buscar el insumo por QR
@@ -1887,7 +1905,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 		}
 
 		// Actualizar cantidad del lote (restar 1)
-		newAmount := batch.Amount - 1
+		newAmount = batch.Amount - 1
 		if err := tx.Model(&batch).Update("amount", newAmount).Error; err != nil {
 			return fmt.Errorf("error actualizando cantidad del lote: %v", err)
 		}
@@ -1911,7 +1929,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 					storeSummary = models.StoreInventorySummary{
 						StoreID:              supply.LocationID,
 						BatchID:              supply.BatchID,
-						SupplyCode:           supply.Code,
+						SupplyCode:           batch.SupplyCode,
 						SurgeryID:            batch.SurgeryID,    // Obtener del batch
 						OriginalAmount:       int(realCount) + 1, // Cantidad antes del consumo (real + 1 consumido)
 						CurrentInStore:       int(realCount),     // Stock actual en bodega (sin el que se consumió)
@@ -1943,7 +1961,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 					pavilionSummary = models.PavilionInventorySummary{
 						PavilionID:       supply.LocationID,
 						BatchID:          supply.BatchID,
-						SupplyCode:       supply.Code,
+						SupplyCode:       batch.SupplyCode,
 						TotalReceived:    1,
 						CurrentAvailable: 0, // Ya no hay disponible
 						TotalConsumed:    1,
@@ -2016,14 +2034,7 @@ func (s *QRService) ConsumeSupplyByQR(request QRConsumptionRequest) (*QRConsumpt
 	if err := s.DB.First(&updatedBatch, batchID).Error; err == nil {
 		// Obtener el stock crítico del tipo de insumo
 		var supplyCode models.SupplyCode
-		if err := s.DB.Joins("JOIN medical_supply ON medical_supply.code = supply_code.code").
-			Where("medical_supply.batch_id = ?", batchID).
-			First(&supplyCode).Error; err == nil {
-
-			// Verificar si el stock está en nivel crítico
-			// Enviar alerta cuando el stock llega al nivel crítico o por debajo
-			newAmount := updatedBatch.Amount
-
+		if err := s.DB.Where("code = ?", updatedBatch.SupplyCode).First(&supplyCode).Error; err == nil {
 			// Solo enviar alerta si:
 			// 1. El nuevo stock está en o por debajo del crítico
 			// 2. El stock anterior era mayor al crítico (para evitar alertas repetidas cuando ya está en crítico)
@@ -2212,7 +2223,7 @@ func (s *QRService) getSupplyWithBatchInfo(qrCode string) (map[string]interface{
 	query := `
 		SELECT 
 			ms.id as supply_id,
-			ms.code as supply_code,
+			b.supply_code as supply_code,
 			ms.qr_code,
 			ms.batch_id,
 			sc.name as supply_name,
@@ -2223,8 +2234,8 @@ func (s *QRService) getSupplyWithBatchInfo(qrCode string) (map[string]interface{
 			st.name as store_name,
 			st.type as store_type
 		FROM medical_supply ms
-		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
+		JOIN supply_code sc ON b.supply_code = sc.code
 		JOIN store st ON b.store_id = st.id
 		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE ms.qr_code = ?

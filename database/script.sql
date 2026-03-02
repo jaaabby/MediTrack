@@ -423,70 +423,70 @@ ON CONFLICT (supplier_name) DO NOTHING;
 -- LOTES - AMPLIADO Y DIVERSIFICADO
 -- ============================================================================
 -- Lotes para Bodega Central (ID 1)
-INSERT INTO batch (id, expiration_date, amount, supplier_id, store_id, qr_code, surgery_id, location_type, location_id) VALUES
+INSERT INTO batch (id, expiration_date, amount, supplier_id, store_id, supply_code, qr_code, surgery_id, location_type, location_id) VALUES
 -- Insumos generales
-(1, '2026-12-31', 150, 1, 1, 'BATCH_1001_001', NULL, 'store', 1),
-(2, '2026-01-15', 200, 1, 1, 'BATCH_1002_001', NULL, 'store', 1), -- VENCIDO (hace 1 mes)
-(3, '2026-03-10', 120, 2, 1, 'BATCH_1003_001', NULL, 'store', 1), -- PRÓXIMO A VENCIMIENTO (23 días)
-(4, '2026-08-30', 150, 2, 1, 'BATCH_1004_001', NULL, 'store', 1),
-(5, '2027-06-15', 300, 3, 1, 'BATCH_1005_001', NULL, 'store', 1),
-(6, '2026-11-20', 10, 4, 1, 'BATCH_1006_001', NULL, 'store', 1), -- STOCK BAJO (10 unidades, transferir 9)
-(7, '2027-01-10', 10, 1, 1, 'BATCH_1007_001', NULL, 'store', 1), -- STOCK BAJO (10 unidades, transferir 8)
-(8, '2026-09-25', 100, 2, 1, 'BATCH_1008_001', NULL, 'store', 1),
+(1, '2026-12-31', 150, 1, 1, 1001, 'BATCH_1001_001', NULL, 'store', 1),
+(2, '2026-01-15', 200, 1, 1, 1002, 'BATCH_1002_001', NULL, 'store', 1), -- VENCIDO (hace 1 mes)
+(3, '2026-03-10', 120, 2, 1, 1003, 'BATCH_1003_001', NULL, 'store', 1), -- PRÓXIMO A VENCIMIENTO (23 días)
+(4, '2026-08-30', 150, 2, 1, 1004, 'BATCH_1004_001', NULL, 'store', 1),
+(5, '2027-06-15', 300, 3, 1, 1005, 'BATCH_1005_001', NULL, 'store', 1),
+(6, '2026-11-20', 10, 4, 1, 1006, 'BATCH_1006_001', NULL, 'store', 1), -- STOCK BAJO (10 unidades, transferir 9)
+(7, '2027-01-10', 10, 1, 1, 1007, 'BATCH_1007_001', NULL, 'store', 1), -- STOCK BAJO (10 unidades, transferir 8)
+(8, '2026-09-25', 100, 2, 1, 1008, 'BATCH_1008_001', NULL, 'store', 1),
 -- Suturas (para cirugías generales y plásticas)
-(9, '2028-12-31', 60, 5, 1, 'BATCH_1101_001', 1, 'store', 1),
-(10, '2028-10-20', 50, 5, 1, 'BATCH_1102_001', 3, 'store', 1),
-(11, '2028-11-15', 45, 5, 1, 'BATCH_1103_001', 26, 'store', 1),
+(9, '2028-12-31', 60, 5, 1, 1101, 'BATCH_1101_001', 1, 'store', 1),
+(10, '2028-10-20', 50, 5, 1, 1102, 'BATCH_1102_001', 3, 'store', 1),
+(11, '2028-11-15', 45, 5, 1, 1103, 'BATCH_1103_001', 26, 'store', 1),
 -- Material anestesia
-(12, '2027-07-30', 40, 6, 1, 'BATCH_1201_001', NULL, 'store', 1),
-(13, '2027-07-30', 40, 6, 1, 'BATCH_1202_001', NULL, 'store', 1),
-(14, '2027-09-15', 35, 6, 1, 'BATCH_1203_001', NULL, 'store', 1),
+(12, '2027-07-30', 40, 6, 1, 1201, 'BATCH_1201_001', NULL, 'store', 1),
+(13, '2027-07-30', 40, 6, 1, 1202, 'BATCH_1202_001', NULL, 'store', 1),
+(14, '2027-09-15', 35, 6, 1, 1203, 'BATCH_1203_001', NULL, 'store', 1),
 -- Catéteres y drenajes
-(15, '2027-02-28', 25, 7, 1, 'BATCH_1301_001', 218, 'store', 1),
-(16, '2027-04-10', 45, 7, 1, 'BATCH_1302_001', NULL, 'store', 1),
-(17, '2027-05-20', 30, 7, 1, 'BATCH_1303_001', 34, 'store', 1),
+(15, '2027-02-28', 25, 7, 1, 1301, 'BATCH_1301_001', 218, 'store', 1),
+(16, '2027-04-10', 45, 7, 1, 1302, 'BATCH_1302_001', NULL, 'store', 1),
+(17, '2027-05-20', 30, 7, 1, 1303, 'BATCH_1303_001', 34, 'store', 1),
 -- Material ortopédico
-(18, '2028-01-15', 30, 8, 1, 'BATCH_1501_001', 5, 'store', 1),
-(19, '2028-01-15', 30, 8, 1, 'BATCH_1502_001', 74, 'store', 1),
-(20, '2027-12-10', 60, 8, 1, 'BATCH_1503_001', 75, 'store', 1),
-(21, '2029-06-30', 20, 8, 1, 'BATCH_1504_001', 133, 'store', 1),
-(22, '2029-06-30', 15, 8, 1, 'BATCH_1505_001', 137, 'store', 1),
+(18, '2028-01-15', 30, 8, 1, 1501, 'BATCH_1501_001', 5, 'store', 1),
+(19, '2028-01-15', 30, 8, 1, 1502, 'BATCH_1502_001', 74, 'store', 1),
+(20, '2027-12-10', 60, 8, 1, 1503, 'BATCH_1503_001', 75, 'store', 1),
+(21, '2029-06-30', 20, 8, 1, 1504, 'BATCH_1504_001', 133, 'store', 1),
+(22, '2029-06-30', 15, 8, 1, 1505, 'BATCH_1505_001', 137, 'store', 1),
 -- Material oftalmológico
-(23, '2027-08-20', 20, 9, 1, 'BATCH_1601_001', 68, 'store', 1),
-(24, '2027-10-05', 30, 9, 1, 'BATCH_1602_001', 68, 'store', 1),
-(25, '2028-03-15', 15, 9, 1, 'BATCH_1603_001', 64, 'store', 1),
+(23, '2027-08-20', 20, 9, 1, 1601, 'BATCH_1601_001', 68, 'store', 1),
+(24, '2027-10-05', 30, 9, 1, 1602, 'BATCH_1602_001', 68, 'store', 1),
+(25, '2028-03-15', 15, 9, 1, 1603, 'BATCH_1603_001', 64, 'store', 1),
 -- Material urológico
-(26, '2027-11-25', 35, 10, 1, 'BATCH_1701_001', 11, 'store', 1),
-(27, '2027-12-30', 20, 10, 1, 'BATCH_1702_001', 12, 'store', 1),
+(26, '2027-11-25', 35, 10, 1, 1701, 'BATCH_1701_001', 11, 'store', 1),
+(27, '2027-12-30', 20, 10, 1, 1702, 'BATCH_1702_001', 12, 'store', 1),
 -- Material ginecológico
-(28, '2027-06-10', 70, 11, 1, 'BATCH_1801_001', NULL, 'store', 1),
-(29, '2028-02-20', 20, 11, 1, 'BATCH_1802_001', 40, 'store', 1),
-(30, '2027-09-30', 25, 11, 1, 'BATCH_1803_001', 92, 'store', 1),
+(28, '2027-06-10', 70, 11, 1, 1801, 'BATCH_1801_001', NULL, 'store', 1),
+(29, '2028-02-20', 20, 11, 1, 1802, 'BATCH_1802_001', 40, 'store', 1),
+(30, '2027-09-30', 25, 11, 1, 1803, 'BATCH_1803_001', 92, 'store', 1),
 -- Material neurocirugía
-(31, '2028-05-15', 8, 12, 1, 'BATCH_1901_001', 43, 'store', 1),
-(32, '2028-08-20', 20, 12, 1, 'BATCH_1902_001', 213, 'store', 1), -- STOCK BAJO (20 unidades, transferir 17),
-(33, '2027-12-15', 15, 12, 1, 'BATCH_1903_001', 31, 'store', 1),
+(31, '2028-05-15', 8, 12, 1, 1901, 'BATCH_1901_001', 43, 'store', 1),
+(32, '2028-08-20', 20, 12, 1, 1902, 'BATCH_1902_001', 213, 'store', 1), -- STOCK BAJO (20 unidades, transferir 17),
+(33, '2027-12-15', 15, 12, 1, 1903, 'BATCH_1903_001', 31, 'store', 1),
 
 -- Lotes para Bodega Consignación (ID 2)
-(34, '2026-11-30', 100, 13, 2, 'BATCH_1001_002', NULL, 'store', 2),
-(35, '2027-02-28', 150, 13, 2, 'BATCH_1002_002', NULL, 'store', 2),
-(36, '2027-04-15', 80, 14, 2, 'BATCH_1003_002', NULL, 'store', 2),
-(37, '2027-05-20', 100, 14, 2, 'BATCH_1004_002', NULL, 'store', 2),
-(38, '2027-07-10', 200, 15, 2, 'BATCH_1005_002', NULL, 'store', 2),
-(39, '2027-01-25', 40, 15, 2, 'BATCH_1007_002', NULL, 'store', 2),
-(40, '2028-03-30', 35, 16, 2, 'BATCH_1101_002', 115, 'store', 2),
-(41, '2028-03-30', 30, 16, 2, 'BATCH_1102_002', 116, 'store', 2),
-(42, '2027-10-20', 25, 17, 2, 'BATCH_1301_002', NULL, 'store', 2),
-(43, '2027-11-15', 35, 17, 2, 'BATCH_1302_002', NULL, 'store', 2),
+(34, '2026-11-30', 100, 13, 2, 1001, 'BATCH_1001_002', NULL, 'store', 2),
+(35, '2027-02-28', 150, 13, 2, 1002, 'BATCH_1002_002', NULL, 'store', 2),
+(36, '2027-04-15', 80, 14, 2, 1003, 'BATCH_1003_002', NULL, 'store', 2),
+(37, '2027-05-20', 100, 14, 2, 1004, 'BATCH_1004_002', NULL, 'store', 2),
+(38, '2027-07-10', 200, 15, 2, 1005, 'BATCH_1005_002', NULL, 'store', 2),
+(39, '2027-01-25', 40, 15, 2, 1007, 'BATCH_1007_002', NULL, 'store', 2),
+(40, '2028-03-30', 35, 16, 2, 1101, 'BATCH_1101_002', 115, 'store', 2),
+(41, '2028-03-30', 30, 16, 2, 1102, 'BATCH_1102_002', 116, 'store', 2),
+(42, '2027-10-20', 25, 17, 2, 1301, 'BATCH_1301_002', NULL, 'store', 2),
+(43, '2027-11-15', 35, 17, 2, 1302, 'BATCH_1302_002', NULL, 'store', 2),
 
 -- Lotes adicionales para Bodega Central (antes en urgencias, ahora redistribuidos)
-(44, '2026-09-30', 80, 1, 1, 'BATCH_1001_004', NULL, 'store', 1),
-(45, '2026-10-15', 100, 1, 1, 'BATCH_1002_004', NULL, 'store', 1),
-(46, '2027-01-20', 60, 2, 1, 'BATCH_1003_004', NULL, 'store', 1),
-(47, '2026-12-05', 80, 3, 1, 'BATCH_1009_001', NULL, 'store', 1),
-(48, '2027-03-10', 120, 3, 1, 'BATCH_1010_001', NULL, 'store', 1),
-(49, '2027-02-15', 50, 4, 1, 'BATCH_1304_001', NULL, 'store', 1),
-(50, '2027-02-15', 50, 4, 1, 'BATCH_1305_001', NULL, 'store', 1)
+(44, '2026-09-30', 80, 1, 1, 1001, 'BATCH_1001_004', NULL, 'store', 1),
+(45, '2026-10-15', 100, 1, 1, 1002, 'BATCH_1002_004', NULL, 'store', 1),
+(46, '2027-01-20', 60, 2, 1, 1003, 'BATCH_1003_004', NULL, 'store', 1),
+(47, '2026-12-05', 80, 3, 1, 1009, 'BATCH_1009_001', NULL, 'store', 1),
+(48, '2027-03-10', 120, 3, 1, 1010, 'BATCH_1010_001', NULL, 'store', 1),
+(49, '2027-02-15', 50, 4, 1, 1304, 'BATCH_1304_001', NULL, 'store', 1),
+(50, '2027-02-15', 50, 4, 1, 1305, 'BATCH_1305_001', NULL, 'store', 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -557,14 +557,12 @@ BEGIN
                 qr_prefix := 'SUPPLY_' || batch_record.batch_id || '_' || LPAD(i::TEXT, 4, '0');
                 
                 INSERT INTO medical_supply (
-                    code, 
                     batch_id, 
                     qr_code, 
                     status, 
                     location_type, 
                     location_id
                 ) VALUES (
-                    batch_record.supply_code,
                     batch_record.batch_id,
                     qr_prefix,
                     'disponible',
@@ -866,13 +864,14 @@ FROM (
     SELECT 
         st.destination_id,
         ms.batch_id,
-        ms.code AS supply_code,
+        b.supply_code AS supply_code,
         COUNT(*) AS total_received,
         MAX(st.receive_date) AS last_received_date
     FROM supply_transfer st
     JOIN medical_supply ms ON ms.id = st.medical_supply_id
+    JOIN batch b ON b.id = ms.batch_id
     WHERE st.status = 'recibido'
-    GROUP BY st.destination_id, ms.batch_id, ms.code
+    GROUP BY st.destination_id, ms.batch_id, b.supply_code
 ) summary
 ON CONFLICT (pavilion_id, batch_id) 
 DO UPDATE SET
@@ -903,7 +902,7 @@ INSERT INTO store_inventory_summary (
 SELECT 
     b.store_id,
     b.id as batch_id,
-    ms.code as supply_code,
+    b.supply_code as supply_code,
     b.surgery_id,
     b.amount as original_amount,
     b.amount as current_in_store,
@@ -915,7 +914,7 @@ SELECT
 FROM batch b
 JOIN medical_supply ms ON ms.batch_id = b.id
 WHERE b.location_type = 'store'
-GROUP BY b.store_id, b.id, ms.code, b.surgery_id, b.amount
+GROUP BY b.store_id, b.id, b.supply_code, b.surgery_id, b.amount
 ON CONFLICT (batch_id) DO NOTHING;
 
 -- Actualizar inventario de bodegas (decrementar por transferencias)
@@ -1300,7 +1299,8 @@ BEGIN
         -- Buscar un insumo disponible del código correcto
         SELECT ms.id, ms.qr_code INTO v_supply_id, v_supply_qr
         FROM medical_supply ms
-        JOIN supply_request_item sri ON sri.supply_code = ms.code
+        JOIN batch b ON b.id = ms.batch_id
+        JOIN supply_request_item sri ON sri.supply_code = b.supply_code
         WHERE sri.id = v_item_id
         AND ms.status = 'disponible'
         AND ms.location_type = 'store'
@@ -1477,7 +1477,7 @@ SELECT
     s.name as bodega,
     COUNT(DISTINCT b.id) as total_lotes,
     COUNT(ms.id) as total_insumos,
-    COUNT(DISTINCT ms.code) as tipos_insumo_diferentes
+    COUNT(DISTINCT b.supply_code) as tipos_insumo_diferentes
 FROM store s
 LEFT JOIN batch b ON s.id = b.store_id
 LEFT JOIN medical_supply ms ON b.id = ms.batch_id
@@ -1561,7 +1561,8 @@ SELECT
 FROM medical_supply ms
 JOIN supply_transfer st ON st.medical_supply_id = ms.id
 JOIN pavilion p ON p.id = ms.location_id
-JOIN supply_code sc ON sc.code = ms.code
+JOIN batch b ON b.id = ms.batch_id
+JOIN supply_code sc ON sc.code = b.supply_code
 WHERE ms.status = 'recepcionado'
 AND ms.location_type = 'pavilion'
 AND st.status = 'recibido'
@@ -1609,35 +1610,35 @@ ORDER BY orden_urgencia;
 -- ============================================================================
 
 -- Nuevos lotes para visualización QA (IDs 51-76, NO modificar IDs anteriores)
-INSERT INTO batch (id, expiration_date, amount, supplier_id, store_id, qr_code, surgery_id, location_type, location_id) VALUES
+INSERT INTO batch (id, expiration_date, amount, supplier_id, store_id, supply_code, qr_code, surgery_id, location_type, location_id) VALUES
 -- Pabellón 1 – 14 lotes (>10 → activa paginación)
-(51, '2025-12-01', 20, 18, 1, 'BATCH_PAB1_051', NULL, 'store', 1), -- stock 0  | VENCIDO
-(52, '2027-06-15', 20, 19, 1, 'BATCH_PAB1_052', NULL, 'store', 1), -- stock 0  | bueno
-(53, '2026-01-10', 15, 18, 1, 'BATCH_PAB1_053', NULL, 'store', 1), -- stock 2  | VENCIDO
-(54, '2026-03-10', 15, 20, 1, 'BATCH_PAB1_054', NULL, 'store', 1), -- stock 3  | próximo ~15d
-(55, '2026-03-15', 15, 20, 1, 'BATCH_PAB1_055', NULL, 'store', 1), -- stock 4  | próximo ~20d
-(56, '2026-04-14', 15, 19, 1, 'BATCH_PAB1_056', NULL, 'store', 1), -- stock 6  | próximo ~50d
-(57, '2027-09-20', 15, 21, 1, 'BATCH_PAB1_057', NULL, 'store', 1), -- stock 7  | bueno
-(58, '2028-01-15', 15, 21, 1, 'BATCH_PAB1_058', NULL, 'store', 1), -- stock 8  | bueno
-(59, '2026-03-05', 25, 22, 1, 'BATCH_PAB1_059', NULL, 'store', 1), -- stock 12 | próximo ~10d
-(60, '2027-12-31', 25, 22, 1, 'BATCH_PAB1_060', NULL, 'store', 1), -- stock 15 | bueno
-(61, '2028-06-30', 15, 23, 1, 'BATCH_PAB1_061', NULL, 'store', 1), -- stock 5  | bueno
-(62, '2028-10-15', 15, 18, 1, 'BATCH_PAB1_062', NULL, 'store', 1), -- stock 1  | bueno
-(63, '2025-08-10', 25, 23, 1, 'BATCH_PAB1_063', NULL, 'store', 1), -- stock 20 | VENCIDO
-(64, '2026-03-20', 15, 24, 1, 'BATCH_PAB1_064', NULL, 'store', 1), -- stock 9  | próximo ~25d
+(51, '2025-12-01', 20, 18, 1, 1001, 'BATCH_PAB1_051', NULL, 'store', 1), -- stock 0  | VENCIDO
+(52, '2027-06-15', 20, 19, 1, 1002, 'BATCH_PAB1_052', NULL, 'store', 1), -- stock 0  | bueno
+(53, '2026-01-10', 15, 18, 1, 1003, 'BATCH_PAB1_053', NULL, 'store', 1), -- stock 2  | VENCIDO
+(54, '2026-03-10', 15, 20, 1, 1004, 'BATCH_PAB1_054', NULL, 'store', 1), -- stock 3  | próximo ~15d
+(55, '2026-03-15', 15, 20, 1, 1005, 'BATCH_PAB1_055', NULL, 'store', 1), -- stock 4  | próximo ~20d
+(56, '2026-04-14', 15, 19, 1, 1006, 'BATCH_PAB1_056', NULL, 'store', 1), -- stock 6  | próximo ~50d
+(57, '2027-09-20', 15, 21, 1, 1007, 'BATCH_PAB1_057', NULL, 'store', 1), -- stock 7  | bueno
+(58, '2028-01-15', 15, 21, 1, 1008, 'BATCH_PAB1_058', NULL, 'store', 1), -- stock 8  | bueno
+(59, '2026-03-05', 25, 22, 1, 1009, 'BATCH_PAB1_059', NULL, 'store', 1), -- stock 12 | próximo ~10d
+(60, '2027-12-31', 25, 22, 1, 1010, 'BATCH_PAB1_060', NULL, 'store', 1), -- stock 15 | bueno
+(61, '2028-06-30', 15, 23, 1, 1101, 'BATCH_PAB1_061', NULL, 'store', 1), -- stock 5  | bueno
+(62, '2028-10-15', 15, 18, 1, 1102, 'BATCH_PAB1_062', NULL, 'store', 1), -- stock 1  | bueno
+(63, '2025-08-10', 25, 23, 1, 1103, 'BATCH_PAB1_063', NULL, 'store', 1), -- stock 20 | VENCIDO
+(64, '2026-03-20', 15, 24, 1, 1104, 'BATCH_PAB1_064', NULL, 'store', 1), -- stock 9  | próximo ~25d
 -- Pabellón 2 – 12 lotes (cambio de pabellón + paginación)
-(65, '2027-08-15', 20, 25, 1, 'BATCH_PAB2_065', NULL, 'store', 1), -- stock 15 | bueno
-(66, '2027-11-20', 20, 25, 1, 'BATCH_PAB2_066', NULL, 'store', 1), -- stock 10 | bueno
-(67, '2028-02-10', 15, 26, 1, 'BATCH_PAB2_067', NULL, 'store', 1), -- stock 8  | bueno
-(68, '2027-05-30', 15, 26, 1, 'BATCH_PAB2_068', NULL, 'store', 1), -- stock 5  | bueno
-(69, '2026-04-30', 10, 27, 1, 'BATCH_PAB2_069', NULL, 'store', 1), -- stock 3  | próximo ~66d
-(70, '2025-10-15', 15, 27, 1, 'BATCH_PAB2_070', NULL, 'store', 1), -- stock 0  | VENCIDO
-(71, '2028-09-01', 20, 28, 1, 'BATCH_PAB2_071', NULL, 'store', 1), -- stock 12 | bueno
-(72, '2026-02-20', 10, 28, 1, 'BATCH_PAB2_072', NULL, 'store', 1), -- stock 2  | VENCIDO
-(73, '2027-03-10', 15, 29, 1, 'BATCH_PAB2_073', NULL, 'store', 1), -- stock 7  | bueno
-(74, '2028-12-31', 25, 29, 1, 'BATCH_PAB2_074', NULL, 'store', 1), -- stock 20 | bueno
-(75, '2025-11-05', 10, 30, 1, 'BATCH_PAB2_075', NULL, 'store', 1), -- stock 4  | VENCIDO
-(76, '2027-07-20', 20, 30, 1, 'BATCH_PAB2_076', NULL, 'store', 1)  -- stock 11 | bueno
+(65, '2027-08-15', 20, 25, 1, 1201, 'BATCH_PAB2_065', NULL, 'store', 1), -- stock 15 | bueno
+(66, '2027-11-20', 20, 25, 1, 1202, 'BATCH_PAB2_066', NULL, 'store', 1), -- stock 10 | bueno
+(67, '2028-02-10', 15, 26, 1, 1203, 'BATCH_PAB2_067', NULL, 'store', 1), -- stock 8  | bueno
+(68, '2027-05-30', 15, 26, 1, 1204, 'BATCH_PAB2_068', NULL, 'store', 1), -- stock 5  | bueno
+(69, '2026-04-30', 10, 27, 1, 1205, 'BATCH_PAB2_069', NULL, 'store', 1), -- stock 3  | próximo ~66d
+(70, '2025-10-15', 15, 27, 1, 1301, 'BATCH_PAB2_070', NULL, 'store', 1), -- stock 0  | VENCIDO
+(71, '2028-09-01', 20, 28, 1, 1302, 'BATCH_PAB2_071', NULL, 'store', 1), -- stock 12 | bueno
+(72, '2026-02-20', 10, 28, 1, 1303, 'BATCH_PAB2_072', NULL, 'store', 1), -- stock 2  | VENCIDO
+(73, '2027-03-10', 15, 29, 1, 1304, 'BATCH_PAB2_073', NULL, 'store', 1), -- stock 7  | bueno
+(74, '2028-12-31', 25, 29, 1, 1305, 'BATCH_PAB2_074', NULL, 'store', 1), -- stock 20 | bueno
+(75, '2025-11-05', 10, 30, 1, 1401, 'BATCH_PAB2_075', NULL, 'store', 1), -- stock 4  | VENCIDO
+(76, '2027-07-20', 20, 30, 1, 1402, 'BATCH_PAB2_076', NULL, 'store', 1)  -- stock 11 | bueno
 ON CONFLICT (id) DO NOTHING;
 
 -- Generar medical_supply para los nuevos lotes
@@ -1657,9 +1658,9 @@ BEGIN
     ) LOOP
         SELECT amount INTO bamt FROM batch WHERE id = r.bid;
         FOR i IN 1..bamt LOOP
-            INSERT INTO medical_supply (code, batch_id, qr_code, status, location_type, location_id)
+            INSERT INTO medical_supply (batch_id, qr_code, status, location_type, location_id)
             VALUES (
-                r.scode, r.bid,
+                r.bid,
                 'SUPPLY_' || r.bid || '_' || LPAD(i::TEXT, 4, '0'),
                 'disponible', 'store', 1
             ) ON CONFLICT (qr_code) DO NOTHING;
@@ -1800,12 +1801,13 @@ FROM (
     SELECT 
         p.name as pabellon,
         p.id as pabellon_id,
-        COUNT(DISTINCT ms.code) as tipos_insumo,
+        COUNT(DISTINCT b.supply_code) as tipos_insumo,
         COUNT(*) as total_insumos,
         SUM(CASE WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 > 8 THEN 1 ELSE 0 END) as pendientes_retorno,
         SUM(CASE WHEN EXTRACT(EPOCH FROM (NOW() - st.receive_date)) / 3600 <= 8 THEN 1 ELSE 0 END) as insumos_validos
     FROM medical_supply ms
     JOIN supply_transfer st ON st.medical_supply_id = ms.id
+    JOIN batch b ON b.id = ms.batch_id
     JOIN pavilion p ON p.id = ms.location_id
     WHERE ms.status = 'recepcionado'
     AND ms.location_type = 'pavilion'

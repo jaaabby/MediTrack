@@ -132,8 +132,7 @@ func (s *BatchService) GetBatchWithSupplyInfo(id int) (map[string]interface{}, e
 		Count(&consumedSupplies)
 
 	var supplyCode models.SupplyCode
-	s.DB.Joins("JOIN medical_supply ON medical_supply.code = supply_code.code").
-		Where("medical_supply.batch_id = ?", id).
+	s.DB.Where("code = ?", batch.SupplyCode).
 		First(&supplyCode)
 
 	availableSupplies := totalSupplies - consumedSupplies
@@ -179,17 +178,10 @@ func (s *BatchService) UpdateBatch(id int, newBatch *models.Batch) (*models.Batc
 
 			// Si la cantidad aumenta, crear nuevos insumos individuales y mantener resúmenes coherentes
 			if diff > 0 && s.MedicalSupplyService != nil {
-				// Obtener código de insumo asociado al lote
-				supplyCode, err := s.getSupplyCodeByBatchID(batch.ID)
-				if err != nil {
-					return fmt.Errorf("no se pudo obtener el código de insumo para el lote %d: %v", batch.ID, err)
-				}
-
 				// Crear insumos individuales adicionales en la misma bodega
 				newSupplies, err := s.MedicalSupplyService.CreateMultipleIndividualSuppliesTx(
 					tx,
 					batch.ID,
-					supplyCode.Code,
 					diff,
 					batch.StoreID,
 				)
@@ -322,6 +314,12 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 			batch.SupplierID = supplierID
 		}
 
+		// Upsert supply_code ANTES de crear el lote (requerido por la FK batch.supply_code → supply_code.code)
+		if err := s.upsertSupplyCodeTx(tx, supplyCode); err != nil {
+			return err
+		}
+		batch.SupplyCode = supplyCode.Code
+
 		if err := tx.Create(batch).Error; err != nil {
 			return fmt.Errorf("error creando lote: %v", err)
 		}
@@ -335,10 +333,6 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 			return fmt.Errorf("error actualizando QR del lote: %v", err)
 		}
 		batch.QRCode = qrCode
-
-		if err := s.upsertSupplyCodeTx(tx, supplyCode); err != nil {
-			return err
-		}
 
 		supplies, err := s.createIndividualSuppliesTx(tx, batch, supplyCode, individualCount)
 		if err != nil {
@@ -429,7 +423,7 @@ func (s *BatchService) upsertSupplyCodeTx(tx *gorm.DB, supplyCode *models.Supply
 
 func (s *BatchService) createIndividualSuppliesTx(tx *gorm.DB, batch *models.Batch, supplyCode *models.SupplyCode, count int) ([]models.MedicalSupply, error) {
 	if s.MedicalSupplyService != nil {
-		return s.MedicalSupplyService.CreateMultipleIndividualSuppliesTx(tx, batch.ID, supplyCode.Code, count, batch.StoreID)
+		return s.MedicalSupplyService.CreateMultipleIndividualSuppliesTx(tx, batch.ID, count, batch.StoreID)
 	}
 
 	supplies := make([]models.MedicalSupply, 0, count)
@@ -440,7 +434,6 @@ func (s *BatchService) createIndividualSuppliesTx(tx *gorm.DB, batch *models.Bat
 		}
 
 		supply := models.MedicalSupply{
-			Code:         supplyCode.Code,
 			QRCode:       qrCode,
 			BatchID:      batch.ID,
 			LocationType: models.SupplyLocationStore,
@@ -547,10 +540,12 @@ func (s *BatchService) updateStoreSummaryOnAmountChange(newBatch, previousBatch 
 
 // getSupplyCodeByBatchID obtiene el supply code asociado a un lote
 func (s *BatchService) getSupplyCodeByBatchID(batchID int) (*models.SupplyCode, error) {
+	var batch models.Batch
+	if err := s.DB.Select("id, supply_code").First(&batch, batchID).Error; err != nil {
+		return nil, err
+	}
 	var supplyCode models.SupplyCode
-	if err := s.DB.Joins("JOIN medical_supply ON medical_supply.code = supply_code.code").
-		Where("medical_supply.batch_id = ?", batchID).
-		First(&supplyCode).Error; err != nil {
+	if err := s.DB.First(&supplyCode, batch.SupplyCode).Error; err != nil {
 		return nil, err
 	}
 	return &supplyCode, nil
@@ -743,8 +738,7 @@ func (s *BatchService) CheckLowStockForSupplyType(supplyCode string) error {
 	query := `
 		SELECT DISTINCT b.* 
 		FROM batch b
-		JOIN medical_supply ms ON b.id = ms.batch_id
-		WHERE ms.code = ? AND b.amount > 0 AND b.amount <= ?
+		WHERE b.supply_code = ? AND b.amount > 0 AND b.amount <= ?
 	`
 
 	var batches []models.Batch
@@ -778,8 +772,7 @@ func (s *BatchService) CheckAllBatchesLowStock() error {
 	query := `
 		SELECT DISTINCT b.*, sc.critical_stock, sc.name as supply_name
 		FROM batch b
-		JOIN medical_supply ms ON b.id = ms.batch_id
-		JOIN supply_code sc ON ms.code = sc.code
+		JOIN supply_code sc ON b.supply_code = sc.code
 		WHERE b.amount > 0 AND b.amount <= sc.critical_stock
 		ORDER BY b.id
 	`
@@ -830,7 +823,7 @@ func (s *BatchService) StartAutomaticLowStockChecker() {
 	for range ticker.C {
 		log.Println("🔍 Ejecutando verificación automática de stock bajo...")
 		if err := s.CheckAllBatchesLowStock(); err != nil {
-			log.Printf("❌ Error en verificación automática de stock bajo: %v\n", err)
+			log.Printf("Error en verificación automática de stock bajo: %v\n", err)
 		}
 	}
 }
@@ -846,8 +839,7 @@ func (s *BatchService) GetLowStockSummary() ([]map[string]interface{}, error) {
 			MIN(b.expiration_date) as nearest_expiration,
 			ARRAY_AGG(DISTINCT supc.supplier_name) as suppliers
 		FROM supply_code sc
-		JOIN medical_supply ms ON sc.code = ms.code
-		JOIN batch b ON ms.batch_id = b.id
+		JOIN batch b ON sc.code = b.supply_code
 		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE b.amount > 0
 		GROUP BY sc.code, sc.name, sc.critical_stock

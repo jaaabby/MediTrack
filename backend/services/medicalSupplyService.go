@@ -21,11 +21,10 @@ type MedicalSupplyService struct {
 }
 
 // CreateMultipleIndividualSuppliesTx crea múltiples insumos individuales usando una transacción existente
-func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, batchID int, code int, quantity int, storeID int) ([]models.MedicalSupply, error) {
+func (s *MedicalSupplyService) CreateMultipleIndividualSuppliesTx(tx *gorm.DB, batchID int, quantity int, storeID int) ([]models.MedicalSupply, error) {
 	var supplies []models.MedicalSupply
 	for i := 0; i < quantity; i++ {
 		supply := models.MedicalSupply{
-			Code:         code,
 			BatchID:      batchID,
 			LocationType: models.SupplyLocationStore,
 			LocationID:   storeID,
@@ -178,7 +177,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 			MAX(ms.updated_at) OVER (PARTITION BY b.id) AS updated_at
 		FROM batch b
 		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
-		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN supply_code sc ON b.supply_code = sc.code
 		LEFT JOIN store st ON b.store_id = st.id
 		LEFT JOIN pavilion pv ON b.location_type = 'pavilion' AND b.location_id = pv.id
 		LEFT JOIN supplier_config supc ON b.supplier_id = supc.id
@@ -275,7 +274,7 @@ func (s *MedicalSupplyService) GetInventoryListAdvanced() ([]map[string]interfac
 			(COUNT(ms.id) - COUNT(CASE WHEN consumed_supplies.supply_id IS NOT NULL THEN 1 END)) as available_supplies
 		FROM batch b
 		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
-		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN supply_code sc ON b.supply_code = sc.code
 		LEFT JOIN supplier_config supc ON b.supplier_id = supc.id
 		LEFT JOIN (
 			SELECT DISTINCT sh.medical_supply_id as supply_id
@@ -336,14 +335,13 @@ func (s *MedicalSupplyService) GetInventoryListAdvanced() ([]map[string]interfac
 }
 
 // CreateMultipleIndividualSupplies crea múltiples insumos individuales para un lote
-func (s *MedicalSupplyService) CreateMultipleIndividualSupplies(batchID int, code int, quantity int) ([]models.MedicalSupply, error) {
+func (s *MedicalSupplyService) CreateMultipleIndividualSupplies(batchID int, quantity int) ([]models.MedicalSupply, error) {
 	var supplies []models.MedicalSupply
 
 	// Usar transacción para asegurar consistencia
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		for i := 0; i < quantity; i++ {
 			supply := models.MedicalSupply{
-				Code:    code,
 				BatchID: batchID,
 			}
 
@@ -429,7 +427,7 @@ func (s *MedicalSupplyService) ConsumeSupplyByQR(qrCode string, userRUT string, 
 					storeSummary = models.StoreInventorySummary{
 						StoreID:              supply.LocationID,
 						BatchID:              supply.BatchID,
-						SupplyCode:           supply.Code,
+						SupplyCode:           batch.SupplyCode,
 						SurgeryID:            batch.SurgeryID,
 						OriginalAmount:       int(realCount) + 1, // Cantidad antes del consumo
 						CurrentInStore:       int(realCount),     // Stock actual en bodega
@@ -461,7 +459,7 @@ func (s *MedicalSupplyService) ConsumeSupplyByQR(qrCode string, userRUT string, 
 					pavilionSummary = models.PavilionInventorySummary{
 						PavilionID:       supply.LocationID,
 						BatchID:          supply.BatchID,
-						SupplyCode:       supply.Code,
+						SupplyCode:       batch.SupplyCode,
 						TotalReceived:    1,
 						CurrentAvailable: 0, // Ya no hay disponible
 						TotalConsumed:    1,
@@ -508,7 +506,7 @@ func (s *MedicalSupplyService) GetSupplyWithBatchInfo(qrCode string) (map[string
 	query := `
 		SELECT 
 			ms.id as supply_id,
-			ms.code as supply_code,
+			b.supply_code as supply_code,
 			ms.qr_code,
 			ms.batch_id,
 			sc.name as supply_name,
@@ -519,8 +517,8 @@ func (s *MedicalSupplyService) GetSupplyWithBatchInfo(qrCode string) (map[string
 			st.name as store_name,
 			st.type as store_type
 		FROM medical_supply ms
-		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
+		JOIN supply_code sc ON b.supply_code = sc.code
 		JOIN store st ON b.store_id = st.id
 		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE ms.qr_code = ?
@@ -724,7 +722,7 @@ func (s *MedicalSupplyService) GetUnconsumedSupplies() ([]map[string]interface{}
 	query := `
 		SELECT 
 			ms.id as supply_id,
-			ms.code as supply_code,
+			b.supply_code as supply_code,
 			ms.qr_code,
 			ms.batch_id,
 			ms.updated_at as received_at,
@@ -734,8 +732,8 @@ func (s *MedicalSupplyService) GetUnconsumedSupplies() ([]map[string]interface{}
 			st.name as store_name,
 			EXTRACT(EPOCH FROM (NOW() - ms.updated_at))/3600 as hours_elapsed
 		FROM medical_supply ms
-		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
+		JOIN supply_code sc ON b.supply_code = sc.code
 		JOIN store st ON b.store_id = st.id
 		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE ms.status = ? AND ms.updated_at < ?
@@ -812,8 +810,8 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			b.amount as batch_amount,
 			sc.code_supplier as supply_code_supplier
 		FROM medical_supply ms
-		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
+		JOIN supply_code sc ON b.supply_code = sc.code
 		JOIN supplier_config supc ON b.supplier_id = supc.id
 		JOIN store s ON b.store_id = s.id
 		LEFT JOIN pavilion p ON p.id = ms.location_id
@@ -948,13 +946,13 @@ func (s *MedicalSupplyService) NotifyPavilionForReturn(qrCode string, pdfBytes [
 
 	pavilionID := supply.LocationID
 
-	// 3. Obtener nombre del insumo
-	var supplyCode models.SupplyCode
-	s.DB.Where("code = ?", supply.Code).First(&supplyCode)
-
 	// 4. Obtener datos del lote y bodega
 	var batch models.Batch
 	s.DB.First(&batch, supply.BatchID)
+
+	// 3. Obtener nombre del insumo
+	var supplyCode models.SupplyCode
+	s.DB.First(&supplyCode, batch.SupplyCode)
 
 	var store models.Store
 	s.DB.First(&store, batch.StoreID)
@@ -1004,7 +1002,7 @@ func (s *MedicalSupplyService) NotifyPavilionForReturn(qrCode string, pdfBytes [
 	}{
 		PavilionName:   pavilionName,
 		SupplyName:     supplyCode.Name,
-		SupplyCode:     fmt.Sprintf("%d", supply.Code),
+		SupplyCode:     fmt.Sprintf("%d", batch.SupplyCode),
 		QRCode:         qrCode,
 		BatchID:        supply.BatchID,
 		Supplier:       batch.Supplier,
@@ -1328,15 +1326,16 @@ func (s *MedicalSupplyService) CheckAllIndividualSuppliesLowStock() error {
 	// Query para obtener códigos con exactamente 1 insumo disponible
 	query := `
 		SELECT 
-			ms.code,
+			b.supply_code as code,
 			sc.name as supply_name,
 			COUNT(*) as available_count
 		FROM medical_supply ms
-		JOIN supply_code sc ON ms.code = sc.code
+		JOIN batch b ON ms.batch_id = b.id
+		JOIN supply_code sc ON b.supply_code = sc.code
 		WHERE ms.status = ?
-		GROUP BY ms.code, sc.name
+		GROUP BY b.supply_code, sc.name
 		HAVING COUNT(*) = 1
-		ORDER BY ms.code
+		ORDER BY b.supply_code
 	`
 
 	type SupplyStockInfo struct {
@@ -1507,7 +1506,7 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 				storeSummary = models.StoreInventorySummary{
 					StoreID:          store.ID,
 					BatchID:          batch.ID,
-					SupplyCode:       supply.Code,
+					SupplyCode:       batch.SupplyCode,
 					OriginalAmount:   batch.Amount,
 					CurrentInStore:   1,
 					TotalReturnedIn:  1,
@@ -1706,7 +1705,7 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 								otherStoreSummary = models.StoreInventorySummary{
 									StoreID:          otherStore.ID,
 									BatchID:          otherBatch.ID,
-									SupplyCode:       otherSupply.Code,
+									SupplyCode:       otherBatch.SupplyCode,
 									OriginalAmount:   otherBatch.Amount,
 									CurrentInStore:   1,
 									TotalReturnedIn:  1,

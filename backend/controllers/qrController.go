@@ -136,9 +136,13 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 
 	// Estructura especial para supply_info con batch anidado
 	if qrInfo.SupplyInfo != nil {
+		var supplyCodeInt int
+		if qrInfo.SupplyInfo.BatchInfo != nil {
+			supplyCodeInt = qrInfo.SupplyInfo.BatchInfo.SupplyCode
+		}
 		supplyInfoMap := gin.H{
 			"ID":           qrInfo.SupplyInfo.ID,
-			"Code":         qrInfo.SupplyInfo.Code,
+			"Code":         supplyCodeInt,
 			"BatchID":      qrInfo.SupplyInfo.BatchID,
 			"QRCode":       qrInfo.SupplyInfo.QRCode,
 			"Status":       qrInfo.SupplyInfo.Status,
