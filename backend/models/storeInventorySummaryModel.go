@@ -52,6 +52,7 @@ type StoreInventorySummaryWithDetails struct {
 	StoreInventorySummary
 	StoreName         string  `json:"store_name"`
 	SupplyName        string  `json:"supply_name"`
+	CriticalStock     int     `json:"critical_stock"`
 	SurgeryName       *string `json:"surgery_name,omitempty"`
 	BatchSupplier     string  `json:"batch_supplier"`
 	ExpirationDate    string  `json:"expiration_date"`

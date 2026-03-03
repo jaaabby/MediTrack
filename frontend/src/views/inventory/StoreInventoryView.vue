@@ -31,45 +31,79 @@
             </option>
           </select>
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Cirugía</label>
-          <select v-model="filters.surgery_id" class="form-input" @change="applyFilters">
-            <option value="">Todos los tipos</option>
-            <option v-for="surgery in surgeries" :key="surgery.id" :value="surgery.id">
+          <input
+            type="text"
+            v-model="surgerySearch"
+            placeholder="Buscar tipo de cirugía..."
+            class="form-input"
+            @input="onSurgerySearch"
+            @focus="showSurgeryOptions = true"
+            @blur="hideSurgeryOptions"
+            autocomplete="off"
+          />
+          
+          <!-- Dropdown de opciones de cirugía -->
+          <div v-if="showSurgeryOptions && filteredSurgeries.length > 0"
+            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            <button
+              v-for="surgery in filteredSurgeries"
+              :key="surgery.id"
+              @mousedown.prevent="selectSurgery(surgery)"
+              class="w-full text-left px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-b-0"
+            >
               {{ surgery.name }}
-            </option>
-          </select>
+            </button>
+          </div>
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-2">Proveedor</label>
           <input
             type="text"
-            v-model="filters.supplier"
+            v-model="supplierSearch"
             placeholder="Buscar proveedor..."
             class="form-input"
-            @input="debouncedApplyFilters"
+            @input="onSupplierSearch"
+            @focus="showSupplierOptions = true"
+            @blur="hideSupplierOptions"
+            autocomplete="off"
           />
+          
+          <!-- Dropdown de opciones de proveedor -->
+          <div v-if="showSupplierOptions && filteredSuppliers.length > 0"
+            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            <button
+              v-for="supplier in filteredSuppliers"
+              :key="supplier"
+              @mousedown.prevent="selectSupplier(supplier)"
+              class="w-full text-left px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-b-0"
+            >
+              {{ supplier }}
+            </button>
+          </div>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Alertas</label>
-          <div class="space-y-2">
-            <label class="flex items-center">
+          <div class="flex flex-col items-start gap-5">
+            <!-- ID 7: inline-flex restringe el área clickeable a la casilla y su etiqueta -->
+            <label class="inline-flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 v-model="filters.low_stock"
                 @change="applyFilters"
-                class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
               />
-              <span class="ml-2 text-sm text-gray-700">Stock bajo</span>
+              <span class="text-sm text-gray-700">Stock bajo</span>
             </label>
-            <label class="flex items-center">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 v-model="filters.near_expiration"
                 @change="applyFilters"
-                class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
               />
-              <span class="ml-2 text-sm text-gray-700">Próximo a vencer</span>
+              <span class="text-sm text-gray-700">Próximo a vencer</span>
             </label>
           </div>
         </div>
@@ -117,8 +151,9 @@
 
     <div v-else class="card overflow-hidden">
       <div class="overflow-x-auto">
+        <div class="max-h-[600px] overflow-y-auto">
         <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+          <thead class="bg-gray-50 sticky top-0 z-10">
             <tr>
               <th @click="sortBy('store_name')"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
@@ -132,6 +167,24 @@
                     </svg>
                     <svg class="h-3 w-3 transition-colors" 
                       :class="sortKey === 'store_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
+                      fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
+                    </svg>
+                  </span>
+                </div>
+              </th>
+              <th @click="sortBy('created_at')"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
+                <div class="flex items-center space-x-1">
+                  <span>F. Ingreso</span>
+                  <span class="flex flex-col -space-y-1">
+                    <svg class="h-3 w-3 transition-colors"
+                      :class="sortKey === 'created_at' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'"
+                      fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
+                    </svg>
+                    <svg class="h-3 w-3 transition-colors"
+                      :class="sortKey === 'created_at' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'"
                       fill="currentColor" viewBox="0 0 20 20">
                       <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
                     </svg>
@@ -267,7 +320,8 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedInventory" :key="item.id" class="hover:bg-gray-50">
+            <!-- ID 22/23: fondo de fila según nivel de stock -->
+            <tr v-for="item in paginatedInventory" :key="item.id" :class="getRowClass(item.current_in_store, item.original_amount)">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -280,6 +334,9 @@
                     <div class="text-sm text-gray-500">ID: {{ item.store_id }}</div>
                   </div>
                 </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {{ formatDate(item.created_at) }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ item.supply_name }}</div>
@@ -299,8 +356,12 @@
                   </span>
                   <span class="text-xs text-gray-500 ml-1">unidades</span>
                 </div>
+                <!-- ID 22/23: badges diferenciados por nivel de stock -->
                 <div v-if="isLowStock(item.current_in_store, item.original_amount)" class="text-xs text-red-600 font-medium">
                   ⚠️ Stock bajo
+                </div>
+                <div v-else-if="isMediumStock(item.current_in_store, item.original_amount)" class="text-xs text-orange-600 font-medium">
+                  ⚠️ Stock medio
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -308,7 +369,9 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">Transferidos: {{ item.total_transferred_out || 0 }}</div>
-                <div class="text-xs text-gray-500">Consumidos: {{ item.total_consumed_in_store || 0 }}</div>
+                <div class="text-xs text-gray-500">
+                  Consumidos: {{ (item.total_consumed_in_store || 0) + (item.total_consumed_from_pavilions || 0) }}
+                </div>
                 <div class="text-xs text-gray-500">Devueltos: {{ item.total_returned_in || 0 }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -318,13 +381,18 @@
                 <span :class="getExpirationClass(item.expiration_date)" class="text-sm font-medium">
                   {{ formatDate(item.expiration_date) }}
                 </span>
-                <div v-if="isNearExpiration(item.expiration_date)" class="text-xs text-orange-600 font-medium">
+                <!-- ID 26: badges distintos para vencido vs próximo a vencer -->
+                <div v-if="isExpired(item.expiration_date)" class="text-xs text-red-700 font-semibold">
+                  🔴 Vencido
+                </div>
+                <div v-else-if="isNearExpiration(item.expiration_date)" class="text-xs text-orange-600 font-medium">
                   ⚠️ Vence pronto
                 </div>
               </td>
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -376,19 +444,73 @@ const filters = ref({
   near_expiration: false
 })
 
+// Estados para autocompletado
+const surgerySearch = ref('')
+const showSurgeryOptions = ref(false)
+const supplierSearch = ref('')
+const showSupplierOptions = ref(false)
+
 // Paginación
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-// Estado de ordenamiento
-const sortKey = ref('store_name')
-const sortOrder = ref('asc')
+// Estado de ordenamiento – ID 13: orden inicial por fecha de ingreso, más reciente primero
+const sortKey = ref('created_at')
+const sortOrder = ref('desc')
+
+// ID 6: normaliza texto eliminando tildes y convirtiendo a minúsculas
+const normalizeText = (text) => {
+  if (!text) return ''
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+// Computed para proveedores únicos del inventario
+const uniqueSuppliers = computed(() => {
+  if (!inventory.value || inventory.value.length === 0) return []
+  const suppliers = inventory.value
+    .map(item => item.batch_supplier)
+    .filter(supplier => supplier && supplier.trim())
+  return [...new Set(suppliers)].sort()
+})
+
+// Computed para cirugías filtradas
+const filteredSurgeries = computed(() => {
+  if (!surgerySearch.value.trim()) {
+    return surgeries.value.slice(0, 10)
+  }
+  const search = surgerySearch.value.toLowerCase().trim()
+  return surgeries.value.filter(surgery => 
+    surgery.name.toLowerCase().includes(search)
+  ).slice(0, 10)
+})
+
+// Computed para proveedores filtrados
+const filteredSuppliers = computed(() => {
+  if (!supplierSearch.value.trim()) {
+    return uniqueSuppliers.value.slice(0, 10)
+  }
+  const search = normalizeText(supplierSearch.value)
+  return uniqueSuppliers.value.filter(supplier => 
+    normalizeText(supplier).includes(search)
+  ).slice(0, 10)
+})
 
 // Computed para ordenar inventario
 const sortedInventory = computed(() => {
   if (!inventory.value || inventory.value.length === 0) return []
-  
-  const sorted = [...inventory.value].sort((a, b) => {
+
+  // ID 6: filtro client-side de proveedor, insensible a mayúsculas y tildes
+  const supplierQuery = normalizeText(filters.value.supplier)
+  const base = supplierQuery
+    ? inventory.value.filter(item =>
+        normalizeText(item.batch_supplier).includes(supplierQuery)
+      )
+    : inventory.value
+
+  const sorted = [...base].sort((a, b) => {
     let aVal = a[sortKey.value]
     let bVal = b[sortKey.value]
     
@@ -443,7 +565,10 @@ const loadInventory = async () => {
   error.value = null
   
   try {
-    const data = await inventoryService.getStoreInventory(filters.value)
+    // El filtro de proveedor se aplica client-side con normalización de tildes y mayúsculas (ID 6)
+    // No se envía al backend para evitar el LIKE case-sensitive de PostgreSQL
+    const backendFilters = { ...filters.value, supplier: '' }
+    const data = await inventoryService.getStoreInventory(backendFilters)
     // Asegurarse de que inventory.value siempre sea un array
     inventory.value = Array.isArray(data) ? data : []
   } catch (err) {
@@ -489,7 +614,65 @@ const clearFilters = () => {
     low_stock: false,
     near_expiration: false
   }
+  surgerySearch.value = ''
+  supplierSearch.value = ''
   applyFilters()
+}
+
+// Funciones para manejar autocompletado de cirugía
+const onSurgerySearch = () => {
+  showSurgeryOptions.value = true
+  // Si el texto coincide exactamente con una cirugía, seleccionarla automáticamente
+  const exactMatch = surgeries.value.find(surgery => 
+    surgery.name.toLowerCase() === surgerySearch.value.toLowerCase()
+  )
+  if (exactMatch) {
+    filters.value.surgery_id = exactMatch.id.toString()
+  } else if (surgerySearch.value.trim() === '') {
+    filters.value.surgery_id = ''
+  }
+}
+
+const selectSurgery = (surgery) => {
+  filters.value.surgery_id = surgery.id.toString()
+  surgerySearch.value = surgery.name
+  showSurgeryOptions.value = false
+  applyFilters()
+}
+
+const hideSurgeryOptions = () => {
+  setTimeout(() => {
+    showSurgeryOptions.value = false
+    // Si hay una cirugía seleccionada, mostrar su nombre completo
+    if (filters.value.surgery_id) {
+      const selectedSurgery = surgeries.value.find(s => s.id === parseInt(filters.value.surgery_id))
+      if (selectedSurgery) {
+        surgerySearch.value = selectedSurgery.name
+      }
+    } else if (!surgerySearch.value.trim()) {
+      surgerySearch.value = ''
+    }
+  }, 200)
+}
+
+// Funciones para manejar autocompletado de proveedor
+const onSupplierSearch = () => {
+  showSupplierOptions.value = true
+  filters.value.supplier = supplierSearch.value
+  debouncedApplyFilters()
+}
+
+const selectSupplier = (supplier) => {
+  supplierSearch.value = supplier
+  filters.value.supplier = supplier
+  showSupplierOptions.value = false
+  applyFilters()
+}
+
+const hideSupplierOptions = () => {
+  setTimeout(() => {
+    showSupplierOptions.value = false
+  }, 200)
 }
 
 const formatDate = (dateString) => {
@@ -501,34 +684,61 @@ const formatDate = (dateString) => {
   }
 }
 
+// ID 22: stock bajo = menos del 20% del original
 const isLowStock = (current, original) => {
   if (!original) return false
-  return current < original * 0.2 // Menos del 20%
+  return current < original * 0.2
 }
 
+// ID 23: stock medio = entre 20% y 50% del original
+const isMediumStock = (current, original) => {
+  if (!original) return false
+  return current >= original * 0.2 && current < original * 0.5
+}
+
+// ID 22/23: color del número de stock (prioridad: rojo > naranja > verde)
 const getStockClass = (current, original) => {
   if (isLowStock(current, original)) return 'text-red-600'
-  if (current < original * 0.5) return 'text-orange-600'
+  if (isMediumStock(current, original)) return 'text-orange-600'
   return 'text-green-600'
 }
 
+// ID 22/23: color de fondo de la fila según nivel de stock
+const getRowClass = (current, original) => {
+  if (isLowStock(current, original)) return 'bg-red-50 hover:bg-red-100'
+  if (isMediumStock(current, original)) return 'bg-orange-50 hover:bg-orange-100'
+  return 'hover:bg-gray-50'
+}
+
+// ID 26: lote con fecha ya vencida
+const isExpired = (expirationDate) => {
+  if (!expirationDate) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return new Date(expirationDate) < today
+}
+
+// ID 26: próximo a vencer = dentro de los próximos 30 días (sin estar vencido)
 const isNearExpiration = (expirationDate) => {
   if (!expirationDate) return false
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const expDate = new Date(expirationDate)
-  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
-  return daysUntilExpiration >= 0 && daysUntilExpiration <= 90
+  const days = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+  return days >= 0 && days <= 30
 }
 
+// ID 26: colores diferenciados: rojo oscuro = vencido, naranja = próximo a vencer
 const getExpirationClass = (expirationDate) => {
   if (!expirationDate) return 'text-gray-900'
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const expDate = new Date(expirationDate)
-  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+  const days = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
 
-  if (daysUntilExpiration < 0) return 'text-red-600'
-  if (daysUntilExpiration <= 30) return 'text-red-600'
-  if (daysUntilExpiration <= 90) return 'text-orange-600'
+  if (days < 0) return 'text-red-700 font-semibold'   // Vencido
+  if (days <= 30) return 'text-orange-600 font-semibold' // Próximo a vencer
+  if (days <= 90) return 'text-yellow-600'               // Vence en 1-3 meses
   return 'text-gray-900'
 }
 
@@ -539,6 +749,11 @@ onMounted(async () => {
   // Aplicar filtros de la URL si existen
   if (route.query.surgery_id) {
     filters.value.surgery_id = route.query.surgery_id
+    // Establecer el nombre de la cirugía en el campo de búsqueda
+    const selectedSurgery = surgeries.value.find(s => s.id === parseInt(route.query.surgery_id))
+    if (selectedSurgery) {
+      surgerySearch.value = selectedSurgery.name
+    }
   }
   if (route.query.store_id) {
     filters.value.store_id = route.query.store_id

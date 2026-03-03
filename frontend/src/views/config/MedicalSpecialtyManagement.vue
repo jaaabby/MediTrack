@@ -145,7 +145,8 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ specialty.code || '-' }}
               </td>
-              <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" :title="specialty.description">
+              <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" 
+                :title="specialty.description && specialty.description.trim() ? specialty.description : undefined">
                 {{ specialty.description || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -189,7 +190,7 @@
         </div>
         <div class="flex items-center gap-2">
           <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="currentPage--">
+            @click="previousPage">
             <span class="hidden sm:inline">Anterior</span>
             <span class="sm:hidden">Ant.</span>
           </button>
@@ -197,7 +198,7 @@
             Página {{ currentPage }} de {{ totalPages }}
           </span>
           <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="currentPage++">
+            @click="nextPage">
             <span class="hidden sm:inline">Siguiente</span>
             <span class="sm:hidden">Sig.</span>
           </button>
@@ -243,25 +244,52 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Nombre <span class="text-red-500">*</span>
                 </label>
-                <input v-model="specialtyForm.name" type="text" class="form-input" 
-                  placeholder="Ej: Traumatología" required />
+                <input 
+                  v-model="specialtyForm.name" 
+                  type="text" 
+                  class="form-input" 
+                  :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.name }"
+                  placeholder="Ej: Traumatología" 
+                  @input="clearFieldError('name')" 
+                />
+                <p v-if="formErrors.name" class="text-sm text-red-600 mt-1">
+                  {{ formErrors.name }}
+                </p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Código
                 </label>
-                <input v-model="specialtyForm.code" type="text" class="form-input" 
-                  placeholder="Ej: TRAUMA" />
-                <p class="mt-1 text-xs text-gray-500">Código único para identificar la especialidad</p>
+                <input 
+                  v-model="specialtyForm.code" 
+                  type="text" 
+                  class="form-input" 
+                  :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.code }"
+                  placeholder="Ej: TRAUMA" 
+                  @input="clearFieldError('code')" 
+                />
+                <p v-if="formErrors.code" class="text-sm text-red-600 mt-1">
+                  {{ formErrors.code }}
+                </p>
+                <p v-else class="mt-1 text-xs text-gray-500">Código único para identificar la especialidad</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Descripción
                 </label>
-                <textarea v-model="specialtyForm.description" rows="3" class="form-input" 
-                  placeholder="Descripción de la especialidad médica"></textarea>
+                <textarea 
+                  v-model="specialtyForm.description" 
+                  rows="3" 
+                  class="form-input" 
+                  :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.description }"
+                  placeholder="Descripción de la especialidad médica"
+                  @input="clearFieldError('description')" 
+                ></textarea>
+                <p v-if="formErrors.description" class="text-sm text-red-600 mt-1">
+                  {{ formErrors.description }}
+                </p>
               </div>
 
               <div>
@@ -317,6 +345,13 @@ const specialtyForm = ref({
   code: '',
   description: '',
   is_active: true
+})
+
+// Estado de errores de validación
+const formErrors = ref({
+  name: '',
+  code: '',
+  description: ''
 })
 
 let searchTimeout = null
@@ -428,12 +463,73 @@ const closeModal = () => {
     description: '',
     is_active: true
   }
+  // Resetear errores al cerrar
+  formErrors.value = {
+    name: '',
+    code: '',
+    description: ''
+  }
+}
+
+// Validación de formulario
+const validateForm = () => {
+  // Resetear errores
+  formErrors.value = {
+    name: '',
+    code: '',
+    description: ''
+  }
+  
+  let hasErrors = false
+  
+  // Validar nombre (obligatorio)
+  if (!specialtyForm.value.name || !specialtyForm.value.name.trim()) {
+    formErrors.value.name = 'El nombre de la especialidad es obligatorio.'
+    hasErrors = true
+  }
+  if (specialtyForm.value.name && specialtyForm.value.name.trim().length > 0 && specialtyForm.value.name.trim().length < 3) {
+    formErrors.value.name = 'El nombre debe tener al menos 3 caracteres.'
+    hasErrors = true
+  }
+  if (specialtyForm.value.name && specialtyForm.value.name.trim().length > 100) {
+    formErrors.value.name = 'El nombre no puede exceder los 100 caracteres.'
+    hasErrors = true
+  }
+  
+  // Validar código (opcional, pero si se ingresa debe ser válido)
+  if (specialtyForm.value.code && specialtyForm.value.code.trim()) {
+    if (specialtyForm.value.code.trim().length < 2) {
+      formErrors.value.code = 'El código debe tener al menos 2 caracteres.'
+      hasErrors = true
+    }
+    if (specialtyForm.value.code.trim().length > 20) {
+      formErrors.value.code = 'El código no puede exceder los 20 caracteres.'
+      hasErrors = true
+    }
+  }
+  
+  // Validar descripción (opcional, pero si se ingresa debe ser válido)
+  if (specialtyForm.value.description && specialtyForm.value.description.trim()) {
+    if (specialtyForm.value.description.trim().length > 500) {
+      formErrors.value.description = 'La descripción no puede exceder los 500 caracteres.'
+      hasErrors = true
+    }
+  }
+  
+  return !hasErrors
+}
+
+// Limpiar error individual cuando el usuario empiece a editar
+const clearFieldError = (field) => {
+  if (formErrors.value[field]) {
+    formErrors.value[field] = ''
+  }
 }
 
 const saveSpecialty = async () => {
-  // Validaciones
-  if (!specialtyForm.value.name || !specialtyForm.value.name.trim()) {
-    showWarning('El nombre de la especialidad es obligatorio')
+  // Validar formulario
+  if (!validateForm()) {
+    showWarning('Por favor corrige los errores en el formulario')
     return
   }
 
@@ -443,7 +539,7 @@ const saveSpecialty = async () => {
       name: specialtyForm.value.name.trim(),
       code: specialtyForm.value.code.trim() || null,
       description: specialtyForm.value.description.trim() || null,
-      is_active: specialtyForm.value.is_active
+      is_active: Boolean(specialtyForm.value.is_active)
     }
 
     if (isEditing.value) {
@@ -497,6 +593,18 @@ const confirmDelete = async (specialty) => {
 const clearSearch = () => {
   searchTerm.value = ''
   currentPage.value = 1
+}
+
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+  }
 }
 
 onMounted(() => {

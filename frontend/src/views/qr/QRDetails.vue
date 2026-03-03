@@ -1,359 +1,374 @@
-<!-- QRDetails.vue CORREGIDO - CÓDIGO COMPLETO -->
 <template>
-  <div class="container mx-auto px-4 py-6">
-    <!-- Header con breadcrumb -->
-    <div class="mb-6">
-      <nav class="flex mb-4" aria-label="Breadcrumb">
-        <ol class="flex items-center space-x-2">
-          <li><router-link to="/qr" class="text-blue-600 hover:text-blue-800">Escáner QR</router-link></li>
-          <li><span class="text-gray-500">></span></li>
-          <li><span class="text-gray-700 font-medium">{{ qrCode }}</span></li>
-        </ol>
-      </nav>
-      <h1 class="text-2xl font-bold text-gray-900">
-        Detalles Completos - {{ qrInfo ? getTypeLabel(qrInfo.type) : 'Cargando...' }}
-      </h1>
-    </div>
+  <div class="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
-    <!-- Loading state -->
+    <!-- Breadcrumb -->
+    <nav class="flex items-center space-x-2 text-sm" aria-label="Breadcrumb">
+      <router-link to="/qr" class="text-blue-600 hover:text-blue-800 font-medium">Escáner QR</router-link>
+      <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+      <span class="text-gray-500 font-mono">{{ qrCode }}</span>
+    </nav>
+
+    <!-- Loading -->
     <div v-if="loading" class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
     </div>
 
-    <!-- Error state -->
-    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-      <svg class="h-12 w-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <!-- Error -->
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+      <svg class="h-12 w-12 text-red-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      <h3 class="text-lg font-medium text-red-800 mb-2">Error al cargar información</h3>
-      <p class="text-red-600 mb-4">{{ error }}</p>
-      <div class="space-x-3">
+      <h3 class="text-base font-semibold text-red-800 mb-1">Error al cargar información</h3>
+      <p class="text-sm text-red-600 mb-4">{{ error }}</p>
+      <div class="flex justify-center gap-3">
         <button @click="refreshData" class="btn-secondary text-sm">Intentar de Nuevo</button>
         <router-link to="/qr" class="btn-secondary text-sm">Volver al Escáner</router-link>
       </div>
     </div>
 
-    <!-- Main content - VISTA EXPANDIDA -->
-    <div v-else-if="qrInfo" class="space-y-6">
-      
-      <!-- Panel principal con información expandida -->
-      <div class="grid lg:grid-cols-2 gap-6">
-        
-        <!-- Información básica del QR (lado izquierdo) -->
-        <div class="bg-white rounded-lg shadow-sm border p-6">
-          <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <svg class="h-6 w-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Información Detallada
-          </h2>
-          
-          <!-- QR Image más grande -->
-          <div class="text-center mb-6">
-            <img 
-              v-if="qrInfo.qr_code" 
-              :src="getQRImageUrl(qrInfo.qr_code)" 
-              alt="Código QR"
-              class="mx-auto w-32 h-32 border rounded-lg shadow-sm"
-            />
-            <p class="mt-2 text-sm font-mono text-gray-600 bg-gray-50 px-3 py-1 rounded">
-              {{ qrInfo.qr_code }}
-            </p>
-          </div>
+    <!-- Contenido principal -->
+    <template v-else-if="qrInfo">
 
-          <!-- Información según tipo -->
-          <div v-if="qrInfo.type === 'batch' && qrInfo.batch_info" class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="text-sm font-medium text-gray-600">ID:</label>
-                <p class="text-gray-900 font-semibold">{{ qrInfo.batch_info.id || qrInfo.id || 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Cantidad:</label>
-                <p class="text-gray-900">{{ qrInfo.batch_info.amount || 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Proveedor:</label>
-                <p class="text-gray-900">{{ qrInfo.batch_info.supplier || 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Almacén:</label>
-                <p class="text-gray-900">{{ qrInfo.batch_info.store_id || 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Vencimiento:</label>
-                <p class="text-gray-900">{{ formatDate(qrInfo.batch_info.expiration_date) }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Creado:</label>
-                <p class="text-gray-900">{{ formatDate(qrInfo.batch_info.created_at) }}</p>
-              </div>
+      <!-- ── HERO CARD ─────────────────────────────────────────── -->
+      <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <!-- Franja de color según tipo -->
+        <div :class="qrInfo.type === 'batch' ? 'bg-indigo-600' : 'bg-blue-600'" class="h-1.5 w-full"></div>
+
+        <div class="p-6 flex flex-col sm:flex-row gap-6">
+          <!-- Imagen QR -->
+          <div class="flex-shrink-0 flex flex-col items-center gap-2">
+            <div class="border-2 border-gray-200 rounded-xl p-2 bg-gray-50">
+              <img
+                v-if="qrInfo.qr_code"
+                :src="getQRImageUrl(qrInfo.qr_code)"
+                alt="Código QR"
+                class="w-28 h-28 object-contain"
+              />
             </div>
+            <span class="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded select-all">
+              {{ qrInfo.qr_code }}
+            </span>
           </div>
 
-          <div v-if="qrInfo.type === 'medical_supply' && qrInfo.supply_info" class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
+          <!-- Info principal -->
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
               <div>
-                <label class="text-sm font-medium text-gray-600">Código:</label>
-                <p class="text-gray-900 font-mono">{{ qrInfo.supply_info.SupplyCode?.code || qrInfo.supply_code || qrInfo.supply_info.supply_code || 'N/A' }}</p>
+                <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">
+                  {{ getTypeLabel(qrInfo.type) }}
+                </p>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+                  {{ qrInfo.supply_info?.name || qrInfo.supply_info?.SupplyCode?.name || qrInfo.batch_info?.supplier || 'Sin nombre' }}
+                </h1>
               </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Estado:</label>
-                <span :class="getStatusClass(qrInfo.current_status || qrInfo.status)" 
-                      class="px-2 py-1 rounded-full text-xs font-medium">
-                  {{ getStatusText(qrInfo.current_status || qrInfo.status) }}
+              <!-- Badge estado -->
+              <span :class="getStatusClass(qrInfo.current_status || qrInfo.status)"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold flex-shrink-0">
+                <span class="text-base">{{ getStatusIcon(qrInfo.current_status || qrInfo.status) }}</span>
+                {{ getStatusText(qrInfo.current_status || qrInfo.status) }}
+              </span>
+            </div>
+
+            <!-- Datos clave en fila de chips -->
+            <div class="flex flex-wrap gap-2 mb-4">
+              <!-- Para insumos individuales -->
+              <template v-if="qrInfo.type === 'medical_supply' && qrInfo.supply_info">
+                <span class="detail-chip">
+                  <span class="detail-chip-label">Código</span>
+                  <span class="font-mono">{{ qrInfo.supply_info.SupplyCode?.code || qrInfo.supply_info.Code || '—' }}</span>
                 </span>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Nombre:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_info.name || qrInfo.supply_info.SupplyCode?.name || qrInfo.supply_info.supply_code_name || 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Proveedor:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_info.batch?.supplier || qrInfo.supply_info.supplier || 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Almacén:</label>
-                <p class="text-gray-900">{{ qrInfo.supply_info.store_name || 'N/A' }}</p>
-              </div>
-              <div>
-                <label class="text-sm font-medium text-gray-600">Vencimiento:</label>
-                <p class="text-gray-900">{{ formatDate(qrInfo.supply_info.batch?.expiration_date || qrInfo.supply_info.expiration_date) }}</p>
-              </div>
+                <span class="detail-chip">
+                  <span class="detail-chip-label">Proveedor</span>
+                  {{ qrInfo.supply_info.batch?.supplier || qrInfo.supply_info.supplier || '—' }}
+                </span>
+                <span class="detail-chip">
+                  <span class="detail-chip-label">Almacén</span>
+                  {{ qrInfo.supply_info.store_name || qrInfo.supply_info.batch?.store_name || '—' }}
+                </span>
+                <span class="detail-chip">
+                  <span class="detail-chip-label">Vence</span>
+                  {{ formatDate(qrInfo.supply_info.batch?.expiration_date || qrInfo.supply_info.expiration_date) }}
+                </span>
+              </template>
+              <!-- Para lotes -->
+              <template v-else-if="qrInfo.type === 'batch' && qrInfo.batch_info">
+                <span class="detail-chip">
+                  <span class="detail-chip-label">ID Lote</span>
+                  {{ qrInfo.batch_info.id || '—' }}
+                </span>
+                <span class="detail-chip">
+                  <span class="detail-chip-label">Cantidad</span>
+                  {{ qrInfo.batch_info.amount }} u.
+                </span>
+                <span class="detail-chip">
+                  <span class="detail-chip-label">Proveedor</span>
+                  {{ qrInfo.batch_info.supplier || '—' }}
+                </span>
+                <span class="detail-chip">
+                  <span class="detail-chip-label">Almacén</span>
+                  {{ qrInfo.batch_info.store_name || qrInfo.batch_info.store_id || '—' }}
+                </span>
+                <span class="detail-chip">
+                  <span class="detail-chip-label">Vence</span>
+                  {{ formatDate(qrInfo.batch_info.expiration_date) }}
+                </span>
+              </template>
+            </div>
+
+            <!-- Acciones -->
+            <div class="flex flex-wrap gap-2">
+              <button
+                @click="downloadQRAsPDF"
+                :disabled="isGeneratingPDF"
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border-2 border-green-600 text-green-700 text-sm font-semibold bg-white hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg v-if="isGeneratingPDF" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {{ isGeneratingPDF ? 'Generando...' : 'Descargar PDF' }}
+              </button>
+              <button
+                @click="refreshData"
+                :disabled="loading"
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm font-medium bg-white hover:bg-gray-50 transition-colors"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Actualizar
+              </button>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Panel de estadísticas y estado (lado derecho) -->
-        <div class="space-y-4">
-          
-          <!-- Estadísticas del lote -->
-          <div v-if="qrInfo.type === 'batch' && qrInfo.batch_status" class="bg-gradient-to-r from-brand-blue-light from-opacity-20 to-brand-blue-light from-opacity-40 rounded-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Estadísticas del Lote</h3>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="text-center">
-                <div class="text-3xl font-bold text-blue-600">{{ qrInfo.batch_status.total_individual_supplies || 0 }}</div>
-                <div class="text-sm text-gray-600">Total Insumos</div>
+      <!-- ── GRID PRINCIPAL ────────────────────────────────────── -->
+      <div class="grid lg:grid-cols-3 gap-5">
+
+        <!-- Col izquierda (2/3): Lote relacionado + Historial -->
+        <div class="lg:col-span-2 space-y-5">
+
+          <!-- Lote relacionado (solo para insumos individuales) -->
+          <div
+            v-if="qrInfo.type === 'medical_supply' && (qrInfo.supply_info?.batch || qrInfo.supply_info?.BatchID)"
+            class="bg-white rounded-xl shadow-sm border overflow-hidden"
+          >
+            <div class="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
+              <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <svg class="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Lote Relacionado
+              </h2>
+              <button
+                v-if="qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID"
+                @click="viewBatch(qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID)"
+                class="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Ver en Inventario →
+              </button>
+            </div>
+            <div class="px-5 py-4 grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">ID del Lote</p>
+                <p class="text-sm font-semibold font-mono text-gray-800">{{ qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID || '—' }}</p>
               </div>
-              <div class="text-center">
-                <div class="text-3xl font-bold text-green-600">{{ qrInfo.batch_status.available_supplies || 0 }}</div>
-                <div class="text-sm text-gray-600">Disponibles</div>
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Proveedor</p>
+                <p class="text-sm font-medium text-gray-800">{{ qrInfo.supply_info?.batch?.supplier || '—' }}</p>
               </div>
-              <div class="text-center">
-                <div class="text-3xl font-bold text-red-600">{{ qrInfo.batch_status.consumed_supplies || 0 }}</div>
-                <div class="text-sm text-gray-600">Consumidos</div>
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Vencimiento</p>
+                <p class="text-sm font-medium text-gray-800">{{ formatDate(qrInfo.supply_info?.batch?.expiration_date) }}</p>
               </div>
-              <div class="text-center">
-                <div class="text-3xl font-bold text-purple-600">{{ getUsagePercentage() }}%</div>
-                <div class="text-sm text-gray-600">Utilización</div>
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Cantidad en lote</p>
+                <p class="text-sm font-bold" :class="(qrInfo.supply_info?.batch?.amount || 0) > 0 ? 'text-green-600' : 'text-red-600'">
+                  {{ qrInfo.supply_info?.batch?.amount || 0 }} unidades
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Stock</p>
+                <span :class="(qrInfo.supply_info?.batch?.amount || 0) > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                      class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold">
+                  {{ (qrInfo.supply_info?.batch?.amount || 0) > 0 ? 'Disponible' : 'Agotado' }}
+                </span>
+              </div>
+              <div v-if="qrInfo.supply_info?.batch?.qr_code">
+                <p class="text-xs text-gray-400 mb-0.5">QR del Lote</p>
+                <p class="text-xs font-mono text-gray-600 break-all">{{ qrInfo.supply_info?.batch?.qr_code }}</p>
               </div>
             </div>
-            <!-- Barra de progreso -->
-            <div class="mt-4">
-              <div class="bg-gray-200 rounded-full h-3">
-                <div 
-                  class="bg-gradient-to-r from-brand-green to-brand-blue-light h-3 rounded-full transition-all duration-300"
+          </div>
+
+          <!-- Estadísticas del lote (solo para tipo batch) -->
+          <div v-if="qrInfo.type === 'batch' && qrInfo.batch_status" class="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div class="px-5 py-4 border-b bg-gray-50">
+              <h2 class="text-sm font-semibold text-gray-700">Estadísticas del Lote</h2>
+            </div>
+            <div class="px-5 py-4">
+              <div class="grid grid-cols-4 gap-4 mb-4">
+                <div class="text-center">
+                  <p class="text-2xl font-bold text-blue-600">{{ qrInfo.batch_status.total_individual_supplies || 0 }}</p>
+                  <p class="text-xs text-gray-500 mt-0.5">Total</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-2xl font-bold text-green-600">{{ qrInfo.batch_status.available_supplies || 0 }}</p>
+                  <p class="text-xs text-gray-500 mt-0.5">Disponibles</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-2xl font-bold text-red-500">{{ qrInfo.batch_status.consumed_supplies || 0 }}</p>
+                  <p class="text-xs text-gray-500 mt-0.5">Consumidos</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-2xl font-bold text-purple-600">{{ getUsagePercentage() }}%</p>
+                  <p class="text-xs text-gray-500 mt-0.5">Utilización</p>
+                </div>
+              </div>
+              <div class="bg-gray-100 rounded-full h-2">
+                <div
+                  class="bg-blue-500 h-2 rounded-full transition-all duration-500"
                   :style="`width: ${getUsagePercentage()}%`"
                 ></div>
               </div>
             </div>
           </div>
 
-          <!-- Panel de estado del insumo individual -->
-          <div v-if="qrInfo.type === 'medical_supply'" class="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Estado del Insumo</h3>
-            <div class="text-center">
-              <div :class="getStatusIconClass(qrInfo.current_status || qrInfo.status)" 
-                   class="text-4xl font-bold mb-2">
-                {{ getStatusIcon(qrInfo.current_status || qrInfo.status) }}
-              </div>
-              <div class="text-lg font-medium text-gray-900">
-                {{ getStatusText(qrInfo.current_status || qrInfo.status) }}
-              </div>
-              <div v-if="(qrInfo.current_status || qrInfo.status) === 'consumido'" class="text-sm text-gray-600 mt-2">
-                Este insumo ya no está disponible para uso
-              </div>
-              <div v-else-if="qrInfo.can_consume || (qrInfo.current_status || qrInfo.status) === 'recepcionado'" class="text-sm text-gray-600 mt-2">
-                Listo para ser consumido
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Información del lote relacionado (para insumos individuales) -->
-      <div v-if="qrInfo.type === 'medical_supply' && (qrInfo.supply_info?.batch || qrInfo.batch_status)" class="bg-blue-50 rounded-lg border border-blue-200 p-6">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <svg class="h-6 w-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-          </svg>
-          Información del Lote Relacionado
-        </h2>
-        <div class="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label class="text-sm font-medium text-gray-600">ID del Lote:</label>
-            <p class="text-gray-900 font-mono">{{ qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID || qrInfo.batch_status?.batch_id || 'N/A' }}</p>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-600">Cantidad Disponible:</label>
-            <p class="text-gray-900 font-bold" :class="(qrInfo.supply_info?.batch?.amount || qrInfo.batch_status?.current_amount || 0) > 0 ? 'text-green-600' : 'text-red-600'">
-              {{ qrInfo.supply_info?.batch?.amount || qrInfo.batch_status?.current_amount || 0 }} unidades
-            </p>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-600">Proveedor:</label>
-            <p class="text-gray-900">{{ qrInfo.supply_info?.batch?.supplier || qrInfo.batch_status?.supplier || 'N/A' }}</p>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-600">Vencimiento:</label>
-            <p class="text-gray-900">{{ formatDate(qrInfo.supply_info?.batch?.expiration_date || qrInfo.batch_status?.expiration_date) }}</p>
-          </div>
-          <div>
-            <label class="text-sm font-medium text-gray-600">Stock:</label>
-            <span :class="(qrInfo.supply_info?.batch?.amount || qrInfo.batch_status?.current_amount || 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                  class="px-2 py-1 rounded-full text-xs font-medium">
-              {{ (qrInfo.supply_info?.batch?.amount || qrInfo.batch_status?.current_amount || 0) > 0 ? 'Disponible' : 'Agotado' }}
-            </span>
-          </div>
-          <div v-if="qrInfo.batch_status?.batch_qr_code || qrInfo.supply_info?.batch?.qr_code">
-            <label class="text-sm font-medium text-gray-600">QR del Lote:</label>
-            <p class="text-gray-900 font-mono text-xs">{{ qrInfo.batch_status?.batch_qr_code || qrInfo.supply_info?.batch?.qr_code }}</p>
-          </div>
-        </div>
-        <button 
-          v-if="qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID || qrInfo.batch_status?.batch_id"
-          @click="viewBatch(qrInfo.supply_info?.batch?.id || qrInfo.supply_info?.BatchID || qrInfo.batch_status?.batch_id)" 
-          class="btn-primary"
-        >
-          Ver Lote Completo en Inventario
-        </button>
-      </div>
-
-      <!-- Historial SIEMPRE VISIBLE (no en modal) -->
-      <div class="bg-white rounded-lg shadow-sm border p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-semibold text-gray-900 flex items-center">
-            <svg class="h-6 w-6 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Historial de Movimientos
-          </h2>
-          <button @click="loadHistory" class="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Actualizar
-          </button>
-        </div>
-        
-        <div v-if="historyLoading" class="text-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p class="mt-2 text-gray-600">Cargando historial...</p>
-        </div>
-        
-        <div v-else-if="historyError" class="text-center py-8">
-          <svg class="h-12 w-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p class="text-red-600">{{ historyError }}</p>
-          <button @click="loadHistory" class="mt-2 btn-secondary text-sm">Reintentar</button>
-        </div>
-        
-        <div v-else-if="historyData && historyData.length > 0" class="space-y-3">
-          <div 
-            v-for="(item, index) in historyData" 
-            :key="index"
-            class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <div class="flex items-center">
-              <div :class="getHistoryIconClass(item)" class="p-2 rounded-full mr-4">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path v-if="getHistoryStatus(item) === 'consumido'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  <path v-else-if="getHistoryStatus(item) === 'creado'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <!-- Historial de movimientos -->
+          <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
+              <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-              </div>
-              <div>
-                <p class="font-semibold text-gray-900">{{ getHistoryStatusFormatted(item) }}</p>
-                <p class="text-sm text-gray-600">{{ formatDate(item.date_time) }}</p>
-                <p v-if="item.notes" class="text-xs text-gray-500 mt-1">{{ item.notes }}</p>
+                Historial de Movimientos
+              </h2>
+              <button @click="loadHistory" class="text-xs text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Actualizar
+              </button>
+            </div>
+
+            <div v-if="historyLoading" class="flex justify-center items-center py-10">
+              <div class="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-500"></div>
+            </div>
+
+            <div v-else-if="historyError" class="text-center py-8 px-5">
+              <p class="text-sm text-red-500 mb-2">{{ historyError }}</p>
+              <button @click="loadHistory" class="btn-secondary text-xs">Reintentar</button>
+            </div>
+
+            <!-- Timeline -->
+            <div v-else-if="historyData && historyData.length > 0" class="px-5 py-4">
+              <div class="relative">
+                <!-- Línea vertical -->
+                <div class="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200"></div>
+
+                <div class="space-y-5">
+                  <div v-for="(item, index) in historyData" :key="index" class="relative flex gap-4">
+                    <!-- Punto del timeline -->
+                    <div :class="getHistoryIconClass(item)"
+                         class="relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm border-2 border-white">
+                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path v-if="getHistoryStatus(item) === 'consumido'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <path v-else-if="getHistoryStatus(item) === 'recepcionado'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3-3 3M6 12h10" />
+                      </svg>
+                    </div>
+
+                    <!-- Contenido -->
+                    <div class="flex-1 bg-gray-50 rounded-lg p-3 min-w-0">
+                      <div class="flex items-start justify-between gap-2 flex-wrap">
+                        <div>
+                          <p class="text-sm font-semibold text-gray-800 capitalize">{{ item.status || 'Movimiento' }}</p>
+                          <p class="text-xs text-gray-400 mt-0.5">{{ formatDate(item.date_time) }}</p>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                          <p class="text-xs font-medium text-gray-600 font-mono">{{ item.user_rut || '—' }}</p>
+                          <p class="text-xs text-gray-400">
+                            {{ getDestinationLabel(item.destination_type) }}
+                            <span v-if="item.destination_id"> #{{ item.destination_id }}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <p v-if="item.notes" class="text-xs text-gray-500 mt-2 border-t border-gray-200 pt-2 leading-relaxed">
+                        {{ item.notes }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="text-right">
-              <p class="text-sm font-medium text-gray-700">{{ item.user_rut || 'N/A' }}</p>
-              <p class="text-xs text-gray-500">
-                {{ getDestinationLabel(item.destination_type) }}: {{ item.destination_id || 'N/A' }}
-              </p>
+
+            <div v-else class="text-center py-10 px-5">
+              <svg class="h-12 w-12 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <p class="text-sm text-gray-400">Sin movimientos registrados</p>
             </div>
           </div>
         </div>
-        
-        <div v-else class="text-center py-8 text-gray-500">
-          <svg class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <p class="mb-4">No hay movimientos registrados para este QR</p>
-          <button @click="addMovement" class="btn-primary">
-            Agregar Primer Movimiento
-          </button>
+
+        <!-- Col derecha (1/3): Info adicional -->
+        <div class="space-y-5">
+
+          <!-- Días hasta vencimiento -->
+          <div v-if="qrInfo.supply_info?.DaysToExpire != null" class="bg-white rounded-xl shadow-sm border p-5">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Vencimiento</p>
+            <div class="text-center">
+              <p class="text-4xl font-bold" :class="qrInfo.supply_info.DaysToExpire <= 30 ? 'text-red-500' : 'text-green-600'">
+                {{ qrInfo.supply_info.DaysToExpire }}
+              </p>
+              <p class="text-sm text-gray-500 mt-1">días restantes</p>
+              <div class="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  class="h-1.5 rounded-full transition-all"
+                  :class="qrInfo.supply_info.DaysToExpire <= 30 ? 'bg-red-400' : 'bg-green-400'"
+                  :style="`width: ${Math.min(100, Math.round(qrInfo.supply_info.DaysToExpire / 3.65))}%`"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metadata del QR -->
+          <div class="bg-white rounded-xl shadow-sm border p-5">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Información del QR</p>
+            <dl class="space-y-2.5 text-sm">
+              <div class="flex justify-between gap-2">
+                <dt class="text-gray-500">Tipo</dt>
+                <dd class="font-medium text-gray-800 text-right">{{ getTypeLabel(qrInfo.type) }}</dd>
+              </div>
+              <div class="flex justify-between gap-2">
+                <dt class="text-gray-500">Escaneos totales</dt>
+                <dd class="font-medium text-gray-800">{{ qrInfo.scan_statistics?.total_scans || 0 }}</dd>
+              </div>
+              <div v-if="qrInfo.scan_statistics?.first_scan" class="flex justify-between gap-2">
+                <dt class="text-gray-500">Primer escaneo</dt>
+                <dd class="font-medium text-gray-800 text-right">{{ formatDate(qrInfo.scan_statistics.first_scan) }}</dd>
+              </div>
+              <div v-if="qrInfo.scan_statistics?.last_scan" class="flex justify-between gap-2">
+                <dt class="text-gray-500">Último escaneo</dt>
+                <dd class="font-medium text-gray-800 text-right">{{ formatDate(qrInfo.scan_statistics.last_scan) }}</dd>
+              </div>
+              <div v-if="qrInfo.traceability?.current_location" class="flex justify-between gap-2">
+                <dt class="text-gray-500">Ubicación actual</dt>
+                <dd class="font-medium text-gray-800 text-right">{{ qrInfo.traceability.current_location.name }}</dd>
+              </div>
+            </dl>
+          </div>
+
         </div>
       </div>
 
-      <!-- Acciones administrativas expandidas -->
-      <div class="bg-white rounded-lg shadow-sm border p-6">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Acciones Administrativas</h2>
-        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button @click="viewInInventory" class="action-card-detailed">
-            <div class="action-icon bg-blue-100 text-blue-600">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="font-medium">Ver en Inventario</div>
-              <div class="text-sm text-gray-500">Buscar en lista completa</div>
-            </div>
-          </button>
-
-          <button v-if="!qrInfo.is_consumed" @click="addMovement" class="action-card-detailed">
-            <div class="action-icon bg-orange-100 text-orange-600">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="font-medium">Consumir Insumo</div>
-              <div class="text-sm text-gray-500">Registrar consumo</div>
-            </div>
-          </button>
-
-          <button v-if="qrInfo.type === 'batch'" @click="syncBatch" class="action-card-detailed">
-            <div class="action-icon bg-purple-100 text-purple-600">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="font-medium">Sincronizar</div>
-              <div class="text-sm text-gray-500">Actualizar cantidades</div>
-            </div>
-          </button>
-
-          <button @click="refreshData" class="action-card-detailed">
-            <div class="action-icon bg-gray-100 text-gray-600">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </div>
-            <div class="action-content">
-              <div class="font-medium">Actualizar</div>
-              <div class="text-sm text-gray-500">Refrescar datos</div>
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
+    </template>
 
     <!-- Área de impresión (oculta) -->
     <div ref="printArea" class="print-only">
@@ -408,8 +423,25 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import qrService from '@/services/qr/qrService'
 import { useNotification } from '@/composables/useNotification'
+import { useQRPdfDownload } from '@/composables/useQRPdfDownload'
 
 const { success: showSuccess, error: showError, info: showInfo } = useNotification()
+
+// PDF download
+const { downloadQRAsPDF: downloadPDF, isGenerating: isGeneratingPDF } = useQRPdfDownload()
+const downloadQRAsPDF = async () => {
+  if (!qrInfo.value) return
+  try {
+    const ok = await downloadPDF(qrInfo.value, {
+      filename: `QR_${qrInfo.value.qr_code}_${Date.now()}.pdf`,
+      includeInfo: true
+    })
+    if (ok) showSuccess('PDF descargado exitosamente')
+    else showError('Error al generar el PDF')
+  } catch (err) {
+    showError('Error al descargar el PDF: ' + (err.message || 'Error desconocido'))
+  }
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -808,6 +840,14 @@ onMounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Chip de dato clave en el hero */
+.detail-chip {
+  @apply inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 rounded-full text-sm text-gray-700;
+}
+.detail-chip-label {
+  @apply text-xs text-gray-400 mr-0.5;
 }
 
 /* Usar clases de botones de style.css global */

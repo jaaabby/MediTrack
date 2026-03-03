@@ -146,93 +146,110 @@
           <div v-if="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'aprobado' || request.status === 'devuelto_al_encargado') && authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut" 
                class="bg-white rounded-lg shadow border p-4 sm:p-6">
             <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Configuración de Retiro</h3>
-            <p class="text-sm text-gray-600 mb-4">Configure quién puede retirar los insumos de esta solicitud desde bodega.</p>
-            
-            <div class="space-y-4">
-              <!-- Checkbox para permitir a cualquiera -->
-              <div class="flex items-start">
-                <input
-                  type="checkbox"
-                  id="allowAnyonePickup"
-                  v-model="pickupConfig.allow_anyone_to_pickup"
-                  @change="onCheckboxChange"
-                  class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label for="allowAnyonePickup" class="ml-3 text-sm text-gray-700">
-                  <span class="font-medium">Permitir que cualquier persona retire los insumos</span>
-                  <p class="text-xs text-gray-500 mt-1">Si está marcado, cualquier persona puede venir a buscar los insumos escaneando el QR.</p>
-                </label>
-              </div>
+            <p class="text-sm text-gray-600 mb-4">Seleccione quién está autorizado a retirar los insumos de esta solicitud desde bodega.</p>
 
-              <!-- Campos para persona específica (solo si no está marcado "cualquiera") -->
-              <div v-if="!pickupConfig.allow_anyone_to_pickup" class="border-t pt-4 space-y-4">
+            <!-- Opciones de retiro en tarjetas -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <!-- Opción: Cualquier persona -->
+              <button
+                type="button"
+                @click="pickupConfig.allow_anyone_to_pickup = true; onCheckboxChange()"
+                :class="[
+                  'flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-all',
+                  pickupConfig.allow_anyone_to_pickup
+                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                    : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+                ]"
+              >
+                <span :class="['mt-0.5 flex-shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors',
+                  pickupConfig.allow_anyone_to_pickup ? 'border-blue-500 bg-blue-500' : 'border-gray-300 bg-white']">
+                  <span v-if="pickupConfig.allow_anyone_to_pickup" class="h-2 w-2 rounded-full bg-white"></span>
+                </span>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Buscar persona autorizada <span class="text-red-500">*</span>
-                  </label>
-                  <!-- Campo de búsqueda con autocompletado -->
-                  <div class="relative">
-                    <input
-                      type="text"
-                      v-model="userSearchQuery"
-                      @input="onUserSearch"
-                      @focus="showUserSuggestions = true"
-                      @blur="handleUserSearchBlur"
-                      placeholder="Escriba el nombre o RUT de la persona..."
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <!-- Lista de sugerencias -->
-                    <div v-if="showUserSuggestions && filteredUsers.length > 0" 
-                         class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                      <div
-                        v-for="user in filteredUsers"
-                        :key="user.rut"
-                        @mousedown="selectUser(user)"
-                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                      >
-                        <div class="font-medium text-gray-900">{{ user.name }}</div>
-                        <div class="text-sm text-gray-500">{{ user.rut }}</div>
-                        <div v-if="user.email" class="text-xs text-gray-400">{{ user.email }}</div>
-                      </div>
-                    </div>
-                    <div v-if="showUserSuggestions && userSearchQuery && filteredUsers.length === 0" 
-                         class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-4">
-                      <p class="text-sm text-gray-500">No se encontraron usuarios</p>
-                    </div>
+                  <p class="text-sm font-semibold" :class="pickupConfig.allow_anyone_to_pickup ? 'text-blue-800' : 'text-gray-800'">Cualquier persona</p>
+                  <p class="text-xs mt-0.5" :class="pickupConfig.allow_anyone_to_pickup ? 'text-blue-600' : 'text-gray-500'">
+                    Quien presente el QR puede retirar los insumos.
+                  </p>
+                </div>
+              </button>
+
+              <!-- Opción: Persona específica -->
+              <button
+                type="button"
+                @click="pickupConfig.allow_anyone_to_pickup = false; onCheckboxChange()"
+                :class="[
+                  'flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-all',
+                  !pickupConfig.allow_anyone_to_pickup
+                    ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-200'
+                    : 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/40'
+                ]"
+              >
+                <span :class="['mt-0.5 flex-shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors',
+                  !pickupConfig.allow_anyone_to_pickup ? 'border-orange-500 bg-orange-500' : 'border-gray-300 bg-white']">
+                  <span v-if="!pickupConfig.allow_anyone_to_pickup" class="h-2 w-2 rounded-full bg-white"></span>
+                </span>
+                <div>
+                  <p class="text-sm font-semibold" :class="!pickupConfig.allow_anyone_to_pickup ? 'text-orange-800' : 'text-gray-800'">Persona específica</p>
+                  <p class="text-xs mt-0.5" :class="!pickupConfig.allow_anyone_to_pickup ? 'text-orange-600' : 'text-gray-500'">
+                    Solo una persona autorizada puede retirar.
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <!-- Búsqueda de persona específica (solo si está seleccionada esa opción) -->
+            <div v-if="!pickupConfig.allow_anyone_to_pickup" class="space-y-3">
+              <label class="block text-sm font-medium text-gray-700">
+                Buscar persona autorizada <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <input
+                  type="text"
+                  v-model="userSearchQuery"
+                  @input="onUserSearch"
+                  @focus="showUserSuggestions = true"
+                  @blur="handleUserSearchBlur"
+                  placeholder="Nombre o RUT de la persona..."
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-400 focus:border-orange-400"
+                />
+                <div v-if="showUserSuggestions && filteredUsers.length > 0"
+                     class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  <div
+                    v-for="user in filteredUsers"
+                    :key="user.rut"
+                    @mousedown="selectUser(user)"
+                    class="px-4 py-2 hover:bg-orange-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div class="font-medium text-gray-900">{{ user.name }}</div>
+                    <div class="text-sm text-gray-500">{{ user.rut }}</div>
+                    <div v-if="user.email" class="text-xs text-gray-400">{{ user.email }}</div>
                   </div>
-                  <!-- Usuario seleccionado -->
-                  <div v-if="pickupConfig.authorized_pickup_rut" class="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <p class="text-sm font-medium text-green-900">{{ pickupConfig.authorized_pickup_name || 'Usuario seleccionado' }}</p>
-                        <p class="text-xs text-green-700">{{ pickupConfig.authorized_pickup_rut }}</p>
-                      </div>
-                      <button
-                        @click="clearSelectedUser"
-                        class="text-red-600 hover:text-red-800"
-                        title="Quitar selección"
-                      >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <p class="text-xs text-gray-500 mt-1">Solo esta persona podrá retirar los insumos de esta solicitud.</p>
+                </div>
+                <div v-if="showUserSuggestions && userSearchQuery && filteredUsers.length === 0"
+                     class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-4">
+                  <p class="text-sm text-gray-500">No se encontraron usuarios</p>
                 </div>
               </div>
 
-              <!-- Estado actual -->
-              <div v-if="request.allow_anyone_to_pickup !== undefined" class="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p class="text-sm text-gray-700">
-                  <span class="font-medium">Estado actual:</span>
-                  <span v-if="request.allow_anyone_to_pickup" class="text-green-700 ml-2">
-                    ✓ Cualquier persona puede retirar
-                  </span>
-                  <span v-else-if="request.authorized_pickup_rut" class="text-orange-700 ml-2">
-                    ✓ Solo {{ request.authorized_pickup_name || request.authorized_pickup_rut }} puede retirar
-                  </span>
-                </p>
+              <!-- Usuario seleccionado -->
+              <div v-if="pickupConfig.authorized_pickup_rut" class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div class="flex items-center gap-2">
+                  <svg class="h-4 w-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-green-900">{{ pickupConfig.authorized_pickup_name || 'Usuario seleccionado' }}</p>
+                    <p class="text-xs text-green-700">{{ pickupConfig.authorized_pickup_rut }}</p>
+                  </div>
+                </div>
+                <button @click="clearSelectedUser" class="text-red-500 hover:text-red-700 ml-2" title="Cambiar persona">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div v-else class="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <p class="text-xs text-orange-700">Busque y seleccione a la persona autorizada para guardar la configuración.</p>
               </div>
             </div>
           </div>

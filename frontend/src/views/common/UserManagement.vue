@@ -311,20 +311,30 @@
                     <label for="rut" class="block text-sm font-medium text-gray-700">
                       RUT <span class="text-red-500">*</span>
                     </label>
-                    <input
-                      id="rut"
-                      :value="userForm.rut"
-                      @input="handleRutInput"
-                      type="text"
-                      required
-                      :disabled="isEditMode"
-                      placeholder="12345678-9"
-                      maxlength="10"
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      :class="{ 'border-red-500': formErrors.rut }"
-                    />
+                    <div class="mt-1 flex items-center gap-1">
+                      <input
+                        id="rut"
+                        :value="rutBody"
+                        @input="handleRutBodyInput"
+                        type="text"
+                        inputmode="numeric"
+                        :disabled="isEditMode"
+                        placeholder="12345678"
+                        maxlength="8"
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        :class="{ 'border-red-500': formErrors.rut }"
+                      />
+                      <span class="text-gray-500 font-medium select-none">-</span>
+                      <input
+                        :value="rutDv"
+                        type="text"
+                        disabled
+                        maxlength="1"
+                        class="w-14 text-center border-gray-300 rounded-md shadow-sm sm:text-sm bg-gray-100 cursor-not-allowed"
+                      />
+                    </div>
                     <p v-if="formErrors.rut" class="mt-1 text-sm text-red-600">{{ formErrors.rut }}</p>
-                    <p class="mt-1 text-xs text-gray-500">Formato: 12345678-9</p>
+                    <p class="mt-1 text-xs text-gray-500">Ingresa el rut sin puntos ni guion.</p>
                   </div>
 
                   <!-- Email -->
@@ -471,10 +481,10 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Modal de confirmación de eliminación -->
-  <div v-if="showDeleteModal && userToDelete" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeDeleteModal">
+  
+    <!-- Modal de confirmación de eliminación -->
+    <Teleport to="body">
+      <div v-if="showDeleteModal && userToDelete" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeDeleteModal">
     <div class="w-full max-w-md p-5 border shadow-lg rounded-md bg-white">
       <div class="space-y-4">
         <!-- Header -->
@@ -535,6 +545,8 @@
       </div>
     </div>
   </div>
+  </Teleport>
+  </div>
 </template>
 
 <script setup>
@@ -556,6 +568,13 @@ const loading = ref(false)
 const saving = ref(false)
 const showModal = ref(false)
 const isEditMode = ref(false)
+
+// RUT separado en cuerpo y DV
+const rutBody = ref('')
+const rutDv = computed(() => {
+  if (!rutBody.value || rutBody.value.length === 0) return ''
+  return calculateDv(rutBody.value)
+})
 
 // Refs para búsqueda y filtros
 const searchTerm = ref('')
@@ -731,17 +750,27 @@ const validateRutFormat = (rut) => {
   return rutPattern.test(rut)
 }
 
-// Manejar input de RUT
-const handleRutInput = (event) => {
-  const input = event.target.value
-  // Primero eliminar todos los guiones y caracteres no válidos
-  const limpio = input.replace(/[^0-9kK]/g, '')
-  // Luego formatear
-  const formatted = formatRut(limpio)
-  userForm.rut = formatted
-  
-  // Forzar actualización del input
-  event.target.value = formatted
+// Calcular dígito verificador del RUT chileno (módulo 11)
+const calculateDv = (body) => {
+  if (!body || body.length === 0) return ''
+  let sum = 0
+  let multiplier = 2
+  for (let i = body.length - 1; i >= 0; i--) {
+    sum += parseInt(body[i]) * multiplier
+    multiplier = multiplier === 7 ? 2 : multiplier + 1
+  }
+  const remainder = 11 - (sum % 11)
+  if (remainder === 11) return '0'
+  if (remainder === 10) return 'K'
+  return String(remainder)
+}
+
+// Manejar input del cuerpo del RUT (solo dígitos, DV en campo separado)
+const handleRutBodyInput = (event) => {
+  const digits = event.target.value.replace(/[^0-9]/g, '').slice(0, 8)
+  rutBody.value = digits
+  event.target.value = digits
+  userForm.rut = digits.length > 0 ? `${digits}-${calculateDv(digits)}` : ''
 }
 
 // Cargar usuarios
@@ -787,7 +816,7 @@ const loadPavilions = async () => {
 // Cargar especialidades médicas
 const loadSpecialties = async () => {
   try {
-    const data = await medicalSpecialtyService.getAllSpecialties()
+    const data = await medicalSpecialtyService.getActiveSpecialties()
     medicalSpecialties.value = data || []
   } catch (error) {
     console.error('Error al cargar especialidades:', error)
@@ -828,7 +857,10 @@ const openEditModal = (user) => {
   isEditMode.value = true
   userForm.id = user.id
   userForm.name = user.name
-  userForm.rut = formatRut(user.rut) // Formatear RUT para mostrar con puntos
+  // Separar cuerpo y DV del RUT almacenado (formato: "12345678-9")
+  const rutParts = user.rut.replace(/\./g, '').split('-')
+  rutBody.value = rutParts[0] || ''
+  userForm.rut = rutParts[0] ? `${rutParts[0]}-${calculateDv(rutParts[0])}` : ''
   userForm.email = user.email
   userForm.role = user.role
   userForm.medical_center_id = user.medical_center_id
@@ -848,6 +880,7 @@ const resetForm = () => {
   userForm.id = null
   userForm.name = ''
   userForm.rut = ''
+  rutBody.value = ''
   userForm.email = ''
   userForm.password = ''
   userForm.role = ''

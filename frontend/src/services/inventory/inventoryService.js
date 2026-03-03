@@ -492,7 +492,8 @@ class InventoryService {
       if (filters.near_expiration) params.append('near_expiration', 'true')
       if (filters.low_stock) params.append('low_stock', 'true')
       if (filters.page) params.append('page', filters.page)
-      if (filters.page_size) params.append('page_size', filters.page_size)
+      // Solicitar todos los registros ya que la paginación se maneja en el cliente
+      params.append('page_size', filters.page_size || 9999)
 
       const response = await this.api.get(`/inventory/store?${params.toString()}`)
       // El backend devuelve {inventory: [...], total: ..., page: ...}
@@ -544,7 +545,7 @@ class InventoryService {
   async getInventoryBySurgeryType(storeId = null) {
     try {
       const params = storeId ? `?store_id=${storeId}` : ''
-      const response = await this.api.get(`/inventory/by-surgery${params}`)
+      const response = await this.api.get(`/inventory/by-surgery${params}`, { timeout: 8000 })
       // El backend devuelve {inventory: [...], count: ...}
       const data = response.data.data || response.data
       if (data && typeof data === 'object' && Array.isArray(data.inventory)) {

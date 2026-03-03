@@ -26,15 +26,15 @@
       <!-- Métricas principales -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         <!-- Total de Insumos -->
-        <button @click="goToInventory" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-brand-blue-medium hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
+        <button @click="goToInventory" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-[#31CDE3] hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="h-5 w-5 text-brand-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <div class="flex items-start gap-3">
-            <div class="p-2 sm:p-3 bg-gradient-to-br from-brand-blue-light from-opacity-30 to-brand-blue-light to-opacity-50 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 group-hover:from-brand-blue-light group-hover:to-brand-blue-medium group-hover:to-opacity-30 transition-colors">
-              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-brand-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-2 sm:p-3 bg-[#31CDE3]/10 group-hover:bg-[#31CDE3]/20 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 transition-colors">
+              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
@@ -42,49 +42,49 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
                 Total Insumos
-                <span class="text-brand-blue-dark opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
+                <span class="text-[#31CDE3] opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-blue-dark transition-colors">{{ mainMetrics.totalSupplies.toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-green truncate">Inventario total</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-[#31CDE3] transition-colors">{{ mainMetrics.totalSupplies.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-[#31CDE3] truncate">Inventario total</p>
             </div>
           </div>
         </button>
 
         <!-- Stock Bajo -->
-        <button @click="goToInventory('lowStock')" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-brand-pink hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
+        <button @click="goToInventory('lowStock')" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-red-400 hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="h-5 w-5 text-brand-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <div class="flex items-start gap-3">
-            <div class="p-2 sm:p-3 bg-gradient-to-br from-brand-pink from-opacity-20 to-brand-pink from-opacity-40 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 group-hover:from-brand-pink group-hover:to-brand-pink group-hover:to-opacity-50 transition-colors">
-              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-2 sm:p-3 bg-red-50 group-hover:bg-red-100 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 transition-colors">
+              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
-                Stock Bajo
-                <span class="text-brand-pink opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
+                Stock Crítico
+                <span class="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-pink transition-colors">{{ mainMetrics.lowStock.toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-pink truncate">Bajo 20% del stock</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-red-500 transition-colors">{{ mainMetrics.lowStock.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-red-500 truncate">Lotes en stock crítico</p>
             </div>
           </div>
         </button>
 
         <!-- Transferencias Pendientes -->
-        <button @click="goToTransfers" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-brand-blue-light hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
+        <button @click="goToTransfers" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-[#31CDE3] hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="h-5 w-5 text-brand-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <div class="flex items-start gap-3">
-            <div class="p-2 sm:p-3 bg-gradient-to-br from-brand-blue-light from-opacity-20 to-brand-blue-light from-opacity-40 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 group-hover:from-brand-blue-light group-hover:to-brand-blue-light group-hover:to-opacity-50 transition-colors">
-              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-brand-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-2 sm:p-3 bg-[#31CDE3]/10 group-hover:bg-[#31CDE3]/20 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 transition-colors">
+              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
@@ -92,24 +92,24 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
                 Transferencias
-                <span class="text-brand-blue-light opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
+                <span class="text-[#31CDE3] opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-blue-light transition-colors">{{ mainMetrics.pendingTransfers.toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-blue-light truncate">En tránsito</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-[#31CDE3] transition-colors">{{ mainMetrics.pendingTransfers.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-[#31CDE3] truncate">En tránsito</p>
             </div>
           </div>
         </button>
 
         <!-- Próximos a vencer -->
-        <button @click="goToInventory('expiring')" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-brand-green hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
+        <button @click="goToInventory('expiring')" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-red-400 hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="h-5 w-5 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <div class="flex items-start gap-3">
-            <div class="p-2 sm:p-3 bg-gradient-to-br from-brand-green from-opacity-30 to-brand-green from-opacity-50 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 group-hover:from-brand-green group-hover:to-brand-green group-hover:to-opacity-60 transition-colors">
-              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-2 sm:p-3 bg-red-50 group-hover:bg-red-100 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 transition-colors">
+              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -117,10 +117,10 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
                 Por Vencer
-                <span class="text-brand-green opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
+                <span class="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-green transition-colors">{{ Number(summary.near_expiration || 0).toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-green truncate">Dentro 90 días</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-red-500 transition-colors">{{ nearExpirationCount.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-red-500 truncate">Período de alerta</p>
             </div>
           </div>
         </button>
@@ -129,15 +129,15 @@
       <!-- Métricas de Configuración Médica -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         <!-- Total de Especialidades -->
-        <button @click="goToMedicalSpecialties" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-brand-blue-medium hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
+        <button @click="goToMedicalSpecialties" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-[#31CDE3] hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="h-5 w-5 text-brand-blue-medium" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <div class="flex items-start gap-3">
-            <div class="p-2 sm:p-3 bg-gradient-to-br from-brand-blue-medium from-opacity-20 to-brand-blue-medium from-opacity-40 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 group-hover:from-brand-blue-medium group-hover:to-brand-blue-medium group-hover:to-opacity-50 transition-colors">
-              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-2 sm:p-3 bg-[#31CDE3]/10 group-hover:bg-[#31CDE3]/20 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 transition-colors">
+              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
@@ -145,24 +145,24 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
                 Especialidades
-                <span class="text-brand-blue-medium opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
+                <span class="text-[#31CDE3] opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-blue-medium transition-colors">{{ medicalMetrics.totalSpecialties.toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-blue-medium truncate">Médicas registradas</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-[#31CDE3] transition-colors">{{ medicalMetrics.totalSpecialties.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-[#31CDE3] truncate">Médicas registradas</p>
             </div>
           </div>
         </button>
 
         <!-- Total de Cirugías -->
-        <button @click="goToSurgeries" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-brand-blue-dark hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
+        <button @click="goToSurgeries" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-[#31CDE3] hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="h-5 w-5 text-brand-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <div class="flex items-start gap-3">
-            <div class="p-2 sm:p-3 bg-gradient-to-br from-brand-blue-dark from-opacity-20 to-brand-blue-dark from-opacity-40 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 group-hover:from-brand-blue-dark group-hover:to-brand-blue-dark group-hover:to-opacity-50 transition-colors">
-              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-2 sm:p-3 bg-[#31CDE3]/10 group-hover:bg-[#31CDE3]/20 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 transition-colors">
+              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M12 2v7M5 10h14" />
               </svg>
@@ -170,24 +170,24 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
                 Tipos de Cirugía
-                <span class="text-brand-blue-dark opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
+                <span class="text-[#31CDE3] opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-blue-dark transition-colors">{{ medicalMetrics.totalSurgeries.toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-blue-dark truncate">Procedimientos</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-[#31CDE3] transition-colors">{{ medicalMetrics.totalSurgeries.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-[#31CDE3] truncate">Procedimientos</p>
             </div>
           </div>
         </button>
 
         <!-- Total de Doctores -->
-        <button @click="goToDoctors" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-brand-blue-light hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
+        <button @click="goToDoctors" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-[#31CDE3] hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="h-5 w-5 text-brand-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <div class="flex items-start gap-3">
-            <div class="p-2 sm:p-3 bg-gradient-to-br from-brand-blue-light from-opacity-20 to-brand-blue-light from-opacity-40 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 group-hover:from-brand-blue-light group-hover:to-brand-blue-light group-hover:to-opacity-50 transition-colors">
-              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-brand-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-2 sm:p-3 bg-[#31CDE3]/10 group-hover:bg-[#31CDE3]/20 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 transition-colors">
+              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
@@ -195,24 +195,24 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
                 Doctores
-                <span class="text-brand-blue-light opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
+                <span class="text-[#31CDE3] opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-blue-light transition-colors">{{ medicalMetrics.totalDoctors.toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-blue-light truncate">Registrados</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-[#31CDE3] transition-colors">{{ medicalMetrics.totalDoctors.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-[#31CDE3] truncate">Registrados</p>
             </div>
           </div>
         </button>
 
         <!-- Total de Insumos Típicos -->
-        <button @click="goToTypicalSupplies" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-brand-pink hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
+        <button @click="goToTypicalSupplies" class="group bg-white rounded-lg sm:rounded-xl shadow-sm border-2 border-transparent hover:border-[#31CDE3] hover:shadow-lg transition-all duration-200 cursor-pointer text-left w-full p-3 sm:p-4 md:p-6 relative overflow-hidden">
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg class="h-5 w-5 text-brand-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
           <div class="flex items-start gap-3">
-            <div class="p-2 sm:p-3 bg-gradient-to-br from-brand-pink from-opacity-20 to-brand-pink from-opacity-40 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 group-hover:from-brand-pink group-hover:to-brand-pink group-hover:to-opacity-50 transition-colors">
-              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-2 sm:p-3 bg-[#31CDE3]/10 group-hover:bg-[#31CDE3]/20 rounded-lg sm:rounded-xl shadow-sm flex-shrink-0 transition-colors">
+              <svg class="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#31CDE3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
@@ -220,10 +220,10 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-600 truncate flex items-center gap-1">
                 Insumos Típicos
-                <span class="text-brand-pink opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
+                <span class="text-[#31CDE3] opacity-0 group-hover:opacity-100 transition-opacity text-xs">Ver →</span>
               </p>
-              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-brand-pink transition-colors">{{ medicalMetrics.totalTypicalSupplies.toLocaleString('es-CL') }}</p>
-              <p class="text-xs text-brand-pink truncate">Asociaciones</p>
+              <p class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-[#31CDE3] transition-colors">{{ medicalMetrics.totalTypicalSupplies.toLocaleString('es-CL') }}</p>
+              <p class="text-xs text-[#31CDE3] truncate">Asociaciones</p>
             </div>
           </div>
         </button>
@@ -472,7 +472,7 @@
       </div>
 
       <!-- Alertas críticas -->
-      <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 border border-dashed border-gray-300 shadow-sm">
+      <!--<div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 border border-dashed border-gray-300 shadow-sm">
         <div class="text-center">
           <div class="mx-auto w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gray-200 rounded-full flex items-center justify-center mb-2 sm:mb-3 md:mb-4 shadow-inner">
             <svg class="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,7 +492,7 @@
             >{{ item.supply_name }} (#{{ item.supply_code }})</span>
           </div>
         </div>
-      </div>
+      </div>-->
     </template>
     
     <!-- Tooltip -->
@@ -523,9 +523,6 @@ const router = useRouter()
 
 const loading = ref(false)
 const error = ref('')
-const autoRefreshInterval = ref(null)
-const autoRefreshEnabled = ref(true)
-const refreshIntervalSeconds = 60 // Actualizar cada 60 segundos
 
 const tooltipVisible = ref(false)
 const tooltipText = ref('')
@@ -681,6 +678,20 @@ const surgeryStatistics = computed(() => {
 })
 
 const lowStockList = ref([])
+const inventoryItems = ref([])
+
+const nearExpirationCount = computed(() => {
+  const today = new Date()
+  return inventoryItems.value.filter(supply => {
+    if (!supply.expiration_date) return false
+    const expDate = new Date(supply.expiration_date)
+    const daysUntil = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+    const threshold = supply.expiration_alert_days && supply.expiration_alert_days > 0
+      ? supply.expiration_alert_days
+      : 90
+    return daysUntil <= threshold
+  }).length
+})
 
 const movementBars = ref({
   entradas: 0,
@@ -731,7 +742,7 @@ const goToSupplyRequests = () => {
 }
 
 const goToTransfers = () => {
-  router.push('/transfers')
+  router.push({ path: '/transfers', query: { status: 'en_transito' } })
 }
 
 const goToMedicalSpecialties = () => {
@@ -944,13 +955,13 @@ async function loadCompletedRequests() {
 async function loadMedicalMetrics() {
   try {
     const [specialties, surgeries, doctors, typicalSuppliesCount] = await Promise.all([
-      medicalSpecialtyService.getAllSpecialties().catch(() => []),
+      medicalSpecialtyService.getActiveSpecialties().catch(() => []),
       surgeryService.getAllSurgeries().catch(() => []),
       doctorInfoService.getAllDoctors().catch(() => []),
       surgeryTypicalSupplyService.getTypicalSuppliesCount().catch(() => 0)
     ])
 
-    medicalMetrics.value.totalSpecialties = Array.isArray(specialties) ? specialties.filter(s => s.is_active).length : 0
+    medicalMetrics.value.totalSpecialties = Array.isArray(specialties) ? specialties.length : 0
     medicalMetrics.value.totalSurgeries = Array.isArray(surgeries) ? surgeries.length : 0
     medicalMetrics.value.totalDoctors = Array.isArray(doctors) ? doctors.length : 0
     medicalMetrics.value.totalTypicalSupplies = Number(typicalSuppliesCount) || 0
@@ -987,12 +998,13 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const [summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp] = await Promise.all([
+    const [summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp, inventoryResp] = await Promise.all([
       inventoryService.getInventorySummary(),
       inventoryService.getInventoryBySurgeryType(),
       surgeryService.getAllSurgeries(),
       inventoryService.getStoreInventory({ low_stock: true, page: 1, page_size: 8 }),
       supplyHistoryService.getConsumptionStatsBySurgery(),
+      inventoryService.getInventory().catch(() => []),
     ])
 
     summary.value = summaryResp || summary.value
@@ -1000,6 +1012,11 @@ async function loadData() {
     surgeries.value = Array.isArray(surgResp) ? surgResp : []
     lowStockList.value = Array.isArray(lowStockResp) ? lowStockResp : []
     realConsumptionStats.value = Array.isArray(consumptionStatsResp) ? consumptionStatsResp : []
+    inventoryItems.value = Array.isArray(inventoryResp)
+      ? inventoryResp
+      : Array.isArray(inventoryResp?.inventory_items)
+        ? inventoryResp.inventory_items
+        : []
 
     await Promise.all([
       loadTrend(), 
@@ -1020,37 +1037,12 @@ async function loadData() {
   }
 }
 
-// Funciones para actualización automática
-const startAutoRefresh = () => {
-  if (autoRefreshInterval.value) {
-    clearInterval(autoRefreshInterval.value)
-  }
-  
-  autoRefreshInterval.value = setInterval(() => {
-    if (autoRefreshEnabled.value && !loading.value) {
-      loadData()
-    }
-  }, refreshIntervalSeconds * 1000)
-}
-
-const stopAutoRefresh = () => {
-  if (autoRefreshInterval.value) {
-    clearInterval(autoRefreshInterval.value)
-    autoRefreshInterval.value = null
-  }
-}
-
 watch(transferRange, () => {
   loadTrend()
 })
 
 onMounted(() => {
   loadData()
-  startAutoRefresh()
-})
-
-onUnmounted(() => {
-  stopAutoRefresh()
 })
 </script>
 

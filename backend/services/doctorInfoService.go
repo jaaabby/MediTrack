@@ -21,7 +21,7 @@ func NewDoctorInfoService(db *gorm.DB) *DoctorInfoService {
 func (s *DoctorInfoService) CreateDoctor(doctor *models.User) error {
 	// Asegurar que el rol sea doctor
 	doctor.Role = models.RoleDoctor
-	
+
 	// Hashear la contraseña si se proporciona
 	if doctor.Password != "" {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(doctor.Password), bcrypt.DefaultCost)
@@ -30,7 +30,7 @@ func (s *DoctorInfoService) CreateDoctor(doctor *models.User) error {
 		}
 		doctor.Password = string(hashedPassword)
 	}
-	
+
 	return s.DB.Create(doctor).Error
 }
 
@@ -45,11 +45,11 @@ func (s *DoctorInfoService) GetDoctorByRUT(rut string) (*models.User, error) {
 	return &doctor, nil
 }
 
-// GetAllDoctors obtiene todos los doctores
+// GetAllDoctors obtiene todos los doctores (activos e inactivos)
 func (s *DoctorInfoService) GetAllDoctors() ([]models.User, error) {
 	var doctors []models.User
 	if err := s.DB.Preload("MedicalCenter").Preload("Specialty").
-		Where("role = ? AND is_active = ?", models.RoleDoctor, true).
+		Where("role = ?", models.RoleDoctor).
 		Order("name ASC").
 		Find(&doctors).Error; err != nil {
 		return nil, err
@@ -117,8 +117,8 @@ func (s *DoctorInfoService) UpdateDoctor(rut string, doctor *models.User) (*mode
 
 	// Actualizar campos omitiendo rut, role, password, created_at y updated_at
 	updates := map[string]interface{}{
-		"name":             doctor.Name,
-		"email":            doctor.Email,
+		"name":              doctor.Name,
+		"email":             doctor.Email,
 		"medical_center_id": doctor.MedicalCenterID,
 		"specialty_id":      doctor.SpecialtyID,
 		"is_active":         doctor.IsActive,
@@ -138,11 +138,9 @@ func (s *DoctorInfoService) UpdateDoctor(rut string, doctor *models.User) (*mode
 	return &existingDoctor, nil
 }
 
-// DeleteDoctor elimina un doctor (desactiva en lugar de eliminar físicamente)
+// DeleteDoctor elimina un doctor de la base de datos
 func (s *DoctorInfoService) DeleteDoctor(rut string) error {
-	return s.DB.Model(&models.User{}).
-		Where("rut = ? AND role = ?", rut, models.RoleDoctor).
-		Update("is_active", false).Error
+	return s.DB.Where("rut = ? AND role = ?", rut, models.RoleDoctor).Delete(&models.User{}).Error
 }
 
 // Métodos de compatibilidad con la API anterior (deprecated, pero mantenidos para compatibilidad)

@@ -8,56 +8,87 @@
 
     <!-- Filtros y búsqueda -->
     <div class="card">
-      <div class="flex flex-col gap-4">
-        <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-          <!-- Buscador único -->
-          <div class="flex-1">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar insumo</label>
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input type="text" placeholder="Buscar por número de lote, nombre, código o proveedor..."
-                class="form-input pl-10 w-full" v-model="searchTerm" />
+      <div class="flex flex-col gap-3">
+
+        <!-- Fila 1: Buscador -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar insumo</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
             </div>
+            <input type="text" placeholder="Buscar por número de lote, nombre, código o proveedor..."
+              class="form-input pl-10 w-full" v-model="searchTerm" />
+          </div>
+        </div>
+
+        <!-- Fila 2: Fechas + Stock Crítico + Limpiar -->
+        <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Vencimiento desde</label>
+            <input type="date" class="form-input w-full" v-model="dateFilterFrom" />
+          </div>
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Vencimiento hasta</label>
+            <input type="date" class="form-input w-full" v-model="dateFilterTo" />
           </div>
 
-          <!-- Botón de limpiar búsqueda -->
-          <div class="w-full sm:w-auto">
-            <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearSearch" 
-              :disabled="!searchTerm && !dateFilterFrom && !dateFilterTo && sortField === 'none'"
+          <!-- Toggle stock crítico -->
+          <div class="flex-shrink-0">
+            <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Filtro</label>
+            <button
+              @click="lowStockFilter = !lowStockFilter; currentPage = 1"
+              :class="lowStockFilter
+                ? 'bg-red-100 border-red-400 text-red-700 hover:bg-red-200'
+                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'"
+              class="flex items-center gap-2 px-3 py-2 text-sm font-medium border rounded-md transition-colors h-10 w-full sm:w-auto"
+            >
+              <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              Stock Crítico
+              <span v-if="lowStockFilter" class="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">ON</span>
+            </button>
+          </div>
+
+          <!-- Toggle próximos a vencer -->
+          <div class="flex-shrink-0">
+            <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Filtro</label>
+            <button
+              @click="expiringFilter = !expiringFilter; currentPage = 1"
+              :class="expiringFilter
+                ? 'bg-orange-100 border-orange-400 text-orange-700 hover:bg-orange-200'
+                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'"
+              class="flex items-center gap-2 px-3 py-2 text-sm font-medium border rounded-md transition-colors h-10 w-full sm:w-auto"
+            >
+              <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Por Vencer
+              <span v-if="expiringFilter" class="bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">ON</span>
+            </button>
+          </div>
+
+          <!-- Limpiar filtros -->
+          <div class="flex-shrink-0">
+            <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Acción</label>
+            <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearSearch"
+              :disabled="!searchTerm && !dateFilterFrom && !dateFilterTo && sortField === 'none' && !lowStockFilter && !expiringFilter"
             >
               <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Limpiar Filtros
+              Limpiar
             </button>
           </div>
         </div>
 
-        <!-- Filtros de fecha -->
-        <div class="flex flex-col sm:flex-row gap-4">
-          <div class="flex-1">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de vencimiento desde</label>
-            <input type="date" class="form-input w-full" v-model="dateFilterFrom" />
-          </div>
-          <div class="flex-1">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de vencimiento hasta</label>
-            <input type="date" class="form-input w-full" v-model="dateFilterTo" />
-          </div>
-        </div>
 
-        <!-- Indicador de filtros activos -->
-        <div v-if="searchTerm || dateFilterFrom || dateFilterTo || sortField !== 'none'" class="text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded">
-          <span class="font-medium">Filtros activos:</span>
-          <span v-if="searchTerm"> Búsqueda: "{{ searchTerm }}"</span>
-          <span v-if="dateFilterFrom"> | Desde: {{ formatFilterDate(dateFilterFrom) }}</span>
-          <span v-if="dateFilterTo"> | Hasta: {{ formatFilterDate(dateFilterTo) }}</span>
-          <span v-if="sortField !== 'none'"> | Ordenado por: {{ sortField }}</span>
-        </div>
       </div>
     </div>
 
@@ -270,14 +301,16 @@
                 <span class="text-gray-700 text-xs sm:text-sm">{{ supply.code }}</span>
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span :class="getExpirationClass(supply.expiration_date)" class="text-xs sm:text-sm">
+                <span :class="getExpirationClass(supply.expiration_date, supply.expiration_alert_days)" class="text-xs sm:text-sm">
                   {{ formatDate(supply.expiration_date) }}
                 </span>
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span :class="getAmountClass(supply.amount)" class="font-medium text-xs sm:text-sm">{{ supply.amount
-                  }}</span>
-                <span :class="getAmountClass(supply.amount)" class="text-xs ml-1">unidades</span>
+                <span :class="getAmountClass(supply.amount, supply.critical_stock)" class="font-medium text-xs sm:text-sm">{{ supply.amount }}</span>
+                <span :class="getAmountClass(supply.amount, supply.critical_stock)" class="text-xs ml-1">unidades</span>
+                <span v-if="supply.critical_stock" class="text-xs text-gray-500 block mt-0.5">
+                  crítico: {{ supply.critical_stock }}
+                </span>
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                 <span class="text-gray-700 text-xs sm:text-sm">{{ supply.supplier }}</span>
@@ -1362,6 +1395,8 @@ const currentPage = ref(1)
 const itemsPerPage = 10
 const dateFilterFrom = ref('')
 const dateFilterTo = ref('')
+const lowStockFilter = ref(false)
+const expiringFilter = ref(false)
 
 // Estado del modal de edición
 const showEditModal = ref(false)
@@ -1403,6 +1438,28 @@ const batchDetailsItemsPerPage = 5 // Constante, no ref
 // Computed properties
 const filteredSupplies = computed(() => {
   let filtered = [...supplies.value]
+
+  // Filtro de stock crítico
+  if (lowStockFilter.value) {
+    filtered = filtered.filter(supply => {
+      const critical = supply.critical_stock || 1
+      return supply.amount <= critical
+    })
+  }
+
+  // Filtro de próximos a vencer (usa los días de alerta de cada lote)
+  if (expiringFilter.value) {
+    const today = new Date()
+    filtered = filtered.filter(supply => {
+      if (!supply.expiration_date) return false
+      const expDate = new Date(supply.expiration_date)
+      const daysUntil = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+      const threshold = supply.expiration_alert_days && supply.expiration_alert_days > 0
+        ? supply.expiration_alert_days
+        : 90
+      return daysUntil <= threshold
+    })
+  }
 
   if (searchTerm.value) {
     filtered = filtered.filter(supply =>
@@ -1650,6 +1707,8 @@ const clearSearch = () => {
   sortDirection.value = 'asc'
   dateFilterFrom.value = ''
   dateFilterTo.value = ''
+  lowStockFilter.value = false
+  expiringFilter.value = false
   currentPage.value = 1
 }
 
@@ -1681,22 +1740,31 @@ const formatFilterDate = (dateString) => {
   }
 }
 
-const getExpirationClass = (expirationDate) => {
+const getExpirationClass = (expirationDate, alertDays) => {
   const today = new Date()
   const expDate = new Date(expirationDate)
   const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+  const threshold = alertDays && alertDays > 0 ? alertDays : 90
 
   if (daysUntilExpiration < 0) return 'text-red-600 font-semibold'
-  if (daysUntilExpiration <= 15) return 'text-red-600 font-semibold'
-  if (daysUntilExpiration <= 30) return 'text-orange-600 font-semibold'
+  if (daysUntilExpiration <= threshold) return 'text-red-600 font-semibold'
   return 'text-gray-900'
 }
 
-const getAmountClass = (amount) => {
-
-  if (amount < 5) return 'text-red-600 font-semibold'
-  if (amount < 10) return 'text-orange-600 font-semibold'
-  return 'text-gray-900'
+const getAmountClass = (currentAmount, criticalStock) => {
+  // Usar el critical_stock definido para el insumo
+  const critical = criticalStock || 1 // Por defecto 1 si no está definido
+  
+  // Definir umbrales basados en el stock crítico
+  const warningThreshold = critical * 2 // El doble del stock crítico como advertencia
+  
+  if (currentAmount <= critical) {
+    return 'text-red-600 font-semibold' // Stock crítico o menor - ROJO
+  }
+  if (currentAmount <= warningThreshold) {
+    return 'text-orange-600 font-semibold' // Entre crítico y el doble - NARANJA
+  }
+  return 'text-gray-900' // Por encima del doble del crítico - NORMAL
 }
 
 const getStatusBadgeClass = (status) => {
@@ -2231,6 +2299,14 @@ onMounted(() => {
   // Si viene con un término de búsqueda desde Home, aplicarlo
   if (route.query.search) {
     searchTerm.value = route.query.search
+  }
+  // Si viene desde Statistics con filtro de stock crítico
+  if (route.query.lowStock === 'true') {
+    lowStockFilter.value = true
+  }
+  // Si viene desde Statistics con filtro de próximos a vencer
+  if (route.query.expiring === 'true') {
+    expiringFilter.value = true
   }
   // No aplicar ordenamiento por defecto, mantener el orden de la base de datos
   loadInventory()

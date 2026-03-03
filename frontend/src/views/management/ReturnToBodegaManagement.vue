@@ -53,43 +53,73 @@
       </div>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Filtros -->
     <div class="card">
-      <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-        <button 
-          @click="refreshData"
-          :disabled="loading"
-          class="btn-primary flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto"
-        >
-          <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          {{ loading ? 'Actualizando...' : 'Actualizar Datos' }}
-        </button>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Búsqueda general -->
+        <div class="lg:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              v-model="searchText"
+              placeholder="Nombre, código QR o proveedor..."
+              class="form-input pl-9"
+            />
+          </div>
+        </div>
 
-        <button 
-          @click="processAutomaticReturns"
-          :disabled="processingReturns || criticalSupplies.length === 0"
-          class="btn-danger flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto"
-        >
-          <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-          </svg>
-          {{ processingReturns ? 'Procesando...' : `Procesar Retornos Automáticos (${criticalSupplies.length})` }}
-        </button>
+        <!-- Filtro Bodega -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Bodega Destino</label>
+          <select v-model="filterBodega" class="form-input">
+            <option value="">Todas</option>
+            <option v-for="b in uniqueBodegas" :key="b" :value="b">{{ b }}</option>
+          </select>
+        </div>
 
-        <button 
-          @click="toggleAutoRefresh"
-          :class="autoRefreshEnabled ? 'btn-secondary' : 'btn-secondary opacity-50'"
-          class="flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto"
-          :title="autoRefreshEnabled ? 'Actualización automática activa (cada 30s)' : 'Actualización automática desactivada'"
-        >
-          <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path v-if="autoRefreshEnabled" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {{ autoRefreshEnabled ? 'Actualización: ON' : 'Actualización: OFF' }}
-        </button>
+        <!-- Filtro Pabellón -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Pabellón Actual</label>
+          <select v-model="filterPavilion" class="form-input">
+            <option value="">Todos</option>
+            <option v-for="p in uniquePavilions" :key="p" :value="p">{{ p }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <!-- Filtro de criticidad -->
+        <div class="flex items-center gap-3">
+          <label class="text-sm font-medium text-gray-700">Mostrar:</label>
+          <div class="flex gap-2">
+            <button
+              @click="filterCritical = ''"
+              :class="filterCritical === '' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+              class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
+            >Todos ({{ suppliesForReturn.length }})</button>
+            <button
+              @click="filterCritical = 'critical'"
+              :class="filterCritical === 'critical' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+              class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
+            >Críticos ({{ criticalSupplies.length }})</button>
+          </div>
+        </div>
+
+        <!-- Limpiar + contador -->
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-500">{{ filteredSupplies.length }} resultado(s)</span>
+          <button
+            @click="clearFilters"
+            :disabled="!hasActiveFilters"
+            class="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >Limpiar filtros</button>
+        </div>
       </div>
     </div>
 
@@ -100,6 +130,44 @@
           <div>
             <h2 class="card-title">Insumos Pendientes de Retorno</h2>
             <p class="text-sm text-gray-600">Total: {{ filteredSupplies.length }} insumos</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              @click="refreshData"
+              :disabled="loading"
+              class="btn-primary flex items-center px-3 py-2 text-sm"
+            >
+              <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {{ loading ? 'Actualizando...' : 'Actualizar Datos' }}
+            </button>
+            <button
+              @click="notifyAllPavilions"
+              :disabled="processingReturns || criticalSupplies.length === 0"
+              class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg v-if="processingReturns" class="animate-spin h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <svg v-else class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {{ processingReturns ? 'Notificando...' : `Notificar Retornos Automáticos (${criticalSupplies.length})` }}
+            </button>
+            <button
+              @click="toggleAutoRefresh"
+              :class="autoRefreshEnabled ? 'btn-secondary' : 'btn-secondary opacity-50'"
+              class="flex items-center px-3 py-2 text-sm"
+              :title="autoRefreshEnabled ? 'Actualización automática activa (cada 30s)' : 'Actualización automática desactivada'"
+            >
+              <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path v-if="autoRefreshEnabled" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ autoRefreshEnabled ? 'Actualización: ON' : 'Actualización: OFF' }}
+            </button>
           </div>
         </div>
       </div>
@@ -152,7 +220,7 @@
         </div>
 
         <table class="min-w-full divide-y divide-gray-200" style="min-width: 900px;">
-          <thead class="table-header">
+          <thead class="table-header sticky top-0 z-20">
             <tr>
               <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[180px]">
                 <div class="flex items-center justify-between">
@@ -249,13 +317,16 @@
                   </div>
                 </div>
               </th>
+              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[140px]">
+                Pabellón Actual
+              </th>
               <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)] min-w-[120px]">Acciones</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="supply in paginatedSupplies" :key="supply.id" 
                 class="group hover:bg-gray-50 cursor-pointer"
-                :class="{ 'bg-red-50': supply.shouldReturn }">
+                :class="{ 'bg-red-50': isSupplyCritical(supply) }">
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
@@ -278,10 +349,10 @@
               </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                 <div class="flex items-center">
-                  <span :class="{ 'text-red-600 font-bold': supply.shouldReturn, 'text-gray-900': !supply.shouldReturn }" class="text-xs sm:text-sm">
+                  <span :class="{ 'text-red-600 font-bold': isSupplyCritical(supply), 'text-gray-600': !isSupplyCritical(supply) }" class="text-xs sm:text-sm">
                     {{ formatBusinessHours(supply.businessHoursElapsed) }}
                   </span>
-                  <svg v-if="supply.shouldReturn" class="h-3 w-3 sm:h-4 sm:w-4 text-red-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg v-if="isSupplyCritical(supply)" class="h-3 w-3 sm:h-4 sm:w-4 text-red-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-2.694-.833-3.464 0L3.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
@@ -292,21 +363,38 @@
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                 {{ supply.storeName }}
               </td>
+              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                <span v-if="supply.pavilionName || supply.pavilionId"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-medium">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  {{ supply.pavilionName || ('Pabellón ' + supply.pavilionId) }}
+                </span>
+                <span v-else class="text-gray-400">—</span>
+              </td>
               <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]" 
-                  :class="[supply.shouldReturn ? 'bg-red-50' : 'bg-white', 'group-hover:bg-gray-50']"
+                  :class="[isSupplyCritical(supply) ? 'bg-red-50' : 'bg-white', 'group-hover:bg-gray-50']"
                   @click.stop>
                 <div class="flex justify-end gap-2">
-                <button 
-                    @click.stop="returnIndividualSupply(supply)"
-                  :disabled="returningSupplies[supply.qrCode]"
-                    class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded transition-colors inline-flex items-center gap-1"
-                  :title="returningSupplies[supply.qrCode] ? 'Regresando...' : 'Regresar'"
+                <!-- Botón Notificar Pabellón -->
+                <button
+                  @click.stop="notifyPavilion(supply)"
+                  :disabled="notifyingSupplies[supply.qrCode]"
+                  class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 p-1.5 rounded transition-colors inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :title="notifyingSupplies[supply.qrCode] ? 'Enviando...' : 'Notificar Pabellón por correo'"
                 >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  <svg v-if="notifyingSupplies[supply.qrCode]" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span class="font-medium text-xs">Regresar</span>
+                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span class="font-medium text-xs">{{ notifyingSupplies[supply.qrCode] ? 'Enviando...' : 'Notificar' }}</span>
                 </button>
+
                 <button 
                     @click.stop="viewSupplyDetails(supply.qrCode)"
                     class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
@@ -349,16 +437,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
+import { useQRPdfDownload } from '@/composables/useQRPdfDownload'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 const { confirm } = useAlert()
+const { generateQRPdfAsBase64 } = useQRPdfDownload()
 
 const router = useRouter()
 
@@ -368,6 +458,7 @@ const error = ref(null)
 const suppliesForReturn = ref([])
 const processingReturns = ref(false)
 const returningSupplies = ref({})
+const notifyingSupplies = ref({})
 const lastProcessDate = ref(null)
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -379,6 +470,27 @@ const refreshIntervalSeconds = 30 // Actualizar cada 30 segundos
 const sortField = ref('none')
 const sortDirection = ref('asc')
 
+// Estado de filtros
+const searchText = ref('')
+const filterBodega = ref('')
+const filterPavilion = ref('')
+const filterCritical = ref('')
+
+// Opciones dinámicas de filtros
+const uniqueBodegas = computed(() =>
+  [...new Set(suppliesForReturn.value.map(s => s.storeName).filter(Boolean))].sort()
+)
+const uniquePavilions = computed(() =>
+  [...new Set(
+    suppliesForReturn.value
+      .map(s => s.pavilionName || (s.pavilionId ? 'Pabellón ' + s.pavilionId : null))
+      .filter(Boolean)
+  )].sort()
+)
+const hasActiveFilters = computed(() =>
+  searchText.value !== '' || filterBodega.value !== '' || filterPavilion.value !== '' || filterCritical.value !== ''
+)
+
 // Computed properties
 const criticalSupplies = computed(() => {
   return suppliesForReturn.value.filter(supply => supply.shouldReturn || (supply.businessHoursElapsed || 0) >= 8)
@@ -386,6 +498,35 @@ const criticalSupplies = computed(() => {
 
 const filteredSupplies = computed(() => {
   let filtered = [...suppliesForReturn.value]
+
+  // Filtro de texto
+  if (searchText.value.trim()) {
+    const q = searchText.value.trim().toLowerCase()
+    filtered = filtered.filter(s =>
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.qrCode || '').toLowerCase().includes(q) ||
+      (s.supplier || '').toLowerCase().includes(q) ||
+      String(s.batchId || '').includes(q)
+    )
+  }
+
+  // Filtro bodega
+  if (filterBodega.value) {
+    filtered = filtered.filter(s => s.storeName === filterBodega.value)
+  }
+
+  // Filtro pabellón
+  if (filterPavilion.value) {
+    filtered = filtered.filter(s => {
+      const pName = s.pavilionName || (s.pavilionId ? 'Pabellón ' + s.pavilionId : '')
+      return pName === filterPavilion.value
+    })
+  }
+
+  // Filtro criticidad
+  if (filterCritical.value === 'critical') {
+    filtered = filtered.filter(s => s.shouldReturn || (s.businessHoursElapsed || 0) >= 8)
+  }
 
   // Solo aplicar ordenamiento si se ha seleccionado explícitamente un campo
   if (sortField.value && sortField.value !== 'none') {
@@ -440,6 +581,19 @@ const paginatedSupplies = computed(() => {
   return filteredSupplies.value.slice(startIndex.value, endIndex.value)
 })
 
+// Resetear página al cambiar filtros
+watch([searchText, filterBodega, filterPavilion, filterCritical], () => {
+  currentPage.value = 1
+})
+
+const clearFilters = () => {
+  searchText.value = ''
+  filterBodega.value = ''
+  filterPavilion.value = ''
+  filterCritical.value = ''
+  currentPage.value = 1
+}
+
 // Funciones principales
 const refreshData = async () => {
   loading.value = true
@@ -487,36 +641,118 @@ const refreshData = async () => {
   }
 }
 
-const processAutomaticReturns = async () => {
+const notifyAllPavilions = async () => {
   if (criticalSupplies.value.length === 0) return
-  
+
   const confirmed = await confirm(
-    `¿Está seguro de que desea procesar automáticamente ${criticalSupplies.value.length} retornos?\n\nEsta acción regresará todos los insumos críticos (15+ días) a bodega.`,
-    'Procesar retornos automáticos'
+    `¿Enviar notificaciones de devolución a todos los pabellones?\n\nSe notificará a ${criticalSupplies.value.length} insumo(s) crítico(s) para que cada pabellón realice la devolución a bodega.`,
+    'Notificar Retornos Automáticos'
   )
-  if (!confirmed) {
-    return
-  }
-  
+  if (!confirmed) return
+
   processingReturns.value = true
   error.value = null
-  
+
+  let notified = 0
+  let failed = 0
+
+  for (const supply of criticalSupplies.value) {
+    try {
+      let pdfBase64 = ''
+      try {
+        const qrInfoForPdf = {
+          qr_code: supply.qrCode,
+          type: 'medical_supply',
+          supply_info: {
+            name: supply.name,
+            store_name: supply.storeName,
+            pavilion_name: supply.pavilionName || (supply.pavilionId ? ('Pabellón ' + supply.pavilionId) : null),
+            SupplyCode: {
+              code_supplier: supply.supplyCodeSupplier,
+              name: supply.name
+            },
+            batch: {
+              id: supply.batchId,
+              supplier: supply.supplier,
+              expiration_date: supply.expirationDate,
+              amount: supply.batchAmount
+            }
+          }
+        }
+        pdfBase64 = await generateQRPdfAsBase64(qrInfoForPdf)
+      } catch (pdfErr) {
+        console.warn(`PDF no generado para ${supply.qrCode}:`, pdfErr)
+      }
+      await returnToBodegaService.notifyPavilionForReturn(supply.qrCode, pdfBase64 || '')
+      notified++
+    } catch (err) {
+      console.error(`Error notificando ${supply.qrCode}:`, err)
+      failed++
+    }
+  }
+
+  processingReturns.value = false
+
+  if (failed === 0) {
+    showSuccess(`Notificaciones enviadas a ${notified} pabellón(es) exitosamente`)
+  } else {
+    showError(`${notified} notificaciones enviadas, ${failed} fallaron`)
+  }
+
+  await refreshData()
+}
+
+const notifyPavilion = async (supply) => {
+  if (notifyingSupplies.value[supply.qrCode]) return
+
+  const pavilionLabel = supply.pavilionName || `Pabellón ID ${supply.pavilionId}` || 'el pabellón'
+  const confirmed = await confirm(
+    `¿Enviar notificación de devolución al ${pavilionLabel}?\n\nInsumo: ${supply.name}\nQR: ${supply.qrCode}\n\nSe enviará un correo con el PDF del insumo a los usuarios del pabellón para que realicen la devolución.`,
+    'Notificar Pabellón'
+  )
+  if (!confirmed) return
+
+  notifyingSupplies.value[supply.qrCode] = true
+
   try {
-    const result = await returnToBodegaService.processAutomaticReturns()
-    
-    showSuccess(result.message)
-    
-    // Recargar datos
-    await refreshData()
-    
+    // Generar el PDF del insumo para adjuntarlo al correo
+    let pdfBase64 = ''
+    try {
+      // Construir el objeto qrInfo mínimo para la generación del PDF
+      const qrInfoForPdf = {
+        qr_code: supply.qrCode,
+        type: 'medical_supply',
+        supply_info: {
+          name: supply.name,
+          store_name: supply.storeName,
+          pavilion_name: supply.pavilionName || (supply.pavilionId ? ('Pabellón ' + supply.pavilionId) : null),
+          SupplyCode: {
+            code_supplier: supply.supplyCodeSupplier,
+            name: supply.name
+          },
+          batch: {
+            id: supply.batchId,
+            supplier: supply.supplier,
+            expiration_date: supply.expirationDate,
+            amount: supply.batchAmount
+          }
+        }
+      }
+      pdfBase64 = await generateQRPdfAsBase64(qrInfoForPdf)
+    } catch (pdfErr) {
+      console.warn('No se pudo generar el PDF, se enviará el correo sin adjunto:', pdfErr)
+    }
+
+    const result = await returnToBodegaService.notifyPavilionForReturn(supply.qrCode, pdfBase64 || '')
+    const emailCount = result.data?.email_count || 0
+    showSuccess(
+      result.message || `Notificación enviada a ${emailCount} usuario(s) del pabellón`
+    )
   } catch (err) {
-    console.error('Error processing automatic returns:', err)
-    const errorMessage = err.response?.data?.error || err.message || 'Error al procesar retornos automáticos'
-    error.value = errorMessage
-    
-    showError(errorMessage)
+    console.error('Error notificando al pabellón:', err)
+    showError(err.message || 'Error al enviar la notificación al pabellón')
   } finally {
-    processingReturns.value = false
+    delete notifyingSupplies.value[supply.qrCode]
   }
 }
 
@@ -546,7 +782,10 @@ const returnIndividualSupply = async (supply) => {
     
   } catch (err) {
     console.error('Error returning supply:', err)
-    error.value = err.message || 'Error al regresar insumo a bodega'
+    const errorMessage = err.message || 'Error al regresar insumo a bodega'
+    error.value = errorMessage
+    // ID 20-22: Notificar el error al usuario
+    showError(errorMessage)
   } finally {
     delete returningSupplies.value[supply.qrCode]
   }
@@ -557,6 +796,12 @@ const viewSupplyDetails = (qrCode) => {
     name: 'QRDetails',
     params: { qrCode: qrCode }
   })
+}
+
+// ID 17/18: Helper centralizado para determinar si un insumo es crítico
+// Un insumo es crítico si el backend lo marca como tal O si lleva >= 8 horas laborales
+const isSupplyCritical = (supply) => {
+  return supply.shouldReturn || (supply.businessHoursElapsed || 0) >= 8
 }
 
 // Función de ordenamiento
@@ -691,7 +936,8 @@ onUnmounted(() => {
 
 .table-container {
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: auto;
+  max-height: 62vh;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);

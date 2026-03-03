@@ -276,7 +276,7 @@
                   Configuración del Sistema
                 </div>
                 
-                <router-link
+                <!--<router-link
                   v-if="authStore.canManageSystemConfig"
                   to="/supplier-configs"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
@@ -290,7 +290,7 @@
                     </svg>
                     Configuración de Proveedores
                   </div>
-                </router-link>
+                </router-link>-->
                 <router-link
                   v-if="authStore.canManageSystemConfig"
                   to="/supply-codes"

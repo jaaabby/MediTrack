@@ -147,16 +147,24 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		SELECT DISTINCT ON (b.id)
 			b.id AS batch_id,
 			b.expiration_date,
+			b.expiration_alert_days,
 			COALESCE(
 				(SELECT SUM(sis2.current_in_store)
 				 FROM store_inventory_summary sis2
 				 WHERE sis2.batch_id = b.id),
 				b.amount
 			) AS amount,
-			b.supplier,
+			COALESCE(
+				(SELECT MAX(sis2.original_amount)
+				 FROM store_inventory_summary sis2
+				 WHERE sis2.batch_id = b.id),
+				b.amount
+			) AS original_amount,
+			supc.supplier_name AS supplier,
 			b.store_id,
 			sc.code AS supply_code,
 			sc.name AS supply_name,
+			COALESCE(sc.critical_stock, 1) AS critical_stock,
 			COALESCE(ms.location_type, 'store') AS location_type,
 			COALESCE(ms.location_id, b.store_id) AS location_id,
 			CASE
@@ -173,6 +181,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		LEFT JOIN supply_code sc ON ms.code = sc.code
 		LEFT JOIN store st ON b.store_id = st.id
 		LEFT JOIN pavilion pv ON b.location_type = 'pavilion' AND b.location_id = pv.id
+		LEFT JOIN supplier_config supc ON b.supplier_id = supc.id
 		ORDER BY b.id, sc.code
 	`
 
@@ -184,29 +193,35 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 
 	for rows.Next() {
 		var (
-			item           = make(map[string]interface{})
-			batchID        int
-			expirationDate string
-			amount         int
-			supplier       string
-			storeID        int
-			supplyCode     *int
-			supplyName     *string
-			locationType   string
-			locationID     int
-			locationName   *string
-			createdAt      *time.Time
-			updatedAt      *time.Time
+			item                = make(map[string]interface{})
+			batchID             int
+			expirationDate      string
+			expirationAlertDays int
+			amount              int
+			originalAmount      int
+			supplier            string
+			storeID             int
+			supplyCode          *int
+			supplyName          *string
+			criticalStock       int
+			locationType        string
+			locationID          int
+			locationName        *string
+			createdAt           *time.Time
+			updatedAt           *time.Time
 		)
 
 		err := rows.Scan(
 			&batchID,
 			&expirationDate,
+			&expirationAlertDays,
 			&amount,
+			&originalAmount,
 			&supplier,
 			&storeID,
 			&supplyCode,
 			&supplyName,
+			&criticalStock,
 			&locationType,
 			&locationID,
 			&locationName,
@@ -219,11 +234,14 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 
 		item["batch_id"] = batchID
 		item["expiration_date"] = expirationDate
+		item["expiration_alert_days"] = expirationAlertDays
 		item["amount"] = amount
+		item["original_amount"] = originalAmount
 		item["supplier"] = supplier
 		item["store_id"] = storeID
 		item["code"] = supplyCode
 		item["name"] = supplyName
+		item["critical_stock"] = criticalStock
 		item["location_type"] = locationType
 		item["location_id"] = locationID
 		item["location_name"] = locationName
@@ -249,7 +267,7 @@ func (s *MedicalSupplyService) GetInventoryListAdvanced() ([]map[string]interfac
 			b.qr_code as batch_qr_code,
 			b.expiration_date,
 			b.amount as current_amount,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			sc.code as supply_code,
 			sc.name as supply_name,
 			COUNT(ms.id) as total_individual_supplies,
@@ -258,12 +276,13 @@ func (s *MedicalSupplyService) GetInventoryListAdvanced() ([]map[string]interfac
 		FROM batch b
 		LEFT JOIN medical_supply ms ON b.id = ms.batch_id
 		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN supplier_config supc ON b.supplier_id = supc.id
 		LEFT JOIN (
 			SELECT DISTINCT sh.medical_supply_id as supply_id
 			FROM supply_history sh
 			WHERE sh.status = 'consumido'
 		) consumed_supplies ON ms.id = consumed_supplies.supply_id
-		GROUP BY b.id, b.qr_code, b.expiration_date, b.amount, b.supplier, sc.code, sc.name
+		GROUP BY b.id, b.qr_code, b.expiration_date, b.amount, supc.supplier_name, sc.code, sc.name
 		ORDER BY b.id, sc.code
 	`
 
@@ -496,13 +515,14 @@ func (s *MedicalSupplyService) GetSupplyWithBatchInfo(qrCode string) (map[string
 			sc.code_supplier,
 			b.expiration_date,
 			b.amount as batch_remaining_amount,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			st.name as store_name,
 			st.type as store_type
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
 		JOIN store st ON b.store_id = st.id
+		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE ms.qr_code = ?
 	`
 
@@ -710,13 +730,14 @@ func (s *MedicalSupplyService) GetUnconsumedSupplies() ([]map[string]interface{}
 			ms.updated_at as received_at,
 			sc.name as supply_name,
 			b.expiration_date,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			st.name as store_name,
 			EXTRACT(EPOCH FROM (NOW() - ms.updated_at))/3600 as hours_elapsed
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
 		JOIN store st ON b.store_id = st.id
+		JOIN supplier_config supc ON b.supplier_id = supc.id
 		WHERE ms.status = ? AND ms.updated_at < ?
 		ORDER BY ms.updated_at ASC
 	`
@@ -781,15 +802,21 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			sc.name as supply_name,
 			sc.code as supply_code,
 			b.id as batch_id,
-			b.supplier,
+			supc.supplier_name AS supplier,
 			b.expiration_date,
 			s.name as store_name,
 			s.id as store_id,
-			ms.updated_at as received_at
+			ms.updated_at as received_at,
+			ms.location_id as pavilion_id,
+			COALESCE(p.name, CONCAT('Pabellón ', ms.location_id::text)) as pavilion_name,
+			b.amount as batch_amount,
+			sc.code_supplier as supply_code_supplier
 		FROM medical_supply ms
 		JOIN supply_code sc ON ms.code = sc.code
 		JOIN batch b ON ms.batch_id = b.id
+		JOIN supplier_config supc ON b.supplier_id = supc.id
 		JOIN store s ON b.store_id = s.id
+		LEFT JOIN pavilion p ON p.id = ms.location_id
 		WHERE ms.status = ? 
 		AND ms.location_type = ?
 		AND ms.location_id > 0
@@ -811,20 +838,24 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 	for rows.Next() {
 		count++
 		var (
-			id             int
-			qrCode         string
-			status         string
-			supplyName     string
-			supplyCode     int
-			batchID        int
-			supplier       string
-			expirationDate time.Time
-			storeName      string
-			storeID        int
-			receivedAt     time.Time
+			id                 int
+			qrCode             string
+			status             string
+			supplyName         string
+			supplyCode         int
+			batchID            int
+			supplier           string
+			expirationDate     time.Time
+			storeName          string
+			storeID            int
+			receivedAt         time.Time
+			pavilionID         int
+			pavilionName       string
+			batchAmount        int
+			supplyCodeSupplier int
 		)
 
-		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt); err != nil {
+		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt, &pavilionID, &pavilionName, &batchAmount, &supplyCodeSupplier); err != nil {
 			fmt.Printf("⚠️ Error escaneando fila %d: %v\n", count, err)
 			continue
 		}
@@ -880,6 +911,10 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 			"received_at":            receivedAt.Format("2006-01-02 15:04:05"),
 			"business_hours_elapsed": businessHoursElapsed,
 			"should_return":          shouldReturn,
+			"pavilion_id":            pavilionID,
+			"pavilion_name":          pavilionName,
+			"batch_amount":           batchAmount,
+			"supply_code_supplier":   supplyCodeSupplier,
 		}
 
 		// Solo agregar si debe retornarse (8 horas laborales o más)
@@ -894,6 +929,115 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 
 	fmt.Printf("📊 Total filas encontradas: %d, Total insumos para retorno: %d\n", count, len(results))
 	return results, nil
+}
+
+// NotifyPavilionForReturn envía un correo electrónico al pabellón donde está el insumo, adjuntando su PDF/QR,
+// para que el personal realice la devolución física a bodega.
+// pdfBytes puede ser nil; en ese caso se envía sólo el cuerpo del correo sin adjunto.
+func (s *MedicalSupplyService) NotifyPavilionForReturn(qrCode string, pdfBytes []byte) ([]string, error) {
+	// 1. Buscar el insumo por QR
+	var supply models.MedicalSupply
+	if err := s.DB.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
+		return nil, fmt.Errorf("insumo no encontrado con QR %s", qrCode)
+	}
+
+	// 2. Verificar que está en un pabellón
+	if supply.LocationType != models.SupplyLocationPavilion {
+		return nil, fmt.Errorf("el insumo no se encuentra en un pabellón (ubicación: %s)", supply.LocationType)
+	}
+
+	pavilionID := supply.LocationID
+
+	// 3. Obtener nombre del insumo
+	var supplyCode models.SupplyCode
+	s.DB.Where("code = ?", supply.Code).First(&supplyCode)
+
+	// 4. Obtener datos del lote y bodega
+	var batch models.Batch
+	s.DB.First(&batch, supply.BatchID)
+
+	var store models.Store
+	s.DB.First(&store, batch.StoreID)
+
+	// 5. Obtener nombre del pabellón
+	var pavilion models.Pavilion
+	s.DB.First(&pavilion, pavilionID)
+
+	pavilionName := pavilion.Name
+	if pavilionName == "" {
+		pavilionName = fmt.Sprintf("Pabellón %d", pavilionID)
+	}
+
+	// 6. Buscar usuarios del pabellón con email
+	var users []models.User
+	s.DB.Where(
+		"pavilion_id = ? AND role = ? AND is_active = true AND email != ''",
+		pavilionID, models.RolePavilion,
+	).Find(&users)
+
+	if len(users) == 0 {
+		return nil, fmt.Errorf("no se encontraron usuarios con correo en el pabellón '%s' (ID %d)", pavilionName, pavilionID)
+	}
+
+	emails := make([]string, 0, len(users))
+	for _, u := range users {
+		if u.Email != "" {
+			emails = append(emails, u.Email)
+		}
+	}
+	if len(emails) == 0 {
+		return nil, fmt.Errorf("los usuarios del pabellón '%s' no tienen correo registrado", pavilionName)
+	}
+
+	// 7. Preparar datos del correo
+	emailData := struct {
+		PavilionName   string
+		SupplyName     string
+		SupplyCode     string
+		QRCode         string
+		BatchID        int
+		Supplier       string
+		ExpirationDate string
+		ReceivedAt     string
+		StoreName      string
+		Date           string
+	}{
+		PavilionName:   pavilionName,
+		SupplyName:     supplyCode.Name,
+		SupplyCode:     fmt.Sprintf("%d", supply.Code),
+		QRCode:         qrCode,
+		BatchID:        supply.BatchID,
+		Supplier:       batch.Supplier,
+		ExpirationDate: batch.ExpirationDate.Format("02/01/2006"),
+		ReceivedAt:     supply.UpdatedAt.Format("02/01/2006 15:04"),
+		StoreName:      store.Name,
+		Date:           time.Now().Format("02/01/2006 15:04:05"),
+	}
+
+	// 8. Enviar correo
+	subject := fmt.Sprintf("⚠️ Solicitud de Devolución de Insumo — %s", pavilionName)
+	req := mailer.NewRequest(emails, subject)
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo directorio de trabajo: %v", err)
+	}
+	templatePath := filepath.Join(wd, "mailer", "templates", "pavilion_return_request.html")
+
+	if len(pdfBytes) > 0 {
+		filename := fmt.Sprintf("insumo-%s.pdf", strings.ReplaceAll(qrCode, "_", "-"))
+		if err := req.SendMailWithAttachment(templatePath, emailData, filename, pdfBytes); err != nil {
+			return nil, fmt.Errorf("error enviando correo con adjunto: %v", err)
+		}
+	} else {
+		if err := req.SendMailSkipTLS(templatePath, emailData); err != nil {
+			return nil, fmt.Errorf("error enviando correo: %v", err)
+		}
+	}
+
+	fmt.Printf("✉️ Notificación de devolución enviada a %v para insumo QR=%s en pabellón '%s'\n",
+		emails, qrCode, pavilionName)
+	return emails, nil
 }
 
 // ReturnSupplyToStore regresa un insumo a bodega

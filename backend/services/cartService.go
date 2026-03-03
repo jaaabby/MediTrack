@@ -520,7 +520,7 @@ func (s *CartService) processItemReturn(tx *gorm.DB, cart *models.SupplyCart, ca
 	storeID := batch.StoreID
 
 	// Crear transferencia con código compacto
-	transferCode := fmt.Sprintf("RC-%d-%02X", now.Unix()%100000000, cart.ID)
+	transferCode := fmt.Sprintf("RC-%d-%02X-%d", now.Unix()%100000000, cart.ID, cartItem.ID)
 	transfer := models.SupplyTransfer{
 		TransferCode:    transferCode,
 		QRCode:          supply.QRCode,

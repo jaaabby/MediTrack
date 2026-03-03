@@ -126,8 +126,14 @@
             @change="toggleSelectAll"
             class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
           />
-          <span class="font-medium">Seleccionar todos los items disponibles ({{ selectableItems.length }})</span>
+          <span class="font-medium">
+            Seleccionar todos los recibidos en pabellón
+            ({{ selectableItems.length }}<template v-if="selectableItems.length < activeItems.length"> de {{ activeItems.length }}</template>)
+          </span>
         </label>
+        <p v-if="selectableItems.length < activeItems.length" class="mt-1 ml-6 text-xs text-gray-400">
+          {{ activeItems.length - selectableItems.length }} insumo{{ activeItems.length - selectableItems.length !== 1 ? 's' : '' }} pendiente{{ activeItems.length - selectableItems.length !== 1 ? 's' : '' }} de retiro no {{ activeItems.length - selectableItems.length !== 1 ? 'están disponibles' : 'está disponible' }} para operar
+        </p>
       </div>
 
       <div class="grid grid-cols-1 gap-4">
@@ -490,26 +496,57 @@
 
     <!-- Modal de operación múltiple -->
     <div v-if="showBatchOperationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 class="text-xl font-bold text-gray-800 mb-4">
-          Operación Múltiple - {{ selectedItems.length }} items seleccionados
-        </h3>
-        
-        <p class="text-sm text-gray-600 mb-4">
-          Marque cada item como <strong>usado</strong> o <strong>devolución</strong>. Puede procesar todos en un solo paso.
-        </p>
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
 
-        <!-- Advertencia si hay items no recibidos en el pabellón -->
-        <div v-if="hasNonReceivedItems" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p class="text-sm text-yellow-800">
-            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Algunos items seleccionados no están recibidos en el pabellón. Solo los items recibidos pueden ser utilizados o devueltos.
+        <!-- Cabecera fija -->
+        <div class="p-6 pb-4 border-b border-gray-200">
+          <div class="flex items-start justify-between gap-4 mb-2">
+            <h3 class="text-xl font-bold text-gray-800">
+              Operación Múltiple - {{ selectedItems.length }} items seleccionados
+            </h3>
+            <!-- Acciones rápidas -->
+            <div class="flex gap-2 flex-shrink-0">
+              <button
+                @click="setAllOperations('use')"
+                type="button"
+                class="px-3 py-1.5 bg-green-100 text-green-800 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors flex items-center gap-1"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Usar todo
+              </button>
+              <button
+                @click="setAllOperations('return')"
+                type="button"
+                class="px-3 py-1.5 bg-orange-100 text-orange-800 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors flex items-center gap-1"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+                Devolver todo
+              </button>
+            </div>
+          </div>
+
+          <p class="text-sm text-gray-600">
+            Marque cada item como <strong>usado</strong> o <strong>devolución</strong>. Puede procesar todos en un solo paso.
           </p>
+
+          <!-- Advertencia si hay items no recibidos en el pabellón -->
+          <div v-if="hasNonReceivedItems" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p class="text-sm text-yellow-800">
+              <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Algunos items seleccionados no están recibidos en el pabellón. Solo los items recibidos pueden ser utilizados o devueltos.
+            </p>
+          </div>
         </div>
 
-        <div class="space-y-3 mb-6">
+        <!-- Cuerpo con scroll interno -->
+        <div class="overflow-y-auto flex-1 p-6">
+        <div class="space-y-3">
           <div
             v-for="itemId in selectedItems"
             :key="itemId"
@@ -526,15 +563,6 @@
                   <p class="font-semibold text-gray-800">
                     {{ getItemName(itemId) }}
                   </p>
-                  <span 
-                    v-if="getItemOperation(itemId)"
-                    class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full"
-                    :class="getItemOperation(itemId) === 'use' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-orange-100 text-orange-800'"
-                  >
-                    {{ getItemOperation(itemId) === 'use' ? '✓ Usado' : '↩ Devolver' }}
-                  </span>
                   <span 
                     v-if="!isItemReceivedInPavilionById(itemId)"
                     class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800"
@@ -561,12 +589,7 @@
                     ? 'bg-gray-200 text-gray-700 hover:bg-green-100 hover:text-green-700 hover:border-green-300 border-2 border-transparent'
                     : 'bg-gray-200 text-gray-400 border-2 border-transparent'"
                 >
-                  <span class="flex items-center gap-1">
-                    <svg v-if="getItemOperation(itemId) === 'use'" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                    </svg>
-                    ✓ Usado
-                  </span>
+                  ✓ Usado
                 </button>
                 <button
                   @click="setItemOperation(itemId, 'return')"
@@ -579,12 +602,7 @@
                     ? 'bg-gray-200 text-gray-700 hover:bg-orange-100 hover:text-orange-700 hover:border-orange-300 border-2 border-transparent'
                     : 'bg-gray-200 text-gray-400 border-2 border-transparent'"
                 >
-                  <span class="flex items-center gap-1">
-                    <svg v-if="getItemOperation(itemId) === 'return'" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                    </svg>
-                    ↩ Devolver
-                  </span>
+                  ↩ Devolver
                 </button>
               </div>
             </div>
@@ -601,8 +619,10 @@
             </div>
           </div>
         </div>
+        </div>
 
-        <div class="flex justify-end gap-3">
+        <!-- Pie fijo -->
+        <div class="p-6 pt-4 border-t border-gray-200 flex justify-end gap-3">
           <button
             @click="showBatchOperationModal = false"
             class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
@@ -1083,6 +1103,20 @@ const getItemOperation = (itemId) => {
   const action = itemOperations.value[itemId]?.action
   // Retornar null si action es null explícitamente o si no existe
   return action || null
+}
+
+// Asigna la misma operación a todos los items seleccionados (solo los recibidos)
+const setAllOperations = (action) => {
+  selectedItems.value.forEach(itemId => {
+    if (!isItemReceivedInPavilionById(itemId)) return
+    if (!itemOperations.value[itemId]) {
+      itemOperations.value[itemId] = { action: null, reason: '' }
+    }
+    itemOperations.value[itemId].action = action
+    if (action !== 'return') {
+      itemOperations.value[itemId].reason = ''
+    }
+  })
 }
 
 const setItemOperation = (itemId, action) => {

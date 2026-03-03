@@ -46,17 +46,62 @@ CREATE TABLE surgery (
 
 CREATE INDEX idx_surgery_specialty ON surgery(specialty_id);
 
+-- =======================
+-- TABLA DE PROVEEDORES
+-- =======================
+CREATE TABLE IF NOT EXISTS supplier_config (
+    id SERIAL PRIMARY KEY,
+    supplier_name VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    notes TEXT
+);
+
+COMMENT ON TABLE supplier_config IS 'Tabla de datos de proveedores';
+COMMENT ON COLUMN supplier_config.supplier_name IS 'Nombre del proveedor (referenciado por batch.supplier_id → supplier_config.id)';
+
+CREATE OR REPLACE FUNCTION update_supplier_config_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_supplier_config_updated_at
+    BEFORE UPDATE ON supplier_config
+    FOR EACH ROW
+    EXECUTE FUNCTION update_supplier_config_updated_at();
+
 CREATE TABLE batch (
     id SERIAL PRIMARY KEY,
     expiration_date DATE NOT NULL,
     amount INTEGER NOT NULL,
-    supplier VARCHAR(255) NOT NULL,
+    supplier_id INTEGER NOT NULL REFERENCES supplier_config(id),
     store_id INTEGER NOT NULL REFERENCES store(id),
     qr_code VARCHAR(255) UNIQUE,
     surgery_id INTEGER REFERENCES surgery(id),
     location_type VARCHAR(50) NOT NULL DEFAULT 'store' CHECK (location_type IN ('store', 'pavilion')),
-    location_id INTEGER NOT NULL
+    location_id INTEGER NOT NULL DEFAULT 0,
+    expiration_alert_days INTEGER NOT NULL DEFAULT 90 CHECK (expiration_alert_days > 0)
 );
+
+-- Trigger de seguridad: si location_id no se proporcionó, inicializarlo con store_id
+CREATE OR REPLACE FUNCTION set_batch_initial_location()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.location_id = 0 OR NEW.location_id IS NULL THEN
+        NEW.location_type := 'store';
+        NEW.location_id := NEW.store_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_set_batch_initial_location
+    BEFORE INSERT ON batch
+    FOR EACH ROW
+    EXECUTE FUNCTION set_batch_initial_location();
 
 CREATE TABLE supply_code (
     code INTEGER PRIMARY KEY,
@@ -485,7 +530,7 @@ CREATE TABLE IF NOT EXISTS qr_scan_event (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
-    CONSTRAINT chk_qr_scan_event_scan_source CHECK (scan_source IN ('web', 'mobile', 'api', 'scanner')),
+    CONSTRAINT chk_qr_scan_event_scan_source CHECK (scan_source IN ('web', 'mobile', 'api', 'scanner', 'pickup_view', 'reception_view', 'transfer_view', 'consumption_view')),
     CONSTRAINT chk_qr_scan_event_scan_result CHECK (scan_result IN ('success', 'error', 'not_found', 'unauthorized')),
     CONSTRAINT chk_qr_scan_event_qr_type CHECK (qr_type IN ('SUPPLY', 'BATCH') OR qr_type IS NULL)
 );
@@ -774,36 +819,6 @@ CREATE TRIGGER trg_update_surgery_typical_supply_updated_at
     BEFORE UPDATE ON surgery_typical_supply
     FOR EACH ROW
     EXECUTE FUNCTION update_surgery_typical_supply_updated_at();
-
--- =======================
--- TABLA DE CONFIGURACIÓN DE PROVEEDORES PARA ALERTAS DE VENCIMIENTO
--- =======================
-CREATE TABLE IF NOT EXISTS supplier_config (
-    supplier_name VARCHAR(255) PRIMARY KEY,
-    expiration_alert_days INTEGER NOT NULL DEFAULT 90 CHECK (expiration_alert_days > 0),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    notes TEXT
-);
-
-CREATE INDEX idx_supplier_config_alert_days ON supplier_config(expiration_alert_days);
-
-COMMENT ON TABLE supplier_config IS 'Configuración de alertas de vencimiento por proveedor';
-COMMENT ON COLUMN supplier_config.supplier_name IS 'Nombre del proveedor (debe coincidir con batch.supplier)';
-COMMENT ON COLUMN supplier_config.expiration_alert_days IS 'Días de anticipación para alerta de vencimiento (default: 90 días = 3 meses)';
-
-CREATE OR REPLACE FUNCTION update_supplier_config_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_update_supplier_config_updated_at
-    BEFORE UPDATE ON supplier_config
-    FOR EACH ROW
-    EXECUTE FUNCTION update_supplier_config_updated_at();
 
 -- =======================
 -- SISTEMA DE CARRITOS DE INSUMOS

@@ -48,15 +48,20 @@ func (s *InventoryService) GetStoreInventory(
 			sis.updated_at,
 			s.name as store_name,
 			sc.name as supply_name,
+			COALESCE(sc.critical_stock, 1) as critical_stock,
 			surg.name as surgery_name,
-			b.supplier as batch_supplier,
+			supc.supplier_name as batch_supplier,
 			COALESCE(b.expiration_date::text, '') as expiration_date,
 			mc.id as medical_center_id,
-			mc.name as medical_center_name`).
+			mc.name as medical_center_name,
+			COALESCE((SELECT SUM(pis.total_consumed)
+				FROM pavilion_inventory_summary pis
+				WHERE pis.batch_id = sis.batch_id), 0) AS total_consumed_from_pavilions`).
 		Joins("LEFT JOIN store s ON sis.store_id = s.id").
 		Joins("LEFT JOIN supply_code sc ON sis.supply_code = sc.code").
 		Joins("LEFT JOIN surgery surg ON sis.surgery_id = surg.id").
 		Joins("LEFT JOIN batch b ON sis.batch_id = b.id").
+		Joins("LEFT JOIN supplier_config supc ON b.supplier_id = supc.id").
 		Joins("LEFT JOIN medical_center mc ON s.medical_center_id = mc.id")
 
 	// Aplicar filtros
@@ -70,7 +75,7 @@ func (s *InventoryService) GetStoreInventory(
 		query = query.Where("sis.supply_code = ?", *supplyCode)
 	}
 	if supplier != nil {
-		query = query.Where("b.supplier LIKE ?", "%"+*supplier+"%")
+		query = query.Where("supc.supplier_name LIKE ?", "%"+*supplier+"%")
 	}
 	if nearExpiration {
 		// Productos que vencen en los próximos 90 días
@@ -78,8 +83,8 @@ func (s *InventoryService) GetStoreInventory(
 		query = query.Where("b.expiration_date <= ?", expirationDate)
 	}
 	if lowStock {
-		// Stock bajo (menos del 20% del original)
-		query = query.Where("sis.current_in_store < (sis.original_amount * 0.2)")
+		// Stock bajo (basado en critical_stock del supply_code)
+		query = query.Where("sis.current_in_store <= COALESCE(sc.critical_stock, 1)")
 	}
 
 	// Contar total
@@ -111,35 +116,87 @@ func (s *InventoryService) GetPavilionInventory(
 		Select(`pis.*,
 			p.name as pavilion_name,
 			sc.name as supply_name,
-			b.supplier as batch_supplier,
+			supc.supplier_name as batch_supplier,
 			b.expiration_date as expiration_date,
 			mc.id as medical_center_id,
 			mc.name as medical_center_name`).
 		Joins("LEFT JOIN pavilion p ON pis.pavilion_id = p.id").
 		Joins("LEFT JOIN supply_code sc ON pis.supply_code = sc.code").
 		Joins("LEFT JOIN batch b ON pis.batch_id = b.id").
+		Joins("LEFT JOIN supplier_config supc ON b.supplier_id = supc.id").
 		Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
 		Where("pis.pavilion_id = ?", pavilionID)
 
-	// Aplicar filtro por proveedor si se especifica
+	// Aplicar filtro por proveedor (case-insensitive) si se especifica
 	if supplier != nil {
-		query = query.Where("b.supplier LIKE ?", "%"+*supplier+"%")
+		query = query.Where("LOWER(supc.supplier_name) LIKE LOWER(?)", "%"+*supplier+"%")
 	}
 
 	if err := query.Find(&inventory).Error; err != nil {
 		return nil, err
 	}
 
-	// Si se solicita incluir productos en tránsito
+	// Si se solicita incluir productos en tránsito:
+	// Busca en medical_supply los insumos con status 'en_camino_a_pabellon'
+	// destinados a este pabellón, agrupados por lote+código.
 	if includeInTransit {
-		var inTransitCount int64
-		s.DB.Table("supply_transfer").
-			Where("destination_type = ? AND destination_id = ? AND status = ?",
-				models.TransferLocationPavilion, pavilionID, models.TransferStatusInTransit).
-			Count(&inTransitCount)
+		type inTransitRow struct {
+			PavilionID        int     `gorm:"column:pavilion_id"`
+			BatchID           int     `gorm:"column:batch_id"`
+			SupplyCode        int     `gorm:"column:supply_code"`
+			CurrentAvailable  int     `gorm:"column:current_available"`
+			PavilionName      string  `gorm:"column:pavilion_name"`
+			SupplyName        string  `gorm:"column:supply_name"`
+			BatchSupplier     string  `gorm:"column:batch_supplier"`
+			ExpirationDate    string  `gorm:"column:expiration_date"`
+			MedicalCenterID   int     `gorm:"column:medical_center_id"`
+			MedicalCenterName *string `gorm:"column:medical_center_name"`
+		}
 
-		// Agregar información de tránsito (podrías mejorar esto)
-		// Por ahora solo retornamos el inventario actual
+		var inTransitRows []inTransitRow
+		err := s.DB.Table("medical_supply ms").
+			Select(`ms.location_id AS pavilion_id,
+				ms.batch_id,
+				ms.code AS supply_code,
+				COUNT(*) AS current_available,
+				p.name AS pavilion_name,
+				sc.name AS supply_name,
+			supc.supplier_name AS batch_supplier,
+				TO_CHAR(b.expiration_date, 'YYYY-MM-DD') AS expiration_date,
+				COALESCE(mc.id, 0) AS medical_center_id,
+				mc.name AS medical_center_name`).
+			Joins("LEFT JOIN supply_code sc ON ms.code = sc.code").
+			Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
+			Joins("LEFT JOIN supplier_config supc ON b.supplier_id = supc.id").
+			Joins("LEFT JOIN pavilion p ON ms.location_id = p.id").
+			Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
+			Where("ms.status = ? AND ms.location_type = ? AND ms.location_id = ?",
+				models.StatusEnRouteToPavilion,
+				models.SupplyLocationPavilion,
+				pavilionID).
+			Group("ms.batch_id, ms.code, ms.location_id, p.name, sc.name, supc.supplier_name, b.expiration_date, mc.id, mc.name").
+			Scan(&inTransitRows).Error
+
+		if err == nil {
+			for _, row := range inTransitRows {
+				item := models.PavilionInventorySummaryWithDetails{
+					PavilionInventorySummary: models.PavilionInventorySummary{
+						PavilionID:       row.PavilionID,
+						BatchID:          row.BatchID,
+						SupplyCode:       row.SupplyCode,
+						CurrentAvailable: row.CurrentAvailable,
+					},
+					PavilionName:      row.PavilionName,
+					SupplyName:        row.SupplyName,
+					BatchSupplier:     row.BatchSupplier,
+					ExpirationDate:    row.ExpirationDate,
+					MedicalCenterID:   row.MedicalCenterID,
+					MedicalCenterName: row.MedicalCenterName,
+					InTransit:         true,
+				}
+				inventory = append(inventory, item)
+			}
+		}
 	}
 
 	return inventory, nil
@@ -370,11 +427,22 @@ func (s *InventoryService) GetInventorySummary(medicalCenterID *int) (map[string
 		Scan(&totalConsumed)
 	summary["total_consumed"] = totalConsumed
 
-	// Stock bajo en bodegas
+	// Stock crítico en bodegas: cuenta lotes (filas de store_inventory_summary)
+	// donde el stock actual está en o bajo el critical_stock del insumo.
+	// Usamos sis.supply_code directamente sin pasar por medical_supply para evitar
+	// multiplicar filas por cada unidad individual del lote.
 	var lowStockStores int64
-	query.Model(&models.StoreInventorySummary{}).
-		Where("current_in_store < (original_amount * 0.2)").
-		Count(&lowStockStores)
+	lowStockQuery := s.DB.Table("store_inventory_summary sis").
+		Joins("LEFT JOIN supply_code sc ON sis.supply_code = sc.code").
+		Where("sis.current_in_store <= COALESCE(sc.critical_stock, 1) AND sis.current_in_store > 0")
+
+	// Filtrar por centro médico si se especifica
+	if medicalCenterID != nil {
+		lowStockQuery = lowStockQuery.Joins("LEFT JOIN store s ON sis.store_id = s.id").
+			Where("s.medical_center_id = ?", *medicalCenterID)
+	}
+
+	lowStockQuery.Count(&lowStockStores)
 	summary["low_stock_stores"] = lowStockStores
 
 	// Productos próximos a vencer (90 días)

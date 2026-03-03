@@ -4,11 +4,14 @@
     <div class="bg-white rounded-lg shadow-sm border p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 class="text-2xl font-semibold text-gray-900">Inventario de Pabellones</h2>
+          <div class="flex items-center gap-3">
+            <h2 class="text-2xl font-semibold text-gray-900">Inventario de Pabellones</h2>
+            <span v-if="!loading && inventory.length > 0"
+              class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+              {{ sortedInventory.length }} lotes
+            </span>
+          </div>
           <p class="text-gray-600 mt-1">Stock disponible en cada pabellón del hospital</p>
-          <p v-if="!loading && inventory.length > 0" class="text-sm text-gray-500 mt-1">
-            Total: {{ inventory.length }} lotes encontrados
-          </p>
         </div>
         <router-link to="/inventory/dashboard" class="btn-secondary flex items-center justify-center">
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,8 +163,9 @@
       <!-- Tabla -->
       <div class="card overflow-hidden">
         <div class="overflow-x-auto">
+          <div class="max-h-[600px] overflow-y-auto">
           <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+            <thead class="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th @click="sortBy('supply_name')"
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
@@ -292,7 +296,8 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="item in paginatedInventory" :key="item.id" class="hover:bg-gray-50">
+              <tr v-for="item in paginatedInventory" :key="item.id"
+                :class="isExpired(item.expiration_date) ? 'bg-red-50 hover:bg-red-100' : item.in_transit ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
@@ -301,7 +306,13 @@
                       </svg>
                     </div>
                     <div class="ml-3">
-                      <div class="text-sm font-medium text-gray-900">{{ item.supply_name }}</div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-gray-900">{{ item.supply_name }}</span>
+                        <span v-if="item.in_transit"
+                          class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                          🚚 En tránsito
+                        </span>
+                      </div>
                       <div class="text-sm text-gray-500">Código: {{ item.supply_code }}</div>
                       <div class="text-sm text-gray-500">Lote: {{ item.batch_id }}</div>
                     </div>
@@ -334,13 +345,17 @@
                   <span :class="getExpirationClass(item.expiration_date)" class="text-sm font-medium">
                     {{ formatDate(item.expiration_date) }}
                   </span>
-                  <div v-if="isNearExpiration(item.expiration_date)" class="text-xs text-orange-600 font-medium">
+                  <div v-if="isExpired(item.expiration_date)" class="text-xs text-red-700 font-medium">
+                    🚨 Vencido
+                  </div>
+                  <div v-else-if="isNearExpiration(item.expiration_date)" class="text-xs text-orange-600 font-medium">
                     ⚠️ Vence pronto
                   </div>
                 </td>
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -391,11 +406,24 @@ const itemsPerPage = 10
 const sortKey = ref('supply_name')
 const sortOrder = ref('asc')
 
-// Computed para ordenar inventario
+// Normaliza texto para comparación case-insensitive y sin tildes (ID 6)
+const normalizeText = (text) => {
+  if (!text) return ''
+  return text.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+// Computed para ordenar y filtrar inventario
 const sortedInventory = computed(() => {
   if (!inventory.value || inventory.value.length === 0) return []
-  
-  const sorted = [...inventory.value].sort((a, b) => {
+
+  // Filtro cliente por proveedor (ID 6)
+  let result = [...inventory.value]
+  if (filterSupplier.value.trim()) {
+    const needle = normalizeText(filterSupplier.value)
+    result = result.filter(item => normalizeText(item.batch_supplier || '').includes(needle))
+  }
+
+  const sorted = result.sort((a, b) => {
     let aVal = a[sortKey.value]
     let bVal = b[sortKey.value]
     
@@ -414,7 +442,7 @@ const sortedInventory = computed(() => {
     if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1
     return 0
   })
-  
+
   return sorted
 })
 
@@ -458,11 +486,11 @@ const loadInventory = async () => {
   currentPage.value = 1
   
   try {
-    const supplierFilter = filterSupplier.value.trim() || null
+    // El proveedor se filtra en cliente para evitar problemas de mayúsculas/tildes (ID 6)
     const data = await inventoryService.getPavilionInventory(
       selectedPavilionId.value,
       includeInTransit.value,
-      supplierFilter
+      null
     )
     // Asegurarse de que inventory.value siempre sea un array
     inventory.value = Array.isArray(data) ? data : []
@@ -481,19 +509,24 @@ const applyFilters = () => {
   loadInventory()
 }
 
-// Función para limpiar filtros
+// Función para limpiar filtros — resetea TODOS los filtros incluyendo pabellón (ID 10)
 const clearFilters = () => {
   filterSupplier.value = ''
-  loadInventory()
+  selectedPavilionId.value = ''
+  includeInTransit.value = false
+  inventory.value = []
+  error.value = null
+  currentPage.value = 1
 }
 
-// Debounce para el filtro de proveedor
+// Debounce para el filtro de proveedor.
+// El filtrado es reactivo (computed), solo resetea la paginación (ID 6).
 let debounceTimer = null
 const debouncedApplyFilters = () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
-    applyFilters()
-  }, 500)
+    currentPage.value = 1
+  }, 300)
 }
 
 const getTotalAvailable = () => {
@@ -522,6 +555,13 @@ const formatDate = (dateString) => {
   } catch {
     return dateString
   }
+}
+
+const isExpired = (expirationDate) => {
+  if (!expirationDate) return false
+  const today = new Date()
+  const expDate = new Date(expirationDate)
+  return Math.ceil((expDate - today) / (1000 * 60 * 60 * 24)) < 0
 }
 
 const isNearExpiration = (expirationDate) => {

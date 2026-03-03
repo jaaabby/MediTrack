@@ -1088,8 +1088,13 @@ const quickRescan = (qrCode) => {
 }
 
 // Función para refrescar la información del QR escaneado (sin cambiar el input)
+let refreshDebounceTimer = null
 const refreshScannedInfo = async () => {
   if (!scannedInfo.value || !scannedInfo.value.qr_code) return
+
+  // Debounce: ignorar llamadas duplicadas en menos de 2 segundos
+  if (refreshDebounceTimer) return
+  refreshDebounceTimer = setTimeout(() => { refreshDebounceTimer = null }, 2000)
   
   try {
     // Crear contexto de escaneo

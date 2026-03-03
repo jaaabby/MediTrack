@@ -18,6 +18,7 @@ func SetupMedicalSpecialtyRoutes(router *gin.RouterGroup, specialtyService *serv
 
 		// Rutas específicas ANTES de las rutas con parámetros
 		specialties.GET("/all", specialtyController.GetAllMedicalSpecialties)
+		specialties.GET("/active", specialtyController.GetActiveMedicalSpecialties)
 		specialties.GET("/search", specialtyController.SearchMedicalSpecialties)
 
 		// Rutas con parámetros al final
@@ -26,4 +27,3 @@ func SetupMedicalSpecialtyRoutes(router *gin.RouterGroup, specialtyService *serv
 		specialties.DELETE("/:id", specialtyController.DeleteMedicalSpecialty)
 	}
 }
-
