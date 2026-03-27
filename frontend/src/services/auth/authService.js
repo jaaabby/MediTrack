@@ -174,6 +174,32 @@ class AuthService {
     }
   }
 
+  // Verificar código OTP recibido por SMS
+  async verifyOtp(otpSessionId, code) {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp_session_id: otpSessionId, code })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Código de verificación inválido')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Código de verificación inválido')
+      }
+
+      return data.data
+    } catch (error) {
+      console.error('Error en AuthService.verifyOtp:', error)
+      throw error
+    }
+  }
+
   // Solicitar recuperación de contraseña
   async requestPasswordReset(email) {
     try {

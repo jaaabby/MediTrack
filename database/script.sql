@@ -579,25 +579,25 @@ END $$;
 -- ============================================================================
 -- USUARIOS (NO MODIFICAR - MANTENER TAL CUAL)
 -- ============================================================================
-INSERT INTO "user" (rut, name, email, password, role, medical_center_id, pavilion_id, specialty_id, is_active, created_at, updated_at) VALUES 
-('12345678-9', 'Administrador del Sistema', 'admin@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'admin', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('87654321-0', 'Usuario Pabellón', 'pabellon@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'pabellón', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('11111111-1', 'Encargado Bodega', 'bodegacentral@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'encargado de bodega', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('22222222-2', 'María González', 'enfermera@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'enfermera', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('33333333-3', 'Dr. Carlos Pérez', 'doctor@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 1, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('SYSTEM-INIT', 'Sistema de Inicialización', 'system@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'admin', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('44444444-4', 'Pavedad', 'pavedad@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'pavedad', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('12121212-1', 'Usuario Consignación', 'bodegaconsignacion@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'encargado de bodega', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('55555555-5', 'Dr. Ana Martínez', 'ana.martinez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 2, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('66666666-6', 'Dr. Roberto Silva', 'roberto.silva@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 4, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('77777777-7', 'Dra. Laura Torres', 'laura.torres@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 8, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('88888888-8', 'Dr. Pedro Ramírez', 'pedro.ramirez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 3, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('99999999-9', 'Dra. Carmen López', 'carmen.lopez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 5, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('10101010-1', 'Dr. Miguel Ángel Rojas', 'miguel.rojas@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 1, NULL, 7, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('20202020-2', 'Dra. Patricia Vega', 'patricia.vega@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 2, NULL, 10, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('30303030-3', 'Dr. Fernando Castro', 'fernando.castro@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'doctor', 2, NULL, 6, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
-('PABELLON1', 'Pabellón 1', 'pabellon1@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', 'pabellón', 1, 1, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW()))
-ON CONFLICT (rut) DO NOTHING;
+INSERT INTO "user" (rut, name, email, password, phone, role, medical_center_id, pavilion_id, specialty_id, is_active, created_at, updated_at) VALUES
+('12345678-9', 'Administrador del Sistema', 'admin@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56911111111', 'admin', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('87654321-0', 'Usuario Pabellón', 'pabellon@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56922222222', 'pabellón', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('11111111-1', 'Encargado Bodega', 'bodegacentral@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56933333333', 'encargado de bodega', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('22222222-2', 'María González', 'enfermera@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56944444444', 'enfermera', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('33333333-3', 'Dr. Carlos Pérez', 'doctor@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56955555555', 'doctor', 1, NULL, 1, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('SYSTEM-INIT', 'Sistema de Inicialización', 'system@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', NULL, 'admin', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('44444444-4', 'Pavedad', 'pavedad@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56966666666', 'pavedad', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('12121212-1', 'Usuario Consignación', 'bodegaconsignacion@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56977777777', 'encargado de bodega', 1, NULL, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('55555555-5', 'Dr. Ana Martínez', 'ana.martinez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56988888888', 'doctor', 1, NULL, 2, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('66666666-6', 'Dr. Roberto Silva', 'roberto.silva@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56999999999', 'doctor', 1, NULL, 4, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('77777777-7', 'Dra. Laura Torres', 'laura.torres@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56900000001', 'doctor', 1, NULL, 8, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('88888888-8', 'Dr. Pedro Ramírez', 'pedro.ramirez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56900000002', 'doctor', 1, NULL, 3, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('99999999-9', 'Dra. Carmen López', 'carmen.lopez@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56900000003', 'doctor', 1, NULL, 5, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('10101010-1', 'Dr. Miguel Ángel Rojas', 'miguel.rojas@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56900000004', 'doctor', 1, NULL, 7, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('20202020-2', 'Dra. Patricia Vega', 'patricia.vega@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56900000005', 'doctor', 2, NULL, 10, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('30303030-3', 'Dr. Fernando Castro', 'fernando.castro@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', '+56900000006', 'doctor', 2, NULL, 6, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+('PABELLON1', 'Pabellón 1', 'pabellon1@meditrack.com', '$2a$10$NA3QLOvkwhpcs.X4KxjONObslo1LreYA6qAzdQcqxRrD4ktjBrpmO', NULL, 'pabellón', 1, 1, NULL, true, EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW()))
+ON CONFLICT (rut) DO UPDATE SET phone = EXCLUDED.phone;
 
 -- ============================================================================
 -- TRANSFERENCIAS A PABELLONES E INVENTARIO

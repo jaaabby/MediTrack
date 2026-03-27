@@ -177,25 +177,22 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Realizar login
+    // Realizar login (paso 1: credenciales)
+    // Retorna { otp_session_id, phone_masked } si se requiere verificación SMS,
+    // o guarda el token directamente si el usuario no tiene teléfono.
     async login(email, password) {
       this.isLoading = true
       this.error = null
       try {
         const response = await authService.login(email, password)
-        // Guardar token y usuario
-        this.token = response.token
-        this.user = response.user
-        this.isAuthenticated = true
-        authService.setToken(response.token)
-        // Guardar usuario completo en localStorage
-        if (response.user) {
-          localStorage.setItem('user_full', JSON.stringify(response.user))
+
+        // Si el backend requiere OTP, retornar sin guardar sesión aún
+        if (response.otp_session_id) {
+          return response
         }
-        // Guardar expiración (1 hora desde ahora)
-        const expiry = Date.now() + 60 * 60 * 1000
-        localStorage.setItem('auth_expiry', expiry.toString())
-        this._setAutoLogout(60 * 60 * 1000)
+
+        // Login directo (sin 2FA): guardar token y usuario
+        this._saveSession(response)
         return response
       } catch (error) {
         this.error = error.message
@@ -203,6 +200,36 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.isLoading = false
       }
+    },
+
+    // Verificar código OTP (paso 2): recibe el JWT real del backend
+    async verifyOtp(otpSessionId, code) {
+      this.isLoading = true
+      this.error = null
+      try {
+        const response = await authService.verifyOtp(otpSessionId, code)
+        this._saveSession(response)
+        return response
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    // Guarda token, usuario y expiry en el store + localStorage
+    _saveSession(response) {
+      this.token = response.token
+      this.user = response.user
+      this.isAuthenticated = true
+      authService.setToken(response.token)
+      if (response.user) {
+        localStorage.setItem('user_full', JSON.stringify(response.user))
+      }
+      const expiry = Date.now() + 60 * 60 * 1000
+      localStorage.setItem('auth_expiry', expiry.toString())
+      this._setAutoLogout(60 * 60 * 1000)
     },
 
     // Obtener perfil del usuario

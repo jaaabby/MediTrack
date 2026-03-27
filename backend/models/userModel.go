@@ -18,6 +18,7 @@ type User struct {
 	Name                   string            `json:"name" db:"name" gorm:"not null"`
 	Email                  string            `json:"email" db:"email"`
 	Password               string            `json:"password" db:"password" gorm:"not null"`
+	Phone                  *string           `json:"phone,omitempty" db:"phone"`
 	Role                   string            `json:"role" db:"role" gorm:"not null;check:role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')"`
 	MedicalCenterID        int               `json:"medical_center_id" db:"medical_center_id" gorm:"not null"`
 	MedicalCenter          *MedicalCenter    `json:"medical_center,omitempty" gorm:"foreignKey:MedicalCenterID"`
@@ -38,6 +39,7 @@ type UserResponse struct {
 	RUT                string            `json:"rut"`
 	Name               string            `json:"name"`
 	Email              string            `json:"email"`
+	Phone              *string           `json:"phone,omitempty"`
 	Role               string            `json:"role"`
 	MedicalCenterID    int               `json:"medical_center_id"`
 	MedicalCenter      *MedicalCenter    `json:"medical_center,omitempty"`
@@ -56,6 +58,7 @@ func (u User) ToResponse() UserResponse {
 		RUT:                u.RUT,
 		Name:               u.Name,
 		Email:              u.Email,
+		Phone:              u.Phone,
 		Role:               u.Role,
 		MedicalCenterID:    u.MedicalCenterID,
 		MedicalCenter:      u.MedicalCenter,
@@ -67,6 +70,24 @@ func (u User) ToResponse() UserResponse {
 		CreatedAt:          u.CreatedAt,
 		UpdatedAt:          u.UpdatedAt,
 	}
+}
+
+// OtpSession representa una sesión de verificación OTP para el login
+type OtpSession struct {
+	ID        string `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	UserRUT   string `json:"user_rut" gorm:"not null"`
+	Code      string `json:"-" gorm:"not null"`
+	ExpiresAt int64  `json:"expires_at" gorm:"not null"`
+	Used      bool   `json:"used" gorm:"default:false"`
+	Attempts  int    `json:"attempts" gorm:"default:0"`
+	CreatedAt int64  `json:"created_at" gorm:"autoCreateTime"`
+}
+
+// MaxOTPAttempts es el número máximo de intentos fallidos antes de invalidar la sesión OTP
+const MaxOTPAttempts = 5
+
+func (OtpSession) TableName() string {
+	return "otp_session"
 }
 
 // IsValidRole verifica si el rol es válido

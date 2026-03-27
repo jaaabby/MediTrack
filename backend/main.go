@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"meditrack/config"
 	"meditrack/controllers"
@@ -125,6 +126,18 @@ func main() {
 
 	// Registrar rutas de consumo automático
 	routes.SetupAutomaticConsumptionRoutes(router, automaticConsumptionController, secretKey)
+
+	// Limpieza periódica de sesiones OTP expiradas o usadas (cada 30 minutos)
+	go func() {
+		ticker := time.NewTicker(30 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := userService.DeleteExpiredOtpSessions(); err != nil {
+				log.Printf("⚠️  Error limpiando sesiones OTP expiradas: %v", err)
+			}
+		}
+	}()
+	log.Println("✅ Iniciado limpiador automático de sesiones OTP expiradas")
 
 	// Iniciar el verificador automático de retornos a bodega en una goroutine
 	go medicalSupplyService.StartAutomaticReturnChecker()

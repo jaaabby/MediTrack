@@ -146,6 +146,8 @@ DROP INDEX IF EXISTS idx_surgery_specialty;
 DROP INDEX IF EXISTS idx_surgery_typical_supply_required;
 DROP INDEX IF EXISTS idx_surgery_typical_supply_code;
 DROP INDEX IF EXISTS idx_surgery_typical_supply_surgery;
+DROP INDEX IF EXISTS idx_otp_session_user_rut;
+DROP INDEX IF EXISTS idx_otp_session_expires_at;
 
 -- Índices de medical_specialty
 DROP INDEX IF EXISTS idx_medical_specialty_active;
@@ -202,6 +204,9 @@ DROP TABLE IF EXISTS medical_specialty CASCADE;
 
 -- Tabla de configuración de proveedores
 DROP TABLE IF EXISTS supplier_config CASCADE;
+
+-- Tabla de sesiones OTP
+DROP TABLE IF EXISTS otp_session CASCADE;
 
 -- Tablas de estructura organizacional
 DROP TABLE IF EXISTS "user" CASCADE;

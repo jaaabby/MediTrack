@@ -14,10 +14,11 @@ func SetupAuthRoutes(router *gin.RouterGroup, userService services.UserService, 
 
 	auth := router.Group("/auth")
 	{
-		// Rutas públicas
-		auth.POST("/login", authController.Login)
+		// Rutas públicas (con rate limiting en endpoints sensibles)
+		auth.POST("/login", middleware.LoginLimiter.Middleware(), authController.Login)
+		auth.POST("/verify-otp", middleware.OTPLimiter.Middleware(), authController.VerifyOTP)
 		auth.POST("/register", authController.Register)
-		auth.POST("/forgot-password", authController.RequestPasswordReset)
+		auth.POST("/forgot-password", middleware.ForgotPasswordLimiter.Middleware(), authController.RequestPasswordReset)
 		auth.POST("/reset-password", authController.ResetPassword)
 		auth.POST("/validate-reset-token", authController.ValidateResetToken)
 

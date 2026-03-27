@@ -115,6 +115,7 @@ CREATE TABLE "user" (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')),
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
     pavilion_id INTEGER REFERENCES pavilion(id),
@@ -131,6 +132,20 @@ CREATE INDEX idx_user_email ON "user"(email);
 CREATE INDEX idx_user_specialty ON "user"(specialty_id);
 CREATE INDEX idx_user_pavilion ON "user"(pavilion_id);
 CREATE INDEX idx_user_reset_token ON "user"(reset_password_token);
+
+-- Tabla de sesiones OTP para verificación en dos pasos al login
+CREATE TABLE otp_session (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_rut    VARCHAR(20) NOT NULL REFERENCES "user"(rut) ON DELETE CASCADE,
+    code        VARCHAR(6)  NOT NULL,
+    expires_at  BIGINT      NOT NULL,
+    used        BOOLEAN     NOT NULL DEFAULT FALSE,
+    attempts    INTEGER     NOT NULL DEFAULT 0,
+    created_at  BIGINT      NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW())
+);
+
+CREATE INDEX idx_otp_session_user_rut ON otp_session(user_rut);
+CREATE INDEX idx_otp_session_expires_at ON otp_session(expires_at);
 
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,

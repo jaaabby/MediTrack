@@ -1,15 +1,20 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"crypto/subtle"
 	"fmt"
+	"math/big"
 	"meditrack/config"
 	"meditrack/mailer"
 	"meditrack/models"
 	"meditrack/pkg/response"
 	"meditrack/services"
+	"meditrack/sms"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -56,7 +61,7 @@ type RegisterRequest struct {
 	MedicalCenterID int    `json:"medical_center_id" binding:"required"`
 }
 
-// LoginResponse representa la respuesta del login
+// LoginResponse representa la respuesta del login completo (post-OTP)
 type LoginResponse struct {
 	Token     string              `json:"token"`
 	User      models.UserResponse `json:"user"`
@@ -64,7 +69,33 @@ type LoginResponse struct {
 	TokenType string              `json:"token_type"`
 }
 
-// Login autentica un usuario y retorna un token JWT
+// LoginPendingResponse representa la respuesta cuando se requiere verificación OTP
+type LoginPendingResponse struct {
+	OtpSessionID string `json:"otp_session_id"`
+	PhoneMasked  string `json:"phone_masked"`
+}
+
+// generateOTPCode genera un código numérico de 6 dígitos criptográficamente seguro
+func generateOTPCode() (string, error) {
+	max := big.NewInt(1000000)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
+}
+
+// maskPhone enmascara el número de teléfono mostrando solo los últimos 4 dígitos
+func maskPhone(phone string) string {
+	if len(phone) <= 4 {
+		return "****"
+	}
+	return "****" + phone[len(phone)-4:]
+}
+
+// Login verifica credenciales y, si el usuario tiene teléfono registrado,
+// envía un OTP por SMS retornando un session_id para el segundo paso.
+// Si el usuario no tiene teléfono, hace login directo (compatibilidad).
 func (c *AuthController) Login(ctx *gin.Context) {
 	var loginReq LoginRequest
 	if err := ctx.ShouldBindJSON(&loginReq); err != nil {
@@ -75,12 +106,15 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
+	// Mensaje genérico para no revelar si el correo existe o no (evita user enumeration)
+	const errCredenciales = "Credenciales inválidas. Verifica tu correo y contraseña."
+
 	// Buscar usuario por email
 	user, err := c.userService.GetUserByEmail(loginReq.Email)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Error:   "El correo electrónico ingresado no está registrado en el sistema",
+			Error:   errCredenciales,
 		})
 		return
 	}
@@ -89,7 +123,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	if !user.IsActive {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Error:   "Usuario inactivo",
+			Error:   errCredenciales,
 		})
 		return
 	}
@@ -98,12 +132,60 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Error:   "La contraseña ingresada es incorrecta",
+			Error:   errCredenciales,
 		})
 		return
 	}
 
-	// Generar token JWT (24 horas de duración)
+	// Si el usuario tiene teléfono, iniciar flujo OTP
+	if user.Phone != nil && *user.Phone != "" {
+		code, err := generateOTPCode()
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, response.Response{
+				Success: false,
+				Error:   "Error al generar código de verificación",
+			})
+			return
+		}
+
+		// Guardar sesión OTP en la base de datos (expira en 10 minutos)
+		expiresAt := time.Now().Add(10 * time.Minute).Unix()
+		otpSession := &models.OtpSession{
+			UserRUT:   user.RUT,
+			Code:      code,
+			ExpiresAt: expiresAt,
+		}
+		if err := c.userService.CreateOtpSession(otpSession); err != nil {
+			ctx.JSON(http.StatusInternalServerError, response.Response{
+				Success: false,
+				Error:   "Error al crear sesión OTP",
+			})
+			return
+		}
+
+		// Enviar SMS
+		message := fmt.Sprintf("Tu código de verificación MediTrack es: %s. Expira en 10 minutos.", code)
+		if err := sms.Send(*user.Phone, message); err != nil {
+			fmt.Printf("Error enviando SMS OTP: %v\n", err)
+			ctx.JSON(http.StatusInternalServerError, response.Response{
+				Success: false,
+				Error:   "Error al enviar código de verificación por SMS",
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, response.Response{
+			Success: true,
+			Message: "Código de verificación enviado por SMS",
+			Data: LoginPendingResponse{
+				OtpSessionID: otpSession.ID,
+				PhoneMasked:  maskPhone(*user.Phone),
+			},
+		})
+		return
+	}
+
+	// Sin teléfono: login directo (compatibilidad con cuentas sin 2FA)
 	duration := 24 * time.Hour
 	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, c.secretKey, duration)
 	if err != nil {
@@ -114,18 +196,150 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	// Crear respuesta
-	loginResp := LoginResponse{
-		Token:     token,
-		User:      user.ToResponse(),
-		ExpiresIn: int64(duration.Seconds()),
-		TokenType: "Bearer",
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Login exitoso",
+		Data: LoginResponse{
+			Token:     token,
+			User:      user.ToResponse(),
+			ExpiresIn: int64(duration.Seconds()),
+			TokenType: "Bearer",
+		},
+	})
+}
+
+// otpCodeRegex valida que el código OTP sea exactamente 6 dígitos numéricos
+var otpCodeRegex = regexp.MustCompile(`^\d{6}$`)
+
+// VerifyOTPRequest representa la solicitud de verificación del código OTP
+type VerifyOTPRequest struct {
+	OtpSessionID string `json:"otp_session_id" binding:"required"`
+	Code         string `json:"code" binding:"required"`
+}
+
+// VerifyOTP verifica el código OTP recibido por SMS y, si es válido, devuelve el JWT.
+// Protecciones implementadas:
+//   - Máximo 5 intentos fallidos antes de invalidar la sesión
+//   - Comparación segura contra timing attacks (crypto/subtle)
+//   - Validación de formato (exactamente 6 dígitos)
+//   - Mensajes de error genéricos para evitar enumeración de información
+func (c *AuthController) VerifyOTP(ctx *gin.Context) {
+	var req VerifyOTPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos",
+		})
+		return
+	}
+
+	// Validar formato del código: exactamente 6 dígitos
+	if !otpCodeRegex.MatchString(req.Code) {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "El código debe ser de 6 dígitos numéricos",
+		})
+		return
+	}
+
+	otpSession, err := c.userService.GetOtpSession(req.OtpSessionID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Código de verificación inválido o expirado",
+		})
+		return
+	}
+
+	// Verificar que no esté usado o bloqueado por intentos
+	if otpSession.Used {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Código de verificación inválido o expirado",
+		})
+		return
+	}
+
+	// Verificar expiración
+	if time.Now().Unix() > otpSession.ExpiresAt {
+		_ = c.userService.InvalidateOtpSession(req.OtpSessionID)
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "El código ha expirado. Inicia sesión nuevamente para recibir un nuevo código",
+		})
+		return
+	}
+
+	// Comparación segura contra timing attacks usando crypto/subtle
+	codeMatch := subtle.ConstantTimeCompare([]byte(otpSession.Code), []byte(req.Code)) == 1
+
+	if !codeMatch {
+		// Incrementar contador de intentos fallidos
+		attempts, err := c.userService.IncrementOtpAttempts(req.OtpSessionID)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, response.Response{
+				Success: false,
+				Error:   "Error al procesar verificación",
+			})
+			return
+		}
+
+		remaining := models.MaxOTPAttempts - attempts
+		if remaining <= 0 {
+			// Bloquear la sesión definitivamente
+			_ = c.userService.InvalidateOtpSession(req.OtpSessionID)
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   "Demasiados intentos fallidos. Inicia sesión nuevamente para recibir un nuevo código",
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   fmt.Sprintf("Código incorrecto. Te quedan %d intentos", remaining),
+		})
+		return
+	}
+
+	// Marcar sesión como usada (un solo uso)
+	if err := c.userService.MarkOtpSessionUsed(req.OtpSessionID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al procesar verificación",
+		})
+		return
+	}
+
+	// Obtener usuario y generar JWT
+	user, err := c.userService.GetUserByRut(otpSession.UserRUT)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al procesar verificación",
+		})
+		return
+	}
+
+	duration := 24 * time.Hour
+	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, c.secretKey, duration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al procesar verificación",
+		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, response.Response{
 		Success: true,
-		Message: "Login exitoso",
-		Data:    loginResp,
+		Message: "Verificación exitosa",
+		Data: LoginResponse{
+			Token:     token,
+			User:      user.ToResponse(),
+			ExpiresIn: int64(duration.Seconds()),
+			TokenType: "Bearer",
+		},
 	})
 }
 

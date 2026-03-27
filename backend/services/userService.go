@@ -333,3 +333,46 @@ func (s *UserService) ClearResetToken(rut string) error {
 		"reset_password_expires_at": nil,
 	}).Error
 }
+
+// CreateOtpSession persiste una nueva sesión OTP en la base de datos
+func (s *UserService) CreateOtpSession(session *models.OtpSession) error {
+	return s.DB.Create(session).Error
+}
+
+// GetOtpSession obtiene una sesión OTP por su ID
+func (s *UserService) GetOtpSession(id string) (*models.OtpSession, error) {
+	var session models.OtpSession
+	if err := s.DB.First(&session, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+// MarkOtpSessionUsed marca una sesión OTP como utilizada
+func (s *UserService) MarkOtpSessionUsed(id string) error {
+	return s.DB.Model(&models.OtpSession{}).Where("id = ?", id).Update("used", true).Error
+}
+
+// IncrementOtpAttempts incrementa el contador de intentos fallidos y retorna el nuevo total
+func (s *UserService) IncrementOtpAttempts(id string) (int, error) {
+	if err := s.DB.Model(&models.OtpSession{}).Where("id = ?", id).
+		UpdateColumn("attempts", gorm.Expr("attempts + 1")).Error; err != nil {
+		return 0, err
+	}
+	var session models.OtpSession
+	if err := s.DB.Select("attempts").First(&session, "id = ?", id).Error; err != nil {
+		return 0, err
+	}
+	return session.Attempts, nil
+}
+
+// InvalidateOtpSession marca una sesión OTP como usada (para bloquearla)
+func (s *UserService) InvalidateOtpSession(id string) error {
+	return s.DB.Model(&models.OtpSession{}).Where("id = ?", id).Update("used", true).Error
+}
+
+// DeleteExpiredOtpSessions elimina las sesiones OTP expiradas o ya usadas
+func (s *UserService) DeleteExpiredOtpSessions() error {
+	return s.DB.Where("expires_at < ? OR used = ?", time.Now().Unix(), true).
+		Delete(&models.OtpSession{}).Error
+}
