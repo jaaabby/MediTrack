@@ -400,8 +400,6 @@
                     <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">ID
                     </th>
                     <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">
-                      Código</th>
-                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">
                       Estado</th>
                     <th class="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">QR
                     </th>
@@ -410,7 +408,6 @@
                 <tbody>
                   <tr v-for="item in paginatedBatchDetails" :key="item.id" class="hover:bg-gray-50">
                     <td class="px-3 sm:px-6 py-3 sm:py-4 text-gray-900 font-mono text-xs sm:text-sm">{{ item.id }}</td>
-                    <td class="px-3 sm:px-6 py-3 sm:py-4 text-gray-900 text-xs sm:text-sm">{{ item.code }}</td>
                     <td class="px-3 sm:px-6 py-3 sm:py-4">
                       <span
                         class="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
@@ -2069,9 +2066,6 @@ const downloadAllBatchQRs = async () => {
         pdf.setFontSize(10)
         pdf.setFont(undefined, 'normal')
         pdf.text(`ID: ${supply.id || 'N/A'}`, textX, textY)
-        
-        textY += 6
-        pdf.text(`Código Insumo: ${supply.code || 'N/A'}`, textX, textY)
         
         textY += 6
         pdf.text(`Nombre: ${supplyName.value || 'N/A'}`, textX, textY)

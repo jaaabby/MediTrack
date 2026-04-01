@@ -933,16 +933,16 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 		// Si el item fue ACEPTADO, asignar automáticamente insumos del inventario
 		if req.ItemStatus == "aceptado" {
 			fmt.Printf("DEBUG: Item %d aceptado, cantidad solicitada: %d\n", item.ID, item.QuantityRequested)
-			// Buscar insumos disponibles con el mismo código (supply_code)
+			// Buscar insumos disponibles con el mismo código (supply_code) via JOIN con batch
 			// FEFO (First Expired First Out): Priorizar productos próximos a vencer
 			var availableSupplies []models.MedicalSupply
 
-			// Buscar primero sin JOIN para asegurar que encontramos los insumos
-			// Luego intentaremos ordenar por batch si es posible
-			if err := tx.Model(&models.MedicalSupply{}).
-				Where("code = ? AND status = ? AND location_type = ?",
+			if err := tx.Table("medical_supply ms").
+				Select("ms.*").
+				Joins("INNER JOIN batch b ON ms.batch_id = b.id").
+				Where("b.supply_code = ? AND ms.status = ? AND ms.location_type = ?",
 					item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
-				Order("updated_at ASC").
+				Order("ms.updated_at ASC").
 				Limit(item.QuantityRequested).
 				Find(&availableSupplies).Error; err != nil {
 				return fmt.Errorf("error buscando insumos disponibles: %v", err)

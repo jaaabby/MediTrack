@@ -122,18 +122,23 @@ func (s *BatchService) GetBatchWithSupplyInfo(id int) (map[string]interface{}, e
 	}
 
 	var totalSupplies, consumedSupplies int64
-	s.DB.Model(&models.MedicalSupply{}).Where("batch_id = ?", id).Count(&totalSupplies)
+	if err := s.DB.Model(&models.MedicalSupply{}).Where("batch_id = ?", id).Count(&totalSupplies).Error; err != nil {
+		return nil, fmt.Errorf("error contando insumos del lote: %v", err)
+	}
 
 	subquery := s.DB.Model(&models.SupplyHistory{}).
 		Select("medical_supply_id").
 		Where("status = ?", "consumido")
-	s.DB.Model(&models.MedicalSupply{}).
+	if err := s.DB.Model(&models.MedicalSupply{}).
 		Where("batch_id = ? AND id IN (?)", id, subquery).
-		Count(&consumedSupplies)
+		Count(&consumedSupplies).Error; err != nil {
+		return nil, fmt.Errorf("error contando insumos consumidos: %v", err)
+	}
 
 	var supplyCode models.SupplyCode
-	s.DB.Where("code = ?", batch.SupplyCode).
-		First(&supplyCode)
+	if err := s.DB.Where("code = ?", batch.SupplyCode).First(&supplyCode).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo código de insumo: %v", err)
+	}
 
 	availableSupplies := totalSupplies - consumedSupplies
 	consumptionPercentage := float64(0)
@@ -508,7 +513,7 @@ func (s *BatchService) createHistoryAsync(batchID int, supplies []models.Medical
 		history := models.SupplyHistory{
 			DateTime:        time.Now(),
 			Status:          "creado",
-			DestinationType: "almacen",
+			DestinationType: models.DestinationTypeStore,
 			DestinationID:   supply.LocationID,
 			MedicalSupplyID: supply.ID,
 			UserRUT:         DefaultUserRUT,

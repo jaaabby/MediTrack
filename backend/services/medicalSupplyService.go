@@ -948,18 +948,26 @@ func (s *MedicalSupplyService) NotifyPavilionForReturn(qrCode string, pdfBytes [
 
 	// 4. Obtener datos del lote y bodega
 	var batch models.Batch
-	s.DB.First(&batch, supply.BatchID)
+	if err := s.DB.First(&batch, supply.BatchID).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo lote del insumo: %v", err)
+	}
 
 	// 3. Obtener nombre del insumo
 	var supplyCode models.SupplyCode
-	s.DB.First(&supplyCode, batch.SupplyCode)
+	if err := s.DB.First(&supplyCode, batch.SupplyCode).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo código de insumo: %v", err)
+	}
 
 	var store models.Store
-	s.DB.First(&store, batch.StoreID)
+	if err := s.DB.First(&store, batch.StoreID).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo bodega del lote: %v", err)
+	}
 
 	// 5. Obtener nombre del pabellón
 	var pavilion models.Pavilion
-	s.DB.First(&pavilion, pavilionID)
+	if err := s.DB.First(&pavilion, pavilionID).Error; err != nil {
+		return nil, fmt.Errorf("error obteniendo pabellón: %v", err)
+	}
 
 	pavilionName := pavilion.Name
 	if pavilionName == "" {

@@ -195,7 +195,7 @@ func (c *SupplyRequestController) GetSupplyRequestsByPavilion(ctx *gin.Context) 
 // ApproveSupplyRequest aprueba una solicitud
 func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 	// Verificar permisos - solo encargado de bodega puede aprobar
-	user, exists := ctx.Get("user")
+	userRoleVal, exists := ctx.Get("user_role")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
@@ -204,17 +204,8 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 		return
 	}
 
-	userClaims, ok := user.(map[string]interface{})
-	if !ok {
-		ctx.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   "Error procesando información del usuario",
-		})
-		return
-	}
-
-	userRole, exists := userClaims["role"].(string)
-	if !exists || userRole != "encargado de bodega" {
+	userRole, ok := userRoleVal.(string)
+	if !ok || userRole != "encargado de bodega" {
 		ctx.JSON(http.StatusForbidden, response.Response{
 			Success: false,
 			Error:   "No tiene permisos para aprobar solicitudes. Solo encargados de bodega pueden realizar esta acción",
@@ -265,7 +256,7 @@ func (c *SupplyRequestController) ApproveSupplyRequest(ctx *gin.Context) {
 // RejectSupplyRequest rechaza una solicitud
 func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
 	// Verificar permisos - solo encargado de bodega puede rechazar
-	user, exists := ctx.Get("user")
+	userRoleVal, exists := ctx.Get("user_role")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
@@ -274,17 +265,8 @@ func (c *SupplyRequestController) RejectSupplyRequest(ctx *gin.Context) {
 		return
 	}
 
-	userClaims, ok := user.(map[string]interface{})
-	if !ok {
-		ctx.JSON(http.StatusInternalServerError, response.Response{
-			Success: false,
-			Error:   "Error procesando información del usuario",
-		})
-		return
-	}
-
-	userRole, exists := userClaims["role"].(string)
-	if !exists || userRole != "encargado de bodega" {
+	userRole, ok := userRoleVal.(string)
+	if !ok || userRole != "encargado de bodega" {
 		ctx.JSON(http.StatusForbidden, response.Response{
 			Success: false,
 			Error:   "No tiene permisos para rechazar solicitudes. Solo encargados de bodega pueden realizar esta acción",
