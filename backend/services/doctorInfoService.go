@@ -5,7 +5,8 @@ import (
 	"meditrack/models"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
+	"meditrack/pkg/crypto"
+
 	"gorm.io/gorm"
 )
 
@@ -24,11 +25,11 @@ func (s *DoctorInfoService) CreateDoctor(doctor *models.User) error {
 
 	// Hashear la contraseña si se proporciona
 	if doctor.Password != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(doctor.Password), bcrypt.DefaultCost)
+		hashedPassword, err := crypto.HashPassword(doctor.Password)
 		if err != nil {
 			return fmt.Errorf("error al hashear contraseña: %v", err)
 		}
-		doctor.Password = string(hashedPassword)
+		doctor.Password = hashedPassword
 	}
 
 	return s.DB.Create(doctor).Error

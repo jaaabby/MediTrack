@@ -14,7 +14,8 @@ import (
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
+
+	"meditrack/pkg/crypto"
 )
 
 // UserController maneja las peticiones HTTP relacionadas con usuarios
@@ -336,7 +337,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 	// Hashear la contraseña si se proporciona
 	passwordToSave := userRequest.Password
 	if userRequest.Password != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRequest.Password), bcrypt.DefaultCost)
+		hashedPassword, err := crypto.HashPassword(userRequest.Password)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, response.Response{
 				Success: false,
@@ -344,7 +345,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 			})
 			return
 		}
-		passwordToSave = string(hashedPassword)
+		passwordToSave = hashedPassword
 	}
 
 	// Crear usuario para actualización
