@@ -157,7 +157,7 @@ func (s *InventoryService) GetPavilionInventory(
 		err := s.DB.Table("medical_supply ms").
 			Select(`ms.location_id AS pavilion_id,
 				ms.batch_id,
-				ms.code AS supply_code,
+				b.supply_code AS supply_code,
 				COUNT(*) AS current_available,
 				p.name AS pavilion_name,
 				sc.name AS supply_name,
@@ -165,8 +165,8 @@ func (s *InventoryService) GetPavilionInventory(
 				TO_CHAR(b.expiration_date, 'YYYY-MM-DD') AS expiration_date,
 				COALESCE(mc.id, 0) AS medical_center_id,
 				mc.name AS medical_center_name`).
-			Joins("LEFT JOIN supply_code sc ON ms.code = sc.code").
 			Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
+			Joins("LEFT JOIN supply_code sc ON b.supply_code = sc.code").
 			Joins("LEFT JOIN supplier_config supc ON b.supplier_id = supc.id").
 			Joins("LEFT JOIN pavilion p ON ms.location_id = p.id").
 			Joins("LEFT JOIN medical_center mc ON p.medical_center_id = mc.id").
@@ -174,7 +174,7 @@ func (s *InventoryService) GetPavilionInventory(
 				models.StatusEnRouteToPavilion,
 				models.SupplyLocationPavilion,
 				pavilionID).
-			Group("ms.batch_id, ms.code, ms.location_id, p.name, sc.name, supc.supplier_name, b.expiration_date, mc.id, mc.name").
+			Group("ms.batch_id, b.supply_code, ms.location_id, p.name, sc.name, supc.supplier_name, b.expiration_date, mc.id, mc.name").
 			Scan(&inTransitRows).Error
 
 		if err == nil {

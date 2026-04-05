@@ -116,9 +116,8 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 		Amount:              request.Batch.Amount,
 		Supplier:            request.Batch.Supplier,
 		StoreID:             request.Batch.StoreID,
+		SupplyCode:          request.SupplyCode.Code,
 		ExpirationAlertDays: expirationAlertDays,
-		LocationType:        models.BatchLocationStore,
-		LocationID:          request.Batch.StoreID, // Para lotes nuevos siempre arranca en una bodega
 		// ID y QRCode se generarán automáticamente
 	}
 

@@ -5,7 +5,6 @@ import "time"
 // MedicalSupply representa un insumo médico individual
 type MedicalSupply struct {
 	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
-	Code      int       `json:"code" db:"code" gorm:"not null"`
 	QRCode    string    `json:"qr_code" db:"qr_code" gorm:"unique;not null"` // Código QR único para cada insumo individual
 	BatchID   int       `json:"batch_id" db:"batch_id" gorm:"not null"`
 	Status    string    `json:"status" db:"status" gorm:"not null;default:'disponible'"` // Estado actual del insumo
@@ -22,7 +21,7 @@ type MedicalSupply struct {
 // Constantes para los estados de insumos médicos
 const (
 	StatusAvailable         = "disponible"
-	StatusPendingPickup     = "pendiente_retiro"      // Pendiente de retiro físico de bodega
+	StatusPendingPickup     = "pendiente_retiro" // Pendiente de retiro físico de bodega
 	StatusEnRouteToPavilion = "en_camino_a_pabellon"
 	StatusReceived          = "recepcionado"
 	StatusConsumed          = "consumido"

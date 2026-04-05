@@ -18,6 +18,7 @@ type Batch struct {
 	ExpirationAlertDays int       `json:"expiration_alert_days" gorm:"not null;default:90"`
 
 	// Campos para gestión de inventario
+	SupplyCode   int    `json:"supply_code" gorm:"not null"`
 	SurgeryID    *int   `json:"surgery_id,omitempty" gorm:"default:null"`
 	LocationType string `json:"location_type" gorm:"not null;default:'store'"`
 	LocationID   int    `json:"location_id" gorm:"not null"`

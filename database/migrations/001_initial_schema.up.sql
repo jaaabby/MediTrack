@@ -73,12 +73,20 @@ CREATE TRIGGER trg_update_supplier_config_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_supplier_config_updated_at();
 
+CREATE TABLE supply_code (
+    code INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    code_supplier INTEGER NOT NULL,
+    critical_stock INTEGER NOT NULL
+);
+
 CREATE TABLE batch (
     id SERIAL PRIMARY KEY,
     expiration_date DATE NOT NULL,
     amount INTEGER NOT NULL,
     supplier_id INTEGER NOT NULL REFERENCES supplier_config(id),
     store_id INTEGER NOT NULL REFERENCES store(id),
+    supply_code INTEGER NOT NULL REFERENCES supply_code(code),
     qr_code VARCHAR(255) UNIQUE,
     surgery_id INTEGER REFERENCES surgery(id),
     location_type VARCHAR(50) NOT NULL DEFAULT 'store' CHECK (location_type IN ('store', 'pavilion')),
@@ -102,13 +110,6 @@ CREATE TRIGGER trg_set_batch_initial_location
     BEFORE INSERT ON batch
     FOR EACH ROW
     EXECUTE FUNCTION set_batch_initial_location();
-
-CREATE TABLE supply_code (
-    code INTEGER PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    code_supplier INTEGER NOT NULL,
-    critical_stock INTEGER NOT NULL
-);
 
 CREATE TABLE "user" (
     rut VARCHAR(20) PRIMARY KEY,
@@ -134,7 +135,6 @@ CREATE INDEX idx_user_reset_token ON "user"(reset_password_token);
 
 CREATE TABLE medical_supply (
     id SERIAL PRIMARY KEY,
-    code INTEGER NOT NULL REFERENCES supply_code(code),
     batch_id INTEGER NOT NULL REFERENCES batch(id),
     qr_code VARCHAR(255) NOT NULL UNIQUE,
     status VARCHAR(50) NOT NULL DEFAULT 'disponible',

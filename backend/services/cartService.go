@@ -604,7 +604,7 @@ func (s *CartService) updateInventoryOnConsumption(tx *gorm.DB, supply *models.M
 				pavilionSummary = models.PavilionInventorySummary{
 					PavilionID:       supply.LocationID,
 					BatchID:          batch.ID,
-					SupplyCode:       supply.Code,
+					SupplyCode:       batch.SupplyCode,
 					TotalReceived:    1,
 					CurrentAvailable: 0,
 					TotalConsumed:    1,
@@ -898,7 +898,7 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 					storeSummary = models.StoreInventorySummary{
 						StoreID:             originalStoreID,
 						BatchID:             batch.ID,
-						SupplyCode:          supply.Code,
+						SupplyCode:          batch.SupplyCode,
 						SurgeryID:           batch.SurgeryID,
 						OriginalAmount:      int(realCount) + 1, // +1 porque vamos a transferir uno
 						CurrentInStore:      int(realCount),     // Stock actual sin contar el que se transfiere

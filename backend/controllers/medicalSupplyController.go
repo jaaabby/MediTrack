@@ -25,7 +25,6 @@ func NewMedicalSupplyController(medicalSupplyService services.MedicalSupplyServi
 
 func (c *MedicalSupplyController) CreateMedicalSupply(ctx *gin.Context) {
 	var supplyRequest struct {
-		Code    int `json:"code" binding:"required"`
 		BatchID int `json:"batch_id" binding:"required"`
 		// QRCode se generará automáticamente si hay QRService disponible
 	}
@@ -40,7 +39,6 @@ func (c *MedicalSupplyController) CreateMedicalSupply(ctx *gin.Context) {
 
 	// Crear el modelo sin ID - se auto-generará
 	supply := models.MedicalSupply{
-		Code:    supplyRequest.Code,
 		BatchID: supplyRequest.BatchID,
 		// ID se auto-generará
 		// QRCode se generará en el servicio si está disponible
@@ -237,7 +235,6 @@ func (c *MedicalSupplyController) GetInventoryListAdvanced(ctx *gin.Context) {
 func (c *MedicalSupplyController) CreateMultipleSupplies(ctx *gin.Context) {
 	var request struct {
 		BatchID  int `json:"batch_id" binding:"required"`
-		Code     int `json:"code" binding:"required"`
 		Quantity int `json:"quantity" binding:"required,min=1"`
 	}
 
@@ -251,7 +248,6 @@ func (c *MedicalSupplyController) CreateMultipleSupplies(ctx *gin.Context) {
 
 	supplies, err := c.medicalSupplyService.CreateMultipleIndividualSupplies(
 		request.BatchID,
-		request.Code,
 		request.Quantity,
 	)
 	if err != nil {

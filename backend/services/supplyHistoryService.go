@@ -77,7 +77,8 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 			END AS origin_name
 		FROM supply_history sh
 		LEFT JOIN medical_supply ms ON sh.medical_supply_id = ms.id
-		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN batch b ON ms.batch_id = b.id
+		LEFT JOIN supply_code sc ON b.supply_code = sc.code
 		LEFT JOIN store dst ON sh.destination_type = 'store' AND sh.destination_id = dst.id
 		LEFT JOIN pavilion dpv ON sh.destination_type IN ('pavilion', 'pabellon') AND sh.destination_id = dpv.id
 		LEFT JOIN store ost ON sh.origin_type = 'store' AND sh.origin_id = ost.id
@@ -167,16 +168,16 @@ func (s *SupplyHistoryService) GetConsumptionStatsBySurgery() ([]map[string]inte
 		SELECT 
 			b.surgery_id,
 			s.name as surgery_name,
-			ms.code as supply_code,
+			b.supply_code as supply_code,
 			sc.name as supply_name,
 			COUNT(sh.id) as consumed_count
 		FROM supply_history sh
 		INNER JOIN medical_supply ms ON sh.medical_supply_id = ms.id
 		INNER JOIN batch b ON ms.batch_id = b.id
 		LEFT JOIN surgery s ON b.surgery_id = s.id
-		LEFT JOIN supply_code sc ON ms.code = sc.code
+		LEFT JOIN supply_code sc ON b.supply_code = sc.code
 		WHERE sh.status = 'consumido'
-		GROUP BY b.surgery_id, s.name, ms.code, sc.name
+		GROUP BY b.surgery_id, s.name, b.supply_code, sc.name
 		ORDER BY b.surgery_id, consumed_count DESC
 	`
 
