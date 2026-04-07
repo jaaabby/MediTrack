@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
+	"meditrack/pkg/crypto"
+
 	"gorm.io/gorm"
 )
 
@@ -103,13 +104,13 @@ func (s *UserService) CreateUserWithTemporaryPassword(user *models.User) (string
 	}
 
 	// Hashear la contraseña
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(tempPassword), bcrypt.DefaultCost)
+	hashedPassword, err := crypto.HashPassword(tempPassword)
 	if err != nil {
 		return "", err
 	}
 
 	// Asignar contraseña hasheada y marcar que debe cambiarla
-	user.Password = string(hashedPassword)
+	user.Password = hashedPassword
 	user.MustChangePassword = true
 	user.IsActive = true
 
@@ -309,14 +310,14 @@ func (s *UserService) ResetPassword(token, newPassword string) error {
 	}
 
 	// Hashear la nueva contraseña
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	hashedPassword, err := crypto.HashPassword(newPassword)
 	if err != nil {
 		return err
 	}
 
 	// Actualizar contraseña y limpiar token
 	if err := s.DB.Model(&user).Updates(map[string]interface{}{
-		"password":                  string(hashedPassword),
+		"password":                  hashedPassword,
 		"reset_password_token":      nil,
 		"reset_password_expires_at": nil,
 	}).Error; err != nil {

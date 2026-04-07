@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"meditrack/pkg/crypto"
 )
 
 // AuthController maneja las peticiones HTTP relacionadas con autenticación
@@ -95,7 +96,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	}
 
 	// Verificar contraseña
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
+	if err := crypto.ComparePassword(user.Password, loginReq.Password); err != nil {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
 			Error:   "La contraseña ingresada es incorrecta",
@@ -189,7 +190,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	}
 
 	// Verificar contraseña actual
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(changePassReq.CurrentPassword)); err != nil {
+	if err := crypto.ComparePassword(user.Password, changePassReq.CurrentPassword); err != nil {
 		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Contraseña actual incorrecta",
@@ -198,7 +199,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	}
 
 	// Hashear nueva contraseña
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(changePassReq.NewPassword), bcrypt.DefaultCost)
+	hashedPassword, err := crypto.HashPassword(changePassReq.NewPassword)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
@@ -208,7 +209,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	}
 
 	// Actualizar contraseña y desactivar flag de cambio obligatorio
-	user.Password = string(hashedPassword)
+	user.Password = hashedPassword
 	user.MustChangePassword = false
 	if _, err := c.userService.UpdateUser(user.RUT, user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
@@ -270,7 +271,7 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 		}
 
 		// Verificar contraseña actual
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(changePassReq.CurrentPassword)); err != nil {
+		if err := crypto.ComparePassword(user.Password, changePassReq.CurrentPassword); err != nil {
 			ctx.JSON(http.StatusBadRequest, response.Response{
 				Success: false,
 				Error:   "Contraseña actual incorrecta",
@@ -287,7 +288,7 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 			return
 		}
 
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(changePassReq.CurrentPassword)); err != nil {
+		if err := crypto.ComparePassword(user.Password, changePassReq.CurrentPassword); err != nil {
 			ctx.JSON(http.StatusBadRequest, response.Response{
 				Success: false,
 				Error:   "Contraseña temporal incorrecta",
@@ -297,7 +298,7 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 	}
 
 	// Hashear nueva contraseña
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(changePassReq.NewPassword), bcrypt.DefaultCost)
+	hashedPassword, err := crypto.HashPassword(changePassReq.NewPassword)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
@@ -307,7 +308,7 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 	}
 
 	// Actualizar contraseña y desactivar flag de cambio obligatorio
-	user.Password = string(hashedPassword)
+	user.Password = hashedPassword
 	user.MustChangePassword = false
 	if _, err := c.userService.UpdateUser(user.RUT, user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
@@ -355,7 +356,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 	}
 
 	// Hashear la contraseña
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerReq.Password), bcrypt.DefaultCost)
+	hashedPassword, err := crypto.HashPassword(registerReq.Password)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
@@ -369,7 +370,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 		RUT:             registerReq.RUT,
 		Name:            registerReq.Name,
 		Email:           registerReq.Email,
-		Password:        string(hashedPassword),
+		Password:        hashedPassword,
 		Role:            registerReq.Role,
 		MedicalCenterID: registerReq.MedicalCenterID,
 		IsActive:        true,
