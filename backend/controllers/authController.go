@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -157,6 +158,16 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
+	// Enviar correo de notificación de nuevo inicio de sesión (no bloquea la respuesta)
+	realIP := ctx.GetHeader("X-Forwarded-For")
+	if realIP == "" {
+		realIP = ctx.GetHeader("X-Real-IP")
+	}
+	if realIP == "" {
+		realIP = ctx.ClientIP()
+	}
+	go c.sendLoginNotificationEmail(user, realIP, ctx.GetHeader("User-Agent"), ctx.GetHeader("Origin"))
+
 	// Crear respuesta
 	loginResp := LoginResponse{
 		Token:     token,
@@ -170,6 +181,128 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		Message: "Login exitoso",
 		Data:    loginResp,
 	})
+}
+
+// sendLoginNotificationEmail envía un correo al usuario informando del nuevo inicio de sesión
+func (c *AuthController) sendLoginNotificationEmail(user *models.User, ipAddress, userAgent, origin string) {
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		if origin != "" {
+			frontendURL = origin
+		} else {
+			frontendURL = "http://localhost:3000"
+		}
+	}
+
+	changePasswordURL := fmt.Sprintf("%s/profile", frontendURL)
+
+	loc, _ := time.LoadLocation("America/Santiago")
+	loginTime := time.Now().In(loc).Format("02/01/2006 15:04:05")
+
+	// Normalizar IP
+	displayIP := formatIPAddress(ipAddress)
+
+	// Parsear User-Agent a texto legible
+	displayUA := parseUserAgent(userAgent)
+
+	templateData := struct {
+		Name              string
+		LoginTime         string
+		IPAddress         string
+		UserAgent         string
+		ChangePasswordURL string
+	}{
+		Name:              user.Name,
+		LoginTime:         loginTime,
+		IPAddress:         displayIP,
+		UserAgent:         displayUA,
+		ChangePasswordURL: changePasswordURL,
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "new_login.html")
+	mailReq := mailer.NewRequest([]string{user.Email}, "Nuevo inicio de sesión en tu cuenta MediTrack")
+	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
+		fmt.Printf("⚠️  No se pudo enviar el correo de notificación de login a %s: %v\n", user.Email, err)
+	}
+}
+
+// formatIPAddress muestra un texto amigable para IPs de loopback
+func formatIPAddress(ip string) string {
+	if ip == "::1" || ip == "127.0.0.1" || ip == "localhost" {
+		return ip + " (acceso local)"
+	}
+	return ip
+}
+
+// parseUserAgent extrae navegador y sistema operativo del User-Agent
+func parseUserAgent(ua string) string {
+	if ua == "" {
+		return "Desconocido"
+	}
+
+	// Detectar sistema operativo
+	operatingSystem := "SO desconocido"
+	switch {
+	case strings.Contains(ua, "Windows NT 10.0"):
+		operatingSystem = "Windows 10/11"
+	case strings.Contains(ua, "Windows NT 6.3"):
+		operatingSystem = "Windows 8.1"
+	case strings.Contains(ua, "Windows NT 6.2"):
+		operatingSystem = "Windows 8"
+	case strings.Contains(ua, "Windows NT 6.1"):
+		operatingSystem = "Windows 7"
+	case strings.Contains(ua, "Windows"):
+		operatingSystem = "Windows"
+	case strings.Contains(ua, "Mac OS X"):
+		operatingSystem = "macOS"
+	case strings.Contains(ua, "Android"):
+		operatingSystem = "Android"
+	case strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad"):
+		operatingSystem = "iOS"
+	case strings.Contains(ua, "Linux"):
+		operatingSystem = "Linux"
+	}
+
+	// Detectar navegador (orden importa: Edge antes de Chrome, Chrome antes de Safari)
+	browser := "Navegador desconocido"
+	switch {
+	case strings.Contains(ua, "Edg/"):
+		browser = "Microsoft Edge " + extractVersion(ua, "Edg/")
+	case strings.Contains(ua, "OPR/") || strings.Contains(ua, "Opera/"):
+		v := extractVersion(ua, "OPR/")
+		if v == "" {
+			v = extractVersion(ua, "Opera/")
+		}
+		browser = "Opera " + v
+	case strings.Contains(ua, "Firefox/"):
+		browser = "Firefox " + extractVersion(ua, "Firefox/")
+	case strings.Contains(ua, "Chrome/"):
+		browser = "Chrome " + extractVersion(ua, "Chrome/")
+	case strings.Contains(ua, "Safari/") && strings.Contains(ua, "Version/"):
+		browser = "Safari " + extractVersion(ua, "Version/")
+	case strings.Contains(ua, "MSIE ") || strings.Contains(ua, "Trident/"):
+		browser = "Internet Explorer"
+	}
+
+	return browser + " — " + operatingSystem
+}
+
+func extractVersion(ua, token string) string {
+	idx := strings.Index(ua, token)
+	if idx < 0 {
+		return ""
+	}
+	start := idx + len(token)
+	end := start
+	for end < len(ua) && ua[end] != ' ' && ua[end] != ')' && ua[end] != ';' {
+		end++
+	}
+	version := ua[start:end]
+	// Solo devolver major version (antes del primer punto)
+	if dotIdx := strings.Index(version, "."); dotIdx >= 0 {
+		return version[:dotIdx]
+	}
+	return version
 }
 
 // GetProfile obtiene el perfil del usuario autenticado
