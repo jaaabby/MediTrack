@@ -25,11 +25,15 @@ class AuthService {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al iniciar sesión')
+        const err = new Error(data.error || 'Error al iniciar sesión')
+        if (data.data) err.responseData = data.data
+        throw err
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Error al iniciar sesión')
+        const err = new Error(data.error || 'Error al iniciar sesión')
+        if (data.data) err.responseData = data.data
+        throw err
       }
 
       return data.data

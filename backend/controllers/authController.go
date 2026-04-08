@@ -24,6 +24,11 @@ type AuthController struct {
 	secretKey   string
 }
 
+const (
+	maxLoginAttempts = 5
+	lockoutDuration  = 15 * time.Minute
+)
+
 // NewAuthController crea una nueva instancia de AuthController
 func NewAuthController(userService services.UserService, secretKey string) *AuthController {
 	return &AuthController{
@@ -95,14 +100,51 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	// Verificar contraseña
-	if err := crypto.ComparePassword(user.Password, loginReq.Password); err != nil {
-		ctx.JSON(http.StatusUnauthorized, response.Response{
+	// Verificar si la cuenta está bloqueada
+	now := time.Now().Unix()
+	if user.LockedUntil != nil && *user.LockedUntil > now {
+		remainingSeconds := *user.LockedUntil - now
+		minutes := int(remainingSeconds/60) + 1
+		ctx.JSON(http.StatusTooManyRequests, response.Response{
 			Success: false,
-			Error:   "La contraseña ingresada es incorrecta",
+			Error:   fmt.Sprintf("Cuenta bloqueada temporalmente. Intenta nuevamente en %d minuto(s).", minutes),
+			Data: map[string]interface{}{
+				"locked_until":      *user.LockedUntil,
+				"remaining_seconds": remainingSeconds,
+			},
 		})
 		return
 	}
+
+	// Verificar contraseña
+	if err := crypto.ComparePassword(user.Password, loginReq.Password); err != nil {
+		attempts, incErr := c.userService.IncrementFailedLoginAttempts(user.RUT)
+		if incErr != nil {
+			attempts = maxLoginAttempts
+		}
+		remaining := maxLoginAttempts - attempts
+		if remaining <= 0 {
+			lockedUntil := time.Now().Add(lockoutDuration).Unix()
+			_ = c.userService.LockUser(user.RUT, lockedUntil)
+			ctx.JSON(http.StatusTooManyRequests, response.Response{
+				Success: false,
+				Error:   fmt.Sprintf("Cuenta bloqueada por %d minutos debido a demasiados intentos fallidos.", int(lockoutDuration.Minutes())),
+				Data: map[string]interface{}{
+					"locked_until":      lockedUntil,
+					"remaining_seconds": int64(lockoutDuration.Seconds()),
+				},
+			})
+		} else {
+			ctx.JSON(http.StatusUnauthorized, response.Response{
+				Success: false,
+				Error:   fmt.Sprintf("Contraseña incorrecta. Te quedan %d intento(s) antes de que tu cuenta sea bloqueada.", remaining),
+			})
+		}
+		return
+	}
+
+	// Login exitoso: restablecer contador de intentos fallidos
+	_ = c.userService.ResetFailedLoginAttempts(user.RUT)
 
 	// Generar token JWT (24 horas de duración)
 	duration := 24 * time.Hour

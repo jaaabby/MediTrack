@@ -29,6 +29,8 @@ type User struct {
 	MustChangePassword     bool              `json:"must_change_password" db:"must_change_password" gorm:"default:false"`
 	ResetPasswordToken     *string           `json:"-" db:"reset_password_token"`
 	ResetPasswordExpiresAt *int64            `json:"-" db:"reset_password_expires_at"`
+	FailedLoginAttempts    int               `json:"-" db:"failed_login_attempts" gorm:"default:0"`
+	LockedUntil            *int64            `json:"-" db:"locked_until"`
 	CreatedAt              int64             `json:"created_at" db:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt              int64             `json:"updated_at" db:"updated_at" gorm:"autoUpdateTime"`
 }

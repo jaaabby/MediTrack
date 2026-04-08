@@ -334,3 +334,30 @@ func (s *UserService) ClearResetToken(rut string) error {
 		"reset_password_expires_at": nil,
 	}).Error
 }
+
+// IncrementFailedLoginAttempts incrementa el contador de intentos fallidos y devuelve el nuevo valor
+func (s *UserService) IncrementFailedLoginAttempts(rut string) (int, error) {
+	if err := s.DB.Model(&models.User{}).Where("rut = ?", rut).
+		UpdateColumn("failed_login_attempts", gorm.Expr("failed_login_attempts + 1")).Error; err != nil {
+		return 0, err
+	}
+	var user models.User
+	if err := s.DB.Select("failed_login_attempts").First(&user, "rut = ?", rut).Error; err != nil {
+		return 0, err
+	}
+	return user.FailedLoginAttempts, nil
+}
+
+// LockUser bloquea la cuenta del usuario hasta la marca de tiempo indicada
+func (s *UserService) LockUser(rut string, lockedUntil int64) error {
+	return s.DB.Model(&models.User{}).Where("rut = ?", rut).
+		Update("locked_until", lockedUntil).Error
+}
+
+// ResetFailedLoginAttempts restablece el contador de intentos fallidos y desbloquea el usuario
+func (s *UserService) ResetFailedLoginAttempts(rut string) error {
+	return s.DB.Model(&models.User{}).Where("rut = ?", rut).Updates(map[string]interface{}{
+		"failed_login_attempts": 0,
+		"locked_until":          nil,
+	}).Error
+}

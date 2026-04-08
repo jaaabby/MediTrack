@@ -66,7 +66,23 @@
         </div>
 
         <!-- Mensaje de Error General -->
-        <div v-if="errorMessage" class="rounded-md bg-red-50 p-4">
+        <div v-if="lockoutSeconds > 0" class="rounded-md bg-yellow-50 border border-yellow-200 p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-yellow-800">Cuenta bloqueada</h3>
+              <div class="mt-1 text-sm text-yellow-700">
+                Demasiados intentos fallidos. Podrás volver a intentarlo en
+                <span class="font-semibold">{{ lockoutDisplay }}</span>.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="errorMessage" class="rounded-md bg-red-50 p-4">
           <div class="flex">
             <div class="flex-shrink-0">
               <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -88,7 +104,7 @@
         <div>
           <button
             type="submit"
-            :disabled="isLoading"
+            :disabled="isLoading || lockoutSeconds > 0"
             class="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="isLoading" class="absolute left-0 inset-y-0 flex items-center pl-3">
@@ -106,7 +122,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -127,6 +143,34 @@ const errors = reactive({
   password: ''
 })
 
+// Estado de bloqueo de cuenta
+const lockoutSeconds = ref(0)
+let countdownTimer = null
+
+const lockoutDisplay = computed(() => {
+  const min = Math.floor(lockoutSeconds.value / 60)
+  const sec = lockoutSeconds.value % 60
+  return min > 0
+    ? `${min}:${String(sec).padStart(2, '0')} min`
+    : `${sec} seg`
+})
+
+const startCountdown = (seconds) => {
+  lockoutSeconds.value = seconds
+  if (countdownTimer) clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
+    lockoutSeconds.value--
+    if (lockoutSeconds.value <= 0) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }, 1000)
+}
+
+onUnmounted(() => {
+  if (countdownTimer) clearInterval(countdownTimer)
+})
+
 // Limpiar errores cuando el usuario modifica los campos
 watch(() => loginForm.email, () => {
   errors.email = ''
@@ -137,7 +181,6 @@ watch(() => loginForm.password, () => {
   errors.password = ''
   errorMessage.value = ''
 })
-
 // Validar email cuando el usuario sale del campo
 const validateEmail = () => {
   if (!loginForm.email) {
@@ -206,7 +249,12 @@ const handleLogin = async () => {
     
   } catch (error) {
     console.error('Error en login:', error)
-    errorMessage.value = error.message || 'Las credenciales ingresadas son inválidas. Verifica tu correo y contraseña.'
+    if (error.responseData?.remaining_seconds) {
+      startCountdown(Number(error.responseData.remaining_seconds))
+      errorMessage.value = ''
+    } else {
+      errorMessage.value = error.message || 'Las credenciales ingresadas son inválidas. Verifica tu correo y contraseña.'
+    }
   } finally {
     isLoading.value = false
   }
