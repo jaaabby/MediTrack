@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pquerna/otp/totp"
 	"gorm.io/gorm"
 
 	"meditrack/pkg/crypto"
@@ -65,6 +66,12 @@ type LoginResponse struct {
 	TokenType string              `json:"token_type"`
 }
 
+// LoginTOTPRequiredResponse se retorna cuando el login es correcto pero el usuario tiene TOTP habilitado
+type LoginTOTPRequiredResponse struct {
+	TOTPRequired bool   `json:"totp_required"`
+	PreAuthToken string `json:"pre_auth_token"`
+}
+
 // Login autentica un usuario y retorna un token JWT
 func (c *AuthController) Login(ctx *gin.Context) {
 	var loginReq LoginRequest
@@ -104,7 +111,28 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	// Generar token JWT (24 horas de duración)
+	// Si el usuario tiene TOTP habilitado, emitir pre-auth token en lugar del JWT completo
+	if user.TOTPEnabled {
+		preAuthToken, err := config.GeneratePreAuthToken(user.RUT, user.Email, user.Role, c.secretKey)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, response.Response{
+				Success: false,
+				Error:   "Error al generar token: " + err.Error(),
+			})
+			return
+		}
+		ctx.JSON(http.StatusOK, response.Response{
+			Success: true,
+			Message: "Se requiere verificación TOTP",
+			Data: LoginTOTPRequiredResponse{
+				TOTPRequired: true,
+				PreAuthToken: preAuthToken,
+			},
+		})
+		return
+	}
+
+	// Generar token JWT completo (24 horas de duración)
 	duration := 24 * time.Hour
 	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, c.secretKey, duration)
 	if err != nil {
@@ -560,6 +588,266 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 // ValidateResetTokenRequest representa la solicitud para validar un token
 type ValidateResetTokenRequest struct {
 	Token string `json:"token" binding:"required"`
+}
+
+// SetupTOTP genera un nuevo secreto TOTP y retorna la URL del QR para que el usuario configure su app
+// El secreto NO se guarda en DB hasta que el usuario lo active con ActivateTOTP
+func (c *AuthController) SetupTOTP(ctx *gin.Context) {
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	if user.TOTPEnabled {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "TOTP ya está habilitado para este usuario",
+		})
+		return
+	}
+
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "MediTrack",
+		AccountName: user.Email,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al generar secreto TOTP",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Data: map[string]string{
+			"secret": key.Secret(),
+			"qr_url": key.URL(),
+		},
+	})
+}
+
+// ActivateTOTPRequest representa la solicitud para activar TOTP
+type ActivateTOTPRequest struct {
+	Secret string `json:"secret" binding:"required"`
+	Code   string `json:"code" binding:"required,len=6"`
+}
+
+// ActivateTOTP verifica el código TOTP y habilita TOTP para el usuario
+func (c *AuthController) ActivateTOTP(ctx *gin.Context) {
+	var req ActivateTOTPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	if user.TOTPEnabled {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "TOTP ya está habilitado para este usuario",
+		})
+		return
+	}
+
+	if !totp.Validate(req.Code, req.Secret) {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Código TOTP inválido",
+		})
+		return
+	}
+
+	if err := c.userService.EnableTOTP(user.RUT, req.Secret); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al activar TOTP",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "TOTP activado exitosamente",
+	})
+}
+
+// VerifyTOTPRequest representa la solicitud de verificación TOTP durante el login
+type VerifyTOTPRequest struct {
+	PreAuthToken string `json:"pre_auth_token" binding:"required"`
+	Code         string `json:"code" binding:"required,len=6"`
+}
+
+// VerifyTOTP valida el código TOTP durante el proceso de login y retorna un JWT completo
+func (c *AuthController) VerifyTOTP(ctx *gin.Context) {
+	var req VerifyTOTPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	claims, err := config.ValidateToken(req.PreAuthToken, c.secretKey)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Token de pre-autenticación inválido o expirado",
+		})
+		return
+	}
+
+	if !claims.IsPreAuth {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Token inválido",
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(claims.UserID)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	if !user.TOTPEnabled || user.TOTPSecret == nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "TOTP no está habilitado para este usuario",
+		})
+		return
+	}
+
+	if !totp.Validate(req.Code, *user.TOTPSecret) {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Código TOTP inválido",
+		})
+		return
+	}
+
+	duration := 24 * time.Hour
+	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, c.secretKey, duration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al generar token",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Login exitoso",
+		Data: LoginResponse{
+			Token:     token,
+			User:      user.ToResponse(),
+			ExpiresIn: int64(duration.Seconds()),
+			TokenType: "Bearer",
+		},
+	})
+}
+
+// DisableTOTPRequest representa la solicitud para deshabilitar TOTP
+type DisableTOTPRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
+// DisableTOTP deshabilita TOTP para el usuario autenticado (requiere confirmar contraseña)
+func (c *AuthController) DisableTOTP(ctx *gin.Context) {
+	var req DisableTOTPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	if !user.TOTPEnabled {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "TOTP no está habilitado para este usuario",
+		})
+		return
+	}
+
+	if err := crypto.ComparePassword(user.Password, req.Password); err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Contraseña incorrecta",
+		})
+		return
+	}
+
+	if err := c.userService.DisableTOTP(user.RUT); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al deshabilitar TOTP",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "TOTP deshabilitado exitosamente",
+	})
 }
 
 // ValidateResetToken verifica si un token es válido

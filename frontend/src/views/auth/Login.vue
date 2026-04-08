@@ -188,18 +188,23 @@ const handleLogin = async () => {
   
   try {
     await authStore.login(loginForm.email, loginForm.password)
-    
+
+    // Si se requiere TOTP, redirigir a la verificación
+    if (authStore.totpRequired) {
+      await router.replace('/totp-verify')
+      return
+    }
+
     // Verificar si el usuario debe cambiar su contraseña
     if (authStore.user?.must_change_password) {
-      console.log('Usuario debe cambiar contraseña temporal, redirigiendo...')
       await router.replace('/first-time-password-change')
       return
     }
-    
+
     // Redirigir al usuario después del login exitoso
     const redirectTo = router.currentRoute.value.query.redirect || '/home'
     console.log('Redirigiendo a:', redirectTo)
-    
+
     // Usar replace en lugar de push para evitar que el usuario vuelva al login con el botón atrás
     await router.replace(redirectTo)
     console.log('Redirección completada')

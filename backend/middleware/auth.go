@@ -42,6 +42,16 @@ func AuthMiddleware(secretKey string) gin.HandlerFunc {
 			return
 		}
 
+		// Rechazar tokens de pre-autenticación TOTP en rutas protegidas
+		if claims.IsPreAuth {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error":   "Se requiere completar la verificación TOTP",
+			})
+			c.Abort()
+			return
+		}
+
 		// Agregar claims al contexto
 		c.Set("user_id", claims.UserID)
 		c.Set("user_email", claims.Email)

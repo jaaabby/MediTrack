@@ -124,6 +124,8 @@ CREATE TABLE "user" (
     must_change_password BOOLEAN DEFAULT FALSE,
     reset_password_token VARCHAR(255),
     reset_password_expires_at BIGINT,
+    totp_secret VARCHAR(64),
+    totp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
     updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 );

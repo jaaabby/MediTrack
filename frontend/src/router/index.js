@@ -44,6 +44,27 @@ const routes = [
       skipPasswordCheck: true // Evitar bucle infinito en el guard
     }
   },
+  {
+    path: '/totp-verify',
+    name: 'TOTPVerify',
+    component: () => import('@/views/auth/TOTPVerify.vue'),
+    meta: {
+      title: 'Verificación TOTP - MediTrack',
+      description: 'Verificación en dos pasos con código TOTP',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/totp-setup',
+    name: 'TOTPSetup',
+    component: () => import('@/views/auth/TOTPSetup.vue'),
+    meta: {
+      title: 'Configurar TOTP - MediTrack',
+      description: 'Configurar verificación en dos pasos',
+      requiresAuth: true,
+      skipPasswordCheck: true
+    }
+  },
 
   // Ruta raíz
   {
@@ -533,10 +554,10 @@ router.beforeEach(async (to, from, next) => {
   if (authStore.isAuthenticated && authStore.isDoctor) {
     const allowedRoutesForDoctor = [
       'Home',
-      'SupplyRequestList', 
+      'SupplyRequestList',
       'SupplyRequestForm',
       'EditSupplyRequest',
-      'SupplyRequestDetails', 
+      'SupplyRequestDetails',
       'SupplyRequestSuccess',
       'QRScanner',
       'QRDetails',
@@ -544,7 +565,8 @@ router.beforeEach(async (to, from, next) => {
       'QRReception',
       'QRPickup',
       'Profile',
-      'FirstTimePasswordChange' // Agregar esta ruta para permitir cambio de contraseÃ±a
+      'FirstTimePasswordChange',
+      'TOTPSetup'
     ]
     
     if (!allowedRoutesForDoctor.includes(to.name)) {
@@ -558,10 +580,11 @@ router.beforeEach(async (to, from, next) => {
   if (authStore.isAuthenticated && authStore.isPavedad) {
     const allowedRoutesForPavedad = [
       'Home',
-      'SupplyRequestList', 
+      'SupplyRequestList',
       'SupplyRequestDetails',
       'Profile',
-      'FirstTimePasswordChange' // Agregar esta ruta para permitir cambio de contraseÃ±a
+      'FirstTimePasswordChange',
+      'TOTPSetup'
     ]
     
     if (!allowedRoutesForPavedad.includes(to.name)) {
@@ -575,7 +598,7 @@ router.beforeEach(async (to, from, next) => {
   if (authStore.isAuthenticated && authStore.isNurse) {
     const allowedRoutesForNurse = [
       'Home',
-      'PavilionInventoryView', // Solo ver inventario de pabellones (solo lectura)
+      'PavilionInventoryView',
       'QRScanner',
       'QRDetails',
       'QRTraceability',
@@ -584,7 +607,8 @@ router.beforeEach(async (to, from, next) => {
       'QRReception',
       'QRPickup',
       'Profile',
-      'FirstTimePasswordChange' // Agregar esta ruta para permitir cambio de contraseÃ±a
+      'FirstTimePasswordChange',
+      'TOTPSetup'
     ]
     
     if (!allowedRoutesForNurse.includes(to.name)) {
@@ -598,7 +622,7 @@ router.beforeEach(async (to, from, next) => {
   if (authStore.isAuthenticated && authStore.isPavilionUser) {
     const allowedRoutesForPavilion = [
       'Home',
-      'PavilionInventoryView', // Ver inventario de pabellones
+      'PavilionInventoryView',
       'QRScanner',
       'QRDetails',
       'QRTraceability',
@@ -607,7 +631,8 @@ router.beforeEach(async (to, from, next) => {
       'QRReception',
       'QRPickup',
       'Profile',
-      'FirstTimePasswordChange' // Agregar esta ruta para permitir cambio de contraseÃ±a
+      'FirstTimePasswordChange',
+      'TOTPSetup'
     ]
     
     if (!allowedRoutesForPavilion.includes(to.name)) {

@@ -21,12 +21,20 @@ func SetupAuthRoutes(router *gin.RouterGroup, userService services.UserService, 
 		auth.POST("/reset-password", authController.ResetPassword)
 		auth.POST("/validate-reset-token", authController.ValidateResetToken)
 
+		// Rutas TOTP públicas (usan pre-auth token, no el JWT completo)
+		auth.POST("/totp/verify", authController.VerifyTOTP)
+
 		// Rutas protegidas
 		auth.Use(middleware.AuthMiddleware(secretKey))
 		{
 			auth.GET("/profile", authController.GetProfile)
 			auth.PUT("/change-password", authController.ChangePassword)
 			auth.PUT("/first-time-password-change", authController.FirstTimePasswordChange)
+
+			// Rutas TOTP protegidas (requieren JWT completo)
+			auth.GET("/totp/setup", authController.SetupTOTP)
+			auth.POST("/totp/activate", authController.ActivateTOTP)
+			auth.DELETE("/totp", authController.DisableTOTP)
 		}
 	}
 }
