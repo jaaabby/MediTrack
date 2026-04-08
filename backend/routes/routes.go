@@ -33,10 +33,10 @@ func SetupRoutes(
 	v1 := router.Group("/api/v1")
 	{
 		// Configurar rutas de autenticación
-		SetupAuthRoutes(v1, userService, secretKey)
+		SetupAuthRoutes(v1, userService, secretKey, db)
 
 		// Configurar rutas de usuarios
-		SetupUserRoutes(v1, userService, secretKey)
+		SetupUserRoutes(v1, userService, secretKey, db)
 
 		// Configurar rutas de insumos médicos
 		SetupMedicalSupplyRoutes(v1, medicalSupplyService)
@@ -68,7 +68,7 @@ func SetupRoutes(
 		SetupBatchHistoryRoutes(v1, batchHistoryService)
 
 		// Configurar rutas de transferencias
-		SetupSupplyTransferRoutes(v1, transferService, secretKey)
+		SetupSupplyTransferRoutes(v1, transferService, secretKey, db)
 
 		// Configurar rutas de inventario
 		SetupInventoryRoutes(v1, inventoryService)

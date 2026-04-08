@@ -149,7 +149,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 
 	// Generar token JWT (24 horas de duración)
 	duration := 24 * time.Hour
-	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, c.secretKey, duration)
+	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, user.TokenVersion, c.secretKey, duration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
@@ -735,6 +735,31 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 // ValidateResetTokenRequest representa la solicitud para validar un token
 type ValidateResetTokenRequest struct {
 	Token string `json:"token" binding:"required"`
+}
+
+// LogoutAllDevices invalida todos los tokens activos del usuario incrementando su token_version
+func (c *AuthController) LogoutAllDevices(ctx *gin.Context) {
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	if err := c.userService.IncrementTokenVersion(userID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al cerrar sesión en todos los dispositivos",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Sesión cerrada en todos los dispositivos exitosamente",
+	})
 }
 
 // ValidateResetToken verifica si un token es válido

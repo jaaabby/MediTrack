@@ -312,6 +312,30 @@ class AuthService {
     }
   }
 
+  // Cerrar sesión en todos los dispositivos
+  async logoutAllDevices() {
+    const token = this.getToken()
+    if (!token) {
+      throw new Error('No hay token de autenticación')
+    }
+
+    const response = await fetch(`${this.baseURL}/auth/logout-all-devices`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Error al cerrar sesión en todos los dispositivos')
+    }
+
+    return data
+  }
+
   // Logout
   logout() {
     this.removeToken()

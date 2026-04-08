@@ -118,13 +118,13 @@ func main() {
 	automaticConsumptionController := controllers.NewAutomaticConsumptionController(automaticConsumptionService)
 
 	// Registrar rutas de supply requests y trazabilidad QR
-	routes.SetupSupplyRequestRoutes(router, supplyRequestController, secretKey)
+	routes.SetupSupplyRequestRoutes(router, supplyRequestController, secretKey, db)
 
 	// Registrar rutas de carritos
-	routes.SetupCartRoutes(router, cartController)
+	routes.SetupCartRoutes(router, cartController, db)
 
 	// Registrar rutas de consumo automático
-	routes.SetupAutomaticConsumptionRoutes(router, automaticConsumptionController, secretKey)
+	routes.SetupAutomaticConsumptionRoutes(router, automaticConsumptionController, secretKey, db)
 
 	// Iniciar el verificador automático de retornos a bodega en una goroutine
 	go medicalSupplyService.StartAutomaticReturnChecker()

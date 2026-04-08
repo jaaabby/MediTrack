@@ -6,10 +6,11 @@ import (
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // SetupAuthRoutes configura las rutas de autenticación
-func SetupAuthRoutes(router *gin.RouterGroup, userService services.UserService, secretKey string) {
+func SetupAuthRoutes(router *gin.RouterGroup, userService services.UserService, secretKey string, db *gorm.DB) {
 	authController := controllers.NewAuthController(userService, secretKey)
 
 	auth := router.Group("/auth")
@@ -22,11 +23,12 @@ func SetupAuthRoutes(router *gin.RouterGroup, userService services.UserService, 
 		auth.POST("/validate-reset-token", authController.ValidateResetToken)
 
 		// Rutas protegidas
-		auth.Use(middleware.AuthMiddleware(secretKey))
+		auth.Use(middleware.AuthMiddleware(secretKey, db))
 		{
 			auth.GET("/profile", authController.GetProfile)
 			auth.PUT("/change-password", authController.ChangePassword)
 			auth.PUT("/first-time-password-change", authController.FirstTimePasswordChange)
+			auth.POST("/logout-all-devices", authController.LogoutAllDevices)
 		}
 	}
 }

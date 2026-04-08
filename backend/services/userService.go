@@ -335,6 +335,12 @@ func (s *UserService) ClearResetToken(rut string) error {
 	}).Error
 }
 
+// IncrementTokenVersion incrementa el token_version del usuario, invalidando todos sus tokens activos
+func (s *UserService) IncrementTokenVersion(rut string) error {
+	return s.DB.Model(&models.User{}).Where("rut = ?", rut).
+		UpdateColumn("token_version", gorm.Expr("token_version + 1")).Error
+}
+
 // IncrementFailedLoginAttempts incrementa el contador de intentos fallidos y devuelve el nuevo valor
 func (s *UserService) IncrementFailedLoginAttempts(rut string) (int, error) {
 	if err := s.DB.Model(&models.User{}).Where("rut = ?", rut).

@@ -7,7 +7,8 @@ export const useAuthStore = defineStore('auth', {
     token: null,
     isAuthenticated: false,
     isLoading: false,
-    error: null
+    error: null,
+    _sessionPollInterval: null
   }),
 
   getters: {
@@ -136,7 +137,7 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     // Inicializar el store desde localStorage y restaurar sesión si no ha expirado
-    initializeAuth() {
+    async initializeAuth() {
       const token = authService.getToken()
       const expiry = localStorage.getItem('auth_expiry')
       const now = Date.now()
@@ -168,6 +169,12 @@ export const useAuthStore = defineStore('auth', {
         if (msToExpiry > 0) {
           this._setAutoLogout(msToExpiry)
         }
+        // Verificar inmediatamente si la sesión sigue válida en el servidor
+        await this._checkSessionValidity()
+        // Iniciar polling para detectar cierres de sesión remotos
+        if (this.isAuthenticated) {
+          this._startSessionPolling()
+        }
       } else {
         this.logout()
       }
@@ -196,6 +203,8 @@ export const useAuthStore = defineStore('auth', {
         const expiry = Date.now() + 60 * 60 * 1000
         localStorage.setItem('auth_expiry', expiry.toString())
         this._setAutoLogout(60 * 60 * 1000)
+        // Iniciar polling de sesión
+        this._startSessionPolling()
         return response
       } catch (error) {
         this.error = error.message
@@ -266,6 +275,8 @@ export const useAuthStore = defineStore('auth', {
         clearTimeout(this._logoutTimeout)
         this._logoutTimeout = null
       }
+      // Detener polling de sesión
+      this._stopSessionPolling()
     },
 
     // Programar logout automático
@@ -275,9 +286,40 @@ export const useAuthStore = defineStore('auth', {
       }
       this._logoutTimeout = setTimeout(() => {
         this.logout()
-        // Opcional: redirigir al login si quieres
         window.location.href = '/login'
       }, ms)
+    },
+
+    // Verificar si la sesión sigue válida en el servidor (token_version)
+    async _checkSessionValidity() {
+      if (!this.token) return
+      try {
+        await authService.getProfile()
+      } catch (error) {
+        // 401 significa sesión cerrada remotamente
+        this.logout()
+        window.location.href = '/login'
+      }
+    },
+
+    // Iniciar polling para detectar cierres de sesión remotos (cada 30 segundos)
+    _startSessionPolling() {
+      this._stopSessionPolling()
+      this._sessionPollInterval = setInterval(async () => {
+        if (!this.isAuthenticated) {
+          this._stopSessionPolling()
+          return
+        }
+        await this._checkSessionValidity()
+      }, 30000)
+    },
+
+    // Detener polling
+    _stopSessionPolling() {
+      if (this._sessionPollInterval) {
+        clearInterval(this._sessionPollInterval)
+        this._sessionPollInterval = null
+      }
     },
 
     // Verificar permisos
@@ -322,6 +364,21 @@ export const useAuthStore = defineStore('auth', {
       }
       
       return allowedRoutes.includes(routeName)
+    },
+
+    // Cerrar sesión en todos los dispositivos
+    async logoutAllDevices() {
+      this.isLoading = true
+      this.error = null
+      try {
+        await authService.logoutAllDevices()
+        this.logout()
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.isLoading = false
+      }
     },
 
     // Actualizar información del usuario

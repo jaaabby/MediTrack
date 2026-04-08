@@ -6,17 +6,18 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // SetupCartRoutes configura las rutas para los carritos
-func SetupCartRoutes(router *gin.Engine, cartController *controllers.CartController) {
+func SetupCartRoutes(router *gin.Engine, cartController *controllers.CartController, db *gorm.DB) {
 	secretKey := os.Getenv("JWT_SECRET_KEY")
 	if secretKey == "" {
 		secretKey = "default-secret-key-change-in-production"
 	}
 
 	cartRoutes := router.Group("/api/carts")
-	cartRoutes.Use(middleware.AuthMiddleware(secretKey))
+	cartRoutes.Use(middleware.AuthMiddleware(secretKey, db))
 	{
 		// Obtener todos los carritos con paginación
 		cartRoutes.GET("", cartController.GetAllCarts)

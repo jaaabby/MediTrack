@@ -126,6 +126,7 @@ CREATE TABLE "user" (
     reset_password_expires_at BIGINT,
     failed_login_attempts INTEGER DEFAULT 0,
     locked_until BIGINT,
+    token_version INTEGER NOT NULL DEFAULT 1,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
     updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 );

@@ -31,6 +31,7 @@ type User struct {
 	ResetPasswordExpiresAt *int64            `json:"-" db:"reset_password_expires_at"`
 	FailedLoginAttempts    int               `json:"-" db:"failed_login_attempts" gorm:"default:0"`
 	LockedUntil            *int64            `json:"-" db:"locked_until"`
+	TokenVersion           int               `json:"-" db:"token_version" gorm:"default:1;not null"`
 	CreatedAt              int64             `json:"created_at" db:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt              int64             `json:"updated_at" db:"updated_at" gorm:"autoUpdateTime"`
 }

@@ -93,6 +93,62 @@
             </div>
         </div>
 
+        <!-- Sección de seguridad -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Seguridad</h2>
+            </div>
+            <div class="px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">Cerrar sesión en todos los dispositivos</p>
+                        <p class="text-sm text-gray-500 mt-1">Invalida todos los tokens activos. Deberás iniciar sesión nuevamente en cada dispositivo.</p>
+                    </div>
+                    <button @click="showLogoutAllConfirm = true"
+                        class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Cerrar todas las sesiones
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de confirmación -->
+        <div v-if="showLogoutAllConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                        <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900">Cerrar todas las sesiones</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-6">
+                    ¿Estás seguro? Esto cerrará tu sesión en todos los dispositivos donde hayas iniciado sesión,
+                    incluyendo este. Deberás volver a ingresar tus credenciales.
+                </p>
+                <div class="flex justify-end space-x-3">
+                    <button @click="showLogoutAllConfirm = false" :disabled="logoutAllLoading"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                        Cancelar
+                    </button>
+                    <button @click="handleLogoutAllDevices" :disabled="logoutAllLoading"
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50">
+                        <svg v-if="logoutAllLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {{ logoutAllLoading ? 'Cerrando sesiones...' : 'Cerrar todas las sesiones' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Botones de acción cuando está en modo edición -->
         <div v-if="editMode" class="mt-6 flex justify-end space-x-3">
             <button @click="cancelEdit"
@@ -116,14 +172,18 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { userService } from '@/services/common/userService'
 import { useNotification } from '@/composables/useNotification'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const { success: showSuccess, error: showError } = useNotification()
 const editMode = ref(false)
 const loading = ref(false)
+const showLogoutAllConfirm = ref(false)
+const logoutAllLoading = ref(false)
 
 // Formulario de edición
 const editForm = reactive({
@@ -231,6 +291,20 @@ const formatDate = (dateValue) => {
         hour: '2-digit',
         minute: '2-digit'
     })
+}
+
+// Cerrar sesión en todos los dispositivos
+const handleLogoutAllDevices = async () => {
+    logoutAllLoading.value = true
+    try {
+        await authStore.logoutAllDevices()
+        router.push('/login')
+    } catch (error) {
+        showError(error.message || 'Error al cerrar sesión en todos los dispositivos')
+        showLogoutAllConfirm.value = false
+    } finally {
+        logoutAllLoading.value = false
+    }
 }
 
 // Cargar datos al montar el componente
