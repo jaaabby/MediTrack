@@ -9,6 +9,9 @@ export const useAuthStore = defineStore('auth', {
     isLoading: false,
     error: null,
     _sessionPollInterval: null
+    // Estado TOTP: almacena el pre-auth token cuando el login requiere verificación TOTP
+    totpRequired: false,
+    preAuthToken: null
   }),
 
   getters: {
@@ -190,14 +193,12 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
       try {
         const response = await authService.login(email, password)
-        // Guardar token y usuario
-        this.token = response.token
-        this.user = response.user
-        this.isAuthenticated = true
-        authService.setToken(response.token)
-        // Guardar usuario completo en localStorage
-        if (response.user) {
-          localStorage.setItem('user_full', JSON.stringify(response.user))
+
+        // Si el servidor requiere verificación TOTP, guardar pre_auth_token y señalizar
+        if (response.totp_required) {
+          this.totpRequired = true
+          this.preAuthToken = response.pre_auth_token
+          return response
         }
         // Guardar expiración (1 hora desde ahora)
         const expiry = Date.now() + 60 * 60 * 1000
@@ -205,6 +206,9 @@ export const useAuthStore = defineStore('auth', {
         this._setAutoLogout(60 * 60 * 1000)
         // Iniciar polling de sesión
         this._startSessionPolling()
+
+        // Login completo sin TOTP
+        this._completeLogin(response)
         return response
       } catch (error) {
         this.error = error.message
@@ -212,6 +216,38 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.isLoading = false
       }
+    },
+
+    // Completar el login tras verificación TOTP exitosa
+    async verifyTOTP(code) {
+      this.isLoading = true
+      this.error = null
+      try {
+        const response = await authService.verifyTOTP(this.preAuthToken, code)
+        this.totpRequired = false
+        this.preAuthToken = null
+        this._completeLogin(response)
+        return response
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    // Lógica común para finalizar el login (con o sin TOTP)
+    _completeLogin(response) {
+      this.token = response.token
+      this.user = response.user
+      this.isAuthenticated = true
+      authService.setToken(response.token)
+      if (response.user) {
+        localStorage.setItem('user_full', JSON.stringify(response.user))
+      }
+      const expiry = Date.now() + 60 * 60 * 1000
+      localStorage.setItem('auth_expiry', expiry.toString())
+      this._setAutoLogout(60 * 60 * 1000)
     },
 
     // Obtener perfil del usuario
@@ -266,6 +302,8 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
       this.error = null
       this.isLoading = false
+      this.totpRequired = false
+      this.preAuthToken = null
       // Remover token, expiración y usuario completo del localStorage
       authService.removeToken()
       localStorage.removeItem('auth_expiry')

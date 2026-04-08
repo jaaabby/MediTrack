@@ -367,3 +367,19 @@ func (s *UserService) ResetFailedLoginAttempts(rut string) error {
 		"locked_until":          nil,
 	}).Error
 }
+
+// EnableTOTP guarda el secreto TOTP y habilita TOTP para el usuario
+func (s *UserService) EnableTOTP(rut string, secret string) error {
+	return s.DB.Model(&models.User{}).Where("rut = ?", rut).Updates(map[string]interface{}{
+		"totp_secret":  secret,
+		"totp_enabled": true,
+	}).Error
+}
+
+// DisableTOTP elimina el secreto TOTP y deshabilita TOTP para el usuario
+func (s *UserService) DisableTOTP(rut string) error {
+	return s.DB.Model(&models.User{}).Where("rut = ?", rut).Updates(map[string]interface{}{
+		"totp_secret":  nil,
+		"totp_enabled": false,
+	}).Error
+}

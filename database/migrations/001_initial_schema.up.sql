@@ -127,6 +127,8 @@ CREATE TABLE "user" (
     failed_login_attempts INTEGER DEFAULT 0,
     locked_until BIGINT,
     token_version INTEGER NOT NULL DEFAULT 1,
+    totp_secret VARCHAR(64),
+    totp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()),
     updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
 );
