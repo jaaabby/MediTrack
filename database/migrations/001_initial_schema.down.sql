@@ -155,6 +155,10 @@ DROP INDEX IF EXISTS idx_medical_specialty_name;
 -- Índices de batch_history
 DROP INDEX IF EXISTS idx_batch_history_batch_number;
 
+-- Índices de passkey_credential
+DROP INDEX IF EXISTS idx_passkey_credential_id;
+DROP INDEX IF EXISTS idx_passkey_user_rut;
+
 -- Índices de user
 DROP INDEX IF EXISTS idx_user_reset_token;
 DROP INDEX IF EXISTS idx_user_email;
@@ -202,6 +206,9 @@ DROP TABLE IF EXISTS medical_specialty CASCADE;
 
 -- Tabla de configuración de proveedores
 DROP TABLE IF EXISTS supplier_config CASCADE;
+
+-- Tabla de credenciales Passkey
+DROP TABLE IF EXISTS passkey_credential CASCADE;
 
 -- Tablas de estructura organizacional
 DROP TABLE IF EXISTS "user" CASCADE;

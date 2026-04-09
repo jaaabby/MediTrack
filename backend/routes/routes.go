@@ -28,12 +28,13 @@ func SetupRoutes(
 	typicalSupplyService *services.SurgeryTypicalSupplyService,
 	doctorInfoService *services.DoctorInfoService,
 	secretKey string,
+	webauthnService *services.WebAuthnService,
 ) {
 	// API v1
 	v1 := router.Group("/api/v1")
 	{
 		// Configurar rutas de autenticación
-		SetupAuthRoutes(v1, userService, secretKey, db)
+		SetupAuthRoutes(v1, userService, secretKey, db, webauthnService)
 
 		// Configurar rutas de usuarios
 		SetupUserRoutes(v1, userService, secretKey, db)

@@ -116,18 +116,55 @@
             {{ isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
           </button>
         </div>
+
+        <!-- Separador -->
+        <div v-if="passkeySupported" class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-gray-50 text-gray-500">o continúa con</span>
+          </div>
+        </div>
+
+        <!-- Botón Passkey -->
+        <div v-if="passkeySupported">
+          <button
+            type="button"
+            :disabled="isPasskeyLoading"
+            @click="handlePasskeyLogin"
+            class="w-full flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg v-if="isPasskeyLoading" class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+            </svg>
+            {{ isPasskeyLoading ? 'Verificando...' : 'Iniciar sesión con Passkey' }}
+          </button>
+        </div>
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+// Passkey
+const passkeySupported = ref(false)
+const isPasskeyLoading = ref(false)
+
+onMounted(() => {
+  passkeySupported.value = !!window.PublicKeyCredential
+})
 
 // Estado del formulario
 const loginForm = reactive({
@@ -218,6 +255,27 @@ const validateForm = () => {
   }
   
   return true
+}
+
+// Manejo del login con Passkey
+const handlePasskeyLogin = async () => {
+  isPasskeyLoading.value = true
+  errorMessage.value = ''
+  try {
+    await authStore.loginWithPasskey()
+
+    if (authStore.user?.must_change_password) {
+      await router.replace('/first-time-password-change')
+      return
+    }
+
+    const redirectTo = router.currentRoute.value.query.redirect || '/home'
+    await router.replace(redirectTo)
+  } catch (error) {
+    errorMessage.value = error.message || 'No se pudo autenticar con Passkey'
+  } finally {
+    isPasskeyLoading.value = false
+  }
 }
 
 // Manejo del login

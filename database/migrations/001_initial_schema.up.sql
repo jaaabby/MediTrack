@@ -940,16 +940,32 @@ COMMENT ON VIEW v_supply_cart_details IS 'Vista con detalles completos de carrit
 -- =======================
 -- ACTUALIZACIÓN DE STATUS DE INSUMOS MÉDICOS DESDE HISTORIAL
 -- =======================
-UPDATE medical_supply 
+UPDATE medical_supply
 SET status = (
-    SELECT sh.status 
-    FROM supply_history sh 
-    WHERE sh.medical_supply_id = medical_supply.id 
-    ORDER BY sh.date_time DESC 
+    SELECT sh.status
+    FROM supply_history sh
+    WHERE sh.medical_supply_id = medical_supply.id
+    ORDER BY sh.date_time DESC
     LIMIT 1
 )
 WHERE EXISTS (
-    SELECT 1 
-    FROM supply_history sh 
+    SELECT 1
+    FROM supply_history sh
     WHERE sh.medical_supply_id = medical_supply.id
 );
+
+-- =======================
+-- PASSKEY / WEBAUTHN
+-- =======================
+CREATE TABLE IF NOT EXISTS passkey_credential (
+    id              SERIAL PRIMARY KEY,
+    user_rut        VARCHAR(20) NOT NULL REFERENCES "user"(rut) ON DELETE CASCADE,
+    credential_id   BYTEA NOT NULL UNIQUE,
+    credential_data BYTEA NOT NULL,
+    name            VARCHAR(255) NOT NULL DEFAULT '',
+    created_at      BIGINT,
+    updated_at      BIGINT
+);
+
+CREATE INDEX idx_passkey_user_rut      ON passkey_credential(user_rut);
+CREATE INDEX idx_passkey_credential_id ON passkey_credential(credential_id);

@@ -65,6 +65,16 @@ const routes = [
       skipPasswordCheck: true
     }
   },
+  {
+    path: '/passkey-manage',
+    name: 'PasskeyManage',
+    component: () => import('@/views/auth/PasskeyManage.vue'),
+    meta: {
+      title: 'Gestionar Passkeys - MediTrack',
+      description: 'Administrar llaves de acceso del dispositivo',
+      requiresAuth: true
+    }
+  },
 
   // Ruta raíz
   {

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import authService from '@/services/auth/authService'
+import { loginWithPasskey, registerPasskey, listPasskeys, deletePasskey } from '@/services/auth/passkeyService'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -429,6 +430,39 @@ export const useAuthStore = defineStore('auth', {
     // Limpiar errores
     clearError() {
       this.error = null
-    }
+    },
+
+    // ── Passkey ────────────────────────────────────────────────────────────
+
+    // Iniciar sesión con passkey (sin email/contraseña)
+    async loginWithPasskey() {
+      this.isLoading = true
+      this.error = null
+      try {
+        const response = await loginWithPasskey()
+        this._completeLogin(response)
+        return response
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    // Registrar una nueva passkey (usuario debe estar autenticado)
+    async registerPasskey(name) {
+      return registerPasskey(this.token, name)
+    },
+
+    // Listar passkeys del usuario
+    async listPasskeys() {
+      return listPasskeys(this.token)
+    },
+
+    // Eliminar una passkey
+    async deletePasskey(id) {
+      return deletePasskey(this.token, id)
+    },
   }
 })

@@ -203,6 +203,93 @@
             </div>
         </div>
 
+        <!-- Llaves de acceso (Passkeys) -->
+        <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Llaves de acceso (Passkeys)</h2>
+                <p class="mt-1 text-sm text-gray-500">Inicia sesión con tu huella, Face ID o PIN del dispositivo, sin contraseña.</p>
+            </div>
+            <div class="px-6 py-4 space-y-4">
+
+                <!-- Error passkey -->
+                <div v-if="passkeyError" class="rounded-md bg-red-50 p-3">
+                    <p class="text-sm text-red-700">{{ passkeyError }}</p>
+                </div>
+                <div v-if="passkeySuccess" class="rounded-md bg-green-50 p-3">
+                    <p class="text-sm text-green-700">{{ passkeySuccess }}</p>
+                </div>
+
+                <!-- Lista de passkeys -->
+                <div v-if="passkeyLoading" class="flex justify-center py-4">
+                    <svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+
+                <ul v-else-if="passkeys.length" class="divide-y divide-gray-200 border border-gray-200 rounded-md">
+                    <li v-for="pk in passkeys" :key="pk.id" class="flex items-center justify-between px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">{{ pk.name || 'Passkey' }}</p>
+                                <p class="text-xs text-gray-400">{{ formatDate(pk.created_at) }}</p>
+                            </div>
+                        </div>
+                        <button
+                            @click="passkeyToDelete = pk"
+                            :disabled="deletingPasskey === pk.id"
+                            class="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                        >
+                            {{ deletingPasskey === pk.id ? 'Eliminando...' : 'Eliminar' }}
+                        </button>
+                    </li>
+                </ul>
+
+                <p v-else-if="!passkeyLoading" class="text-sm text-gray-400 italic">No tienes passkeys registradas.</p>
+
+                <!-- Agregar nueva passkey -->
+                <div v-if="passkeySupported" class="flex gap-2 pt-1">
+                    <input
+                        v-model="newPasskeyName"
+                        type="text"
+                        placeholder="Nombre del dispositivo (ej: Mi iPhone)"
+                        class="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue-dark"
+                        :disabled="registeringPasskey"
+                        @keyup.enter="handleRegisterPasskey"
+                    />
+                    <button
+                        @click="handleRegisterPasskey"
+                        :disabled="registeringPasskey"
+                        class="btn-primary text-sm px-4 disabled:opacity-50"
+                    >
+                        {{ registeringPasskey ? 'Registrando...' : 'Agregar' }}
+                    </button>
+                </div>
+                <p v-else class="text-xs text-yellow-600">Tu navegador no soporta Passkeys.</p>
+            </div>
+        </div>
+
+        <!-- Modal confirmación eliminar passkey -->
+        <div v-if="passkeyToDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6 space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900">¿Eliminar passkey?</h3>
+                <p class="text-sm text-gray-600">
+                    Eliminarás <strong>"{{ passkeyToDelete.name }}"</strong>. Ya no podrás usarla para iniciar sesión.
+                </p>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button @click="passkeyToDelete = null" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button @click="handleDeletePasskey" class="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal para desactivar TOTP -->
         <div v-if="showDisableTOTPModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
             <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6 space-y-4">
@@ -264,6 +351,7 @@ import { userService } from '@/services/common/userService'
 import { useNotification } from '@/composables/useNotification'
 import authService from '@/services/auth/authService'
 import TOTPSetup from '@/views/auth/TOTPSetup.vue'
+import { registerPasskey, listPasskeys, deletePasskey } from '@/services/auth/passkeyService'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -272,6 +360,61 @@ const editMode = ref(false)
 const loading = ref(false)
 const showLogoutAllConfirm = ref(false)
 const logoutAllLoading = ref(false)
+
+// ── Passkeys ────────────────────────────────────────────────────────────
+const passkeys = ref([])
+const passkeyLoading = ref(false)
+const passkeyError = ref('')
+const passkeySuccess = ref('')
+const registeringPasskey = ref(false)
+const deletingPasskey = ref(null)
+const passkeyToDelete = ref(null)
+const newPasskeyName = ref('')
+const passkeySupported = ref(false)
+
+const loadPasskeys = async () => {
+    passkeyLoading.value = true
+    passkeyError.value = ''
+    try {
+        passkeys.value = await listPasskeys(authStore.token)
+    } catch (e) {
+        passkeyError.value = e.message
+    } finally {
+        passkeyLoading.value = false
+    }
+}
+
+const handleRegisterPasskey = async () => {
+    registeringPasskey.value = true
+    passkeyError.value = ''
+    passkeySuccess.value = ''
+    try {
+        await registerPasskey(authStore.token, newPasskeyName.value || 'Mi Passkey')
+        newPasskeyName.value = ''
+        passkeySuccess.value = 'Passkey registrada exitosamente.'
+        await loadPasskeys()
+    } catch (e) {
+        passkeyError.value = e.message
+    } finally {
+        registeringPasskey.value = false
+    }
+}
+
+const handleDeletePasskey = async () => {
+    if (!passkeyToDelete.value) return
+    const pk = passkeyToDelete.value
+    passkeyToDelete.value = null
+    deletingPasskey.value = pk.id
+    passkeyError.value = ''
+    try {
+        await deletePasskey(authStore.token, pk.id)
+        await loadPasskeys()
+    } catch (e) {
+        passkeyError.value = e.message
+    } finally {
+        deletingPasskey.value = null
+    }
+}
 
 // Estado TOTP
 const showTOTPSetup = ref(false)
@@ -434,6 +577,8 @@ const handleDisableTOTP = async () => {
 // Cargar datos al montar el componente
 onMounted(() => {
     loadProfile()
+    passkeySupported.value = !!window.PublicKeyCredential
+    loadPasskeys()
 })
 </script>
 

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"meditrack/config"
 	"meditrack/controllers"
@@ -68,6 +69,28 @@ func main() {
 	typicalSupplyService := services.NewSurgeryTypicalSupplyService(db)
 	doctorInfoService := services.NewDoctorInfoService(db)
 
+	// Inicializar WebAuthn (Passkey)
+	webauthnRPID := os.Getenv("WEBAUTHN_RPID")
+	if webauthnRPID == "" {
+		webauthnRPID = "localhost"
+	}
+	webauthnOriginsRaw := os.Getenv("WEBAUTHN_ORIGINS")
+	if webauthnOriginsRaw == "" {
+		webauthnOriginsRaw = "http://localhost:5173,http://localhost:3000"
+	}
+	var webauthnOrigins []string
+	for _, o := range strings.Split(webauthnOriginsRaw, ",") {
+		if trimmed := strings.TrimSpace(o); trimmed != "" {
+			webauthnOrigins = append(webauthnOrigins, trimmed)
+		}
+	}
+
+	webauthnService, err := services.NewWebAuthnService(db, webauthnRPID, webauthnOrigins)
+	if err != nil {
+		log.Fatalf("Error al inicializar WebAuthn: %v", err)
+	}
+	log.Printf("✅ WebAuthn inicializado (RPID: %s)", webauthnRPID)
+
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -101,6 +124,7 @@ func main() {
 		typicalSupplyService,
 		doctorInfoService,
 		secretKey,
+		webauthnService,
 	)
 
 	// Inicializar servicio y controlador de SupplyRequest
