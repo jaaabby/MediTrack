@@ -29,9 +29,11 @@
             </div>
         </div>
 
-        <!-- Panel de configuración TOTP -->
-        <div v-if="showTOTPSetup" class="mb-6">
-            <TOTPSetup @done="onTOTPDone" @cancel="showTOTPSetup = false" />
+        <!-- Modal de configuración TOTP -->
+        <div v-if="showTOTPSetup" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                <TOTPSetup @done="onTOTPDone" @cancel="showTOTPSetup = false" />
+            </div>
         </div>
 
         <!-- Información detallada -->
@@ -155,14 +157,14 @@
         </div>
 
         <!-- Seguridad: Verificación en dos pasos (TOTP) -->
-        <div v-if="!showTOTPSetup" class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 class="text-lg font-semibold text-gray-900">Seguridad</h2>
             </div>
             <div class="px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm font-medium text-gray-900">Verificación en dos pasos (TOTP)</p>
+                        <p class="text-sm font-medium text-gray-900">Verificación en dos pasos</p>
                         <p class="text-sm text-gray-500 mt-0.5">
                             Añade una capa extra de seguridad con una aplicación autenticadora
                         </p>
@@ -205,7 +207,7 @@
         <div v-if="showDisableTOTPModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
             <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6 space-y-4">
                 <h3 class="text-lg font-semibold text-gray-900">Desactivar verificación en dos pasos</h3>
-                <p class="text-sm text-gray-600">Confirma tu contraseña para desactivar TOTP.</p>
+                <p class="text-sm text-gray-600">Confirma tu contraseña para desactivar la verificación en dos pasos.</p>
                 <input
                     v-model="disableTOTPPassword"
                     type="password"
@@ -423,7 +425,7 @@ const handleDisableTOTP = async () => {
         closeDisableTOTPModal()
         showSuccess('Verificación en dos pasos desactivada')
     } catch (error) {
-        disableTOTPError.value = error.message || 'Error al desactivar TOTP'
+        disableTOTPError.value = error.message || 'Error al desactivar la verificación en dos pasos'
     } finally {
         disablingTOTP.value = false
     }

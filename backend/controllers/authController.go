@@ -966,7 +966,7 @@ func (c *AuthController) VerifyTOTP(ctx *gin.Context) {
 	}
 
 	duration := 24 * time.Hour
-	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, c.secretKey, duration)
+	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, user.TokenVersion, c.secretKey, duration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,

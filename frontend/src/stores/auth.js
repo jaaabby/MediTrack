@@ -8,7 +8,7 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: false,
     isLoading: false,
     error: null,
-    _sessionPollInterval: null
+    _sessionPollInterval: null,
     // Estado TOTP: almacena el pre-auth token cuando el login requiere verificación TOTP
     totpRequired: false,
     preAuthToken: null

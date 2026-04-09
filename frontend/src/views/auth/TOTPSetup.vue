@@ -1,18 +1,18 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
+  <div class="px-5 py-5">
+    <div class="space-y-4">
       <!-- Header -->
       <div class="text-center">
-        <h2 class="text-3xl font-extrabold text-gray-900">
+        <h2 class="text-2xl font-bold text-gray-900">
           Configurar verificación en dos pasos
         </h2>
-        <p class="mt-2 text-sm text-gray-600">
-          Escanea el código QR con Google Authenticator, Authy u otra aplicación TOTP
+        <p class="mt-1 text-sm text-gray-600">
+          Escanea el código QR con Google Authenticator, Authy u otra aplicación autenticadora
         </p>
       </div>
 
       <!-- Paso 1: QR Code -->
-      <div v-if="step === 'scan'" class="space-y-6">
+      <div v-if="step === 'scan'" class="space-y-4">
         <div v-if="isLoadingSetup" class="flex justify-center py-8">
           <svg class="animate-spin h-10 w-10 text-brand-blue-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -24,7 +24,7 @@
           <!-- QR Code -->
           <div class="flex justify-center">
             <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-              <qrcode-vue :value="setupData.qr_url" :size="200" level="M" />
+              <qrcode-vue :value="setupData.qr_url" :size="160" level="M" />
             </div>
           </div>
 
@@ -63,7 +63,7 @@
       </div>
 
       <!-- Paso 2: Verificar código -->
-      <div v-if="step === 'verify'" class="space-y-6">
+      <div v-if="step === 'verify'" class="space-y-4">
         <p class="text-sm text-gray-600 text-center">
           Ingresa el código de 6 dígitos que muestra tu aplicación para confirmar la activación
         </p>
@@ -96,7 +96,7 @@
             :disabled="isActivating || verifyCode.length !== 6"
             class="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ isActivating ? 'Activando...' : 'Activar TOTP' }}
+            {{ isActivating ? 'Activando...' : 'Activar verificación en dos pasos' }}
           </button>
 
           <button
@@ -110,7 +110,7 @@
       </div>
 
       <!-- Paso 3: Éxito -->
-      <div v-if="step === 'success'" class="space-y-6 text-center">
+      <div v-if="step === 'success'" class="space-y-4 text-center">
         <div class="flex justify-center">
           <div class="rounded-full bg-green-100 p-4">
             <svg class="h-12 w-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,7 +118,7 @@
             </svg>
           </div>
         </div>
-        <h3 class="text-xl font-semibold text-gray-900">TOTP activado correctamente</h3>
+        <h3 class="text-xl font-semibold text-gray-900">Verificación en dos pasos activada</h3>
         <p class="text-sm text-gray-600">
           La verificación en dos pasos está habilitada en tu cuenta. A partir de ahora necesitarás tu aplicación autenticadora para iniciar sesión.
         </p>
@@ -180,7 +180,7 @@ onMounted(async () => {
   try {
     setupData.value = await authService.getTOTPSetup()
   } catch (error) {
-    loadError.value = error.message || 'Error al cargar la configuración TOTP'
+    loadError.value = error.message || 'Error al cargar la configuración de verificación en dos pasos'
   } finally {
     isLoadingSetup.value = false
   }
