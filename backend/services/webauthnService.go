@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"gorm.io/gorm"
 )
@@ -152,19 +153,35 @@ func (s *WebAuthnService) DeletePasskey(userRUT string, passkeyID uint) error {
 
 // ---- Registro ----
 
-// BeginRegistration inicia el flujo de registro de una passkey
+// BeginRegistration inicia el flujo de registro de una credencial biométrica.
+// Fuerza authenticatorAttachment=platform para que el navegador use únicamente
+// el autenticador integrado en el dispositivo (huella, Face ID, Windows Hello),
+// sin ofrecer la opción de teléfono por QR ni llaves de seguridad externas.
 func (s *WebAuthnService) BeginRegistration(userRUT string) (interface{}, error) {
 	waUser, err := s.getWebAuthnUser(userRUT)
 	if err != nil {
 		return nil, err
 	}
 
-	options, session, err := s.weba.BeginRegistration(waUser)
+	options, session, err := s.weba.BeginRegistration(waUser,
+		webauthn.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
+			// Credencial residente requerida (necesaria para discoverable login)
+			ResidentKey: protocol.ResidentKeyRequirementRequired,
+			// El dispositivo debe verificar al usuario (huella/cara/PIN)
+			UserVerification: protocol.VerificationRequired,
+		}),
+		// Sugerir primero el autenticador integrado del dispositivo (huella/Face ID/PIN).
+		// Si el dispositivo no lo soporta, el navegador ofrece alternativas (teléfono, etc.)
+		webauthn.WithPublicKeyCredentialHints([]protocol.PublicKeyCredentialHints{
+			protocol.PublicKeyCredentialHintClientDevice,
+			protocol.PublicKeyCredentialHintHybrid,
+		}),
+		webauthn.WithConveyancePreference(protocol.PreferNoAttestation),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error iniciando registro: %w", err)
 	}
 
-	// Guardar sesión keyed por RUT (el usuario está autenticado)
 	s.storeSession("reg:"+userRUT, session)
 
 	return options, nil
@@ -185,11 +202,14 @@ func (s *WebAuthnService) GetLoginSession(sessionID string) (*webauthn.SessionDa
 	return s.loadAndDeleteSession("login:" + sessionID)
 }
 
-// BeginLogin inicia el flujo de autenticación con passkey (discoverable)
+// BeginLogin inicia el flujo de autenticación biométrica (discoverable).
+// Requiere verificación del usuario para que el dispositivo pida huella/cara/PIN.
 func (s *WebAuthnService) BeginLogin() (interface{}, string, error) {
-	options, session, err := s.weba.BeginDiscoverableLogin()
+	options, session, err := s.weba.BeginDiscoverableLogin(
+		webauthn.WithUserVerification(protocol.VerificationRequired),
+	)
 	if err != nil {
-		return nil, "", fmt.Errorf("error iniciando login con passkey: %w", err)
+		return nil, "", fmt.Errorf("error iniciando login biométrico: %w", err)
 	}
 
 	sessionID, err := generateSessionID()

@@ -203,15 +203,16 @@
             </div>
         </div>
 
-        <!-- Llaves de acceso (Passkeys) -->
+        <!-- Acceso biométrico -->
         <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">Llaves de acceso (Passkeys)</h2>
-                <p class="mt-1 text-sm text-gray-500">Inicia sesión con tu huella, Face ID o PIN del dispositivo, sin contraseña.</p>
+                <h2 class="text-lg font-semibold text-gray-900">Acceso biométrico</h2>
+                <p class="mt-1 text-sm text-gray-500">
+                    Ingresa al sistema usando tu huella digital, reconocimiento facial o PIN del dispositivo, sin necesidad de contraseña.
+                </p>
             </div>
             <div class="px-6 py-4 space-y-4">
 
-                <!-- Error passkey -->
                 <div v-if="passkeyError" class="rounded-md bg-red-50 p-3">
                     <p class="text-sm text-red-700">{{ passkeyError }}</p>
                 </div>
@@ -219,7 +220,7 @@
                     <p class="text-sm text-green-700">{{ passkeySuccess }}</p>
                 </div>
 
-                <!-- Lista de passkeys -->
+                <!-- Lista de dispositivos registrados -->
                 <div v-if="passkeyLoading" class="flex justify-center py-4">
                     <svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -227,57 +228,72 @@
                     </svg>
                 </div>
 
-                <ul v-else-if="passkeys.length" class="divide-y divide-gray-200 border border-gray-200 rounded-md">
-                    <li v-for="pk in passkeys" :key="pk.id" class="flex items-center justify-between px-4 py-3">
-                        <div class="flex items-center gap-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-                            </svg>
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">{{ pk.name || 'Passkey' }}</p>
-                                <p class="text-xs text-gray-400">{{ formatDate(pk.created_at) }}</p>
+                <div v-else-if="passkeys.length">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Dispositivos registrados</p>
+                    <ul class="divide-y divide-gray-200 border border-gray-200 rounded-md">
+                        <li v-for="pk in passkeys" :key="pk.id" class="flex items-center justify-between px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <!-- Ícono dispositivo -->
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm0 0V7m0 4v4m-6 4h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">{{ pk.name || 'Mi dispositivo' }}</p>
+                                    <p class="text-xs text-gray-400">Configurado el {{ formatDate(pk.created_at) }}</p>
+                                </div>
                             </div>
-                        </div>
-                        <button
-                            @click="passkeyToDelete = pk"
-                            :disabled="deletingPasskey === pk.id"
-                            class="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
-                        >
-                            {{ deletingPasskey === pk.id ? 'Eliminando...' : 'Eliminar' }}
-                        </button>
-                    </li>
-                </ul>
-
-                <p v-else-if="!passkeyLoading" class="text-sm text-gray-400 italic">No tienes passkeys registradas.</p>
-
-                <!-- Agregar nueva passkey -->
-                <div v-if="passkeySupported" class="flex gap-2 pt-1">
-                    <input
-                        v-model="newPasskeyName"
-                        type="text"
-                        placeholder="Nombre del dispositivo (ej: Mi iPhone)"
-                        class="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue-dark"
-                        :disabled="registeringPasskey"
-                        @keyup.enter="handleRegisterPasskey"
-                    />
-                    <button
-                        @click="handleRegisterPasskey"
-                        :disabled="registeringPasskey"
-                        class="btn-primary text-sm px-4 disabled:opacity-50"
-                    >
-                        {{ registeringPasskey ? 'Registrando...' : 'Agregar' }}
-                    </button>
+                            <button
+                                @click="passkeyToDelete = pk"
+                                :disabled="deletingPasskey === pk.id"
+                                class="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                            >
+                                {{ deletingPasskey === pk.id ? 'Eliminando...' : 'Eliminar' }}
+                            </button>
+                        </li>
+                    </ul>
                 </div>
-                <p v-else class="text-xs text-yellow-600">Tu navegador no soporta Passkeys.</p>
+
+                <p v-else-if="!passkeyLoading" class="text-sm text-gray-400 italic">
+                    No tienes ningún dispositivo configurado para acceso biométrico.
+                </p>
+
+                <!-- Agregar dispositivo -->
+                <div v-if="passkeySupported" class="pt-1">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Agregar dispositivo</p>
+                    <div class="flex gap-2">
+                        <input
+                            v-model="newPasskeyName"
+                            type="text"
+                            placeholder="Nombre del dispositivo (ej: Mi iPhone, PC Trabajo)"
+                            class="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue-dark"
+                            :disabled="registeringPasskey"
+                            @keyup.enter="handleRegisterPasskey"
+                        />
+                        <button
+                            @click="handleRegisterPasskey"
+                            :disabled="registeringPasskey"
+                            class="btn-primary text-sm px-4 disabled:opacity-50"
+                        >
+                            {{ registeringPasskey ? 'Configurando...' : 'Configurar' }}
+                        </button>
+                    </div>
+                    <p class="mt-1.5 text-xs text-gray-400">
+                        Al hacer clic en "Configurar", tu dispositivo te pedirá confirmar con tu huella, rostro o PIN.
+                    </p>
+                </div>
+                <p v-else class="text-xs text-yellow-600">
+                    Tu navegador no soporta autenticación biométrica.
+                </p>
             </div>
         </div>
 
-        <!-- Modal confirmación eliminar passkey -->
+        <!-- Modal confirmación eliminar dispositivo -->
         <div v-if="passkeyToDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
             <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6 space-y-4">
-                <h3 class="text-lg font-semibold text-gray-900">¿Eliminar passkey?</h3>
+                <h3 class="text-lg font-semibold text-gray-900">¿Eliminar dispositivo?</h3>
                 <p class="text-sm text-gray-600">
-                    Eliminarás <strong>"{{ passkeyToDelete.name }}"</strong>. Ya no podrás usarla para iniciar sesión.
+                    Eliminarás el acceso biométrico de <strong>"{{ passkeyToDelete.name }}"</strong>.
+                    Ya no podrás usar ese dispositivo para ingresar al sistema.
                 </p>
                 <div class="flex justify-end gap-3 pt-2">
                     <button @click="passkeyToDelete = null" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">

@@ -171,22 +171,32 @@ export async function registerPasskey(token, name = 'Mi Passkey') {
 // ── Login ─────────────────────────────────────────────────────────────────
 
 /**
- * Autentica al usuario con una passkey (discoverable – sin necesidad de email).
+ * Intenta autenticar al usuario con el método biométrico/PIN del dispositivo.
+ * Usa mediation:'optional' para que el navegador dispare la UI nativa del dispositivo
+ * si hay credenciales disponibles, o resuelva null silenciosamente si no hay ninguna.
  * @returns {{ token, user, expires_in, token_type }}
  */
 export async function loginWithPasskey() {
   if (!window.PublicKeyCredential) {
-    throw new Error('Tu navegador no soporta Passkeys')
+    throw new Error('NO_SUPPORT')
   }
 
-  // 1. Iniciar el flujo en el servidor
+  // 1. Obtener el challenge del servidor
   const { options, session_id } = await apiFetch('/auth/passkey/login/begin')
 
-  // 2. Invocar el autenticador
-  const credential = await navigator.credentials.get(prepareLoginOptions(options))
-  if (!credential) throw new Error('Autenticación cancelada por el usuario')
+  // 2. Solicitar autenticación al dispositivo con mediation:'optional'
+  //    → Si hay credenciales: muestra la UI nativa (biometría/PIN) automáticamente
+  //    → Si no hay credenciales: resuelve a null sin mostrar nada
+  const credential = await navigator.credentials.get({
+    ...prepareLoginOptions(options),
+    mediation: 'optional',
+  })
 
-  // 3. Completar la verificación en el servidor
+  if (!credential) {
+    throw new Error('NO_CREDENTIALS')
+  }
+
+  // 3. Verificar en el servidor y obtener JWT
   const serialized = serializeLoginCredential(credential)
   return apiFetch('/auth/passkey/login/finish', {
     body: serialized,
