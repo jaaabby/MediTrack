@@ -117,25 +117,45 @@
           </button>
         </div>
 
+        <!-- Botón de Passkey (solo si el dispositivo soporta WebAuthn) -->
+        <div v-if="webAuthnSupported">
+          <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-300" />
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-gray-50 text-gray-500">o</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            :disabled="isPasskeyLoading"
+            class="mt-3 w-full flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="handlePasskeyLogin"
+          >
+            <svg class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+            {{ isPasskeyLoading ? 'Verificando...' : 'Iniciar sesión con llave de acceso' }}
+          </button>
+        </div>
+
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-// Autenticación biométrica automática al cargar la página
-onMounted(() => {
-  if (window.PublicKeyCredential) {
-    tryBiometricLogin()
-  }
-})
+// Detectar soporte de WebAuthn para mostrar el botón de passkey
+const webAuthnSupported = typeof window !== 'undefined' && !!window.PublicKeyCredential
+const isPasskeyLoading = ref(false)
 
 // Estado del formulario
 const loginForm = reactive({
@@ -228,10 +248,10 @@ const validateForm = () => {
   return true
 }
 
-// Intento silencioso de autenticación biométrica al cargar
-// Si el dispositivo tiene credenciales registradas, el SO muestra su UI nativa
-// (huella, Face ID, PIN). Si no hay nada, no ocurre nada visible.
-const tryBiometricLogin = async () => {
+// Login explícito con passkey (triggered por el usuario)
+const handlePasskeyLogin = async () => {
+  isPasskeyLoading.value = true
+  errorMessage.value = ''
   try {
     await authStore.loginWithPasskey()
 
@@ -243,10 +263,11 @@ const tryBiometricLogin = async () => {
     const redirectTo = router.currentRoute.value.query.redirect || '/home'
     await router.replace(redirectTo)
   } catch (error) {
-    // NO_CREDENTIALS o NO_SUPPORT → el usuario simplemente no tiene configurada
-    // la autenticación biométrica, el formulario de contraseña sigue disponible.
-    // NotAllowedError → canceló el prompt del dispositivo, se queda en el form.
-    // Cualquier otro error → ignorar silenciosamente.
+    if (error?.message !== 'NO_CREDENTIALS' && error?.message !== 'NO_SUPPORT') {
+      errorMessage.value = error?.message || 'No se pudo autenticar con la llave de acceso.'
+    }
+  } finally {
+    isPasskeyLoading.value = false
   }
 }
 
