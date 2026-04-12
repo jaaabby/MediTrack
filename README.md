@@ -1,7 +1,7 @@
-# MediTrack - Sistema de Gestión de Inventario Médico
+# Meditrack - Sistema de Gestión de Inventario Médico
 
 ## Descripción
-MediTrack es un sistema completo para la gestión y control de inventario médico, desarrollado con Go en el backend y Vue.js en el frontend.
+Meditrack es un sistema completo para la gestión y control de inventario médico, desarrollado con Go en el backend y Vue.js en el frontend.
 
 ## Funcionalidades Principales
 
@@ -22,7 +22,7 @@ MediTrack es un sistema completo para la gestión y control de inventario médic
 ## Estructura del Proyecto
 
 ```
-MediTrack/
+Meditrack/
 ├── backend/                 # Servidor Go
 │   ├── controllers/         # Controladores de la API
 │   ├── models/             # Modelos de datos

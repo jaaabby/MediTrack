@@ -95,7 +95,7 @@ func SetupRoutes(
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "ok",
-			"service": "MediTrack API",
+			"service": "Meditrack API",
 			"version": "1.0.0",
 		})
 	})
@@ -103,7 +103,7 @@ func SetupRoutes(
 	// Ruta raíz
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"message": "Bienvenido a MediTrack API",
+			"message": "Bienvenido a Meditrack API",
 			"version": "1.0.0",
 			"docs":    "/api/v1/docs",
 		})

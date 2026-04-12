@@ -1,6 +1,6 @@
-# MediTrack Backend
+# Meditrack Backend
 
-Este es el backend de la aplicación MediTrack, organizado siguiendo una arquitectura limpia y modular por entidad.
+Este es el backend de la aplicación Meditrack, organizado siguiendo una arquitectura limpia y modular por entidad.
 
 ## Estructura del Proyecto
 

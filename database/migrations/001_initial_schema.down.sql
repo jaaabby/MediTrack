@@ -1,4 +1,4 @@
--- Script de rollback completo: Eliminar esquema completo de MediTrack
+-- Script de rollback completo: Eliminar esquema completo de Meditrack
 -- Fecha: 2025-01-20
 -- Descripción: Eliminar todas las tablas, vistas, funciones, triggers e índices del sistema
 -- Nota: El constraint CHECK de la tabla "user" incluye los roles: 'admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad'

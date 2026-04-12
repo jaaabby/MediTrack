@@ -6,7 +6,7 @@
         <div class="mx-auto flex items-center justify-center mb-8">
           <img 
             src="@/assets/images/MEDITRACK_LOGO.svg" 
-            alt="MediTrack" 
+            alt="Meditrack" 
             class="h-24 sm:h-32 md:h-40 w-auto"
           />
         </div>

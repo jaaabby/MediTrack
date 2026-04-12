@@ -6,7 +6,7 @@
         <div class="mx-auto flex items-center justify-center mb-8">
           <img 
             src="@/assets/images/MEDITRACK_LOGO.svg" 
-            alt="MediTrack" 
+            alt="Meditrack" 
             class="h-24 sm:h-32 md:h-40 w-auto"
           />
         </div>
@@ -14,7 +14,7 @@
           Iniciar Sesión
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600">
-          Sistema de Trazabilidad MediTrack
+          Sistema de Trazabilidad Meditrack
         </p>
       </div>
 
@@ -203,6 +203,13 @@ onUnmounted(() => {
 watch(() => loginForm.email, () => {
   errors.email = ''
   errorMessage.value = ''
+  if (lockoutSeconds.value > 0) {
+    lockoutSeconds.value = 0
+    if (countdownTimer) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }
 })
 
 watch(() => loginForm.password, () => {

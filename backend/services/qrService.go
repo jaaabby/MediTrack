@@ -2322,7 +2322,7 @@ func (s *QRService) sendUnconsumedSupplyAlert(supply *models.MedicalSupply) {
 	}
 	recipients := []string{alertEmail}
 
-	request := mailer.NewRequest(recipients, "Alerta: Insumo Médico No Consumido - MediTrack")
+	request := mailer.NewRequest(recipients, "Alerta: Insumo Médico No Consumido - Meditrack")
 
 	// Enviar el correo
 	// Obtener el directorio actual y construir la ruta absoluta

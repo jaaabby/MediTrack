@@ -12,7 +12,7 @@
           Registro de Usuario
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600">
-          Crear nueva cuenta en MediTrack
+          Crear nueva cuenta en Meditrack
         </p>
       </div>
 

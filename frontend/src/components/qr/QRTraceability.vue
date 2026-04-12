@@ -1193,7 +1193,7 @@ const printTraceability = () => {
       doc.setFontSize(7)
       doc.setTextColor(156, 163, 175)
       doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, 285, { align: 'center' })
-      doc.text('MediTrack - Sistema de Trazabilidad', pageWidth / 2, 290, { align: 'center' })
+      doc.text('Meditrack - Sistema de Trazabilidad', pageWidth / 2, 290, { align: 'center' })
     }
 
     // Guardar PDF

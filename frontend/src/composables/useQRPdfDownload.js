@@ -393,10 +393,10 @@ export function useQRPdfDownload() {
       pdf.setFont('helvetica', 'normal')
       pdf.setTextColor(100, 100, 100)
       pdf.text(`Generado el: ${formatDate(new Date())}`, margin, currentY)
-      pdf.text('MediTrack - Sistema de Trazabilidad Médica', margin, currentY + 5)
+      pdf.text('Meditrack - Sistema de Trazabilidad Médica', margin, currentY + 5)
 
       // Información del usuario (si está disponible)
-      pdf.text(`Sistema: MediTrack v1.0`, pageWidth - margin - 40, currentY)
+      pdf.text(`Sistema: Meditrack v1.0`, pageWidth - margin - 40, currentY)
 
       // ===== GUARDAR / RETORNAR PDF =====
       if (options.returnAsBase64) {

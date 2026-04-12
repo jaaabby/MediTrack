@@ -1,4 +1,4 @@
--- Migración inicial: Crear esquema de base de datos para MediTrack
+-- Migración inicial: Crear esquema de base de datos para Meditrack
 -- Fecha: 2025-08-19
 -- Descripción: Tablas principales según modelos Go con campos QR incluidos
 

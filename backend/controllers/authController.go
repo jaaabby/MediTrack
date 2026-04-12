@@ -249,7 +249,7 @@ func (c *AuthController) sendLoginNotificationEmail(user *models.User, ipAddress
 	}
 
 	templatePath := filepath.Join("mailer", "templates", "new_login.html")
-	mailReq := mailer.NewRequest([]string{user.Email}, "Nuevo inicio de sesión en tu cuenta MediTrack")
+	mailReq := mailer.NewRequest([]string{user.Email}, "Nuevo inicio de sesión en tu cuenta Meditrack")
 	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
 		fmt.Printf("⚠️  No se pudo enviar el correo de notificación de login a %s: %v\n", user.Email, err)
 	}
@@ -712,7 +712,7 @@ func (c *AuthController) RequestPasswordReset(ctx *gin.Context) {
 
 	// Enviar email
 	templatePath := filepath.Join("mailer", "templates", "password_reset.html")
-	mailReq := mailer.NewRequest([]string{user.Email}, "Recuperación de Contraseña - MediTrack")
+	mailReq := mailer.NewRequest([]string{user.Email}, "Recuperación de Contraseña - Meditrack")
 
 	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
 		fmt.Printf("Error enviando email: %v\n", err)
@@ -821,7 +821,7 @@ func (c *AuthController) SetupTOTP(ctx *gin.Context) {
 	}
 
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "MediTrack",
+		Issuer:      "Meditrack",
 		AccountName: user.Email,
 	})
 	if err != nil {

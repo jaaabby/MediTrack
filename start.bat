@@ -1,7 +1,7 @@
 @echo off
-REM Script de inicio rápido para MediTrack con Docker (Windows)
+REM Script de inicio rápido para Meditrack con Docker (Windows)
 
-echo 🚀 Iniciando MediTrack con Docker...
+echo 🚀 Iniciando Meditrack con Docker...
 echo.
 
 REM Verificar si existe .env
@@ -60,7 +60,7 @@ echo 📊 Verificando estado de los servicios...
 docker compose ps
 
 echo.
-echo ✅ MediTrack está corriendo!
+echo ✅ Meditrack está corriendo!
 echo.
 echo 🌐 Frontend HTTP:  http://localhost:3000
 echo 🔒 Frontend HTTPS: https://localhost:3443  (para acceso desde celular con cámara)

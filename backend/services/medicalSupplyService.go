@@ -676,7 +676,7 @@ func (s *MedicalSupplyService) sendUnconsumedSupplyAlert(supply *models.MedicalS
 	}
 	recipients := []string{alertEmail}
 
-	request := mailer.NewRequest(recipients, "Alerta: Insumo Médico No Consumido - MediTrack")
+	request := mailer.NewRequest(recipients, "Alerta: Insumo Médico No Consumido - Meditrack")
 
 	// Enviar el correo
 	// Obtener el directorio actual y construir la ruta absoluta

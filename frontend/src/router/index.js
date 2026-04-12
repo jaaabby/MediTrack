@@ -8,7 +8,7 @@ const routes = [
     name: 'Login',
     component: () => import('@/views/auth/Login.vue'),
     meta: {
-      title: 'Iniciar Sesión - MediTrack',
+      title: 'Iniciar Sesión - Meditrack',
       description: 'Acceso al sistema de gestión de insumos médicos',
       requiresAuth: false
     }
@@ -18,7 +18,7 @@ const routes = [
     name: 'ForgotPassword',
     component: () => import('@/views/auth/ForgotPassword.vue'),
     meta: {
-      title: 'Recuperar Contraseña - MediTrack',
+      title: 'Recuperar Contraseña - Meditrack',
       description: 'Solicitar recuperación de contraseña',
       requiresAuth: false
     }
@@ -28,7 +28,7 @@ const routes = [
     name: 'ResetPassword',
     component: () => import('@/views/auth/ResetPassword.vue'),
     meta: {
-      title: 'Restablecer Contraseña - MediTrack',
+      title: 'Restablecer Contraseña - Meditrack',
       description: 'Restablecer contraseña con token',
       requiresAuth: false
     }
@@ -38,7 +38,7 @@ const routes = [
     name: 'FirstTimePasswordChange',
     component: () => import('@/views/auth/FirstTimePasswordChange.vue'),
     meta: {
-      title: 'Cambio de Contraseña Obligatorio - MediTrack',
+      title: 'Cambio de Contraseña Obligatorio - Meditrack',
       description: 'Cambio de contraseña temporal por primera vez',
       requiresAuth: true,
       skipPasswordCheck: true // Evitar bucle infinito en el guard
@@ -49,7 +49,7 @@ const routes = [
     name: 'TOTPVerify',
     component: () => import('@/views/auth/TOTPVerify.vue'),
     meta: {
-      title: 'Verificación TOTP - MediTrack',
+      title: 'Verificación TOTP - Meditrack',
       description: 'Verificación en dos pasos con código TOTP',
       requiresAuth: false
     }
@@ -59,7 +59,7 @@ const routes = [
     name: 'TOTPSetup',
     component: () => import('@/views/auth/TOTPSetup.vue'),
     meta: {
-      title: 'Configurar TOTP - MediTrack',
+      title: 'Configurar TOTP - Meditrack',
       description: 'Configurar verificación en dos pasos',
       requiresAuth: true,
       skipPasswordCheck: true
@@ -70,7 +70,7 @@ const routes = [
     name: 'PasskeyManage',
     component: () => import('@/views/auth/PasskeyManage.vue'),
     meta: {
-      title: 'Gestionar Passkeys - MediTrack',
+      title: 'Gestionar Passkeys - Meditrack',
       description: 'Administrar llaves de acceso del dispositivo',
       requiresAuth: true
     }
@@ -88,7 +88,7 @@ const routes = [
     name: 'Home',
     component: () => import('@/views/common/Home.vue'),
     meta: {
-      title: 'Inicio - MediTrack',
+      title: 'Inicio - Meditrack',
       description: 'Panel principal del sistema de gestión de insumos médicos',
       requiresAuth: true
     }
@@ -100,7 +100,7 @@ const routes = [
     name: 'UserManagement',
     component: () => import('@/views/common/UserManagement.vue'),
     meta: {
-      title: 'Gestión de Usuarios - MediTrack',
+      title: 'Gestión de Usuarios - Meditrack',
       description: 'Administración de usuarios del sistema',
       requiresAuth: true,
       requiredRoles: ['admin']
@@ -113,7 +113,7 @@ const routes = [
     name: 'Inventory',
     component: () => import('@/views/inventory/Inventory.vue'),
     meta: {
-      title: 'Inventario - MediTrack',
+      title: 'Inventario - Meditrack',
       description: 'Gestión y consulta del inventario de insumos médicos',
       requiresAuth: true
     }
@@ -123,7 +123,7 @@ const routes = [
     name: 'AddSupply',
     component: () => import('@/views/inventory/AddSupply.vue'),
     meta: {
-      title: 'Agregar Insumo - MediTrack',
+      title: 'Agregar Insumo - Meditrack',
       description: 'Registrar nuevos insumos médicos en el sistema',
       requiresAuth: true
     }
@@ -135,7 +135,7 @@ const routes = [
     name: 'Statistics',
     component: () => import('@/views/common/Statistics.vue'),
     meta: {
-      title: 'Estadísticas - MediTrack',
+      title: 'Estadísticas - Meditrack',
       description: 'Panel de análisis y métricas del sistema de inventario',
       requiresAuth: true
     }
@@ -147,7 +147,7 @@ const routes = [
     name: 'QRScanner',
     component: () => import('@/views/qr/QRScanner.vue'),
     meta: {
-      title: 'Scanner QR - MediTrack',
+      title: 'Scanner QR - Meditrack',
       description: 'Escáner de códigos QR para insumos médicos',
       requiresAuth: true
     }
@@ -159,7 +159,7 @@ const routes = [
     name: 'QRConsumer',
     component: () => import('@/views/qr/QRConsumer.vue'),
     meta: {
-      title: 'Consumo QR - MediTrack',
+      title: 'Consumo QR - Meditrack',
       description: 'Consumir insumos médicos con estado "recepcionado" mediante códigos QR',
       requiresAuth: true
     }
@@ -171,7 +171,7 @@ const routes = [
     name: 'QRTransfer',
     component: () => import('@/views/qr/QRTransfer.vue'),
     meta: {
-      title: 'Transferir Insumo - MediTrack',
+      title: 'Transferir Insumo - Meditrack',
       description: 'Transferir insumos médicos con estado "disponible" a otros centros',
       requiresAuth: true
     }
@@ -183,7 +183,7 @@ const routes = [
     name: 'QRReception',
     component: () => import('@/views/qr/QRReception.vue'),
     meta: {
-      title: 'Recepcionar Insumo - MediTrack',
+      title: 'Recepcionar Insumo - Meditrack',
       description: 'Recepcionar insumos médicos con estado "en_camino_a_pabellon"',
       requiresAuth: true
     }
@@ -195,7 +195,7 @@ const routes = [
     name: 'QRPickup',
     component: () => import('@/views/qr/QRPickup.vue'),
     meta: {
-      title: 'Retirar Insumo - MediTrack',
+      title: 'Retirar Insumo - Meditrack',
       description: 'Retirar insumos médicos desde bodega con estado "pendiente_retiro"',
       requiresAuth: true
     }
@@ -207,7 +207,7 @@ const routes = [
     name: 'ReturnToBodegaManagement',
     component: () => import('@/views/management/ReturnToBodegaManagement.vue'),
     meta: {
-      title: 'Gestión de Retornos - MediTrack',
+      title: 'Gestión de Retornos - Meditrack',
       description: 'Monitoreo y gestión de insumos que deben regresar a bodega',
       requiresAuth: true,
       requiredRoles: ['admin', 'encargado de bodega']
@@ -221,7 +221,7 @@ const routes = [
     component: () => import('@/views/qr/QRDetails.vue'),
     props: route => ({ qrCode: route.params.qrCode }),
     meta: {
-      title: 'Detalles QR - MediTrack',
+      title: 'Detalles QR - Meditrack',
       description: 'Información detallada del código QR',
       requiresAuth: true
     }
@@ -234,7 +234,7 @@ const routes = [
     component: () => import('@/views/qr/QRTraceability.vue'),
     props: route => ({ qrCode: route.params.qrCode }),
     meta: {
-      title: 'Trazabilidad QR - MediTrack',
+      title: 'Trazabilidad QR - Meditrack',
       description: 'Trazabilidad completa del código QR estilo Starken',
       requiresAuth: true
     }
@@ -247,7 +247,7 @@ const routes = [
     component: () => import('@/components/inventory/BatchHistory.vue'),
     props: route => ({ batchId: parseInt(route.params.batchId) }),
     meta: {
-      title: 'Historial del Lote - MediTrack',
+      title: 'Historial del Lote - Meditrack',
       description: 'Historial completo de movimientos del lote',
       requiresAuth: true
     }
@@ -259,7 +259,7 @@ const routes = [
     name: 'SupplyRequestList',
     component: () => import('@/views/requests/SupplyRequestList.vue'),
     meta: {
-      title: 'Solicitudes de Insumo - MediTrack',
+      title: 'Solicitudes de Insumo - Meditrack',
       description: 'Gestión de solicitudes de insumo con trazabilidad QR',
       requiresAuth: true
     }
@@ -269,7 +269,7 @@ const routes = [
     name: 'SupplyRequestForm',
     component: () => import('@/views/requests/SupplyRequestForm.vue'),
     meta: {
-      title: 'Nueva Solicitud - MediTrack',
+      title: 'Nueva Solicitud - Meditrack',
       description: 'Crear nueva solicitud de insumos médicos',
       requiresAuth: true
     }
@@ -283,7 +283,7 @@ const routes = [
       editMode: true 
     }),
     meta: {
-      title: 'Editar Solicitud - MediTrack',
+      title: 'Editar Solicitud - Meditrack',
       description: 'Editar solicitud de insumos médicos devuelta',
       requiresAuth: true
     }
@@ -297,7 +297,7 @@ const routes = [
       requestData: route.params.requestData 
     }),
     meta: {
-      title: 'Solicitud Creada - MediTrack',
+      title: 'Solicitud Creada - Meditrack',
       description: 'Confirmación de solicitud creada exitosamente',
       requiresAuth: true
     }
@@ -308,7 +308,7 @@ const routes = [
     component: () => import('@/views/requests/SupplyRequestDetail.vue'),
     props: route => ({ requestId: parseInt(route.params.id) }),
     meta: {
-      title: 'Detalles de Solicitud - MediTrack',
+      title: 'Detalles de Solicitud - Meditrack',
       description: 'Detalles y gestión de solicitud de insumos',
       requiresAuth: true
     }
@@ -320,7 +320,7 @@ const routes = [
     name: 'Profile',
     component: () => import('@/views/common/Profile.vue'),
     meta: {
-      title: 'Perfil - MediTrack',
+      title: 'Perfil - Meditrack',
       description: 'Gestión del perfil de usuario',
       requiresAuth: true
     }
@@ -334,7 +334,7 @@ const routes = [
     name: 'TransferManagement',
     component: () => import('@/views/management/TransferManagement.vue'),
     meta: {
-      title: 'Transferencias - MediTrack',
+      title: 'Transferencias - Meditrack',
       description: 'Gestión de transferencias entre bodegas y pabellones',
       requiresAuth: true
     }
@@ -346,7 +346,7 @@ const routes = [
     name: 'SurgeryManagement',
     component: () => import('@/views/management/SurgeryManagement.vue'),
     meta: {
-      title: 'Tipos de Cirugía - MediTrack',
+      title: 'Tipos de Cirugía - Meditrack',
       description: 'Administración de tipos de procedimientos quirúrgicos',
       requiresAuth: true
     }
@@ -358,7 +358,7 @@ const routes = [
     name: 'MedicalSpecialtyManagement',
     component: () => import('@/views/config/MedicalSpecialtyManagement.vue'),
     meta: {
-      title: 'Especialidades Médicas - MediTrack',
+      title: 'Especialidades Médicas - Meditrack',
       description: 'Administración de especialidades médicas',
       requiresAuth: true
     }
@@ -370,7 +370,7 @@ const routes = [
     name: 'SurgeryTypicalSupplyManagement',
     component: () => import('@/views/management/SurgeryTypicalSupplyManagement.vue'),
     meta: {
-      title: 'Insumos Típicos por Cirugía - MediTrack',
+      title: 'Insumos Típicos por Cirugía - Meditrack',
       description: 'Gestión de insumos típicos asociados a cirugías',
       requiresAuth: true
     }
@@ -382,7 +382,7 @@ const routes = [
     name: 'DoctorInfoManagement',
     component: () => import('@/views/config/DoctorInfoManagement.vue'),
     meta: {
-      title: 'Información de Doctores - MediTrack',
+      title: 'Información de Doctores - Meditrack',
       description: 'Gestión de información extendida de doctores',
       requiresAuth: true
     }
@@ -394,7 +394,7 @@ const routes = [
     name: 'SupplierConfigManagement',
     component: () => import('@/views/config/SupplierConfigManagement.vue'),
     meta: {
-      title: 'Configuración de Proveedores - MediTrack',
+      title: 'Configuración de Proveedores - Meditrack',
       description: 'Gestión de alertas de vencimiento por proveedor',
       requiresAuth: true
     }
@@ -404,7 +404,7 @@ const routes = [
     name: 'SupplyCodeManagement',
     component: () => import('@/views/config/SupplyCodeManagement.vue'),
     meta: {
-      title: 'Gestión de Códigos de Insumos - MediTrack',
+      title: 'Gestión de Códigos de Insumos - Meditrack',
       description: 'Gestión de códigos de insumos y niveles críticos de stock',
       requiresAuth: true
     }
@@ -416,7 +416,7 @@ const routes = [
     name: 'SupplyHistoryView',
     component: () => import('@/views/inventory/SupplyHistoryView.vue'),
     meta: {
-      title: 'Historial de Insumos - MediTrack',
+      title: 'Historial de Insumos - Meditrack',
       description: 'Registro completo de movimientos de insumos',
       requiresAuth: true
     }
@@ -430,7 +430,7 @@ const routes = [
     name: 'InventoryDashboard',
     component: () => import('@/views/inventory/InventoryDashboard.vue'),
     meta: {
-      title: 'Dashboard de Inventario - MediTrack',
+      title: 'Dashboard de Inventario - Meditrack',
       description: 'Resumen general del inventario por ubicaciones',
       requiresAuth: true
     }
@@ -442,7 +442,7 @@ const routes = [
     name: 'StoreInventoryView',
     component: () => import('@/views/inventory/StoreInventoryView.vue'),
     meta: {
-      title: 'Inventario de Bodegas - MediTrack',
+      title: 'Inventario de Bodegas - Meditrack',
       description: 'Stock detallado en cada bodega del sistema',
       requiresAuth: true
     }
@@ -454,7 +454,7 @@ const routes = [
     name: 'PavilionInventoryView',
     component: () => import('@/views/inventory/PavilionInventoryView.vue'),
     meta: {
-      title: 'Inventario de Pabellones - MediTrack',
+      title: 'Inventario de Pabellones - Meditrack',
       description: 'Stock disponible en cada pabellón del hospital',
       requiresAuth: true
     }
@@ -466,7 +466,7 @@ const routes = [
     name: 'NotFound',
     component: () => import('@/views/common/NotFound.vue'),
     meta: {
-      title: 'Página No Encontrada - MediTrack',
+      title: 'Página No Encontrada - Meditrack',
       description: 'La página que buscas no existe',
       requiresAuth: false
     }

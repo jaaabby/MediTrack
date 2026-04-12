@@ -374,7 +374,7 @@
     <div ref="printArea" class="print-only">
       <div class="print-qr-card">
         <div class="print-header">
-          <h1>MediTrack - {{ qrInfo ? getTypeLabel(qrInfo.type) : '' }}</h1>
+          <h1>Meditrack - {{ qrInfo ? getTypeLabel(qrInfo.type) : '' }}</h1>
           <p>{{ formatDate(new Date()) }}</p>
         </div>
         
@@ -409,7 +409,7 @@
         </div>
         
         <div class="print-footer">
-          <p>Generado automáticamente por MediTrack</p>
+          <p>Generado automáticamente por Meditrack</p>
         </div>
       </div>
     </div>
@@ -586,7 +586,7 @@ const printQRCode = () => {
 
 const shareQR = async () => {
   const shareData = {
-    title: `MediTrack - ${qrInfo.value ? getTypeLabel(qrInfo.value.type) : 'QR'}`,
+    title: `Meditrack - ${qrInfo.value ? getTypeLabel(qrInfo.value.type) : 'QR'}`,
     text: `Código QR: ${qrInfo.value?.qr_code}`,
     url: window.location.href
   }

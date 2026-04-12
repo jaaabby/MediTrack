@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Colores de marca MediTrack
+        // Colores de marca Meditrack
         brand: {
           blue: {
             dark: '#0C70CD',

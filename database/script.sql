@@ -1,4 +1,4 @@
--- Script de Poblado Completo para MediTrack - VERSIÓN MEJORADA
+-- Script de Poblado Completo para Meditrack - VERSIÓN MEJORADA
 -- Fecha: 2025-02-05
 -- Descripción: Poblado completo con relaciones coherentes entre todas las tablas
 --

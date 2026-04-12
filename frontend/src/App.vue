@@ -9,7 +9,7 @@
             <router-link to="/" class="cursor-pointer hover:opacity-80 transition-opacity flex items-center">
               <img 
                 :src="logoImage" 
-                alt="MediTrack" 
+                alt="Meditrack" 
                 class="h-12 sm:h-14 md:h-16 w-auto brightness-0 invert"
               />
             </router-link>

@@ -1,7 +1,7 @@
 {
   "name": "meditrack-frontend",
   "version": "1.0.0",
-  "description": "Frontend para el sistema de trazabilidad médica MediTrack",
+  "description": "Frontend para el sistema de trazabilidad médica Meditrack",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -68,6 +68,6 @@
     "tracking",
     "healthcare"
   ],
-  "author": "MediTrack Team",
+  "author": "Meditrack Team",
   "license": "MIT"
 }

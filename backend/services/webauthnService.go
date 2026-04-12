@@ -29,7 +29,7 @@ type WebAuthnService struct {
 // NewWebAuthnService crea un nuevo servicio WebAuthn
 func NewWebAuthnService(db *gorm.DB, rpID string, rpOrigins []string) (*WebAuthnService, error) {
 	weba, err := webauthn.New(&webauthn.Config{
-		RPDisplayName: "MediTrack",
+		RPDisplayName: "Meditrack",
 		RPID:          rpID,
 		RPOrigins:     rpOrigins,
 	})
