@@ -180,7 +180,7 @@ func (c *WebAuthnController) FinishLogin(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, response.Response{
 			Success: false,
-			Error:   "Autenticación con passkey fallida: " + err.Error(),
+			Error:   "No se pudo verificar tu passkey. Asegúrate de usar el dispositivo donde la registraste e inténtalo nuevamente.",
 		})
 		return
 	}
