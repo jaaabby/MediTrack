@@ -10,7 +10,10 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "build:develop": "vite build --mode develop",
+    "build:test": "vite build --mode test",
+    "build:production": "vite build --mode production"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.16",
