@@ -6,13 +6,14 @@ import (
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // SetupSupplyTransferRoutes configura las rutas de transferencias
-func SetupSupplyTransferRoutes(router *gin.RouterGroup, transferService *services.SupplyTransferService, secretKey string) {
+func SetupSupplyTransferRoutes(router *gin.RouterGroup, transferService *services.SupplyTransferService, secretKey string, db *gorm.DB) {
 	transferController := controllers.NewSupplyTransferController(transferService)
 	transfers := router.Group("/transfers")
-	transfers.Use(middleware.AuthMiddleware(secretKey)) // Aplicar autenticación a todas las rutas
+	transfers.Use(middleware.AuthMiddleware(secretKey, db)) // Aplicar autenticación a todas las rutas
 	{
 		// Crear transferencias
 		transfers.POST("/to-pavilion", transferController.TransferToPavilion)

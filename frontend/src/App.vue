@@ -398,7 +398,9 @@
               <div class="text-right text-white hidden sm:block">
                 <router-link 
                   to="/profile"
-                  class="text-sm font-medium hover:text-brand-blue-light transition-colors cursor-pointer block"
+                  class="text-sm font-medium text-white hover:text-brand-blue-light transition-colors cursor-pointer block"
+                  active-class="text-white hover:text-brand-blue-light"
+                  exact-active-class="text-white hover:text-brand-blue-light"
                   title="Ver mi perfil"
                 >
                   {{ authStore.getUserName }}

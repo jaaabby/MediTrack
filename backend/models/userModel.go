@@ -29,6 +29,11 @@ type User struct {
 	MustChangePassword     bool              `json:"must_change_password" db:"must_change_password" gorm:"default:false"`
 	ResetPasswordToken     *string           `json:"-" db:"reset_password_token"`
 	ResetPasswordExpiresAt *int64            `json:"-" db:"reset_password_expires_at"`
+	FailedLoginAttempts    int               `json:"-" db:"failed_login_attempts" gorm:"default:0"`
+	LockedUntil            *int64            `json:"-" db:"locked_until"`
+	TokenVersion           int               `json:"-" db:"token_version" gorm:"default:1;not null"`
+	TOTPSecret             *string           `json:"-" db:"totp_secret" gorm:"column:totp_secret"`
+	TOTPEnabled            bool              `json:"totp_enabled" db:"totp_enabled" gorm:"column:totp_enabled;default:false"`
 	CreatedAt              int64             `json:"created_at" db:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt              int64             `json:"updated_at" db:"updated_at" gorm:"autoUpdateTime"`
 }
@@ -46,6 +51,7 @@ type UserResponse struct {
 	Specialty          *MedicalSpecialty `json:"specialty,omitempty"`
 	IsActive           bool              `json:"is_active"`
 	MustChangePassword bool              `json:"must_change_password"`
+	TOTPEnabled        bool              `json:"totp_enabled"`
 	CreatedAt          int64             `json:"created_at"`
 	UpdatedAt          int64             `json:"updated_at"`
 }
@@ -64,6 +70,7 @@ func (u User) ToResponse() UserResponse {
 		Specialty:          u.Specialty,
 		IsActive:           u.IsActive,
 		MustChangePassword: u.MustChangePassword,
+		TOTPEnabled:        u.TOTPEnabled,
 		CreatedAt:          u.CreatedAt,
 		UpdatedAt:          u.UpdatedAt,
 	}

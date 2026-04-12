@@ -9,18 +9,21 @@ import (
 
 // Claims representa los claims del token JWT
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	UserID    string `json:"user_id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	IsPreAuth bool   `json:"is_pre_auth,omitempty"`
+	TokenVersion int    `json:"token_version"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken genera un nuevo token JWT
-func GenerateToken(userID string, email string, role string, secretKey string, duration time.Duration) (string, error) {
+func GenerateToken(userID string, email string, role string, tokenVersion int, secretKey string, duration time.Duration) (string, error) {
 	claims := Claims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
+		UserID:       userID,
+		Email:        email,
+		Role:         role,
+		TokenVersion: tokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -28,6 +31,24 @@ func GenerateToken(userID string, email string, role string, secretKey string, d
 		},
 	}
 
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(secretKey))
+}
+
+// GeneratePreAuthToken genera un token de pre-autenticación de corta duración (5 min)
+// usado cuando el login es correcto pero aún falta verificar TOTP
+func GeneratePreAuthToken(userID string, email string, role string, secretKey string) (string, error) {
+	claims := Claims{
+		UserID:    userID,
+		Email:     email,
+		Role:      role,
+		IsPreAuth: true,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+		},
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secretKey))
 }

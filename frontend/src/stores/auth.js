@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import authService from '@/services/auth/authService'
+import { loginWithPasskey, registerPasskey, listPasskeys, deletePasskey } from '@/services/auth/passkeyService'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -7,7 +8,11 @@ export const useAuthStore = defineStore('auth', {
     token: null,
     isAuthenticated: false,
     isLoading: false,
-    error: null
+    error: null,
+    _sessionPollInterval: null,
+    // Estado TOTP: almacena el pre-auth token cuando el login requiere verificación TOTP
+    totpRequired: false,
+    preAuthToken: null
   }),
 
   getters: {
@@ -136,7 +141,7 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     // Inicializar el store desde localStorage y restaurar sesión si no ha expirado
-    initializeAuth() {
+    async initializeAuth() {
       const token = authService.getToken()
       const expiry = localStorage.getItem('auth_expiry')
       const now = Date.now()
@@ -168,6 +173,12 @@ export const useAuthStore = defineStore('auth', {
         if (msToExpiry > 0) {
           this._setAutoLogout(msToExpiry)
         }
+        // Verificar inmediatamente si la sesión sigue válida en el servidor
+        await this._checkSessionValidity()
+        // Iniciar polling para detectar cierres de sesión remotos
+        if (this.isAuthenticated) {
+          this._startSessionPolling()
+        }
       } else {
         this.logout()
       }
@@ -183,19 +194,22 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
       try {
         const response = await authService.login(email, password)
-        // Guardar token y usuario
-        this.token = response.token
-        this.user = response.user
-        this.isAuthenticated = true
-        authService.setToken(response.token)
-        // Guardar usuario completo en localStorage
-        if (response.user) {
-          localStorage.setItem('user_full', JSON.stringify(response.user))
+
+        // Si el servidor requiere verificación TOTP, guardar pre_auth_token y señalizar
+        if (response.totp_required) {
+          this.totpRequired = true
+          this.preAuthToken = response.pre_auth_token
+          return response
         }
         // Guardar expiración (1 hora desde ahora)
         const expiry = Date.now() + 60 * 60 * 1000
         localStorage.setItem('auth_expiry', expiry.toString())
         this._setAutoLogout(60 * 60 * 1000)
+        // Iniciar polling de sesión
+        this._startSessionPolling()
+
+        // Login completo sin TOTP
+        this._completeLogin(response)
         return response
       } catch (error) {
         this.error = error.message
@@ -203,6 +217,38 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.isLoading = false
       }
+    },
+
+    // Completar el login tras verificación TOTP exitosa
+    async verifyTOTP(code) {
+      this.isLoading = true
+      this.error = null
+      try {
+        const response = await authService.verifyTOTP(this.preAuthToken, code)
+        this.totpRequired = false
+        this.preAuthToken = null
+        this._completeLogin(response)
+        return response
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    // Lógica común para finalizar el login (con o sin TOTP)
+    _completeLogin(response) {
+      this.token = response.token
+      this.user = response.user
+      this.isAuthenticated = true
+      authService.setToken(response.token)
+      if (response.user) {
+        localStorage.setItem('user_full', JSON.stringify(response.user))
+      }
+      const expiry = Date.now() + 60 * 60 * 1000
+      localStorage.setItem('auth_expiry', expiry.toString())
+      this._setAutoLogout(60 * 60 * 1000)
     },
 
     // Obtener perfil del usuario
@@ -257,6 +303,8 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
       this.error = null
       this.isLoading = false
+      this.totpRequired = false
+      this.preAuthToken = null
       // Remover token, expiración y usuario completo del localStorage
       authService.removeToken()
       localStorage.removeItem('auth_expiry')
@@ -266,6 +314,8 @@ export const useAuthStore = defineStore('auth', {
         clearTimeout(this._logoutTimeout)
         this._logoutTimeout = null
       }
+      // Detener polling de sesión
+      this._stopSessionPolling()
     },
 
     // Programar logout automático
@@ -275,9 +325,40 @@ export const useAuthStore = defineStore('auth', {
       }
       this._logoutTimeout = setTimeout(() => {
         this.logout()
-        // Opcional: redirigir al login si quieres
         window.location.href = '/login'
       }, ms)
+    },
+
+    // Verificar si la sesión sigue válida en el servidor (token_version)
+    async _checkSessionValidity() {
+      if (!this.token) return
+      try {
+        await authService.getProfile()
+      } catch (error) {
+        // 401 significa sesión cerrada remotamente
+        this.logout()
+        window.location.href = '/login'
+      }
+    },
+
+    // Iniciar polling para detectar cierres de sesión remotos (cada 30 segundos)
+    _startSessionPolling() {
+      this._stopSessionPolling()
+      this._sessionPollInterval = setInterval(async () => {
+        if (!this.isAuthenticated) {
+          this._stopSessionPolling()
+          return
+        }
+        await this._checkSessionValidity()
+      }, 30000)
+    },
+
+    // Detener polling
+    _stopSessionPolling() {
+      if (this._sessionPollInterval) {
+        clearInterval(this._sessionPollInterval)
+        this._sessionPollInterval = null
+      }
     },
 
     // Verificar permisos
@@ -324,6 +405,21 @@ export const useAuthStore = defineStore('auth', {
       return allowedRoutes.includes(routeName)
     },
 
+    // Cerrar sesión en todos los dispositivos
+    async logoutAllDevices() {
+      this.isLoading = true
+      this.error = null
+      try {
+        await authService.logoutAllDevices()
+        this.logout()
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     // Actualizar información del usuario
     updateUser(userData) {
       if (this.user) {
@@ -334,6 +430,39 @@ export const useAuthStore = defineStore('auth', {
     // Limpiar errores
     clearError() {
       this.error = null
-    }
+    },
+
+    // ── Passkey ────────────────────────────────────────────────────────────
+
+    // Iniciar sesión con passkey (sin email/contraseña)
+    async loginWithPasskey() {
+      this.isLoading = true
+      this.error = null
+      try {
+        const response = await loginWithPasskey()
+        this._completeLogin(response)
+        return response
+      } catch (error) {
+        this.error = error.message
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    // Registrar una nueva passkey (usuario debe estar autenticado)
+    async registerPasskey(name) {
+      return registerPasskey(this.token, name)
+    },
+
+    // Listar passkeys del usuario
+    async listPasskeys() {
+      return listPasskeys(this.token)
+    },
+
+    // Eliminar una passkey
+    async deletePasskey(id) {
+      return deletePasskey(this.token, id)
+    },
   }
 })

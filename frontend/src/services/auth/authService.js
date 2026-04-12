@@ -25,11 +25,15 @@ class AuthService {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al iniciar sesión')
+        const err = new Error(data.error || 'Error al iniciar sesión')
+        if (data.data) err.responseData = data.data
+        throw err
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Error al iniciar sesión')
+        const err = new Error(data.error || 'Error al iniciar sesión')
+        if (data.data) err.responseData = data.data
+        throw err
       }
 
       return data.data
@@ -305,6 +309,115 @@ class AuthService {
     } catch (error) {
       console.error('Error al decodificar token:', error)
       return null
+    }
+  }
+
+  // Cerrar sesión en todos los dispositivos
+  async logoutAllDevices() {
+    const token = this.getToken()
+    if (!token) {
+      throw new Error('No hay token de autenticación')
+    }
+
+    const response = await fetch(`${this.baseURL}/auth/logout-all-devices`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Error al cerrar sesión en todos los dispositivos')
+    }
+
+    return data
+  }
+
+  // Obtener configuración TOTP (secreto + URL del QR) para setup inicial
+  async getTOTPSetup() {
+    try {
+      const token = this.getToken()
+      if (!token) throw new Error('No hay token de autenticación')
+
+      const response = await fetch(`${this.baseURL}/auth/totp/setup`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      })
+      const data = await response.json()
+      if (!response.ok || !data.success) throw new Error(data.error || 'Error al obtener configuración TOTP')
+      return data.data
+    } catch (error) {
+      console.error('Error en AuthService.getTOTPSetup:', error)
+      throw error
+    }
+  }
+
+  // Activar TOTP con el secreto y el código de verificación del usuario
+  async activateTOTP(secret, code) {
+    try {
+      const token = this.getToken()
+      if (!token) throw new Error('No hay token de autenticación')
+
+      const response = await fetch(`${this.baseURL}/auth/totp/activate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ secret, code })
+      })
+      const data = await response.json()
+      if (!response.ok || !data.success) throw new Error(data.error || 'Error al activar TOTP')
+      return data
+    } catch (error) {
+      console.error('Error en AuthService.activateTOTP:', error)
+      throw error
+    }
+  }
+
+  // Verificar código TOTP durante el login (usa pre_auth_token)
+  async verifyTOTP(preAuthToken, code) {
+    try {
+      const response = await fetch(`${this.baseURL}/auth/totp/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pre_auth_token: preAuthToken, code })
+      })
+      const data = await response.json()
+      if (!response.ok || !data.success) throw new Error(data.error || 'Código TOTP inválido')
+      return data.data
+    } catch (error) {
+      console.error('Error en AuthService.verifyTOTP:', error)
+      throw error
+    }
+  }
+
+  // Deshabilitar TOTP (requiere confirmar contraseña)
+  async disableTOTP(password) {
+    try {
+      const token = this.getToken()
+      if (!token) throw new Error('No hay token de autenticación')
+
+      const response = await fetch(`${this.baseURL}/auth/totp`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password })
+      })
+      const data = await response.json()
+      if (!response.ok || !data.success) throw new Error(data.error || 'Error al deshabilitar TOTP')
+      return data
+    } catch (error) {
+      console.error('Error en AuthService.disableTOTP:', error)
+      throw error
     }
   }
 

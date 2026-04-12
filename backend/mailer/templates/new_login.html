@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Inicio de Sesión - MediTrack</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef4fb;
+            margin: 0;
+            padding: 30px 16px;
+            color: #1a1a2e;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(12, 112, 205, 0.12);
+            overflow: hidden;
+        }
+
+        /* ── HEADER ─────────────────────────────────── */
+        .header {
+            background: linear-gradient(135deg, #0C70CD 0%, #2B88D0 100%);
+            padding: 36px 30px 28px;
+            text-align: center;
+        }
+        .header-badge {
+            display: inline-block;
+            background-color: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: #ffffff;
+            margin-bottom: 14px;
+        }
+        .header h1 {
+            margin: 0 0 6px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .header p {
+            margin: 0;
+            font-size: 14px;
+            color: rgba(255,255,255,0.82);
+        }
+        /* barra de acento celeste debajo del header */
+        .header-accent {
+            height: 4px;
+            background: linear-gradient(90deg, #31CDE3 0%, #2B88D0 100%);
+        }
+
+        /* ── CONTENT ─────────────────────────────────── */
+        .content {
+            padding: 32px 30px 24px;
+        }
+        .content p {
+            margin: 0 0 14px 0;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #2d3748;
+        }
+
+        /* ── INFO BOX ────────────────────────────────── */
+        .info-box {
+            background-color: #f0f8ff;
+            border-left: 4px solid #31CDE3;
+            border-radius: 0 6px 6px 0;
+            padding: 0;
+            margin: 22px 0;
+            overflow: hidden;
+        }
+        .info-box table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-box tr {
+            border-bottom: 1px solid #dbeeff;
+        }
+        .info-box tr:last-child {
+            border-bottom: none;
+        }
+        .info-box td {
+            padding: 12px 18px;
+            font-size: 14px;
+            color: #374151;
+            vertical-align: top;
+        }
+        .info-box td.label {
+            font-weight: 600;
+            color: #0C70CD;
+            width: 38%;
+            white-space: nowrap;
+        }
+
+        /* ── WARNING ─────────────────────────────────── */
+        .warning {
+            background-color: #fff5f9;
+            border: 1px solid #FA92B9;
+            border-left: 4px solid #FA92B9;
+            border-radius: 0 6px 6px 0;
+            padding: 14px 18px;
+            margin: 22px 0;
+        }
+        .warning p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #5a1230;
+        }
+        .warning strong {
+            color: #c0185a;
+        }
+
+        /* ── BUTTON ──────────────────────────────────── */
+        .btn-wrap {
+            text-align: center;
+            margin: 28px 0 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 13px 32px;
+            background: linear-gradient(135deg, #0C70CD 0%, #2B88D0 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 0.3px;
+            box-shadow: 0 4px 12px rgba(12, 112, 205, 0.35);
+        }
+
+        /* ── DIVIDER ─────────────────────────────────── */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #31CDE3, transparent);
+            margin: 24px 0;
+            opacity: 0.5;
+        }
+
+        /* ── FOOTER ──────────────────────────────────── */
+        .footer {
+            background-color: #f4f8fe;
+            border-top: 1px solid #dbeeff;
+            padding: 18px 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #7a8fa6;
+            line-height: 1.6;
+        }
+        .footer strong {
+            color: #0C70CD;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-badge">Alerta de Seguridad</div>
+            <h1>Nuevo inicio de sesi&#243;n</h1>
+            <p>Se detect&#243; un acceso a tu cuenta de MediTrack</p>
+        </div>
+        <div class="header-accent"></div>
+
+        <!-- CONTENT -->
+        <div class="content">
+            <p>Hola <strong>{{.Name}}</strong>,</p>
+            <p>Registramos un nuevo inicio de sesi&#243;n en tu cuenta. Revisa los detalles a continuaci&#243;n:</p>
+
+            <div class="info-box">
+                <table>
+                    <tr>
+                        <td class="label">Fecha y hora</td>
+                        <td>{{.LoginTime}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Direcci&#243;n IP</td>
+                        <td>{{.IPAddress}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Navegador</td>
+                        <td>{{.UserAgent}}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="warning">
+                <p><strong>&#191;No fuiste t&#250;?</strong></p>
+                <p>Cambia tu contrase&#241;a de inmediato y contacta al administrador del sistema.</p>
+            </div>
+
+            <div class="btn-wrap">
+                <a href="{{.ChangePasswordURL}}" class="button">Cambiar mi Contrase&#241;a</a>
+            </div>
+
+            <div class="divider"></div>
+
+            <p style="font-size:14px; color:#64748b;">Si reconoces esta actividad, puedes ignorar este mensaje.</p>
+            <p style="font-size:14px; color:#64748b;">Saludos,<br><strong style="color:#0C70CD;">Equipo de MediTrack</strong></p>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>Este es un correo autom&#225;tico. Por favor no respondas a este mensaje.</p>
+            <p>Por tu seguridad, nunca compartas tu contrase&#241;a &mdash; <strong>MediTrack</strong> jam&#225;s te la solicitar&#225;.</p>
+        </div>
+
+    </div>
+</body>
+</html>

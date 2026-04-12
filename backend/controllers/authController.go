@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pquerna/otp/totp"
 	"gorm.io/gorm"
 
 	"meditrack/pkg/crypto"
@@ -23,6 +25,11 @@ type AuthController struct {
 	userService services.UserService
 	secretKey   string
 }
+
+const (
+	maxLoginAttempts = 5
+	lockoutDuration  = 15 * time.Minute
+)
 
 // NewAuthController crea una nueva instancia de AuthController
 func NewAuthController(userService services.UserService, secretKey string) *AuthController {
@@ -65,6 +72,12 @@ type LoginResponse struct {
 	TokenType string              `json:"token_type"`
 }
 
+// LoginTOTPRequiredResponse se retorna cuando el login es correcto pero el usuario tiene TOTP habilitado
+type LoginTOTPRequiredResponse struct {
+	TOTPRequired bool   `json:"totp_required"`
+	PreAuthToken string `json:"pre_auth_token"`
+}
+
 // Login autentica un usuario y retorna un token JWT
 func (c *AuthController) Login(ctx *gin.Context) {
 	var loginReq LoginRequest
@@ -95,18 +108,77 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	// Verificar contraseña
-	if err := crypto.ComparePassword(user.Password, loginReq.Password); err != nil {
-		ctx.JSON(http.StatusUnauthorized, response.Response{
+	// Verificar si la cuenta está bloqueada
+	now := time.Now().Unix()
+	if user.LockedUntil != nil && *user.LockedUntil > now {
+		remainingSeconds := *user.LockedUntil - now
+		minutes := int(remainingSeconds/60) + 1
+		ctx.JSON(http.StatusTooManyRequests, response.Response{
 			Success: false,
-			Error:   "La contraseña ingresada es incorrecta",
+			Error:   fmt.Sprintf("Cuenta bloqueada temporalmente. Intenta nuevamente en %d minuto(s).", minutes),
+			Data: map[string]interface{}{
+				"locked_until":      *user.LockedUntil,
+				"remaining_seconds": remainingSeconds,
+			},
 		})
 		return
 	}
 
+	// Verificar contraseña
+	if err := crypto.ComparePassword(user.Password, loginReq.Password); err != nil {
+		attempts, incErr := c.userService.IncrementFailedLoginAttempts(user.RUT)
+		if incErr != nil {
+			attempts = maxLoginAttempts
+		}
+		remaining := maxLoginAttempts - attempts
+		if remaining <= 0 {
+			lockedUntil := time.Now().Add(lockoutDuration).Unix()
+			_ = c.userService.LockUser(user.RUT, lockedUntil)
+			ctx.JSON(http.StatusTooManyRequests, response.Response{
+				Success: false,
+				Error:   fmt.Sprintf("Cuenta bloqueada por %d minutos debido a demasiados intentos fallidos.", int(lockoutDuration.Minutes())),
+				Data: map[string]interface{}{
+					"locked_until":      lockedUntil,
+					"remaining_seconds": int64(lockoutDuration.Seconds()),
+				},
+			})
+		} else {
+			ctx.JSON(http.StatusUnauthorized, response.Response{
+				Success: false,
+				Error:   fmt.Sprintf("Contraseña incorrecta. Te quedan %d intento(s) antes de que tu cuenta sea bloqueada.", remaining),
+			})
+		}
+		return
+	}
+
+	// Login exitoso: restablecer contador de intentos fallidos
+	_ = c.userService.ResetFailedLoginAttempts(user.RUT)
+
 	// Generar token JWT (24 horas de duración)
+	// Si el usuario tiene TOTP habilitado, emitir pre-auth token en lugar del JWT completo
+	if user.TOTPEnabled {
+		preAuthToken, err := config.GeneratePreAuthToken(user.RUT, user.Email, user.Role, c.secretKey)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, response.Response{
+				Success: false,
+				Error:   "Error al generar token: " + err.Error(),
+			})
+			return
+		}
+		ctx.JSON(http.StatusOK, response.Response{
+			Success: true,
+			Message: "Se requiere verificación TOTP",
+			Data: LoginTOTPRequiredResponse{
+				TOTPRequired: true,
+				PreAuthToken: preAuthToken,
+			},
+		})
+		return
+	}
+
+	// Generar token JWT completo (24 horas de duración)
 	duration := 24 * time.Hour
-	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, c.secretKey, duration)
+	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, user.TokenVersion, c.secretKey, duration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
 			Success: false,
@@ -114,6 +186,16 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		})
 		return
 	}
+
+	// Enviar correo de notificación de nuevo inicio de sesión (no bloquea la respuesta)
+	realIP := ctx.GetHeader("X-Forwarded-For")
+	if realIP == "" {
+		realIP = ctx.GetHeader("X-Real-IP")
+	}
+	if realIP == "" {
+		realIP = ctx.ClientIP()
+	}
+	go c.sendLoginNotificationEmail(user, realIP, ctx.GetHeader("User-Agent"), ctx.GetHeader("Origin"))
 
 	// Crear respuesta
 	loginResp := LoginResponse{
@@ -128,6 +210,128 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		Message: "Login exitoso",
 		Data:    loginResp,
 	})
+}
+
+// sendLoginNotificationEmail envía un correo al usuario informando del nuevo inicio de sesión
+func (c *AuthController) sendLoginNotificationEmail(user *models.User, ipAddress, userAgent, origin string) {
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		if origin != "" {
+			frontendURL = origin
+		} else {
+			frontendURL = "http://localhost:3000"
+		}
+	}
+
+	changePasswordURL := fmt.Sprintf("%s/profile", frontendURL)
+
+	loc, _ := time.LoadLocation("America/Santiago")
+	loginTime := time.Now().In(loc).Format("02/01/2006 15:04:05")
+
+	// Normalizar IP
+	displayIP := formatIPAddress(ipAddress)
+
+	// Parsear User-Agent a texto legible
+	displayUA := parseUserAgent(userAgent)
+
+	templateData := struct {
+		Name              string
+		LoginTime         string
+		IPAddress         string
+		UserAgent         string
+		ChangePasswordURL string
+	}{
+		Name:              user.Name,
+		LoginTime:         loginTime,
+		IPAddress:         displayIP,
+		UserAgent:         displayUA,
+		ChangePasswordURL: changePasswordURL,
+	}
+
+	templatePath := filepath.Join("mailer", "templates", "new_login.html")
+	mailReq := mailer.NewRequest([]string{user.Email}, "Nuevo inicio de sesión en tu cuenta MediTrack")
+	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
+		fmt.Printf("⚠️  No se pudo enviar el correo de notificación de login a %s: %v\n", user.Email, err)
+	}
+}
+
+// formatIPAddress muestra un texto amigable para IPs de loopback
+func formatIPAddress(ip string) string {
+	if ip == "::1" || ip == "127.0.0.1" || ip == "localhost" {
+		return ip + " (acceso local)"
+	}
+	return ip
+}
+
+// parseUserAgent extrae navegador y sistema operativo del User-Agent
+func parseUserAgent(ua string) string {
+	if ua == "" {
+		return "Desconocido"
+	}
+
+	// Detectar sistema operativo
+	operatingSystem := "SO desconocido"
+	switch {
+	case strings.Contains(ua, "Windows NT 10.0"):
+		operatingSystem = "Windows 10/11"
+	case strings.Contains(ua, "Windows NT 6.3"):
+		operatingSystem = "Windows 8.1"
+	case strings.Contains(ua, "Windows NT 6.2"):
+		operatingSystem = "Windows 8"
+	case strings.Contains(ua, "Windows NT 6.1"):
+		operatingSystem = "Windows 7"
+	case strings.Contains(ua, "Windows"):
+		operatingSystem = "Windows"
+	case strings.Contains(ua, "Mac OS X"):
+		operatingSystem = "macOS"
+	case strings.Contains(ua, "Android"):
+		operatingSystem = "Android"
+	case strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad"):
+		operatingSystem = "iOS"
+	case strings.Contains(ua, "Linux"):
+		operatingSystem = "Linux"
+	}
+
+	// Detectar navegador (orden importa: Edge antes de Chrome, Chrome antes de Safari)
+	browser := "Navegador desconocido"
+	switch {
+	case strings.Contains(ua, "Edg/"):
+		browser = "Microsoft Edge " + extractVersion(ua, "Edg/")
+	case strings.Contains(ua, "OPR/") || strings.Contains(ua, "Opera/"):
+		v := extractVersion(ua, "OPR/")
+		if v == "" {
+			v = extractVersion(ua, "Opera/")
+		}
+		browser = "Opera " + v
+	case strings.Contains(ua, "Firefox/"):
+		browser = "Firefox " + extractVersion(ua, "Firefox/")
+	case strings.Contains(ua, "Chrome/"):
+		browser = "Chrome " + extractVersion(ua, "Chrome/")
+	case strings.Contains(ua, "Safari/") && strings.Contains(ua, "Version/"):
+		browser = "Safari " + extractVersion(ua, "Version/")
+	case strings.Contains(ua, "MSIE ") || strings.Contains(ua, "Trident/"):
+		browser = "Internet Explorer"
+	}
+
+	return browser + " — " + operatingSystem
+}
+
+func extractVersion(ua, token string) string {
+	idx := strings.Index(ua, token)
+	if idx < 0 {
+		return ""
+	}
+	start := idx + len(token)
+	end := start
+	for end < len(ua) && ua[end] != ' ' && ua[end] != ')' && ua[end] != ';' {
+		end++
+	}
+	version := ua[start:end]
+	// Solo devolver major version (antes del primer punto)
+	if dotIdx := strings.Index(version, "."); dotIdx >= 0 {
+		return version[:dotIdx]
+	}
+	return version
 }
 
 // GetProfile obtiene el perfil del usuario autenticado
@@ -560,6 +764,291 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 // ValidateResetTokenRequest representa la solicitud para validar un token
 type ValidateResetTokenRequest struct {
 	Token string `json:"token" binding:"required"`
+}
+
+// LogoutAllDevices invalida todos los tokens activos del usuario incrementando su token_version
+func (c *AuthController) LogoutAllDevices(ctx *gin.Context) {
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	if err := c.userService.IncrementTokenVersion(userID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al cerrar sesión en todos los dispositivos",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Sesión cerrada en todos los dispositivos exitosamente",
+	})
+}
+
+// SetupTOTP genera un nuevo secreto TOTP y retorna la URL del QR para que el usuario configure su app
+// El secreto NO se guarda en DB hasta que el usuario lo active con ActivateTOTP
+func (c *AuthController) SetupTOTP(ctx *gin.Context) {
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	if user.TOTPEnabled {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "TOTP ya está habilitado para este usuario",
+		})
+		return
+	}
+
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "MediTrack",
+		AccountName: user.Email,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al generar secreto TOTP",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Data: map[string]string{
+			"secret": key.Secret(),
+			"qr_url": key.URL(),
+		},
+	})
+}
+
+// ActivateTOTPRequest representa la solicitud para activar TOTP
+type ActivateTOTPRequest struct {
+	Secret string `json:"secret" binding:"required"`
+	Code   string `json:"code" binding:"required,len=6"`
+}
+
+// ActivateTOTP verifica el código TOTP y habilita TOTP para el usuario
+func (c *AuthController) ActivateTOTP(ctx *gin.Context) {
+	var req ActivateTOTPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	if user.TOTPEnabled {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "TOTP ya está habilitado para este usuario",
+		})
+		return
+	}
+
+	if !totp.Validate(req.Code, req.Secret) {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Código TOTP inválido",
+		})
+		return
+	}
+
+	if err := c.userService.EnableTOTP(user.RUT, req.Secret); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al activar TOTP",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "TOTP activado exitosamente",
+	})
+}
+
+// VerifyTOTPRequest representa la solicitud de verificación TOTP durante el login
+type VerifyTOTPRequest struct {
+	PreAuthToken string `json:"pre_auth_token" binding:"required"`
+	Code         string `json:"code" binding:"required,len=6"`
+}
+
+// VerifyTOTP valida el código TOTP durante el proceso de login y retorna un JWT completo
+func (c *AuthController) VerifyTOTP(ctx *gin.Context) {
+	var req VerifyTOTPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	claims, err := config.ValidateToken(req.PreAuthToken, c.secretKey)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Token de pre-autenticación inválido o expirado",
+		})
+		return
+	}
+
+	if !claims.IsPreAuth {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Token inválido",
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(claims.UserID)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	if !user.TOTPEnabled || user.TOTPSecret == nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "TOTP no está habilitado para este usuario",
+		})
+		return
+	}
+
+	if !totp.Validate(req.Code, *user.TOTPSecret) {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Código TOTP inválido",
+		})
+		return
+	}
+
+	duration := 24 * time.Hour
+	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, user.TokenVersion, c.secretKey, duration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al generar token",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "Login exitoso",
+		Data: LoginResponse{
+			Token:     token,
+			User:      user.ToResponse(),
+			ExpiresIn: int64(duration.Seconds()),
+			TokenType: "Bearer",
+		},
+	})
+}
+
+// DisableTOTPRequest representa la solicitud para deshabilitar TOTP
+type DisableTOTPRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
+// DisableTOTP deshabilita TOTP para el usuario autenticado (requiere confirmar contraseña)
+func (c *AuthController) DisableTOTP(ctx *gin.Context) {
+	var req DisableTOTPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "Datos inválidos: " + err.Error(),
+		})
+		return
+	}
+
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	user, err := c.userService.GetUserByRut(userID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, response.Response{
+			Success: false,
+			Error:   "Usuario no encontrado",
+		})
+		return
+	}
+
+	if !user.TOTPEnabled {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "TOTP no está habilitado para este usuario",
+		})
+		return
+	}
+
+	if err := crypto.ComparePassword(user.Password, req.Password); err != nil {
+		ctx.JSON(http.StatusUnauthorized, response.Response{
+			Success: false,
+			Error:   "Contraseña incorrecta",
+		})
+		return
+	}
+
+	if err := c.userService.DisableTOTP(user.RUT); err != nil {
+		ctx.JSON(http.StatusInternalServerError, response.Response{
+			Success: false,
+			Error:   "Error al deshabilitar TOTP",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response.Response{
+		Success: true,
+		Message: "TOTP deshabilitado exitosamente",
+	})
 }
 
 // ValidateResetToken verifica si un token es válido

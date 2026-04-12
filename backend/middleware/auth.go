@@ -7,10 +7,11 @@ import (
 	"meditrack/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-// AuthMiddleware verifica la autenticación del usuario
-func AuthMiddleware(secretKey string) gin.HandlerFunc {
+// AuthMiddleware verifica la autenticación del usuario y valida el token_version contra la DB
+func AuthMiddleware(secretKey string, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -37,6 +38,35 @@ func AuthMiddleware(secretKey string) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"error":   "Token inválido o expirado",
+			})
+			c.Abort()
+			return
+		}
+
+		// Verificar token_version contra la base de datos para detectar cierres de sesión globales
+		var user models.User
+		if err := db.Select("token_version").First(&user, "rut = ?", claims.UserID).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error":   "Usuario no encontrado",
+			})
+			c.Abort()
+			return
+		}
+		if claims.TokenVersion != user.TokenVersion {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error":   "Sesión cerrada remotamente. Por favor, inicia sesión nuevamente.",
+			})
+			c.Abort()
+			return
+		}
+
+		// Rechazar tokens de pre-autenticación TOTP en rutas protegidas
+		if claims.IsPreAuth {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error":   "Se requiere completar la verificación TOTP",
 			})
 			c.Abort()
 			return

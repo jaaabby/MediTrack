@@ -6,16 +6,17 @@ import (
 	"meditrack/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // SetupUserRoutes configura las rutas de usuarios
-func SetupUserRoutes(router *gin.RouterGroup, userService services.UserService, secretKey string) {
+func SetupUserRoutes(router *gin.RouterGroup, userService services.UserService, secretKey string, db *gorm.DB) {
 	userController := controllers.NewUserController(userService)
 
 	users := router.Group("/users")
 	{
 		// Aplicar middleware de autenticación a todas las rutas de usuarios
-		users.Use(middleware.AuthMiddleware(secretKey))
+		users.Use(middleware.AuthMiddleware(secretKey, db))
 
 		// Rutas para administradores
 		adminRoutes := users.Group("/")
