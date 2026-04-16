@@ -487,7 +487,27 @@ const canReceive = (product) => {
                  product.current_status
   
   console.log('canReceive: Estado encontrado:', status)
-  return status === 'en_camino_a_pabellon'
+  
+  if (status !== 'en_camino_a_pabellon') return false
+  
+  // Solo los usuarios con rol 'pabellón' tienen restricción de pabellón
+  const userRole = currentUser.value?.role
+  if (userRole !== 'pabellón') return true
+  
+  const userPavilionId = currentUser.value?.pavilion_id
+  
+  // Usuario con rol 'pabellón' sin pabellón asignado no puede recepcionar nada
+  if (userPavilionId == null) return false
+  
+  // Obtener el pabellón destino: campo explícito > solicitud > location del insumo
+  const destinationPavilionId = product.destination_pavilion_id
+    ?? product.supply_request?.pavilion_id
+    ?? product.supply_info?.location_id
+  
+  // Si no podemos determinar el pabellón destino, bloquear por seguridad
+  if (destinationPavilionId == null || destinationPavilionId === 0) return false
+  
+  return Number(userPavilionId) === Number(destinationPavilionId)
 }
 
 // Verificar si está recepcionado (para mostrar opciones de consumo/devolución)
@@ -501,7 +521,27 @@ const isReceived = (product) => {
                  product.current_status
   
   console.log('isReceived: Estado encontrado:', status)
-  return status === 'recepcionado'
+  
+  if (status !== 'recepcionado') return false
+  
+  // Solo los usuarios con rol 'pabellón' tienen restricción de pabellón
+  const userRole = currentUser.value?.role
+  if (userRole !== 'pabellón') return true
+  
+  const userPavilionId = currentUser.value?.pavilion_id
+  
+  // Usuario con rol 'pabellón' sin pabellón asignado no puede recepcionar nada
+  if (userPavilionId == null) return false
+  
+  // Obtener el pabellón destino: campo explícito > solicitud > location del insumo
+  const destinationPavilionId = product.destination_pavilion_id
+    ?? product.supply_request?.pavilion_id
+    ?? product.supply_info?.location_id
+  
+  // Si no podemos determinar el pabellón destino, bloquear por seguridad
+  if (destinationPavilionId == null || destinationPavilionId === 0) return false
+  
+  return Number(userPavilionId) === Number(destinationPavilionId)
 }
 
 // Obtener mensaje de error para recepción
@@ -523,6 +563,22 @@ const getReceptionErrorMessage = (product) => {
 
   if (status === 'disponible') {
     return 'Este insumo está disponible en el centro médico.'
+  }
+
+  if (status === 'en_camino_a_pabellon') {
+    // El estado es correcto pero el pabellón no coincide
+    if (currentUser.value?.role === 'pabellón') {
+      const userPavilionId = currentUser.value?.pavilion_id
+      const destinationPavilionId = product.destination_pavilion_id
+        ?? product.supply_request?.pavilion_id
+        ?? product.supply_info?.location_id
+      if (userPavilionId == null) {
+        return 'Su usuario no tiene un pabellón asignado. Contacte al administrador.'
+      }
+      if (destinationPavilionId != null && Number(userPavilionId) !== Number(destinationPavilionId)) {
+        return 'Este insumo fue solicitado para otro pabellón. Solo puede ser recepcionado por el usuario del pabellón asignado en la solicitud.'
+      }
+    }
   }
 
   if (status !== 'en_camino_a_pabellon') {

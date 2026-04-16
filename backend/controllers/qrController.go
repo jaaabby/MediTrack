@@ -141,15 +141,18 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 			supplyCodeInt = qrInfo.SupplyInfo.BatchInfo.SupplyCode
 		}
 		supplyInfoMap := gin.H{
-			"ID":           qrInfo.SupplyInfo.ID,
-			"Code":         supplyCodeInt,
-			"BatchID":      qrInfo.SupplyInfo.BatchID,
-			"QRCode":       qrInfo.SupplyInfo.QRCode,
-			"Status":       qrInfo.SupplyInfo.Status,
-			"IsConsumed":   qrInfo.SupplyInfo.IsConsumed,
-			"LastMovement": qrInfo.SupplyInfo.LastMovement,
-			"DaysToExpire": qrInfo.SupplyInfo.DaysToExpire,
-			"store_name":   qrInfo.SupplyInfo.StoreName,
+			"ID":            qrInfo.SupplyInfo.ID,
+			"Code":          supplyCodeInt,
+			"BatchID":       qrInfo.SupplyInfo.BatchID,
+			"QRCode":        qrInfo.SupplyInfo.QRCode,
+			"Status":        qrInfo.SupplyInfo.Status,
+			"IsConsumed":    qrInfo.SupplyInfo.IsConsumed,
+			"LastMovement":  qrInfo.SupplyInfo.LastMovement,
+			"DaysToExpire":  qrInfo.SupplyInfo.DaysToExpire,
+			"store_name":    qrInfo.SupplyInfo.StoreName,
+			"location_id":   qrInfo.SupplyInfo.LocationID,
+			"location_type": qrInfo.SupplyInfo.LocationType,
+			"in_transit":    qrInfo.SupplyInfo.InTransit,
 		}
 
 		// Agregar nombre del insumo directamente
@@ -173,6 +176,13 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 		resultMap["can_consume"] = !qrInfo.SupplyInfo.IsConsumed
 		resultMap["status"] = qrInfo.SupplyInfo.Status
 		resultMap["current_status"] = qrInfo.SupplyInfo.Status
+
+		// Agregar destination_pavilion_id explícito para insumos en camino a pabellón
+		if qrInfo.SupplyInfo.Status == models.StatusEnRouteToPavilion &&
+			qrInfo.SupplyInfo.LocationType == models.SupplyLocationPavilion &&
+			qrInfo.SupplyInfo.LocationID > 0 {
+			resultMap["destination_pavilion_id"] = qrInfo.SupplyInfo.LocationID
+		}
 	}
 
 	if qrType == "SUPPLY" {
