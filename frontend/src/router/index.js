@@ -409,6 +409,17 @@ const routes = [
       requiresAuth: true
     }
   },
+  {
+    path: '/medical-centers',
+    name: 'MedicalCenterManagement',
+    component: () => import('@/views/config/MedicalCenterManagement.vue'),
+    meta: {
+      title: 'Centros Médicos - Meditrack',
+      description: 'Configuración de correos de alerta por centro médico',
+      requiresAuth: true,
+      requiredRoles: ['admin']
+    }
+  },
 
   // Historial de Insumos
   {

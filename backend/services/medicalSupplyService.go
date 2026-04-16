@@ -7,6 +7,7 @@ import (
 	"meditrack/mailer"
 	"meditrack/models"
 	"meditrack/pkg"
+	"meditrack/pkg/clinicconfig"
 	"os"
 	"path/filepath"
 	"strings"
@@ -668,10 +669,10 @@ func (s *MedicalSupplyService) sendUnconsumedSupplyAlert(supply *models.MedicalS
 	}
 
 	// Configurar el correo
-	// Leer email de destino desde variable de entorno
-	alertEmail := os.Getenv("ALERT_EMAIL")
+	// Leer email de destino desde BD (fallback: variable de entorno ALERT_EMAIL)
+	alertEmail := clinicconfig.GetAlertEmail(s.DB)
 	if alertEmail == "" {
-		fmt.Printf("ALERT_EMAIL no configurado, no se enviará alerta para insumo %d\n", supply.ID)
+		fmt.Printf("Email de alertas no configurado, no se enviará alerta para insumo %d\n", supply.ID)
 		return
 	}
 	recipients := []string{alertEmail}
@@ -1259,10 +1260,10 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 
 // sendAutomaticReturnSummaryEmail envía un correo con el resumen de retornos automáticos
 func (s *MedicalSupplyService) sendAutomaticReturnSummaryEmail(returnedCount int, errorCount int, returnedSupplies []map[string]interface{}) error {
-	// Leer email de destino desde variable de entorno
-	alertEmail := os.Getenv("ALERT_EMAIL")
+	// Leer email de destino desde BD (fallback: variable de entorno ALERT_EMAIL)
+	alertEmail := clinicconfig.GetAlertEmail(s.DB)
 	if alertEmail == "" {
-		return fmt.Errorf("ALERT_EMAIL no configurado, no se puede enviar resumen de retornos automáticos")
+		return fmt.Errorf("email de alertas no configurado, no se puede enviar resumen de retornos automáticos")
 	}
 	recipients := []string{alertEmail}
 
@@ -1398,7 +1399,11 @@ func (s *MedicalSupplyService) sendLowStockAlertForSupply(supplyCode int, availa
 	}
 
 	// Crear solicitud de correo
-	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Stock Crítico - Queda 1 Insumo")
+	alertEmail := clinicconfig.GetAlertEmail(s.DB)
+	if alertEmail == "" {
+		return fmt.Errorf("email de alertas no configurado en la BD ni en ALERT_EMAIL")
+	}
+	req := mailer.NewRequest([]string{alertEmail}, "Alerta: Stock Crítico - Queda 1 Insumo")
 
 	// Usar la misma plantilla de stock bajo (o crear una específica)
 	templatePath := "mailer/templates/low_stock.html"

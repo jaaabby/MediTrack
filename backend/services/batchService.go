@@ -6,6 +6,7 @@ import (
 	"log"
 	"meditrack/mailer"
 	"meditrack/models"
+	"meditrack/pkg/clinicconfig"
 	"strings"
 	"time"
 
@@ -606,7 +607,11 @@ func (s *BatchService) sendAlert(batch models.Batch, supplyCode models.SupplyCod
 		return fmt.Errorf("tipo de alerta desconocido: %s", alertType)
 	}
 
-	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, subject)
+	alertEmail := clinicconfig.GetAlertEmail(s.DB)
+	if alertEmail == "" {
+		return fmt.Errorf("email de alertas no configurado en la BD ni en ALERT_EMAIL")
+	}
+	req := mailer.NewRequest([]string{alertEmail}, subject)
 	return req.SendMailSkipTLS(templatePath, data)
 }
 

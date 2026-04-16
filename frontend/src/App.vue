@@ -152,7 +152,7 @@
               <button
                 @click="managementMenuOpen = !managementMenuOpen"
                 class="text-white hover:text-brand-blue-light px-2 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center"
-                :class="{ 'bg-brand-blue-medium': ['/transfers', '/surgeries', '/supply-history', '/return-management', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info', '/supplier-configs', '/supply-codes'].some(path => $route.path.startsWith(path)) }"
+                :class="{ 'bg-brand-blue-medium': ['/transfers', '/surgeries', '/supply-history', '/return-management', '/medical-specialties', '/surgery-typical-supplies', '/doctor-info', '/supplier-configs', '/supply-codes', '/medical-centers'].some(path => $route.path.startsWith(path)) }"
               >
                 Gestión
                 <svg class="ml-1 h-4 w-4" :class="{ 'rotate-180': managementMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,6 +303,20 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                     Códigos de Insumos
+                  </div>
+                </router-link>
+                <router-link
+                  v-if="authStore.isAdmin"
+                  to="/medical-centers"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-blue-light hover:bg-opacity-20 hover:text-brand-blue-dark transition-colors"
+                  :class="{ 'bg-brand-blue-light bg-opacity-20 text-brand-blue-dark': $route.path === '/medical-centers' }"
+                  @click="managementMenuOpen = false"
+                >
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Centros Médicos
                   </div>
                 </router-link>
                 

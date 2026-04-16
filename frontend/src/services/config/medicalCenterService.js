@@ -52,6 +52,22 @@ class MedicalCenterService {
       }
     }
   }
+
+  async update(id, data) {
+    try {
+      const response = await this.api.put(`/medical-centers/${id}`, data)
+      return {
+        success: true,
+        data: response.data.data || response.data
+      }
+    } catch (error) {
+      console.error('Error al actualizar centro médico:', error)
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      }
+    }
+  }
 }
 
 export default new MedicalCenterService()
