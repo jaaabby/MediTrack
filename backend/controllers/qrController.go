@@ -141,15 +141,18 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 			supplyCodeInt = qrInfo.SupplyInfo.BatchInfo.SupplyCode
 		}
 		supplyInfoMap := gin.H{
-			"ID":           qrInfo.SupplyInfo.ID,
-			"Code":         supplyCodeInt,
-			"BatchID":      qrInfo.SupplyInfo.BatchID,
-			"QRCode":       qrInfo.SupplyInfo.QRCode,
-			"Status":       qrInfo.SupplyInfo.Status,
-			"IsConsumed":   qrInfo.SupplyInfo.IsConsumed,
-			"LastMovement": qrInfo.SupplyInfo.LastMovement,
-			"DaysToExpire": qrInfo.SupplyInfo.DaysToExpire,
-			"store_name":   qrInfo.SupplyInfo.StoreName,
+			"ID":            qrInfo.SupplyInfo.ID,
+			"Code":          supplyCodeInt,
+			"BatchID":       qrInfo.SupplyInfo.BatchID,
+			"QRCode":        qrInfo.SupplyInfo.QRCode,
+			"Status":        qrInfo.SupplyInfo.Status,
+			"LocationType":  qrInfo.SupplyInfo.LocationType,
+			"LocationID":    qrInfo.SupplyInfo.LocationID,
+			"InTransit":     qrInfo.SupplyInfo.InTransit,
+			"IsConsumed":    qrInfo.SupplyInfo.IsConsumed,
+			"LastMovement":  qrInfo.SupplyInfo.LastMovement,
+			"DaysToExpire":  qrInfo.SupplyInfo.DaysToExpire,
+			"store_name":    qrInfo.SupplyInfo.StoreName,
 		}
 
 		// Agregar nombre del insumo directamente

@@ -1625,8 +1625,12 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			Order("assigned_date DESC").
 			First(&assignmentForCart).Error; err == nil {
 
+			// Buscar el cart item del insumo principal sin filtrar por is_active,
+			// para soportar ambos paths de devolución:
+			// - Path A (ReturnSupplyToStore): cart item sigue activo porque la Sección 3 no lo procesó
+			// - Path B (TransferSupplyByQR): cart item ya fue desactivado en la Sección 3
 			var cartItem models.SupplyCartItem
-			if err := tx.Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignmentForCart.ID, true).
+			if err := tx.Where("supply_request_qr_assignment_id = ?", assignmentForCart.ID).
 				First(&cartItem).Error; err == nil {
 
 				var cartItems []models.SupplyCartItem
@@ -1645,10 +1649,12 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 
 						otherSupply := item.SupplyRequestQRAssignment.MedicalSupply
 
-						// Solo procesar insumos que estén efectivamente en camino a bodega
-						if otherSupply.Status != models.StatusEnRouteToStore ||
-							!otherSupply.InTransit ||
-							otherSupply.LocationType != models.SupplyLocationStore {
+						// Solo procesar insumos que estén efectivamente en camino a bodega.
+						// Nota: LocationType e InTransit no son criterios válidos aquí porque:
+						// - LocationType sigue siendo "pavilion" hasta que ConfirmArrivalToStore termina (por diseño)
+						// - InTransit puede ser false si el insumo fue enviado via TransferSupplyByQR
+						// El estado es la única fuente de verdad confiable en este punto.
+						if otherSupply.Status != models.StatusEnRouteToStore {
 							continue
 						}
 
@@ -1815,6 +1821,23 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 					if autoReceived > 0 {
 						fmt.Printf("✅ Recepción automática de %d insumos adicionales del mismo carrito para QR base %s\n", autoReceived, qrCode)
 					}
+				}
+
+				// Desactivar el cart item del insumo principal si aún está activo.
+				// Esto cubre Path A (ReturnSupplyToStore) donde la Sección 3 no lo procesó
+				// porque la asignación ya venía marcada como 'returned' desde el primer paso.
+				now := time.Now()
+				userNamePtr := userName
+				if err := tx.Model(&models.SupplyCartItem{}).
+					Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignmentForCart.ID, true).
+					Updates(map[string]interface{}{
+						"is_active":       false,
+						"removed_at":      &now,
+						"removed_by":      &userRUT,
+						"removed_by_name": &userNamePtr,
+						"notes":           "Insumo llegó a bodega - confirmación de llegada",
+					}).Error; err != nil {
+					fmt.Printf("⚠️ Error desactivando cart item del insumo principal %s: %v\n", qrCode, err)
 				}
 			}
 		}

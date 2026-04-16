@@ -1077,8 +1077,14 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 			newStatus = models.StatusEnRouteToStore
 		}
 
-		// Actualizar el estado del insumo
-		if err := tx.Model(&supply).Update("status", newStatus).Error; err != nil {
+		// Actualizar el estado del insumo.
+		// Para transferencias a bodega también establecer InTransit=true para que
+		// ConfirmArrivalToStore pueda identificar correctamente el insumo en tránsito.
+		supplyUpdates := map[string]interface{}{"status": newStatus}
+		if destinationType == "store" {
+			supplyUpdates["in_transit"] = true
+		}
+		if err := tx.Model(&supply).Updates(supplyUpdates).Error; err != nil {
 			return fmt.Errorf("error actualizando estado del insumo: %v", err)
 		}
 

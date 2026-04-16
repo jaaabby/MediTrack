@@ -480,14 +480,25 @@ const needsPickup = (product) => {
 const canReceive = (product) => {
   if (!product || product.type !== 'medical_supply') return false
   if (product.is_consumed) return false
-  
-  const status = product.supply_info?.Status || 
-                 product.supply_info?.status || 
-                 product.status || 
+
+  const status = product.supply_info?.Status ||
+                 product.supply_info?.status ||
+                 product.status ||
                  product.current_status
-  
-  console.log('canReceive: Estado encontrado:', status)
-  return status === 'en_camino_a_pabellon'
+
+  if (status !== 'en_camino_a_pabellon') return false
+
+  // Verificar que el insumo esté destinado al pabellón del usuario actual
+  const destinationPavilionId = product.supply_info?.LocationID
+  const userPavilionId = currentUser.value?.pavilion_id
+
+  console.log('canReceive: Estado:', status, '| Pabellón destino:', destinationPavilionId, '| Pabellón usuario:', userPavilionId)
+
+  // Si el pabellón del usuario no está definido, no puede recepcionar
+  if (!userPavilionId) return false
+
+  // El insumo debe estar destinado exactamente al pabellón del usuario
+  return Number(destinationPavilionId) === Number(userPavilionId)
 }
 
 // Verificar si está recepcionado (para mostrar opciones de consumo/devolución)
@@ -512,9 +523,9 @@ const getReceptionErrorMessage = (product) => {
     return 'Este insumo ya ha sido consumido anteriormente.'
   }
 
-  const status = product.supply_info?.Status || 
-                 product.supply_info?.status || 
-                 product.status || 
+  const status = product.supply_info?.Status ||
+                 product.supply_info?.status ||
+                 product.status ||
                  product.current_status
 
   if (status === 'recepcionado') {
@@ -527,6 +538,18 @@ const getReceptionErrorMessage = (product) => {
 
   if (status !== 'en_camino_a_pabellon') {
     return `El insumo tiene estado "${status}" y no está en camino al pabellón. Solo se pueden recepcionar insumos con estado "en_camino_a_pabellon".`
+  }
+
+  // El insumo está en camino pero verificar si es para este pabellón
+  const destinationPavilionId = product.supply_info?.LocationID
+  const userPavilionId = currentUser.value?.pavilion_id
+
+  if (!userPavilionId) {
+    return 'Su usuario no tiene un pabellón asignado. Contacte al administrador.'
+  }
+
+  if (Number(destinationPavilionId) !== Number(userPavilionId)) {
+    return `Este insumo está destinado a otro pabellón (ID: ${destinationPavilionId}). Solo puede ser recepcionado por un usuario de ese pabellón.`
   }
 
   return 'Este insumo no se puede recepcionar.'
