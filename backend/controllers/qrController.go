@@ -166,6 +166,17 @@ func (c *QRController) ScanQR(ctx *gin.Context) {
 			supplyInfoMap["batch"] = qrInfo.SupplyInfo.BatchInfo
 		}
 
+		// store_id = bodega del usuario que gestionó el carrito (quien debe confirmar llegada)
+		if qrInfo.RequestAssignment != nil {
+			cart := qrInfo.RequestAssignment.Cart
+			if cart != nil && cart.CreatedBy != "" {
+				var cartCreator models.User
+				if err := c.qrService.GetDB().Select("rut, store_id").Where("rut = ?", cart.CreatedBy).First(&cartCreator).Error; err == nil && cartCreator.StoreID != nil {
+					supplyInfoMap["store_id"] = *cartCreator.StoreID
+				}
+			}
+		}
+
 		// Agregar información del código de insumo
 		if qrInfo.SupplyInfo.SupplyCode != nil {
 			supplyInfoMap["SupplyCode"] = qrInfo.SupplyInfo.SupplyCode

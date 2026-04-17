@@ -559,12 +559,17 @@ const canBeMarkedAsReadyForPickup = (info) => {
 const canBeReceived = (info) => {
   if (!info || info.type !== 'medical_supply') return false
   if (info.is_consumed) return false
-  
+
   // Solo usuarios con rol 'pabellón' pueden recepcionar
   if (authStore.user?.role !== 'pabellón') return false
-  
+
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
-  return status === 'en_camino_a_pabellon'
+  if (status !== 'en_camino_a_pabellon') return false
+
+  // Solo mostrar si el insumo está destinado al pabellón del usuario actual
+  const destinationPavilionId = info.supply_info?.LocationID || info.supply_info?.location_id
+  const userPavilionId = authStore.user?.pavilion_id
+  return destinationPavilionId === userPavilionId
 }
 
 const canBeReturnedToStore = (info) => {
@@ -657,16 +662,44 @@ const canBeReturnedToStore = (info) => {
 
 const isOnRouteToStore = (info) => {
   if (!info || info.type !== 'medical_supply') return false
-  
+  if (authStore.user?.role !== 'encargado de bodega') return false
+
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
-  // Puede confirmar llegada si está en camino a bodega
-  const isOnRoute = status === 'en_camino_a_bodega'
-  console.log('🔍 Verificando si está en camino a bodega:', {
+  if (status !== 'en_camino_a_bodega') return false
+
+  const destinationStoreId = info.supply_info?.store_id
+  const userStoreId = authStore.user?.store_id
+
+  console.log('🏪 isOnRouteToStore diagnóstico:', {
+    qr_code: info.qr_code,
     status,
-    isOnRoute,
-    supply_info: info.supply_info
+    supply_info_store_id: destinationStoreId,
+    user_store_id: userStoreId,
+    user_email: authStore.user?.email,
+    user_role: authStore.user?.role,
+    supply_info_keys: info.supply_info ? Object.keys(info.supply_info) : [],
+    batch_store_id: info.supply_info?.batch?.StoreID,
   })
-  return isOnRoute
+
+  if (destinationStoreId == null) {
+    console.log('❌ destinationStoreId es null/undefined — revise que supply_info.store_id llegue del backend')
+    return false
+  }
+
+  // Preferir store_id del usuario si está disponible (requiere migración BD)
+  if (userStoreId != null) {
+    const match = destinationStoreId === userStoreId
+    console.log(`🔑 Comparando por store_id: destinationStoreId(${destinationStoreId}) === userStoreId(${userStoreId}) → ${match}`)
+    return match
+  }
+
+  // Fallback: derivar bodega desde el email mientras no exista store_id en BD
+  const email = (authStore.user?.email || '').toLowerCase()
+  const isConsignacion = email.includes('bodegaconsignacion') || email.includes('consignacion')
+  // store_id 2 = consignación, cualquier otro = central
+  const result = isConsignacion ? destinationStoreId === 2 : destinationStoreId !== 2
+  console.log(`📧 Fallback por email: isConsignacion=${isConsignacion}, destinationStoreId=${destinationStoreId}, result=${result}`)
+  return result
 }
 
 const getStateRecommendation = (info) => {

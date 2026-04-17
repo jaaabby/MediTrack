@@ -426,6 +426,25 @@
                     <p v-if="formErrors.pavilion_id" class="mt-1 text-sm text-red-600">{{ formErrors.pavilion_id }}</p>
                   </div>
 
+                  <!-- Bodega (solo para rol encargado de bodega) -->
+                  <div v-if="userForm.role === 'encargado de bodega'">
+                    <label for="store_id" class="block text-sm font-medium text-gray-700">
+                      Bodega <span class="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="store_id"
+                      v-model="userForm.store_id"
+                      :required="userForm.role === 'encargado de bodega'"
+                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    >
+                      <option value="">Seleccione una bodega</option>
+                      <option v-for="store in stores" :key="store.id" :value="store.id">
+                        {{ store.name }}
+                      </option>
+                    </select>
+                    <p v-if="formErrors.store_id" class="mt-1 text-sm text-red-600">{{ formErrors.store_id }}</p>
+                  </div>
+
                   <!-- Especialidad Médica (solo para rol doctor) -->
                   <div v-if="userForm.role === 'doctor'">
                     <label for="specialty_id" class="block text-sm font-medium text-gray-700">
@@ -554,6 +573,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { userService } from '@/services/common/userService'
 import medicalCenterService from '@/services/config/medicalCenterService'
 import pavilionService from '@/services/config/pavilionService'
+import storeService from '@/services/inventory/storeService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
 
@@ -563,6 +583,7 @@ const { success: showSuccess, error: showError } = useNotification()
 const users = ref([])
 const medicalCenters = ref([])
 const pavilions = ref([])
+const stores = ref([])
 const medicalSpecialties = ref([])
 const loading = ref(false)
 const saving = ref(false)
@@ -644,6 +665,7 @@ const userForm = reactive({
   role: '',
   medical_center_id: '',
   pavilion_id: '',
+  store_id: '',
   specialty_id: '',
   is_active: true
 })
@@ -656,6 +678,7 @@ const formErrors = reactive({
   role: '',
   medical_center_id: '',
   pavilion_id: '',
+  store_id: '',
   specialty_id: ''
 })
 
@@ -669,6 +692,11 @@ watch(() => userForm.role, (newRole, oldRole) => {
     if (newRole !== 'pabellón' && newRole !== 'pavedad') {
       userForm.pavilion_id = ''
       formErrors.pavilion_id = ''
+    }
+    // Limpiar bodega si no es encargado de bodega
+    if (newRole !== 'encargado de bodega') {
+      userForm.store_id = ''
+      formErrors.store_id = ''
     }
     // Limpiar especialidad si no es doctor
     if (newRole !== 'doctor') {
@@ -701,6 +729,10 @@ watch(() => userForm.medical_center_id, () => {
 
 watch(() => userForm.pavilion_id, () => {
   formErrors.pavilion_id = ''
+})
+
+watch(() => userForm.store_id, () => {
+  formErrors.store_id = ''
 })
 
 watch(() => userForm.specialty_id, () => {
@@ -813,6 +845,16 @@ const loadPavilions = async () => {
   }
 }
 
+// Cargar bodegas
+const loadStores = async () => {
+  try {
+    const data = await storeService.getAllStores()
+    stores.value = data || []
+  } catch (error) {
+    console.error('Error al cargar bodegas:', error)
+  }
+}
+
 // Cargar especialidades médicas
 const loadSpecialties = async () => {
   try {
@@ -865,6 +907,7 @@ const openEditModal = (user) => {
   userForm.role = user.role
   userForm.medical_center_id = user.medical_center_id
   userForm.pavilion_id = user.pavilion_id || ''
+  userForm.store_id = user.store_id || ''
   userForm.specialty_id = user.specialty_id || ''
   userForm.is_active = user.is_active
   showModal.value = true
@@ -886,6 +929,7 @@ const resetForm = () => {
   userForm.role = ''
   userForm.medical_center_id = ''
   userForm.pavilion_id = ''
+  userForm.store_id = ''
   userForm.specialty_id = ''
   userForm.is_active = true
   
@@ -948,6 +992,12 @@ const validateForm = () => {
     isValid = false
   }
 
+  // Validar bodega para encargado de bodega
+  if (userForm.role === 'encargado de bodega' && !userForm.store_id) {
+    formErrors.store_id = 'La bodega es requerida para este rol'
+    isValid = false
+  }
+
   // Validar especialidad para doctores
   if (userForm.role === 'doctor' && !userForm.specialty_id) {
     formErrors.specialty_id = 'La especialidad médica es requerida para doctores'
@@ -981,7 +1031,12 @@ const saveUser = async () => {
     if (userForm.role === 'pabellón' || userForm.role === 'pavedad') {
       userData.pavilion_id = userForm.pavilion_id ? parseInt(userForm.pavilion_id) : null
     }
-    
+
+    // Incluir bodega si aplica (convertir a número o null)
+    if (userForm.role === 'encargado de bodega') {
+      userData.store_id = userForm.store_id ? parseInt(userForm.store_id) : null
+    }
+
     // Incluir especialidad si es doctor (convertir a número o null)
     if (userForm.role === 'doctor') {
       userData.specialty_id = userForm.specialty_id ? parseInt(userForm.specialty_id) : null
@@ -1090,6 +1145,7 @@ onMounted(() => {
   loadUsers()
   loadMedicalCenters()
   loadPavilions()
+  loadStores()
   loadSpecialties()
 })
 

@@ -6,6 +6,7 @@ import (
 	"log"
 	"meditrack/mailer"
 	"meditrack/models"
+	"os"
 	"strings"
 	"time"
 
@@ -606,7 +607,7 @@ func (s *BatchService) sendAlert(batch models.Batch, supplyCode models.SupplyCod
 		return fmt.Errorf("tipo de alerta desconocido: %s", alertType)
 	}
 
-	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, subject)
+	req := mailer.NewRequest([]string{os.Getenv("ALERT_EMAIL")}, subject)
 	return req.SendMailSkipTLS(templatePath, data)
 }
 

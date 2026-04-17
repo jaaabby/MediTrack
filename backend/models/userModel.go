@@ -23,6 +23,8 @@ type User struct {
 	MedicalCenter          *MedicalCenter    `json:"medical_center,omitempty" gorm:"foreignKey:MedicalCenterID"`
 	PavilionID             *int              `json:"pavilion_id" db:"pavilion_id"`
 	Pavilion               *Pavilion         `json:"pavilion,omitempty" gorm:"foreignKey:PavilionID"`
+	StoreID                *int              `json:"store_id" db:"store_id"`
+	Store                  *Store            `json:"store,omitempty" gorm:"foreignKey:StoreID"`
 	SpecialtyID            *int              `json:"specialty_id" db:"specialty_id"`
 	Specialty              *MedicalSpecialty `json:"specialty,omitempty" gorm:"foreignKey:SpecialtyID"`
 	IsActive               bool              `json:"is_active" db:"is_active" gorm:"default:true"`
@@ -47,6 +49,7 @@ type UserResponse struct {
 	MedicalCenterID    int               `json:"medical_center_id"`
 	MedicalCenter      *MedicalCenter    `json:"medical_center,omitempty"`
 	PavilionID         *int              `json:"pavilion_id,omitempty"`
+	StoreID            *int              `json:"store_id,omitempty"`
 	SpecialtyID        *int              `json:"specialty_id,omitempty"`
 	Specialty          *MedicalSpecialty `json:"specialty,omitempty"`
 	IsActive           bool              `json:"is_active"`
@@ -66,6 +69,7 @@ func (u User) ToResponse() UserResponse {
 		MedicalCenterID:    u.MedicalCenterID,
 		MedicalCenter:      u.MedicalCenter,
 		PavilionID:         u.PavilionID,
+		StoreID:            u.StoreID,
 		SpecialtyID:        u.SpecialtyID,
 		Specialty:          u.Specialty,
 		IsActive:           u.IsActive,

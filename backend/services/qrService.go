@@ -26,6 +26,10 @@ func NewQRService(db *gorm.DB) *QRService {
 	return &QRService{DB: db}
 }
 
+func (s *QRService) GetDB() *gorm.DB {
+	return s.DB
+}
+
 // QRGenerationResponse representa la respuesta al generar un QR
 type QRGenerationResponse struct {
 	QRCode    string `json:"qr_code"`
@@ -946,11 +950,10 @@ func (s *QRService) ScanQRCode(qrCode string) (map[string]interface{}, error) {
 		if qrInfo.SupplyInfo.BatchInfo != nil {
 			supplyInfoMap["batch"] = qrInfo.SupplyInfo.BatchInfo
 
-			// Obtener el nombre de la bodega desde el store_id del lote
+			// Obtener nombre de la bodega del lote
 			var store models.Store
 			if err := s.DB.Select("id, name").First(&store, qrInfo.SupplyInfo.BatchInfo.StoreID).Error; err == nil {
 				supplyInfoMap["store_name"] = store.Name
-				supplyInfoMap["store_id"] = store.ID
 			}
 		}
 
@@ -2082,7 +2085,7 @@ func (s *QRService) sendLowStockAlertForBatch(batch models.Batch, supplyCode mod
 	}
 
 	// Crear solicitud de correo
-	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Stock Bajo en Lote")
+	req := mailer.NewRequest([]string{os.Getenv("ALERT_EMAIL")}, "Alerta: Stock Bajo en Lote")
 
 	// Enviar correo usando la plantilla de stock bajo
 	templatePath := "mailer/templates/low_stock.html"

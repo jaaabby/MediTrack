@@ -119,6 +119,7 @@ CREATE TABLE "user" (
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'pabellón', 'encargado de bodega', 'enfermera', 'doctor', 'pavedad')),
     medical_center_id INTEGER NOT NULL REFERENCES medical_center(id),
     pavilion_id INTEGER REFERENCES pavilion(id),
+    store_id INTEGER REFERENCES store(id),
     specialty_id INTEGER REFERENCES medical_specialty(id),
     is_active BOOLEAN DEFAULT TRUE,
     must_change_password BOOLEAN DEFAULT FALSE,
@@ -136,6 +137,7 @@ CREATE TABLE "user" (
 CREATE INDEX idx_user_email ON "user"(email);
 CREATE INDEX idx_user_specialty ON "user"(specialty_id);
 CREATE INDEX idx_user_pavilion ON "user"(pavilion_id);
+CREATE INDEX idx_user_store ON "user"(store_id);
 CREATE INDEX idx_user_reset_token ON "user"(reset_password_token);
 
 CREATE TABLE medical_supply (

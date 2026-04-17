@@ -1398,7 +1398,7 @@ func (s *MedicalSupplyService) sendLowStockAlertForSupply(supplyCode int, availa
 	}
 
 	// Crear solicitud de correo
-	req := mailer.NewRequest([]string{"vergara.javiera12@gmail.com"}, "Alerta: Stock Crítico - Queda 1 Insumo")
+	req := mailer.NewRequest([]string{os.Getenv("ALERT_EMAIL")}, "Alerta: Stock Crítico - Queda 1 Insumo")
 
 	// Usar la misma plantilla de stock bajo (o crear una específica)
 	templatePath := "mailer/templates/low_stock.html"
@@ -1838,6 +1838,30 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 						"notes":           "Insumo llegó a bodega - confirmación de llegada",
 					}).Error; err != nil {
 					fmt.Printf("⚠️ Error desactivando cart item del insumo principal %s: %v\n", qrCode, err)
+				}
+
+				// ============================
+				// 6) Cerrar el carrito si todos sus insumos han llegado a bodega
+				// ============================
+				var remainingActive int64
+				tx.Model(&models.SupplyCartItem{}).
+					Where("supply_cart_id = ? AND is_active = ?", cartItem.SupplyCartID, true).
+					Count(&remainingActive)
+
+				if remainingActive == 0 {
+					now2 := time.Now()
+					if err := tx.Model(&models.SupplyCart{}).
+						Where("id = ? AND status != ?", cartItem.SupplyCartID, "closed").
+						Updates(map[string]interface{}{
+							"status":        "closed",
+							"closed_at":     &now2,
+							"closed_by":     &userRUT,
+							"closed_by_name": &userName,
+						}).Error; err != nil {
+						fmt.Printf("⚠️ Error cerrando carrito %d: %v\n", cartItem.SupplyCartID, err)
+					} else {
+						fmt.Printf("✅ Carrito %d cerrado automáticamente (todos los insumos llegaron a bodega)\n", cartItem.SupplyCartID)
+					}
 				}
 			}
 		}

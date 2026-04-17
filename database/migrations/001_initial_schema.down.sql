@@ -161,6 +161,7 @@ DROP INDEX IF EXISTS idx_passkey_user_rut;
 
 -- Índices de user
 DROP INDEX IF EXISTS idx_user_reset_token;
+DROP INDEX IF EXISTS idx_user_store;
 DROP INDEX IF EXISTS idx_user_email;
 
 -- Índices únicos de QR

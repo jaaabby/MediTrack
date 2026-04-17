@@ -156,6 +156,9 @@ func (s *UserService) UpdateUser(rut string, newUser *models.User) (*models.User
 	if newUser.PavilionID != nil {
 		updates["pavilion_id"] = newUser.PavilionID
 	}
+	if newUser.StoreID != nil {
+		updates["store_id"] = newUser.StoreID
+	}
 	if newUser.SpecialtyID != nil {
 		updates["specialty_id"] = newUser.SpecialtyID
 	}
