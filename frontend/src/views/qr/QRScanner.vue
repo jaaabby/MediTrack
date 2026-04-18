@@ -565,11 +565,22 @@ const canBeReceived = (info) => {
 
   const status = info.supply_info?.Status || info.supply_info?.status || info.status || info.current_status
   if (status !== 'en_camino_a_pabellon') return false
-
-  // Solo mostrar si el insumo está destinado al pabellón del usuario actual
-  const destinationPavilionId = info.supply_info?.LocationID || info.supply_info?.location_id
+  
+  // Verificar que el pabellón destino de la solicitud coincida con el pabellón del usuario
   const userPavilionId = authStore.user?.pavilion_id
-  return destinationPavilionId === userPavilionId
+  
+  // Usuario pabellón sin pabellón asignado no puede recepcionar nada
+  if (userPavilionId == null) return false
+  
+  // Obtener pabellón destino: campo explícito > solicitud > location del insumo
+  const destinationPavilionId = info.destination_pavilion_id
+    ?? info.supply_request?.pavilion_id
+    ?? info.supply_info?.location_id
+  
+  // Si no se puede determinar el destino, bloquear por seguridad
+  if (destinationPavilionId == null || destinationPavilionId === 0) return false
+  
+  return Number(userPavilionId) === Number(destinationPavilionId)
 }
 
 const canBeReturnedToStore = (info) => {

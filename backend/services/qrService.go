@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"meditrack/mailer"
 	"meditrack/models"
+	"meditrack/pkg/clinicconfig"
 	"net"
 	"os"
 	"path/filepath"
@@ -2085,7 +2086,11 @@ func (s *QRService) sendLowStockAlertForBatch(batch models.Batch, supplyCode mod
 	}
 
 	// Crear solicitud de correo
-	req := mailer.NewRequest([]string{os.Getenv("ALERT_EMAIL")}, "Alerta: Stock Bajo en Lote")
+	alertEmail := clinicconfig.GetAlertEmail(s.DB)
+	if alertEmail == "" {
+		return fmt.Errorf("email de alertas no configurado en la BD ni en ALERT_EMAIL")
+	}
+	req := mailer.NewRequest([]string{alertEmail}, "Alerta: Stock Bajo en Lote")
 
 	// Enviar correo usando la plantilla de stock bajo
 	templatePath := "mailer/templates/low_stock.html"
@@ -2323,10 +2328,10 @@ func (s *QRService) sendUnconsumedSupplyAlert(supply *models.MedicalSupply) {
 	}
 
 	// Configurar el correo
-	// Leer email de destino desde variable de entorno
-	alertEmail := os.Getenv("ALERT_EMAIL")
+	// Leer email de destino desde BD (fallback: variable de entorno ALERT_EMAIL)
+	alertEmail := clinicconfig.GetAlertEmail(s.DB)
 	if alertEmail == "" {
-		fmt.Printf("ALERT_EMAIL no configurado, no se enviará alerta para insumo %d\n", supply.ID)
+		fmt.Printf("Email de alertas no configurado, no se enviará alerta para insumo %d\n", supply.ID)
 		return
 	}
 	recipients := []string{alertEmail}
