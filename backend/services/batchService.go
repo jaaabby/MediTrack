@@ -6,7 +6,6 @@ import (
 	"log"
 	"meditrack/mailer"
 	"meditrack/models"
-	"os"
 	"meditrack/pkg/clinicconfig"
 	"strings"
 	"time"
