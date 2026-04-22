@@ -990,13 +990,12 @@ const filteredStores = computed(() => {
 // Computed para proveedores filtrados
 const filteredSuppliers = computed(() => {
   if (!supplierSearch.value.trim()) {
-    // Si no hay búsqueda, mostrar todos (limitado a 10 para no ser invasivo)
-    return uniqueSuppliers.value.slice(0, 10)
+    return uniqueSuppliers.value
   }
   const search = supplierSearch.value.toLowerCase().trim()
-  return uniqueSuppliers.value.filter(supplier => 
+  return uniqueSuppliers.value.filter(supplier =>
     supplier.toLowerCase().includes(search)
-  ).slice(0, 10) // Limitar a 10 resultados
+  )
 })
 
 // Cargar almacenes al montar el componente

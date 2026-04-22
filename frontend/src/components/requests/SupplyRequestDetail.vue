@@ -142,8 +142,8 @@
             </div>
           </div>
 
-          <!-- Configuración de Retiro (solo para encargado de bodega asignado) -->
-          <div v-if="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'aprobado' || request.status === 'devuelto_al_encargado') && authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut" 
+          <!-- Configuración de Retiro (solo para encargado de bodega asignado, cuando todos los insumos han sido revisados) -->
+          <div v-if="(request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'aprobado' || request.status === 'devuelto_al_encargado') && authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut && allItemsReviewed" 
                class="bg-white rounded-lg shadow border p-4 sm:p-6">
             <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Configuración de Retiro</h3>
             <p class="text-sm text-gray-600 mb-4">Seleccione quién está autorizado a retirar los insumos de esta solicitud desde bodega.</p>
@@ -1128,6 +1128,12 @@ const requestId = computed(() => parseInt(route.params.id))
 // Verificar si hay items devueltos en la solicitud
 const hasReturnedItems = computed(() => {
   return items.value.some(item => item.item_status === 'devuelto')
+})
+
+// Verificar si todos los insumos han sido revisados (ninguno en estado 'pendiente')
+const allItemsReviewed = computed(() => {
+  if (!items.value.length) return false
+  return items.value.every(item => item.item_status && item.item_status !== 'pendiente')
 })
 
 // Métodos principales
