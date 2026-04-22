@@ -288,13 +288,11 @@
                 </td>
                 <td class="px-4 py-3 text-gray-700">{{ row.store_name || row.store || '—' }}</td>
                 <td class="px-4 py-3">
-                  <span class="font-semibold" :class="(row.current_in_store ?? 0) <= (row.critical_stock ?? 1) ? 'text-red-600' : 'text-gray-900'">
-                    {{ row.current_in_store ?? 0 }}
-                  </span>
-                  <span class="text-xs text-gray-400 ml-1">uds.</span>
+                  <span class="font-semibold text-sm" :class="stockColorClass(row.current_in_store ?? 0, row.critical_stock ?? 1)">{{ row.current_in_store ?? 0 }}</span>
+                  <span class="text-xs ml-1" :class="stockColorClass(row.current_in_store ?? 0, row.critical_stock ?? 1)">unidades</span>
                 </td>
                 <td class="px-4 py-3">
-                  <span v-if="row.expiration_date" :class="isExpiringSoon(row.expiration_date) ? 'text-yellow-700 font-medium' : isExpired(row.expiration_date) ? 'text-red-600 font-medium' : 'text-gray-700'">
+                  <span v-if="row.expiration_date" :class="expiryColorClass(row.expiration_date)">
                     {{ formatModalDate(row.expiration_date) }}
                   </span>
                   <span v-else class="text-gray-400">—</span>
@@ -358,18 +356,20 @@ const formatModalDate = (dateStr) => {
   return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
 }
 
-const isExpired = (dateStr) => {
-  if (!dateStr) return false
-  return new Date(dateStr) < new Date()
-}
-
-const isExpiringSoon = (dateStr) => {
-  if (!dateStr) return false
+const expiryColorClass = (dateStr) => {
+  if (!dateStr) return 'text-gray-400'
   const expiry = new Date(dateStr)
   const now = new Date()
-  if (expiry < now) return false
   const diffDays = (expiry - now) / (1000 * 60 * 60 * 24)
-  return diffDays <= 90
+  if (diffDays <= 15) return 'text-red-600 font-medium'
+  if (diffDays <= 30) return 'text-orange-500 font-medium'
+  return 'text-gray-500'
+}
+
+const stockColorClass = (qty, critical) => {
+  if (qty <= critical) return 'text-red-600'
+  if (qty <= critical * 2) return 'text-orange-500'
+  return 'text-gray-900'
 }
 
 const loadDashboard = async () => {
