@@ -50,8 +50,9 @@ func (c *AuthController) getUserIDFromContext(ctx *gin.Context) (string, error) 
 
 // LoginRequest representa la solicitud de login
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email      string `json:"email" binding:"required,email"`
+	Password   string `json:"password" binding:"required"`
+	RememberMe bool   `json:"remember_me"`
 }
 
 // RegisterRequest representa la solicitud de registro
@@ -176,8 +177,11 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	// Generar token JWT completo (24 horas de duración)
+	// Generar token JWT completo (24 horas de duración, o 7 días si remember_me)
 	duration := 24 * time.Hour
+	if loginReq.RememberMe {
+		duration = 7 * 24 * time.Hour
+	}
 	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, user.TokenVersion, c.secretKey, duration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{
@@ -910,6 +914,7 @@ func (c *AuthController) ActivateTOTP(ctx *gin.Context) {
 type VerifyTOTPRequest struct {
 	PreAuthToken string `json:"pre_auth_token" binding:"required"`
 	Code         string `json:"code" binding:"required,len=6"`
+	RememberMe   bool   `json:"remember_me"`
 }
 
 // VerifyTOTP valida el código TOTP durante el proceso de login y retorna un JWT completo
@@ -966,6 +971,9 @@ func (c *AuthController) VerifyTOTP(ctx *gin.Context) {
 	}
 
 	duration := 24 * time.Hour
+	if req.RememberMe {
+		duration = 7 * 24 * time.Hour
+	}
 	token, err := config.GenerateToken(user.RUT, user.Email, user.Role, user.TokenVersion, c.secretKey, duration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, response.Response{

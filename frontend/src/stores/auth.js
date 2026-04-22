@@ -12,7 +12,8 @@ export const useAuthStore = defineStore('auth', {
     _sessionPollInterval: null,
     // Estado TOTP: almacena el pre-auth token cuando el login requiere verificación TOTP
     totpRequired: false,
-    preAuthToken: null
+    preAuthToken: null,
+    _rememberMe: false
   }),
 
   getters: {
@@ -189,22 +190,24 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // Realizar login
-    async login(email, password) {
+    async login(email, password, rememberMe = false) {
       this.isLoading = true
       this.error = null
       try {
-        const response = await authService.login(email, password)
+        const response = await authService.login(email, password, rememberMe)
 
         // Si el servidor requiere verificación TOTP, guardar pre_auth_token y señalizar
         if (response.totp_required) {
           this.totpRequired = true
           this.preAuthToken = response.pre_auth_token
+          this._rememberMe = rememberMe
           return response
         }
-        // Guardar expiración (1 hora desde ahora)
-        const expiry = Date.now() + 60 * 60 * 1000
+        // Guardar expiración según el JWT real
+        const tokenInfo = authService.getUserFromToken(response.token)
+        const expiry = tokenInfo?.exp ? tokenInfo.exp * 1000 : Date.now() + 24 * 60 * 60 * 1000
         localStorage.setItem('auth_expiry', expiry.toString())
-        this._setAutoLogout(60 * 60 * 1000)
+        this._setAutoLogout(expiry - Date.now())
         // Iniciar polling de sesión
         this._startSessionPolling()
 
@@ -224,9 +227,10 @@ export const useAuthStore = defineStore('auth', {
       this.isLoading = true
       this.error = null
       try {
-        const response = await authService.verifyTOTP(this.preAuthToken, code)
+        const response = await authService.verifyTOTP(this.preAuthToken, code, this._rememberMe)
         this.totpRequired = false
         this.preAuthToken = null
+        this._rememberMe = false
         this._completeLogin(response)
         return response
       } catch (error) {
@@ -246,9 +250,10 @@ export const useAuthStore = defineStore('auth', {
       if (response.user) {
         localStorage.setItem('user_full', JSON.stringify(response.user))
       }
-      const expiry = Date.now() + 60 * 60 * 1000
+      const tokenInfo = authService.getUserFromToken(response.token)
+      const expiry = tokenInfo?.exp ? tokenInfo.exp * 1000 : Date.now() + 24 * 60 * 60 * 1000
       localStorage.setItem('auth_expiry', expiry.toString())
-      this._setAutoLogout(60 * 60 * 1000)
+      this._setAutoLogout(expiry - Date.now())
     },
 
     // Obtener perfil del usuario

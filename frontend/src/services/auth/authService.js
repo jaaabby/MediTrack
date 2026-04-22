@@ -9,7 +9,7 @@ class AuthService {
   }
 
   // Realizar login
-  async login(email, password) {
+  async login(email, password, rememberMe = false) {
     try {
       const response = await fetch(`${this.baseURL}/auth/login`, {
         method: 'POST',
@@ -18,7 +18,8 @@ class AuthService {
         },
         body: JSON.stringify({
           email,
-          password
+          password,
+          remember_me: rememberMe
         })
       })
 
@@ -382,12 +383,12 @@ class AuthService {
   }
 
   // Verificar código TOTP durante el login (usa pre_auth_token)
-  async verifyTOTP(preAuthToken, code) {
+  async verifyTOTP(preAuthToken, code, rememberMe = false) {
     try {
       const response = await fetch(`${this.baseURL}/auth/totp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pre_auth_token: preAuthToken, code })
+        body: JSON.stringify({ pre_auth_token: preAuthToken, code, remember_me: rememberMe })
       })
       const data = await response.json()
       if (!response.ok || !data.success) throw new Error(data.error || 'Código TOTP inválido')
