@@ -180,6 +180,16 @@ export const useAuthStore = defineStore('auth', {
         if (this.isAuthenticated) {
           this._startSessionPolling()
         }
+        // Al volver de suspensión, verificar si el token expiró realmente
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible' && this.isAuthenticated) {
+            const expiry = Number(localStorage.getItem('auth_expiry'))
+            if (!expiry || Date.now() >= expiry || authService.isTokenExpired(this.token)) {
+              this.logout()
+              window.location.href = '/login'
+            }
+          }
+        }, { once: false })
       } else {
         this.logout()
       }
@@ -329,6 +339,13 @@ export const useAuthStore = defineStore('auth', {
         clearTimeout(this._logoutTimeout)
       }
       this._logoutTimeout = setTimeout(() => {
+        // Verificar la fecha real por si el PC estuvo suspendido y el setTimeout no descuentó ese tiempo
+        const expiry = Number(localStorage.getItem('auth_expiry'))
+        if (expiry && Date.now() < expiry) {
+          // Aún no expiró (PC salió de suspensión antes de tiempo), reprogramar
+          this._setAutoLogout(expiry - Date.now())
+          return
+        }
         this.logout()
         window.location.href = '/login'
       }, ms)
@@ -340,9 +357,13 @@ export const useAuthStore = defineStore('auth', {
       try {
         await authService.getProfile()
       } catch (error) {
-        // 401 significa sesión cerrada remotamente
-        this.logout()
-        window.location.href = '/login'
+        // Solo cerrar sesión si el servidor responde con 401 (sesión revocada)
+        // Ignorar errores de red (PC recién despertó, sin conexión temporal)
+        const msg = error?.message || ''
+        if (msg.includes('401') || msg.toLowerCase().includes('no autorizado') || msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('token inválido')) {
+          this.logout()
+          window.location.href = '/login'
+        }
       }
     },
 
