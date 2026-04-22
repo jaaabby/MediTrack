@@ -180,9 +180,9 @@
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <router-link :to="`/inventory/store?surgery_id=${item.surgery_id}`" class="text-brand-blue-dark hover:text-brand-blue-medium">
+                  <button @click="openSurgeryModal(item)" class="text-brand-blue-dark hover:text-brand-blue-medium">
                     Ver detalles →
-                  </router-link>
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -231,6 +231,86 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal de detalle por tipo de cirugía -->
+  <div v-if="surgeryModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" @click.self="closeSurgeryModal">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">{{ surgeryModal.surgeryName }}</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Insumos disponibles por bodega</p>
+        </div>
+        <button @click="closeSurgeryModal" class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="overflow-y-auto flex-1 p-6">
+        <!-- Loading -->
+        <div v-if="surgeryModal.loading" class="flex justify-center items-center py-12">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue-dark"></div>
+          <span class="ml-3 text-gray-600">Cargando inventario...</span>
+        </div>
+
+        <!-- Error -->
+        <div v-else-if="surgeryModal.error" class="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-700">
+          {{ surgeryModal.error }}
+        </div>
+
+        <!-- Sin datos -->
+        <div v-else-if="surgeryModal.items.length === 0" class="text-center py-12 text-gray-500">
+          <svg class="mx-auto h-10 w-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+          </svg>
+          No hay insumos disponibles para este tipo de cirugía.
+        </div>
+
+        <!-- Tabla -->
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bodega</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-100">
+              <tr v-for="row in surgeryModal.items" :key="row.id || (row.supply_name + row.store_name)" class="hover:bg-gray-50">
+                <td class="px-4 py-3">
+                  <div class="font-medium text-gray-900">{{ row.supply_name || row.name || '—' }}</div>
+                  <div v-if="row.supply_code" class="text-xs text-gray-400">Cód. {{ row.supply_code }}</div>
+                </td>
+                <td class="px-4 py-3 text-gray-700">{{ row.store_name || row.store || '—' }}</td>
+                <td class="px-4 py-3">
+                  <span class="font-semibold" :class="(row.current_in_store ?? 0) <= (row.critical_stock ?? 1) ? 'text-red-600' : 'text-gray-900'">
+                    {{ row.current_in_store ?? 0 }}
+                  </span>
+                  <span class="text-xs text-gray-400 ml-1">uds.</span>
+                </td>
+                <td class="px-4 py-3">
+                  <span v-if="row.expiration_date" :class="isExpiringSoon(row.expiration_date) ? 'text-yellow-700 font-medium' : isExpired(row.expiration_date) ? 'text-red-600 font-medium' : 'text-gray-700'">
+                    {{ formatModalDate(row.expiration_date) }}
+                  </span>
+                  <span v-else class="text-gray-400">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="px-6 py-3 border-t flex justify-end">
+        <button @click="closeSurgeryModal" class="btn-secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -246,6 +326,51 @@ const surgeryInventoryError = ref(null)
 // Estado de ordenamiento para tabla de cirugías
 const surgerySortKey = ref('surgery_name')
 const surgerySortOrder = ref('asc')
+
+// Modal de detalle por cirugía
+const surgeryModal = ref({
+  show: false,
+  loading: false,
+  error: null,
+  surgeryName: '',
+  items: []
+})
+
+const openSurgeryModal = async (item) => {
+  surgeryModal.value = { show: true, loading: true, error: null, surgeryName: item.surgery_name || 'Sin tipo de cirugía', items: [] }
+  try {
+    const data = await inventoryService.getStoreInventory({ surgery_id: item.surgery_id })
+    surgeryModal.value.items = data
+  } catch (err) {
+    surgeryModal.value.error = err.message || 'Error al cargar el inventario'
+  } finally {
+    surgeryModal.value.loading = false
+  }
+}
+
+const closeSurgeryModal = () => {
+  surgeryModal.value.show = false
+}
+
+const formatModalDate = (dateStr) => {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+}
+
+const isExpired = (dateStr) => {
+  if (!dateStr) return false
+  return new Date(dateStr) < new Date()
+}
+
+const isExpiringSoon = (dateStr) => {
+  if (!dateStr) return false
+  const expiry = new Date(dateStr)
+  const now = new Date()
+  if (expiry < now) return false
+  const diffDays = (expiry - now) / (1000 * 60 * 60 * 24)
+  return diffDays <= 90
+}
 
 const loadDashboard = async () => {
   loading.value = true
