@@ -1369,6 +1369,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { jsPDF } from 'jspdf'
 import inventoryService from '@/services/inventory/inventoryService'
+import supplyHistoryService from '@/services/inventory/supplyHistoryService'
 import qrService from '@/services/qr/qrService'
 import QrcodeVue from 'qrcode.vue'
 import { exportToExcel as exportExcel, formatDateForExcel } from '@/utils/excelExport'
@@ -2102,7 +2103,11 @@ const downloadAllBatchQRs = async () => {
 }
 
 const goToSupplyHistory = () => {
-  router.push('/supply-history')
+  const query = {}
+  if (supplyName.value) {
+    query.search = supplyName.value
+  }
+  router.push({ path: '/supply-history', query })
 }
 
 const getQrDataUrl = (code) => {
@@ -2221,9 +2226,9 @@ const loadHistory = async () => {
   historyError.value = null
 
   try {
-    // Cargar historial del lote específico
-    const data = await inventoryService.getBatchHistory(selectedSupplyForHistory.value.batch_id)
-    historyData.value = data
+    // Cargar historial de movimientos individuales filtrado por lote
+    const data = await supplyHistoryService.getSupplyHistoryByBatch(selectedSupplyForHistory.value.batch_id)
+    historyData.value = Array.isArray(data) ? data : []
   } catch (err) {
     historyError.value = 'Error al cargar el historial: ' + err.message
     console.error('Error al cargar historial:', err)

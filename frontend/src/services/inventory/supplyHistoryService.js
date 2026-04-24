@@ -37,6 +37,16 @@ class SupplyHistoryService {
     }
   }
 
+  async getSupplyHistoryByBatch(batchId) {
+    try {
+      const response = await this.api.get(`/supply-history/by-batch/${batchId}`)
+      return response.data.data || response.data || []
+    } catch (error) {
+      console.error('Error en getSupplyHistoryByBatch:', error)
+      throw error
+    }
+  }
+
   async getConsumptionStatsBySurgery() {
     try {
       const response = await this.api.get('/supply-history/consumption-stats')

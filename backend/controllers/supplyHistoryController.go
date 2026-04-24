@@ -112,6 +112,21 @@ func (c *SupplyHistoryController) GetAllSupplyHistoriesWithDetails(ctx *gin.Cont
 	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
 }
 
+// GetSupplyHistoryByBatch obtiene el historial de movimientos de insumos filtrado por lote
+func (c *SupplyHistoryController) GetSupplyHistoryByBatch(ctx *gin.Context) {
+	batchID, err := strconv.Atoi(ctx.Param("batchId"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, Response{Success: false, Error: "ID de lote inválido: " + err.Error()})
+		return
+	}
+	histories, err := c.supplyHistoryService.GetSupplyHistoryByBatchID(batchID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener historial del lote: " + err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, Response{Success: true, Data: histories})
+}
+
 // GetConsumptionStatsBySurgery obtiene estadísticas de consumo real por cirugía
 func (c *SupplyHistoryController) GetConsumptionStatsBySurgery(ctx *gin.Context) {
 	stats, err := c.supplyHistoryService.GetConsumptionStatsBySurgery()

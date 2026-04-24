@@ -16,6 +16,7 @@ func SetupSupplyHistoryRoutes(router *gin.RouterGroup, supplyHistoryService serv
 		supplyHistory.GET("/", supplyHistoryController.GetAllSupplyHistory)
 		supplyHistory.GET("/with-details", supplyHistoryController.GetAllSupplyHistoriesWithDetails)
 		supplyHistory.GET("/consumption-stats", supplyHistoryController.GetConsumptionStatsBySurgery)
+		supplyHistory.GET("/by-batch/:batchId", supplyHistoryController.GetSupplyHistoryByBatch)
 		supplyHistory.GET("/:id", supplyHistoryController.GetSupplyHistoryByID)
 		supplyHistory.PUT("/:id", supplyHistoryController.UpdateSupplyHistory)
 		supplyHistory.DELETE("/:id", supplyHistoryController.DeleteSupplyHistory)

@@ -417,6 +417,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import supplyHistoryService from '@/services/inventory/supplyHistoryService'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 import { format } from 'date-fns'
@@ -428,6 +429,7 @@ const loading = ref(false)
 const searchTerm = ref('')
 const showDetailsModal = ref(false)
 const selectedItem = ref(null)
+const route = useRoute()
 const { success: showSuccess, error: showError } = useNotification()
 
 const filters = ref({
@@ -681,6 +683,16 @@ const exportToExcel = async () => {
 }
 
 onMounted(() => {
+  // Pre-llenar filtros si se navega desde otro contexto
+  if (route.query.search) {
+    searchTerm.value = route.query.search
+  }
+  if (route.query.from_date) {
+    filters.value.from_date = route.query.from_date
+  }
+  if (route.query.to_date) {
+    filters.value.to_date = route.query.to_date
+  }
   loadHistory()
 })
 </script>

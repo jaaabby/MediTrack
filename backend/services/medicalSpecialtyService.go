@@ -16,6 +16,10 @@ func NewMedicalSpecialtyService(db *gorm.DB) *MedicalSpecialtyService {
 
 // CreateMedicalSpecialty crea una nueva especialidad médica
 func (s *MedicalSpecialtyService) CreateMedicalSpecialty(specialty *models.MedicalSpecialty) error {
+	// Convertir código vacío a nil para respetar UNIQUE que permite múltiples NULL
+	if specialty.Code != nil && *specialty.Code == "" {
+		specialty.Code = nil
+	}
 	return s.DB.Select("Name", "Code", "Description", "IsActive").Create(specialty).Error
 }
 
@@ -82,13 +86,21 @@ func (s *MedicalSpecialtyService) UpdateMedicalSpecialty(id int, specialty *mode
 		return nil, err
 	}
 
+	// Convertir código vacío a nil para respetar UNIQUE que permite múltiples NULL
+	var codeValue interface{}
+	if specialty.Code != nil && *specialty.Code != "" {
+		codeValue = *specialty.Code
+	} else {
+		codeValue = nil
+	}
+
 	// Usar Updates con Select para incluir explícitamente is_active (ya que false es valor zero)
 	if err := s.DB.Model(&existingSpecialty).
 		Select("name", "description", "code", "is_active").
 		Updates(map[string]interface{}{
 			"name":        specialty.Name,
 			"description": specialty.Description,
-			"code":        specialty.Code,
+			"code":        codeValue,
 			"is_active":   specialty.IsActive,
 		}).Error; err != nil {
 		return nil, err

@@ -104,6 +104,16 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 		return
 	}
 
+	// Validar que la fecha de expiración sea estrictamente posterior a hoy
+	today := time.Now().Truncate(24 * time.Hour)
+	if !expirationDate.After(today) {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "La fecha de vencimiento debe ser posterior a la fecha de hoy",
+		})
+		return
+	}
+
 	// Obtener días de alerta del request (si se proporciona, usar ese valor, sino usar 90 por defecto)
 	expirationAlertDays := 90 // Valor por defecto
 	if request.Batch.ExpirationAlertDays != nil && *request.Batch.ExpirationAlertDays > 0 {

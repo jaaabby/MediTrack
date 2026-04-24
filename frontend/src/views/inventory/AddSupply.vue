@@ -20,22 +20,41 @@
           </h3>
           
           <div class="grid md:grid-cols-2 gap-6">
-            <div>
+            <div class="relative">
               <label for="supply-code" class="block text-sm font-medium text-gray-700 mb-2">
                 Código del Insumo <span class="text-red-500">*</span>
               </label>
               <input
                 id="supply-code"
-                v-model="supplyForm.code"
-                type="number"
-                placeholder="123456"
-                class="form-input"
+                v-model="codeSearch"
+                @input="onCodeSearch"
+                @focus="showCodeOptions = true"
+                @blur="hideCodeOptions"
+                type="text"
+                placeholder="Escribir código o nombre..."
+                class="form-input w-full"
                 :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.code }"
-                @input="clearFieldError('code')"
+                autocomplete="off"
               />
+              <!-- Dropdown de códigos de insumo existentes -->
+              <div
+                v-show="showCodeOptions && filteredCodes.length > 0"
+                class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200"
+              >
+                <div
+                  v-for="sc in filteredCodes"
+                  :key="sc.code"
+                  @mousedown="selectCode(sc)"
+                  class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50"
+                >
+                  <span class="font-medium text-gray-900">{{ sc.code }}</span>
+                  <span class="ml-2 text-sm text-gray-500 truncate">{{ sc.name }}</span>
+                </div>
+              </div>
               <p v-if="formErrors.code" class="text-sm text-red-600 mt-1">
                 {{ formErrors.code }}
               </p>
+              <p v-else class="text-sm text-gray-500 mt-1">Seleccione un código existente o ingrese uno nuevo</p>
             </div>
             
             <div>
@@ -111,6 +130,7 @@
                 id="expiration-date"
                 v-model="batchForm.expirationDate"
                 type="date"
+                :min="minExpirationDate"
                 class="form-input"
                 :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.expirationDate }"
                 @input="clearFieldError('expirationDate')"
@@ -595,6 +615,7 @@ import qrService from '@/services/qr/qrService'
 import inventoryService from '@/services/inventory/inventoryService'
 import storeService from '@/services/inventory/storeService'
 import supplierConfigService from '@/services/config/supplierConfigService'
+import supplyCodeService from '@/services/config/supplyCodeService'
 import { useNotification } from '@/composables/useNotification'
 
 const { success: showSuccess, error: showError, info: showInfo } = useNotification()
@@ -650,6 +671,16 @@ const validateForm = () => {
   if (!batchForm.value.expirationDate) {
     formErrors.value.expirationDate = 'La fecha de vencimiento es obligatoria.'
     hasErrors = true
+  } else {
+    // Parsear como hora local (split evita que JS lo trate como UTC midnight)
+    const [y, m, d] = batchForm.value.expirationDate.split('-').map(Number)
+    const selected = new Date(y, m - 1, d)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (selected <= today) {
+      formErrors.value.expirationDate = 'La fecha de vencimiento debe ser posterior a hoy.'
+      hasErrors = true
+    }
   }
   if (!batchForm.value.amount || isNaN(parseInt(batchForm.value.amount)) || parseInt(batchForm.value.amount) < 1) {
     formErrors.value.amount = 'La cantidad debe ser un número mayor a 0.'
@@ -719,6 +750,9 @@ const downloadingAll = ref(false)
 const supplierSearch = ref('')
 const showSupplierOptions = ref(false)
 const uniqueSuppliers = ref([])
+const supplyCodes = ref([])
+const codeSearch = ref('')
+const showCodeOptions = ref(false)
 
 // Formularios
 const supplyForm = ref({
@@ -854,13 +888,21 @@ const downloadAllSupplyQRs = async () => {
         // Obtener imagen QR como base64
         const qrImageUrl = qrService.getQRImageUrl(supply.qr_code)
         const response = await fetch(qrImageUrl)
+        if (!response.ok) {
+          throw new Error(`Error al obtener QR ${supply.qr_code}: HTTP ${response.status}`)
+        }
+        const contentType = response.headers.get('content-type') || ''
+        if (!contentType.includes('image/')) {
+          throw new Error(`Respuesta inesperada para QR ${supply.qr_code}: ${contentType}`)
+        }
         const blob = await response.blob()
-        const base64 = await new Promise((resolve) => {
+        const base64 = await new Promise((resolve, reject) => {
           const reader = new FileReader()
           reader.onloadend = () => resolve(reader.result)
+          reader.onerror = () => reject(new Error('Error al leer imagen QR'))
           reader.readAsDataURL(blob)
         })
-        
+
         // Agregar QR code al PDF
         pdf.addImage(base64, 'PNG', margin, currentY, qrSize, qrSize)
         
@@ -969,9 +1011,21 @@ const createAnother = () => {
   }
   storeSearch.value = ''
   supplierSearch.value = ''
+  codeSearch.value = ''
   showStoreOptions.value = false
   showSupplierOptions.value = false
+  showCodeOptions.value = false
 }
+
+// Computed: fecha mínima permitida = mañana
+const minExpirationDate = computed(() => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const y = tomorrow.getFullYear()
+  const m = String(tomorrow.getMonth() + 1).padStart(2, '0')
+  const d = String(tomorrow.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+})
 
 // Computed para almacenes filtrados
 const filteredStores = computed(() => {
@@ -997,6 +1051,53 @@ const filteredSuppliers = computed(() => {
     supplier.toLowerCase().includes(search)
   )
 })
+
+// Computed para códigos de insumo filtrados
+const filteredCodes = computed(() => {
+  if (!codeSearch.value.trim()) {
+    return supplyCodes.value
+  }
+  const search = codeSearch.value.toLowerCase().trim()
+  return supplyCodes.value.filter(sc =>
+    sc.code?.toString().includes(search) ||
+    sc.name?.toLowerCase().includes(search)
+  )
+})
+
+// Handlers para autocomplete de código de insumo
+const onCodeSearch = () => {
+  clearFieldError('code')
+  showCodeOptions.value = true
+  // Si escribe un código exacto que existe, marcarlo
+  const exact = supplyCodes.value.find(sc => sc.code?.toString() === codeSearch.value.trim())
+  if (exact) {
+    supplyForm.value.code = exact.code.toString()
+  } else {
+    supplyForm.value.code = codeSearch.value.trim()
+  }
+}
+
+const selectCode = (sc) => {
+  supplyForm.value.code = sc.code.toString()
+  supplyForm.value.name = sc.name || ''
+  supplyForm.value.codeSupplier = sc.code_supplier?.toString() || ''
+  supplyForm.value.criticalStock = sc.critical_stock || 1
+  codeSearch.value = `${sc.code} - ${sc.name}`
+  showCodeOptions.value = false
+  clearFieldError('code')
+  clearFieldError('name')
+  clearFieldError('codeSupplier')
+}
+
+const hideCodeOptions = () => {
+  setTimeout(() => {
+    showCodeOptions.value = false
+    // Si no hay selección, mantener lo que escribió como código manual
+    if (!supplyForm.value.code && codeSearch.value.trim()) {
+      supplyForm.value.code = codeSearch.value.trim()
+    }
+  }, 200)
+}
 
 // Cargar almacenes al montar el componente
 const loadStores = async () => {
@@ -1106,10 +1207,21 @@ const downloadSelectedQR = async (resolution = 'high') => {
   await downloadSupplyQR(selectedQRCode.value, resolution)
 }
 
-// Cargar almacenes y proveedores al montar el componente
+// Cargar todos los códigos de insumo existentes
+const loadSupplyCodes = async () => {
+  try {
+    const list = await supplyCodeService.getAllSupplyCodes()
+    supplyCodes.value = Array.isArray(list) ? list : []
+  } catch (err) {
+    console.error('Error al cargar códigos de insumo:', err)
+  }
+}
+
+// Cargar almacenes, proveedores y códigos al montar el componente
 onMounted(() => {
   loadStores()
   loadSuppliers()
+  loadSupplyCodes()
 })
 </script>
 

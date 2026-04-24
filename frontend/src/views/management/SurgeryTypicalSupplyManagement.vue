@@ -670,9 +670,9 @@ const normalizeText = (text) => {
 // Computed para cirugías filtradas (autocomplete)
 const filteredSurgeries = computed(() => {
   if (!surgerySearch.value.trim()) {
-    return surgeries.value.slice(0, 10) // Mostrar solo primeras 10 si no hay búsqueda
+    return surgeries.value
   }
-  
+
   const term = normalizeText(surgerySearch.value.trim())
   return surgeries.value
     .filter(surgery => {
@@ -680,7 +680,6 @@ const filteredSurgeries = computed(() => {
       const id = String(surgery.id || '')
       return name.includes(term) || id.includes(term)
     })
-    .slice(0, 10) // Limitar a 10 resultados
 })
 
 // Computed para filtrar insumos

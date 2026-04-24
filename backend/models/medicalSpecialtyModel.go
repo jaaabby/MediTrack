@@ -9,7 +9,7 @@ type MedicalSpecialty struct {
 	ID          int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name        string    `json:"name" gorm:"not null;unique"`
 	Description string    `json:"description" gorm:"type:text"`
-	Code        string    `json:"code" gorm:"unique"`
+	Code        *string   `json:"code" gorm:"unique"`
 	IsActive    *bool     `json:"is_active" gorm:"default:true"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
