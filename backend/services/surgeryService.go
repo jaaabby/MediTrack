@@ -74,7 +74,14 @@ func (s *SurgeryService) UpdateSurgery(id int, surgery *models.Surgery) (*models
 		return nil, err
 	}
 
-	if err := s.DB.Model(&existingSurgery).Omit("id", "created_at", "updated_at").Updates(surgery).Error; err != nil {
+	// Usar Select explícito para que GORM actualice specialty_id incluso cuando es NULL
+	if err := s.DB.Model(&existingSurgery).
+		Select("name", "duration", "specialty_id").
+		Updates(map[string]interface{}{
+			"name":         surgery.Name,
+			"duration":     surgery.Duration,
+			"specialty_id": surgery.SpecialtyID,
+		}).Error; err != nil {
 		return nil, err
 	}
 
