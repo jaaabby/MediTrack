@@ -3,6 +3,7 @@ package services
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"math/big"
 	"meditrack/models"
 	"strings"
@@ -310,6 +311,11 @@ func (s *UserService) ResetPassword(token, newPassword string) error {
 	user, err := s.ValidateResetToken(token)
 	if err != nil {
 		return err
+	}
+
+	// Verificar que la nueva contraseña no sea igual a la actual
+	if err := crypto.ComparePassword(user.Password, newPassword); err == nil {
+		return errors.New("la nueva contraseña no puede ser igual a la contraseña actual")
 	}
 
 	// Hashear la nueva contraseña

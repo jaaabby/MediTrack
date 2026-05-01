@@ -406,6 +406,15 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
+	// Verificar que la nueva contraseña no sea igual a la actual
+	if err := crypto.ComparePassword(user.Password, changePassReq.NewPassword); err == nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "La nueva contraseña no puede ser igual a la contraseña actual",
+		})
+		return
+	}
+
 	// Hashear nueva contraseña
 	hashedPassword, err := crypto.HashPassword(changePassReq.NewPassword)
 	if err != nil {
@@ -503,6 +512,15 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 			})
 			return
 		}
+	}
+
+	// Verificar que la nueva contraseña no sea igual a la actual/temporal
+	if err := crypto.ComparePassword(user.Password, changePassReq.NewPassword); err == nil {
+		ctx.JSON(http.StatusBadRequest, response.Response{
+			Success: false,
+			Error:   "La nueva contraseña no puede ser igual a la contraseña actual",
+		})
+		return
 	}
 
 	// Hashear nueva contraseña
