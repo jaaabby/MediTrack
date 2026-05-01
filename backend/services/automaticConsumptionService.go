@@ -165,7 +165,7 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 			if isFirstNotification {
 				log.Printf("Insumo %s (QR: %s) requiere atención - cirugía completada (primera notificación)", supply.QRCode, supply.QRCode)
 			} else {
-				log.Printf("Insumo %s (QR: %s) - enviando recordatorio (notificación #%d)", supply.QRCode, assignment.NotificationCount+1)
+				log.Printf("Insumo %s - enviando recordatorio (notificación #%d)", supply.QRCode, assignment.NotificationCount+1)
 			}
 
 			// Enviar notificación por correo en lugar de consumir automáticamente
