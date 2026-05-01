@@ -30,7 +30,9 @@
                 @input="onCodeSearch"
                 @focus="showCodeOptions = true"
                 @blur="hideCodeOptions"
+                @keydown="onlyNumericKeydown"
                 type="text"
+                inputmode="numeric"
                 placeholder="Escribir código o nombre..."
                 class="form-input w-full"
                 :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.code }"
@@ -82,11 +84,13 @@
               <input
                 id="supplier-code"
                 v-model="supplyForm.codeSupplier"
-                type="number"
+                type="text"
+                inputmode="numeric"
                 placeholder="789"
                 class="form-input"
                 :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.codeSupplier }"
-                @input="clearFieldError('codeSupplier')"
+                @input="handleCodeSupplierInput"
+                @keydown="onlyNumericKeydown"
               />
               <p v-if="formErrors.codeSupplier" class="text-sm text-red-600 mt-1">
                 {{ formErrors.codeSupplier }}
@@ -99,11 +103,13 @@
               </label>
               <input
                 id="critical-stock"
-                v-model.number="supplyForm.criticalStock"
-                type="number"
-                min="1"
+                v-model="supplyForm.criticalStock"
+                type="text"
+                inputmode="numeric"
                 placeholder="1"
                 class="form-input"
+                @input="handleCriticalStockInput"
+                @keydown="onlyNumericKeydown"
               />
               <p class="text-sm text-gray-500 mt-1">
                 Nivel mínimo de stock para generar alertas. Para insumos específicos, generalmente se usa 1.
@@ -147,13 +153,13 @@
               <input
                 id="amount"
                 v-model="batchForm.amount"
-                type="number"
-                min="1"
-                max="1000"
+                type="text"
+                inputmode="numeric"
                 placeholder="50"
                 class="form-input"
                 :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': formErrors.amount }"
-                @input="clearFieldError('amount')"
+                @input="handleAmountInput"
+                @keydown="onlyNumericKeydown"
               />
               <p v-if="formErrors.amount" class="text-sm text-red-600 mt-1">
                 {{ formErrors.amount }}
@@ -707,6 +713,17 @@ const validateForm = () => {
   return !hasErrors
 }
 
+// Bloquear caracteres no numéricos en campos que solo aceptan enteros positivos
+const onlyNumericKeydown = (event) => {
+  const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Enter', 'Home', 'End']
+  if (allowed.includes(event.key)) return
+  // Permitir Ctrl/Cmd+A, C, V, X
+  if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x'].includes(event.key.toLowerCase())) return
+  if (!/^\d$/.test(event.key)) {
+    event.preventDefault()
+  }
+}
+
 // Limpiar error individual cuando el usuario empiece a editar
 const clearFieldError = (field) => {
   if (formErrors.value[field]) {
@@ -1065,8 +1082,14 @@ const filteredCodes = computed(() => {
 })
 
 // Handlers para autocomplete de código de insumo
-const onCodeSearch = () => {
+const onCodeSearch = (event) => {
   clearFieldError('code')
+  // Eliminar cualquier carácter no numérico (cubre pegado, arrastrar, autocompletar)
+  const numericValue = event.target.value.replace(/[^0-9]/g, '')
+  if (event.target.value !== numericValue) {
+    event.target.value = numericValue
+    codeSearch.value = numericValue
+  }
   showCodeOptions.value = true
   // Si escribe un código exacto que existe, marcarlo
   const exact = supplyCodes.value.find(sc => sc.code?.toString() === codeSearch.value.trim())
@@ -1075,6 +1098,26 @@ const onCodeSearch = () => {
   } else {
     supplyForm.value.code = codeSearch.value.trim()
   }
+}
+
+const handleCodeSupplierInput = (event) => {
+  clearFieldError('codeSupplier')
+  const numericValue = event.target.value.replace(/[^0-9]/g, '')
+  event.target.value = numericValue
+  supplyForm.value.codeSupplier = numericValue
+}
+
+const handleCriticalStockInput = (event) => {
+  const numericValue = event.target.value.replace(/[^0-9]/g, '')
+  event.target.value = numericValue
+  supplyForm.value.criticalStock = numericValue ? parseInt(numericValue) : ''
+}
+
+const handleAmountInput = (event) => {
+  clearFieldError('amount')
+  const numericValue = event.target.value.replace(/[^0-9]/g, '')
+  event.target.value = numericValue
+  batchForm.value.amount = numericValue
 }
 
 const selectCode = (sc) => {

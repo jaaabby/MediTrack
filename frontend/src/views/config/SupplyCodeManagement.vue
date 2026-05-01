@@ -237,9 +237,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Código del Insumo <span class="text-red-500">*</span>
                 </label>
-                <input v-model.number="supplyCodeForm.code" type="number" min="1" class="form-input" 
-                  placeholder="123456" required :disabled="isEditing" />
-                <p class="mt-1 text-xs text-gray-500">Código único del insumo (no se puede modificar después)</p>
+                <input v-model="supplyCodeForm.code" type="text" inputmode="numeric" class="form-input"
+                  placeholder="123456" :disabled="isEditing"
+                  @keydown="onlyNumericKeydown"
+                  @input="onModalNumericInput($event, 'code')" />
+                <p v-if="modalErrors.code" class="mt-1 text-xs text-red-600">{{ modalErrors.code }}</p>
+                <p v-else class="mt-1 text-xs text-gray-500">Código único del insumo (no se puede modificar después)</p>
               </div>
               <div v-else>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -254,25 +257,33 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Nombre del Insumo <span class="text-red-500">*</span>
                 </label>
-                <input v-model="supplyCodeForm.name" type="text" class="form-input" 
-                  placeholder="Ej: Jeringa 10ml" required />
+                <input v-model="supplyCodeForm.name" type="text" class="form-input"
+                  placeholder="Ej: Jeringa 10ml"
+                  @input="modalErrors.name = ''" />
+                <p v-if="modalErrors.name" class="mt-1 text-xs text-red-600">{{ modalErrors.name }}</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Código de Proveedor <span class="text-red-500">*</span>
                 </label>
-                <input v-model.number="supplyCodeForm.code_supplier" type="number" min="1" class="form-input" 
-                  placeholder="789" required />
+                <input v-model="supplyCodeForm.code_supplier" type="text" inputmode="numeric" class="form-input"
+                  placeholder="789"
+                  @keydown="onlyNumericKeydown"
+                  @input="onModalNumericInput($event, 'code_supplier')" />
+                <p v-if="modalErrors.code_supplier" class="mt-1 text-xs text-red-600">{{ modalErrors.code_supplier }}</p>
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Stock Crítico <span class="text-red-500">*</span>
                 </label>
-                <input v-model.number="supplyCodeForm.critical_stock" type="number" min="1" class="form-input" 
-                  placeholder="1" required />
-                <p class="mt-1 text-xs text-gray-500">
+                <input v-model="supplyCodeForm.critical_stock" type="text" inputmode="numeric" class="form-input"
+                  placeholder="1"
+                  @keydown="onlyNumericKeydown"
+                  @input="onModalNumericInput($event, 'critical_stock')" />
+                <p v-if="modalErrors.critical_stock" class="mt-1 text-xs text-red-600">{{ modalErrors.critical_stock }}</p>
+                <p v-else class="mt-1 text-xs text-gray-500">
                   Nivel mínimo de stock para generar alertas. Para insumos específicos, generalmente se usa 1.
                 </p>
               </div>
@@ -309,6 +320,29 @@ const searchTerm = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+
+// Bloquear caracteres no numéricos
+const onlyNumericKeydown = (event) => {
+  const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Enter', 'Home', 'End']
+  if (allowed.includes(event.key)) return
+  if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x'].includes(event.key.toLowerCase())) return
+  if (!/^\d$/.test(event.key)) event.preventDefault()
+}
+
+// Limpiar caracteres no numéricos tras pegar/autocompletar y limpiar error
+const onModalNumericInput = (event, field) => {
+  modalErrors.value[field] = ''
+  const numeric = event.target.value.replace(/[^0-9]/g, '')
+  if (event.target.value !== numeric) event.target.value = numeric
+  supplyCodeForm.value[field] = numeric
+}
+
+const modalErrors = ref({
+  code: '',
+  name: '',
+  code_supplier: '',
+  critical_stock: ''
+})
 
 // Estado de ordenamiento
 const sortKey = ref('code')
@@ -416,6 +450,7 @@ const openCreateModal = () => {
     code_supplier: null,
     critical_stock: 1
   }
+  modalErrors.value = { code: '', name: '', code_supplier: '', critical_stock: '' }
   showModal.value = true
 }
 
@@ -477,20 +512,53 @@ const closeModal = () => {
     code_supplier: null,
     critical_stock: 1
   }
+  modalErrors.value = { code: '', name: '', code_supplier: '', critical_stock: '' }
 }
 
 const saveSupplyCode = async () => {
+  // Validar campos obligatorios
+  modalErrors.value = { code: '', name: '', code_supplier: '', critical_stock: '' }
+  let hasErrors = false
+
+  const codeVal = parseInt(supplyCodeForm.value.code)
+  const codeSupplierVal = parseInt(supplyCodeForm.value.code_supplier)
+  const criticalStockVal = parseInt(supplyCodeForm.value.critical_stock)
+
+  if (!isEditing.value && (!supplyCodeForm.value.code || isNaN(codeVal) || codeVal < 1)) {
+    modalErrors.value.code = 'El código del insumo es obligatorio y debe ser mayor a 0.'
+    hasErrors = true
+  }
+  if (!supplyCodeForm.value.name || supplyCodeForm.value.name.trim() === '') {
+    modalErrors.value.name = 'El nombre del insumo es obligatorio.'
+    hasErrors = true
+  }
+  if (!supplyCodeForm.value.code_supplier || isNaN(codeSupplierVal) || codeSupplierVal < 1) {
+    modalErrors.value.code_supplier = 'El código de proveedor es obligatorio y debe ser mayor a 0.'
+    hasErrors = true
+  }
+  if (!supplyCodeForm.value.critical_stock || isNaN(criticalStockVal) || criticalStockVal < 1) {
+    modalErrors.value.critical_stock = 'El stock crítico es obligatorio y debe ser mayor a 0.'
+    hasErrors = true
+  }
+
+  if (hasErrors) return
+
   saving.value = true
   try {
     if (isEditing.value) {
-      await supplyCodeService.updateSupplyCode(supplyCodeForm.value.code, {
+      await supplyCodeService.updateSupplyCode(codeVal, {
         name: supplyCodeForm.value.name,
-        code_supplier: supplyCodeForm.value.code_supplier,
-        critical_stock: supplyCodeForm.value.critical_stock
+        code_supplier: codeSupplierVal,
+        critical_stock: criticalStockVal
       })
       showSuccess('El código de insumo ha sido actualizado exitosamente.')
     } else {
-      await supplyCodeService.createSupplyCode(supplyCodeForm.value)
+      await supplyCodeService.createSupplyCode({
+        code: codeVal,
+        name: supplyCodeForm.value.name,
+        code_supplier: codeSupplierVal,
+        critical_stock: criticalStockVal
+      })
       showSuccess('El código de insumo ha sido creado exitosamente.')
     }
     closeModal()

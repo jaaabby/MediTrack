@@ -269,6 +269,11 @@ const validateForm = () => {
     return false
   }
   
+  if (passwordForm.newPassword === passwordForm.currentPassword) {
+    errors.newPassword = 'La nueva contraseña no puede ser igual a la contraseña temporal'
+    return false
+  }
+  
   if (!passwordForm.confirmPassword) {
     errors.confirmPassword = 'Debes confirmar la nueva contraseña'
     return false
