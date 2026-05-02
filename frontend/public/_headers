@@ -1,0 +1,7 @@
+# index.html: nunca cachear para que el browser siempre obtenga el HTML con los hashes actuales
+/index.html
+  Cache-Control: no-store, no-cache, must-revalidate
+
+# Assets con hash en el nombre: cachear indefinidamente (el hash cambia en cada build)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

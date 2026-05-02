@@ -684,13 +684,17 @@ router.beforeEach(async (to, from, next) => {
   next()
 })
 
-// Manejar errores de navegaciÃ³n
+// Manejar errores de navegación
 router.onError((error) => {
-  console.error('Error de navegaciÃ³n:', error)
-  
-  // Si es un error de chunk loading (tÃ­pico en deployments)
-  if (error.message.includes('Loading chunk')) {
-    // Recargar la pÃ¡gina para obtener la nueva versiÃ³n
+  console.error('Error de navegación:', error)
+
+  const isChunkError =
+    error.message.includes('Failed to fetch dynamically imported module') ||
+    error.message.includes('Importing a module script failed') ||
+    error.message.includes('Loading chunk') ||
+    error.message.includes('Loading CSS chunk')
+
+  if (isChunkError) {
     window.location.reload()
   }
 })
