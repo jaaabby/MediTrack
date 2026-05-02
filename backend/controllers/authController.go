@@ -770,6 +770,16 @@ func (c *AuthController) ResetPassword(ctx *gin.Context) {
 
 	// Resetear contraseña
 	if err := c.userService.ResetPassword(req.Token, req.NewPassword); err != nil {
+		errMsg := err.Error()
+		// Si el error es por contraseña igual, devolver el mensaje específico
+		if strings.Contains(errMsg, "no puede ser igual") {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Success: false,
+				Error:   errMsg,
+			})
+			return
+		}
+		// Cualquier otro error es token inválido/expirado
 		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Token inválido o expirado",
