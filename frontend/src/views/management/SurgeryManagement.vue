@@ -18,25 +18,7 @@
     </div>
 
     <!-- Búsqueda -->
-    <div class="card">
-      <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar tipo de cirugía</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input type="text" placeholder="Buscar por nombre o descripción..." 
-              class="form-input pl-10 w-full" v-model="searchTerm" @input="handleSearch" />
-          </div>
-        </div>
-        <button class="btn-secondary px-4 py-2 h-10" @click="clearSearch" :disabled="!searchTerm">
-          Limpiar
-        </button>
-      </div>
-    </div>
+    <FilterPanel :filters="[{ type: 'text', key: 'search', label: 'Buscar tipo de cirugía', placeholder: 'Buscar por nombre o descripción...' }]" :result-count="sortedSurgeries.length" @filter-change="onFilterChange" />
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -320,11 +302,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import surgeryService from '@/services/management/surgeryService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirmDanger } = useAlert()
@@ -334,7 +317,7 @@ const specialties = ref([])
 const loading = ref(false)
 const loadingSpecialties = ref(false)
 const error = ref(null)
-const searchTerm = ref('')
+const filterState = reactive({ search: '' })
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
@@ -353,35 +336,40 @@ const surgeryForm = ref({
   specialty_id: null
 })
 
-let searchTimeout = null
+const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
 
 // Computed para obtener la lista ordenada
 const sortedSurgeries = computed(() => {
   if (!surgeries.value || surgeries.value.length === 0) return []
-  
-  const sorted = [...surgeries.value].sort((a, b) => {
+
+  let result = [...surgeries.value]
+
+  if (filterState.search.trim()) {
+    const term = filterState.search.toLowerCase().trim()
+    result = result.filter(s =>
+      (s.name || '').toLowerCase().includes(term) ||
+      (s.description || '').toLowerCase().includes(term)
+    )
+  }
+
+  return result.sort((a, b) => {
     let aVal = a[sortKey.value]
     let bVal = b[sortKey.value]
-    
-    // Manejo especial para ordenar por especialidad
+
     if (sortKey.value === 'specialty') {
       aVal = a.specialty?.name || ''
       bVal = b.specialty?.name || ''
     }
-    
-    // Manejo de strings (comparación case-insensitive)
+
     if (typeof aVal === 'string') {
       aVal = aVal.toLowerCase()
       bVal = bVal.toLowerCase()
     }
-    
-    // Comparación
+
     if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1
     if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1
     return 0
   })
-  
-  return sorted
 })
 
 // Computed properties para paginación
@@ -431,27 +419,6 @@ const loadSpecialties = async () => {
   } finally {
     loadingSpecialties.value = false
   }
-}
-
-const handleSearch = () => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  
-  searchTimeout = setTimeout(async () => {
-    currentPage.value = 1 // Resetear a la primera página al buscar
-    if (searchTerm.value.trim()) {
-      loading.value = true
-      try {
-        const data = await surgeryService.searchSurgeries(searchTerm.value)
-        surgeries.value = data
-      } catch (err) {
-        error.value = err.message
-      } finally {
-        loading.value = false
-      }
-    } else {
-      loadSurgeries()
-    }
-  }, 300)
 }
 
 // Funciones de conversión
@@ -598,12 +565,6 @@ const confirmDelete = async (surgery) => {
     console.error('Error al eliminar:', err)
     showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
   }
-}
-
-const clearSearch = () => {
-  searchTerm.value = ''
-  currentPage.value = 1
-  loadSurgeries()
 }
 
 onMounted(async () => {

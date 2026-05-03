@@ -10,36 +10,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card">
-      <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Especialidad</label>
-          <select v-model="selectedSpecialtyId" @change="filterBySpecialty" class="form-select">
-            <option value="">Todas las especialidades</option>
-            <option v-for="specialty in specialties" :key="specialty.id" :value="specialty.id">
-              {{ specialty.name }}
-            </option>
-          </select>
-        </div>
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar Doctor</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input type="text" placeholder="Buscar por nombre, RUT o email..." 
-              class="form-input pl-10 w-full" v-model="searchTerm" @input="handleSearch" />
-          </div>
-        </div>
-        <div class="flex items-end">
-          <button class="btn-secondary px-4 py-2 h-10" @click="clearFilters" :disabled="!selectedSpecialtyId && !searchTerm">
-            Limpiar Filtros
-          </button>
-        </div>
-      </div>
-    </div>
+    <FilterPanel :filters="filterConfig" :result-count="filteredDoctors.length" @filter-change="onFilterChange" />
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -175,7 +146,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
       <h3 class="mt-2 text-sm font-medium text-gray-900">No hay doctores registrados</h3>
-      <p class="mt-1 text-sm text-gray-500">{{ selectedSpecialtyId || searchTerm ? 'No se encontraron resultados con los filtros aplicados.' : 'No hay doctores registrados. Crea doctores desde la gestión de usuarios.' }}</p>
+      <p class="mt-1 text-sm text-gray-500">{{ filterState.specialty || filterState.search ? 'No se encontraron resultados con los filtros aplicados.' : 'No hay doctores registrados. Crea doctores desde la gestión de usuarios.' }}</p>
     </div>
 
     <!-- Modal para editar -->
@@ -269,12 +240,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import doctorInfoService from '@/services/config/doctorInfoService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import medicalCenterService from '@/services/config/medicalCenterService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirmDanger } = useAlert()
@@ -284,8 +256,7 @@ const specialties = ref([])
 const medicalCenters = ref([])
 const loading = ref(false)
 const error = ref(null)
-const searchTerm = ref('')
-const selectedSpecialtyId = ref('')
+const filterState = reactive({ search: '', specialty: '' })
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
@@ -305,20 +276,31 @@ const doctorForm = ref({
   is_active: true
 })
 
-let searchTimeout = null
+const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
+
+const filterConfig = computed(() => [
+  {
+    type: 'select',
+    key: 'specialty',
+    label: 'Filtrar por Especialidad',
+    options: [
+      { value: '', label: 'Todas las especialidades' },
+      ...specialties.value.map(s => ({ value: String(s.id), label: s.name }))
+    ]
+  },
+  { type: 'text', key: 'search', label: 'Buscar Doctor', placeholder: 'Buscar por nombre, RUT o email...' }
+])
 
 // Computed para obtener la lista filtrada
 const filteredDoctors = computed(() => {
   let filtered = [...doctors.value]
 
-  // Filtrar por especialidad
-  if (selectedSpecialtyId.value) {
-    filtered = filtered.filter(d => d.specialty_id === parseInt(selectedSpecialtyId.value))
+  if (filterState.specialty) {
+    filtered = filtered.filter(d => d.specialty_id === parseInt(filterState.specialty))
   }
 
-  // Filtrar por búsqueda
-  if (searchTerm.value.trim()) {
-    const term = searchTerm.value.toLowerCase().trim()
+  if (filterState.search.trim()) {
+    const term = filterState.search.toLowerCase().trim()
     filtered = filtered.filter(d => {
       const name = (d.name || '').toLowerCase()
       const email = (d.email || '').toLowerCase()
@@ -388,22 +370,6 @@ const loadMedicalCenters = async () => {
   }
 }
 
-const handleSearch = () => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    currentPage.value = 1
-  }, 300)
-}
-
-const filterBySpecialty = () => {
-  currentPage.value = 1
-}
-
-const clearFilters = () => {
-  selectedSpecialtyId.value = ''
-  searchTerm.value = ''
-  currentPage.value = 1
-}
 
 const openEditModal = (doctor) => {
   isEditing.value = true

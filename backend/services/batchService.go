@@ -291,8 +291,9 @@ func (s *BatchService) DeleteBatch(id int) error {
 // CREACIÓN AVANZADA
 // ========================
 
-func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, supplyCode *models.SupplyCode, individualCount int, expirationAlertDays int) (*models.Batch, []models.MedicalSupply, error) {
+func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, supplyCode *models.SupplyCode, individualCount int, expirationAlertDays int) (*models.Batch, []models.MedicalSupply, bool, error) {
 	var individualSupplies []models.MedicalSupply
+	var supplierCreated bool
 
 	if expirationAlertDays <= 0 {
 		expirationAlertDays = DefaultExpirationAlertDays
@@ -313,11 +314,12 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 
 		// Resolver nombre de proveedor a ID ANTES de crear el lote (requerido por la FK)
 		if batch.Supplier != "" && batch.SupplierID == 0 {
-			supplierID, err := s.ensureSupplierConfigTx(tx, batch.Supplier)
+			supplierID, created, err := s.ensureSupplierConfigTx(tx, batch.Supplier)
 			if err != nil {
 				return fmt.Errorf("error resolviendo proveedor '%s': %v", batch.Supplier, err)
 			}
 			batch.SupplierID = supplierID
+			supplierCreated = created
 		}
 
 		// Upsert supply_code ANTES de crear el lote (requerido por la FK batch.supply_code → supply_code.code)
@@ -350,11 +352,11 @@ func (s *BatchService) CreateBatchWithIndividualSupplies(batch *models.Batch, su
 	})
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	go s.createHistoryAsync(batch.ID, individualSupplies)
-	return batch, individualSupplies, nil
+	return batch, individualSupplies, supplierCreated, nil
 }
 
 // ========================
@@ -384,15 +386,14 @@ func (s *BatchService) ensureSupplierConfig(supplierName string) (int, error) {
 	return config.ID, nil
 }
 
-func (s *BatchService) ensureSupplierConfigTx(tx *gorm.DB, supplierName string) (int, error) {
+func (s *BatchService) ensureSupplierConfigTx(tx *gorm.DB, supplierName string) (int, bool, error) {
 	if supplierName == "" {
-		return 0, fmt.Errorf("nombre de proveedor vacío")
+		return 0, false, fmt.Errorf("nombre de proveedor vacío")
 	}
 
-	// Limpiar espacios en blanco del nombre del proveedor
 	supplierName = strings.TrimSpace(supplierName)
 	if supplierName == "" {
-		return 0, fmt.Errorf("nombre de proveedor vacío")
+		return 0, false, fmt.Errorf("nombre de proveedor vacío")
 	}
 
 	var config models.SupplierConfig
@@ -403,13 +404,13 @@ func (s *BatchService) ensureSupplierConfigTx(tx *gorm.DB, supplierName string) 
 				Notes:        "Auto-creado automáticamente",
 			}
 			if err := tx.Create(&config).Error; err != nil {
-				return 0, err
+				return 0, false, err
 			}
-		} else {
-			return 0, err
+			return config.ID, true, nil
 		}
+		return 0, false, err
 	}
-	return config.ID, nil
+	return config.ID, false, nil
 }
 
 func (s *BatchService) upsertSupplyCodeTx(tx *gorm.DB, supplyCode *models.SupplyCode) error {

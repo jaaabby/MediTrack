@@ -998,14 +998,24 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const [summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp, inventoryResp] = await Promise.all([
-      inventoryService.getInventorySummary(),
-      inventoryService.getInventoryBySurgeryType(),
-      surgeryService.getAllSurgeries(),
-      inventoryService.getStoreInventory({ low_stock: true, page: 1, page_size: 8 }),
-      supplyHistoryService.getConsumptionStatsBySurgery(),
-      inventoryService.getInventory().catch(() => []),
-    ])
+    // Todas las llamadas en paralelo: datos base + distribuciones + métricas
+    const [[summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp, inventoryResp]] =
+      await Promise.all([
+        Promise.all([
+          inventoryService.getInventorySummary(),
+          inventoryService.getInventoryBySurgeryType(),
+          surgeryService.getAllSurgeries(),
+          inventoryService.getStoreInventory({ low_stock: true, page: 1, page_size: 8 }),
+          supplyHistoryService.getConsumptionStatsBySurgery(),
+          inventoryService.getInventory().catch(() => []),
+        ]),
+        loadTrend(),
+        loadPavilionDistribution(),
+        loadStoreDistribution(),
+        loadTopSupplies(),
+        loadMedicalMetrics(),
+        loadCompletedRequests(),
+      ])
 
     summary.value = summaryResp || summary.value
     bySurgery.value = Array.isArray(bySurgResp) ? bySurgResp : []
@@ -1017,15 +1027,6 @@ async function loadData() {
       : Array.isArray(inventoryResp?.inventory_items)
         ? inventoryResp.inventory_items
         : []
-
-    await Promise.all([
-      loadTrend(), 
-      loadPavilionDistribution(), 
-      loadStoreDistribution(), 
-      loadTopSupplies(),
-      loadMedicalMetrics(),
-      loadCompletedRequests()
-    ])
 
     movementBars.value.consumos = Number(summary.value.total_consumed || 0)
     movementBars.value.entradas = Number(summary.value.total_in_stores || 0)

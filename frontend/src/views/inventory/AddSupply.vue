@@ -826,7 +826,10 @@ const createSupply = async () => {
       
       console.log(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales`)
       
-      showSuccess(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales\n✅ Proveedor "${supplierSearch.value}" registrado en el sistema`)
+      const supplierMsg = result.data.supplier_created
+        ? `\n✅ Proveedor "${supplierSearch.value}" registrado en el sistema`
+        : ''
+      showSuccess(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales${supplierMsg}`)
       await loadBatchQRImage()
     } else {
       showError(result.error || 'Error desconocido al crear el lote')

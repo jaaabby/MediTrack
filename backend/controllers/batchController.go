@@ -139,7 +139,7 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 	}
 
 	// Crear lote con insumos individuales
-	createdBatch, individualSupplies, err := c.batchService.CreateBatchWithIndividualSupplies(
+	createdBatch, individualSupplies, supplierCreated, err := c.batchService.CreateBatchWithIndividualSupplies(
 		batch,
 		supplyCode,
 		request.IndividualCount,
@@ -161,6 +161,7 @@ func (c *BatchController) CreateBatchWithIndividualSupplies(ctx *gin.Context) {
 			"supply_code":         supplyCode,
 			"individual_supplies": individualSupplies,
 			"total_created":       len(individualSupplies),
+			"supplier_created":    supplierCreated,
 		},
 	})
 }

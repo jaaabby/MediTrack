@@ -7,90 +7,7 @@
     </div>
 
     <!-- Filtros y búsqueda -->
-    <div class="card">
-      <div class="flex flex-col gap-3">
-
-        <!-- Fila 1: Buscador -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar insumo</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input type="text" placeholder="Buscar por número de lote, nombre, código o proveedor..."
-              class="form-input pl-10 w-full" v-model="searchTerm" />
-          </div>
-        </div>
-
-        <!-- Fila 2: Fechas + Stock Crítico + Limpiar -->
-        <div class="flex flex-col sm:flex-row sm:items-end gap-3">
-          <div class="flex-1">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Vencimiento desde</label>
-            <input type="date" class="form-input w-full" v-model="dateFilterFrom" />
-          </div>
-          <div class="flex-1">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Vencimiento hasta</label>
-            <input type="date" class="form-input w-full" v-model="dateFilterTo" />
-          </div>
-
-          <!-- Toggle stock crítico -->
-          <div class="flex-shrink-0">
-            <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Filtro</label>
-            <button
-              @click="lowStockFilter = !lowStockFilter; currentPage = 1"
-              :class="lowStockFilter
-                ? 'bg-red-100 border-red-400 text-red-700 hover:bg-red-200'
-                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'"
-              class="flex items-center gap-2 px-3 py-2 text-sm font-medium border rounded-md transition-colors h-10 w-full sm:w-auto"
-            >
-              <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              Stock Crítico
-              <span v-if="lowStockFilter" class="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">ON</span>
-            </button>
-          </div>
-
-          <!-- Toggle próximos a vencer -->
-          <div class="flex-shrink-0">
-            <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Filtro</label>
-            <button
-              @click="expiringFilter = !expiringFilter; currentPage = 1"
-              :class="expiringFilter
-                ? 'bg-orange-100 border-orange-400 text-orange-700 hover:bg-orange-200'
-                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'"
-              class="flex items-center gap-2 px-3 py-2 text-sm font-medium border rounded-md transition-colors h-10 w-full sm:w-auto"
-            >
-              <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Por Vencer
-              <span v-if="expiringFilter" class="bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">ON</span>
-            </button>
-          </div>
-
-          <!-- Limpiar filtros -->
-          <div class="flex-shrink-0">
-            <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Acción</label>
-            <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearSearch"
-              :disabled="!searchTerm && !dateFilterFrom && !dateFilterTo && sortField === 'none' && !lowStockFilter && !expiringFilter"
-            >
-              <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Limpiar
-            </button>
-          </div>
-        </div>
-
-
-      </div>
-    </div>
+    <FilterPanel :filters="filterConfig" :result-count="filteredSupplies.length" @filter-change="onFilterChange" />
 
     <!-- Tabla de inventario -->
     <div class="card">
@@ -1362,7 +1279,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth'
 import { format } from 'date-fns'
@@ -1386,15 +1304,40 @@ const { alert, confirmDanger } = useAlert()
 const supplies = ref([])
 const loading = ref(false)
 const error = ref(null)
-const searchTerm = ref('')
 const sortField = ref('none')
 const sortDirection = ref('asc')
 const currentPage = ref(1)
 const itemsPerPage = 10
-const dateFilterFrom = ref('')
-const dateFilterTo = ref('')
-const lowStockFilter = ref(false)
-const expiringFilter = ref(false)
+
+const filterState = reactive({
+  search: route.query.search || '',
+  from_date: '',
+  to_date: '',
+  low_stock: route.query.lowStock === 'true' ? 'true' : '',
+  expiring: route.query.expiring === 'true' ? 'true' : ''
+})
+
+const filterConfig = [
+  { type: 'text', key: 'search', label: 'Buscar insumo', placeholder: 'Buscar por número de lote, nombre, código o proveedor...', default: filterState.search },
+  { type: 'date', key: 'from_date', label: 'Vencimiento desde' },
+  { type: 'date', key: 'to_date', label: 'Vencimiento hasta' },
+  {
+    type: 'toggle', key: 'low_stock', label: 'Stock crítico', default: filterState.low_stock,
+    options: [
+      { value: '', label: 'Todos' },
+      { value: 'true', label: 'Stock Crítico', activeClass: 'bg-red-600 text-white' }
+    ]
+  },
+  {
+    type: 'toggle', key: 'expiring', label: 'Por vencer', default: filterState.expiring,
+    options: [
+      { value: '', label: 'Todos' },
+      { value: 'true', label: 'Por Vencer', activeClass: 'bg-orange-500 text-white' }
+    ]
+  }
+]
+
+const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
 
 // Estado del modal de edición
 const showEditModal = ref(false)
@@ -1438,7 +1381,7 @@ const filteredSupplies = computed(() => {
   let filtered = [...supplies.value]
 
   // Filtro de stock crítico
-  if (lowStockFilter.value) {
+  if (filterState.low_stock === 'true') {
     filtered = filtered.filter(supply => {
       const critical = supply.critical_stock || 1
       return supply.amount <= critical
@@ -1446,7 +1389,7 @@ const filteredSupplies = computed(() => {
   }
 
   // Filtro de próximos a vencer (usa los días de alerta de cada lote)
-  if (expiringFilter.value) {
+  if (filterState.expiring === 'true') {
     const today = new Date()
     filtered = filtered.filter(supply => {
       if (!supply.expiration_date) return false
@@ -1459,18 +1402,18 @@ const filteredSupplies = computed(() => {
     })
   }
 
-  if (searchTerm.value) {
+  if (filterState.search) {
     filtered = filtered.filter(supply =>
-      supply.batch_id.toString().includes(searchTerm.value) ||
-      supply.code.toString().includes(searchTerm.value) ||
-      supply.name.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
-      supply.supplier.toLowerCase().includes(searchTerm.value.toLowerCase())
+      supply.batch_id.toString().includes(filterState.search) ||
+      supply.code.toString().includes(filterState.search) ||
+      supply.name.toLowerCase().includes(filterState.search.toLowerCase()) ||
+      supply.supplier.toLowerCase().includes(filterState.search.toLowerCase())
     )
   }
 
   // Filtro de fecha de vencimiento (desde)
-  if (dateFilterFrom.value) {
-    const fromDate = new Date(dateFilterFrom.value)
+  if (filterState.from_date) {
+    const fromDate = new Date(filterState.from_date)
     filtered = filtered.filter(supply => {
       const expirationDate = new Date(supply.expiration_date)
       return expirationDate >= fromDate
@@ -1478,8 +1421,8 @@ const filteredSupplies = computed(() => {
   }
 
   // Filtro de fecha de vencimiento (hasta)
-  if (dateFilterTo.value) {
-    const toDate = new Date(dateFilterTo.value)
+  if (filterState.to_date) {
+    const toDate = new Date(filterState.to_date)
     toDate.setHours(23, 59, 59, 999) // Incluir todo el día
     filtered = filtered.filter(supply => {
       const expirationDate = new Date(supply.expiration_date)
@@ -1700,13 +1643,8 @@ const paginatedBatchDetails = computed(() => {
 })
 
 const clearSearch = () => {
-  searchTerm.value = ''
   sortField.value = 'none'
   sortDirection.value = 'asc'
-  dateFilterFrom.value = ''
-  dateFilterTo.value = ''
-  lowStockFilter.value = false
-  expiringFilter.value = false
   currentPage.value = 1
 }
 
@@ -2295,19 +2233,6 @@ const exportToExcel = async () => {
 }
 
 onMounted(() => {
-  // Si viene con un término de búsqueda desde Home, aplicarlo
-  if (route.query.search) {
-    searchTerm.value = route.query.search
-  }
-  // Si viene desde Statistics con filtro de stock crítico
-  if (route.query.lowStock === 'true') {
-    lowStockFilter.value = true
-  }
-  // Si viene desde Statistics con filtro de próximos a vencer
-  if (route.query.expiring === 'true') {
-    expiringFilter.value = true
-  }
-  // No aplicar ordenamiento por defecto, mantener el orden de la base de datos
   loadInventory()
 })
 

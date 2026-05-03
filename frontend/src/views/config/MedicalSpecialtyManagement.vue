@@ -18,25 +18,10 @@
     </div>
 
     <!-- Búsqueda -->
-    <div class="card">
-      <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar especialidad</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input type="text" placeholder="Buscar por nombre o código..." 
-              class="form-input pl-10 w-full" v-model="searchTerm" @input="handleSearch" />
-          </div>
-        </div>
-        <button class="btn-secondary px-4 py-2 h-10" @click="clearSearch" :disabled="!searchTerm">
-          Limpiar
-        </button>
-      </div>
-    </div>
+    <FilterPanel
+      :filters="[{ type: 'text', key: 'search', label: 'Buscar especialidad', placeholder: 'Buscar por nombre o código...' }]"
+      @filter-change="onFilterChange"
+    />
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -316,10 +301,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirmDanger } = useAlert()
@@ -327,7 +313,8 @@ const { confirmDanger } = useAlert()
 const specialties = ref([])
 const loading = ref(false)
 const error = ref(null)
-const searchTerm = ref('')
+const filterState = reactive({ search: '' })
+const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
@@ -354,8 +341,6 @@ const formErrors = ref({
   description: ''
 })
 
-let searchTimeout = null
-
 // Computed para obtener la lista ordenada
 const sortedSpecialties = computed(() => {
   if (!specialties.value || specialties.value.length === 0) return []
@@ -377,15 +362,15 @@ const sortedSpecialties = computed(() => {
   })
   
   // Aplicar búsqueda si existe
-  if (searchTerm.value.trim()) {
-    const term = searchTerm.value.toLowerCase().trim()
-    return sorted.filter(s => 
-      s.name.toLowerCase().includes(term) || 
+  if (filterState.search.trim()) {
+    const term = filterState.search.toLowerCase().trim()
+    return sorted.filter(s =>
+      s.name.toLowerCase().includes(term) ||
       (s.code && s.code.toLowerCase().includes(term)) ||
       (s.description && s.description.toLowerCase().includes(term))
     )
   }
-  
+
   return sorted
 })
 
@@ -424,13 +409,6 @@ const loadSpecialties = async () => {
   }
 }
 
-const handleSearch = () => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  
-  searchTimeout = setTimeout(() => {
-    currentPage.value = 1
-  }, 300)
-}
 
 const openCreateModal = () => {
   isEditing.value = false
@@ -588,11 +566,6 @@ const confirmDelete = async (specialty) => {
     console.error('Error al eliminar:', err)
     showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
   }
-}
-
-const clearSearch = () => {
-  searchTerm.value = ''
-  currentPage.value = 1
 }
 
 const previousPage = () => {

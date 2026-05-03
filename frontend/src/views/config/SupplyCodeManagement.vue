@@ -18,25 +18,7 @@
     </div>
 
     <!-- Búsqueda -->
-    <div class="card">
-      <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar código de insumo</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input type="text" placeholder="Buscar por código o nombre..." 
-              class="form-input pl-10 w-full" v-model="searchTerm" @input="handleSearch" />
-          </div>
-        </div>
-        <button class="btn-secondary px-4 py-2 h-10" @click="clearSearch" :disabled="!searchTerm">
-          Limpiar
-        </button>
-      </div>
-    </div>
+    <FilterPanel :filters="[{ type: 'text', key: 'search', label: 'Buscar código de insumo', placeholder: 'Buscar por código o nombre...' }]" :result-count="sortedSupplyCodes.length" @filter-change="onFilterChange" />
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -304,11 +286,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import supplyCodeService from '@/services/config/supplyCodeService'
 import inventoryService from '@/services/inventory/inventoryService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirm, confirmDanger } = useAlert()
@@ -316,7 +299,7 @@ const { confirm, confirmDanger } = useAlert()
 const supplyCodes = ref([])
 const loading = ref(false)
 const error = ref(null)
-const searchTerm = ref('')
+const filterState = reactive({ search: '' })
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
@@ -359,38 +342,35 @@ const supplyCodeForm = ref({
   critical_stock: 1
 })
 
-let searchTimeout = null
+const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
 
 // Computed para obtener la lista ordenada
 const sortedSupplyCodes = computed(() => {
   if (!supplyCodes.value || supplyCodes.value.length === 0) return []
-  
+
   const sorted = [...supplyCodes.value].sort((a, b) => {
     let aVal = a[sortKey.value]
     let bVal = b[sortKey.value]
-    
-    // Manejo de strings (comparación case-insensitive)
+
     if (typeof aVal === 'string') {
       aVal = aVal.toLowerCase()
       bVal = bVal.toLowerCase()
     }
-    
-    // Comparación
+
     if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1
     if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1
     return 0
   })
-  
-  // Aplicar búsqueda si existe
-  if (searchTerm.value.trim()) {
-    const term = searchTerm.value.toLowerCase().trim()
-    return sorted.filter(sc => 
+
+  if (filterState.search.trim()) {
+    const term = filterState.search.toLowerCase().trim()
+    return sorted.filter(sc =>
       String(sc.code).includes(term) ||
       sc.name.toLowerCase().includes(term) ||
       String(sc.code_supplier).includes(term)
     )
   }
-  
+
   return sorted
 })
 
@@ -427,19 +407,6 @@ const loadSupplyCodes = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const handleSearch = () => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  
-  searchTimeout = setTimeout(() => {
-    currentPage.value = 1
-  }, 300)
-}
-
-const clearSearch = () => {
-  searchTerm.value = ''
-  currentPage.value = 1
 }
 
 const openCreateModal = () => {

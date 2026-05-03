@@ -31,52 +31,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card space-y-4">
-      <!-- Buscador -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Buscar por código</label>
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input type="text" v-model="filters.code" placeholder="Código de transferencia" class="form-input pl-10 w-full" />
-        </div>
-      </div>
-      <!-- Filtros adicionales + Limpiar -->
-      <div class="flex flex-wrap gap-4 items-end">
-        <div class="flex-1 min-w-[160px]">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
-          <select v-model="filters.status" class="form-input">
-            <option value="">Todos</option>
-            <option value="pending">Pendiente</option>
-            <option value="en_transito">En Tránsito</option>
-            <option value="completed">Completado</option>
-            <option value="cancelled">Cancelado</option>
-          </select>
-        </div>
-        <div class="flex-1 min-w-[140px]">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Desde</label>
-          <input type="date" v-model="filters.from_date" class="form-input" />
-        </div>
-        <div class="flex-1 min-w-[140px]">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Hasta</label>
-          <input type="date" v-model="filters.to_date" class="form-input" />
-        </div>
-        <div class="flex-shrink-0">
-          <label class="block text-sm font-medium text-gray-700 mb-2 sm:invisible">Acción</label>
-          <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearFilters"
-            :disabled="!filters.code && !filters.status && !filters.from_date && !filters.to_date"
-          >
-            <svg class="h-4 w-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Limpiar
-          </button>
-        </div>
-      </div>
-    </div>
+    <FilterPanel :filters="filterConfig" :result-count="sortedTransfers.length" @filter-change="onFilterChange" />
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -612,11 +567,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import supplyTransferService from '@/services/management/supplyTransferService'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
+import { TRANSFER_STATUS_OPTIONS } from '@/config/statuses'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 const route = useRoute()
@@ -628,14 +585,45 @@ const showDetailsModal = ref(false)
 const selectedTransfer = ref(null)
 const activeTab = ref('general')
 
-const filters = ref({
-  code: '',
-  status: '',
+const normalizeTransferStatus = (status) => {
+  const statusMap = {
+    pending: 'pendiente',
+    in_transit: 'en_transito',
+    completed: 'recibido',
+    cancelled: 'cancelado'
+  }
+  return statusMap[status] || status || ''
+}
+
+const filterState = reactive({
+  code: route.query.status ? '' : '',
+  status: normalizeTransferStatus(route.query.status),
   from_date: '',
   to_date: '',
   pavilion_id: '',
   store_id: ''
 })
+
+const filterConfig = [
+  { type: 'text', key: 'code', label: 'Buscar por código', placeholder: 'Código de transferencia' },
+  {
+    type: 'select', key: 'status', label: 'Estado', default: filterState.status,
+    options: [
+      { value: '', label: 'Todos' },
+      ...TRANSFER_STATUS_OPTIONS
+    ]
+  },
+  { type: 'date', key: 'from_date', label: 'Desde' },
+  { type: 'date', key: 'to_date', label: 'Hasta' }
+]
+
+const onFilterChange = (key, value) => {
+  filterState[key] = value
+  currentPage.value = 1
+  if (key === 'status' || key === 'from_date' || key === 'to_date') {
+    loadTransfers()
+  }
+}
 
 // Estado de ordenamiento
 const sortKey = ref('created_at')
@@ -650,7 +638,7 @@ const sortedTransfers = computed(() => {
   if (!transfers.value || transfers.value.length === 0) return []
 
   // Filtro client-side por código
-  const codeFilter = filters.value.code?.trim().toLowerCase()
+  const codeFilter = filterState.code?.trim().toLowerCase()
   const filtered = codeFilter
     ? transfers.value.filter(t => {
         const code = (t.transfer_code || t.code || '').toLowerCase()
@@ -710,20 +698,12 @@ const sortBy = (key) => {
   currentPage.value = 1 // Resetear a la primera página al ordenar
 }
 
-// Resetear página al cambiar el filtro de código (búsqueda en tiempo real, client-side)
-watch(() => filters.value.code, () => { currentPage.value = 1 })
-
-// Aplicar filtros automáticamente al cambiar estado o fechas (requieren llamada al backend)
-watch(() => filters.value.status, () => loadTransfers())
-watch(() => filters.value.from_date, () => loadTransfers())
-watch(() => filters.value.to_date, () => loadTransfers())
-
 const loadTransfers = async () => {
   loading.value = true
   error.value = null
   currentPage.value = 1 // Resetear a la primera página al cargar
   try {
-    const data = await supplyTransferService.getTransfers(filters.value)
+    const data = await supplyTransferService.getTransfers(filterState)
     // El backend devuelve { transfers: [], total: n, page: n, page_size: n }
     transfers.value = data.transfers || data.data?.transfers || data || []
     console.log('Transferencias cargadas:', transfers.value)
@@ -748,14 +728,12 @@ const closeDetailsModal = () => {
 }
 
 const clearFilters = () => {
-  filters.value = {
-    code: '',
-    status: '',
-    from_date: '',
-    to_date: '',
-    pavilion_id: '',
-    store_id: ''
-  }
+  filterState.code = ''
+  filterState.status = ''
+  filterState.from_date = ''
+  filterState.to_date = ''
+  filterState.pavilion_id = ''
+  filterState.store_id = ''
   currentPage.value = 1
   loadTransfers()
 }
@@ -871,9 +849,6 @@ const exportToExcel = async () => {
 }
 
 onMounted(() => {
-  if (route.query.status) {
-    filters.value.status = route.query.status
-  }
   loadTransfers()
 })
 </script>

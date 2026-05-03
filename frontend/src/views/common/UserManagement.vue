@@ -1,94 +1,21 @@
 <template>
   <div class="max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Gestión de Usuarios</h1>
-      <p class="mt-1 text-sm text-gray-600">
-        Administra las cuentas de usuarios del sistema
-      </p>
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Gestión de Usuarios</h1>
+        <p class="mt-1 text-sm text-gray-600">Administra las cuentas de usuarios del sistema</p>
+      </div>
+      <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Crear Usuario
+      </button>
     </div>
 
     <!-- Filtros y búsqueda -->
-    <div class="card mb-6">
-      <div class="flex flex-col gap-4">
-        <!-- Primera fila: Buscador -->
-        <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-          <!-- Buscador único -->
-          <div class="flex-1">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar usuario</label>
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input type="text" placeholder="Buscar por nombre, RUT o email..."
-                class="form-input pl-10 w-full" v-model="searchTerm" />
-            </div>
-          </div>
-
-          <!-- Botón de limpiar búsqueda -->
-          <div class="w-full sm:w-auto">
-            <button class="btn-secondary px-4 py-2 h-10 w-full sm:w-auto" @click="clearSearch" :disabled="!searchTerm">
-              Limpiar
-            </button>
-          </div>
-        </div>
-
-        <!-- Segunda fila: Filtros -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- Filtro por Rol -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Rol</label>
-            <select v-model="roleFilter" class="form-select w-full">
-              <option value="">Todos los roles</option>
-              <option value="admin">Administrador</option>
-              <option value="encargado de bodega">Encargado de Bodega</option>
-              <option value="pabellón">Pabellón</option>
-              <option value="pavedad">Pavedad</option>
-              <option value="enfermera">Enfermera</option>
-              <option value="doctor">Doctor</option>
-            </select>
-          </div>
-
-          <!-- Filtro por Centro Médico -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Centro Médico</label>
-            <select v-model="medicalCenterFilter" class="form-select w-full">
-              <option value="">Todos los centros</option>
-              <option v-for="center in medicalCenters" :key="center.id" :value="center.id">
-                {{ center.name }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Filtro por Estado -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Estado</label>
-            <select v-model="statusFilter" class="form-select w-full">
-              <option value="">Todos</option>
-              <option value="true">Activo</option>
-              <option value="false">Inactivo</option>
-            </select>
-          </div>
-
-          <!-- Botón de crear usuario -->
-          <div class="flex items-end">
-            <button
-              @click="openCreateModal"
-              class="btn-primary w-full h-10"
-            >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              <span class="hidden sm:inline">Crear Usuario</span>
-              <span class="sm:hidden">Crear</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <FilterPanel :filters="filterConfig" :result-count="filteredUsers.length" @filter-change="onFilterChange" class="mb-6" />
 
     <!-- Lista de usuarios -->
     <div class="card">
@@ -154,14 +81,12 @@
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="filteredUsers.length === 0">
               <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">
-                <div v-if="hasActiveFilters || searchTerm" class="space-y-2">
+                <div v-if="hasActiveFilters" class="space-y-2">
                   <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p>No se encontraron usuarios con los filtros aplicados</p>
-                  <button @click="clearAllFilters" class="btn-secondary text-sm">
-                    Limpiar filtros
-                  </button>
+                  <p class="text-xs text-gray-400">Usa el panel de filtros para limpiar la búsqueda</p>
                 </div>
                 <div v-else>
                   No hay usuarios registrados
@@ -570,6 +495,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 import { userService } from '@/services/common/userService'
 import medicalCenterService from '@/services/config/medicalCenterService'
 import pavilionService from '@/services/config/pavilionService'
@@ -597,41 +523,65 @@ const rutDv = computed(() => {
   return calculateDv(rutBody.value)
 })
 
-// Refs para búsqueda y filtros
-const searchTerm = ref('')
-const roleFilter = ref('')
-const medicalCenterFilter = ref('')
-const statusFilter = ref('')
+// Filtros
+const filterState = reactive({ search: '', role: '', medicalCenter: '', status: '' })
+
+const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
+
+const filterConfig = computed(() => [
+  { type: 'text', key: 'search', label: 'Buscar usuario', placeholder: 'Buscar por nombre, RUT o email...' },
+  {
+    type: 'select', key: 'role', label: 'Filtrar por Rol',
+    options: [
+      { value: '', label: 'Todos los roles' },
+      { value: 'admin', label: 'Administrador' },
+      { value: 'encargado de bodega', label: 'Encargado de Bodega' },
+      { value: 'pabellón', label: 'Pabellón' },
+      { value: 'pavedad', label: 'Pavedad' },
+      { value: 'enfermera', label: 'Enfermera' },
+      { value: 'doctor', label: 'Doctor' }
+    ]
+  },
+  {
+    type: 'select', key: 'medicalCenter', label: 'Filtrar por Centro Médico',
+    options: [
+      { value: '', label: 'Todos los centros' },
+      ...medicalCenters.value.map(c => ({ value: String(c.id), label: c.name }))
+    ]
+  },
+  {
+    type: 'select', key: 'status', label: 'Filtrar por Estado',
+    options: [
+      { value: '', label: 'Todos' },
+      { value: 'true', label: 'Activo' },
+      { value: 'false', label: 'Inactivo' }
+    ]
+  }
+])
 
 // Filtrado de usuarios
 const filteredUsers = computed(() => {
   let filtered = users.value
 
-  // Aplicar búsqueda por texto
-  if (searchTerm.value) {
-    const search = searchTerm.value.toLowerCase()
-    filtered = filtered.filter(user => {
-      return (
-        user.name.toLowerCase().includes(search) ||
-        user.rut.toLowerCase().includes(search) ||
-        user.email.toLowerCase().includes(search)
-      )
-    })
+  if (filterState.search) {
+    const search = filterState.search.toLowerCase()
+    filtered = filtered.filter(user =>
+      user.name.toLowerCase().includes(search) ||
+      user.rut.toLowerCase().includes(search) ||
+      user.email.toLowerCase().includes(search)
+    )
   }
 
-  // Aplicar filtro por rol
-  if (roleFilter.value) {
-    filtered = filtered.filter(user => user.role === roleFilter.value)
+  if (filterState.role) {
+    filtered = filtered.filter(user => user.role === filterState.role)
   }
 
-  // Aplicar filtro por centro médico
-  if (medicalCenterFilter.value) {
-    filtered = filtered.filter(user => user.medical_center_id === parseInt(medicalCenterFilter.value))
+  if (filterState.medicalCenter) {
+    filtered = filtered.filter(user => user.medical_center_id === parseInt(filterState.medicalCenter))
   }
 
-  // Aplicar filtro por estado
-  if (statusFilter.value !== '') {
-    const isActive = statusFilter.value === 'true'
+  if (filterState.status !== '') {
+    const isActive = filterState.status === 'true'
     filtered = filtered.filter(user => user.is_active === isActive)
   }
 
@@ -639,9 +589,9 @@ const filteredUsers = computed(() => {
 })
 
 // Verificar si hay filtros activos
-const hasActiveFilters = computed(() => {
-  return searchTerm.value || roleFilter.value || medicalCenterFilter.value || statusFilter.value !== ''
-})
+const hasActiveFilters = computed(() =>
+  filterState.search || filterState.role || filterState.medicalCenter || filterState.status !== ''
+)
 
 // Paginación
 const currentPage = ref(1)
@@ -1125,21 +1075,6 @@ const getRoleBadgeClass = (role) => {
   return classes[role] || 'bg-gray-100 text-gray-800'
 }
 
-// Limpiar búsqueda
-const clearSearch = () => {
-  searchTerm.value = ''
-  currentPage.value = 1
-}
-
-// Limpiar todos los filtros
-const clearAllFilters = () => {
-  searchTerm.value = ''
-  roleFilter.value = ''
-  medicalCenterFilter.value = ''
-  statusFilter.value = ''
-  currentPage.value = 1
-}
-
 // Cargar datos al montar
 onMounted(() => {
   loadUsers()
@@ -1147,11 +1082,6 @@ onMounted(() => {
   loadPavilions()
   loadStores()
   loadSpecialties()
-})
-
-// Watchers para resetear paginación cuando cambian los filtros
-watch([searchTerm, roleFilter, medicalCenterFilter, statusFilter], () => {
-  currentPage.value = 1
 })
 </script>
 

@@ -23,49 +23,10 @@
     </div>
 
     <!-- Selector de Pabellón y Filtros -->
-    <div class="card">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Seleccionar Pabellón</label>
-          <select v-model="selectedPavilionId" class="form-input" @change="loadInventory">
-            <option value="">Seleccione un pabellón...</option>
-            <option v-for="pavilion in pavilions" :key="pavilion.id" :value="pavilion.id">
-              {{ pavilion.name }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Proveedor</label>
-          <input
-            type="text"
-            v-model="filterSupplier"
-            placeholder="Buscar proveedor..."
-            class="form-input"
-            @input="debouncedApplyFilters"
-            :disabled="!selectedPavilionId"
-          />
-        </div>
-        <div class="flex items-end">
-          <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              v-model="includeInTransit"
-              @change="loadInventory"
-              :disabled="!selectedPavilionId"
-              class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-            />
-            <span class="text-sm text-gray-700">Incluir en tránsito</span>
-          </label>
-        </div>
-      </div>
-      <div class="flex justify-end space-x-2">
-        <button @click="clearFilters" class="btn-secondary" :disabled="!selectedPavilionId">Limpiar Filtros</button>
-        <button @click="applyFilters" class="btn-primary" :disabled="!selectedPavilionId">Aplicar Filtros</button>
-      </div>
-    </div>
+    <FilterPanel :filters="filterConfig" :result-count="filterState.pavilion ? sortedInventory.length : null" @filter-change="onFilterChange" />
 
     <!-- Sin Selección -->
-    <div v-if="!selectedPavilionId" class="card text-center py-12">
+    <div v-if="!filterState.pavilion" class="card text-center py-12">
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
@@ -387,16 +348,42 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import inventoryService from '@/services/inventory/inventoryService'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 
 const loading = ref(false)
 const error = ref(null)
 const inventory = ref([])
 const pavilions = ref([])
-const selectedPavilionId = ref('')
-const includeInTransit = ref(false)
-const filterSupplier = ref('')
+
+const filterState = reactive({ pavilion: '', supplier: '', transit: 'false' })
+
+const filterConfig = computed(() => [
+  {
+    type: 'select', key: 'pavilion', label: 'Seleccionar Pabellón',
+    options: [
+      { value: '', label: 'Seleccione un pabellón...' },
+      ...pavilions.value.map(p => ({ value: String(p.id), label: p.name }))
+    ]
+  },
+  { type: 'text', key: 'supplier', label: 'Proveedor', placeholder: 'Buscar proveedor...' },
+  {
+    type: 'toggle', key: 'transit', label: 'Incluir en tránsito', default: 'false',
+    options: [
+      { value: 'false', label: 'No' },
+      { value: 'true', label: 'Sí', activeClass: 'bg-blue-600 text-white' }
+    ]
+  }
+])
+
+const onFilterChange = (key, value) => {
+  filterState[key] = value
+  currentPage.value = 1
+  if (key === 'pavilion' || key === 'transit') {
+    loadInventory()
+  }
+}
 
 // Paginación
 const currentPage = ref(1)
@@ -416,10 +403,9 @@ const normalizeText = (text) => {
 const sortedInventory = computed(() => {
   if (!inventory.value || inventory.value.length === 0) return []
 
-  // Filtro cliente por proveedor (ID 6)
   let result = [...inventory.value]
-  if (filterSupplier.value.trim()) {
-    const needle = normalizeText(filterSupplier.value)
+  if (filterState.supplier.trim()) {
+    const needle = normalizeText(filterState.supplier)
     result = result.filter(item => normalizeText(item.batch_supplier || '').includes(needle))
   }
 
@@ -476,7 +462,7 @@ const loadPavilions = async () => {
 }
 
 const loadInventory = async () => {
-  if (!selectedPavilionId.value) {
+  if (!filterState.pavilion) {
     inventory.value = []
     return
   }
@@ -484,12 +470,11 @@ const loadInventory = async () => {
   loading.value = true
   error.value = null
   currentPage.value = 1
-  
+
   try {
-    // El proveedor se filtra en cliente para evitar problemas de mayúsculas/tildes (ID 6)
     const data = await inventoryService.getPavilionInventory(
-      selectedPavilionId.value,
-      includeInTransit.value,
+      filterState.pavilion,
+      filterState.transit === 'true',
       null
     )
     // Asegurarse de que inventory.value siempre sea un array
@@ -502,31 +487,6 @@ const loadInventory = async () => {
   } finally {
     loading.value = false
   }
-}
-
-// Función para aplicar filtros
-const applyFilters = () => {
-  loadInventory()
-}
-
-// Función para limpiar filtros — resetea TODOS los filtros incluyendo pabellón (ID 10)
-const clearFilters = () => {
-  filterSupplier.value = ''
-  selectedPavilionId.value = ''
-  includeInTransit.value = false
-  inventory.value = []
-  error.value = null
-  currentPage.value = 1
-}
-
-// Debounce para el filtro de proveedor.
-// El filtrado es reactivo (computed), solo resetea la paginación (ID 6).
-let debounceTimer = null
-const debouncedApplyFilters = () => {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => {
-    currentPage.value = 1
-  }, 300)
 }
 
 const getTotalAvailable = () => {

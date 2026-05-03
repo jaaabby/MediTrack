@@ -20,33 +20,31 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Bodega</label>
-          <select v-model="filters.store_id" class="form-input" @change="applyFilters">
-            <option value="">Todas las bodegas</option>
-            <option v-for="store in stores" :key="store.id" :value="store.id">
-              {{ store.name }}
-            </option>
-          </select>
-        </div>
+    <FilterPanel
+      :key="filterPanelKey"
+      :filters="filterConfig"
+      :result-count="sortedInventory.length"
+      :show-clear="false"
+      @filter-change="onFilterChange"
+    >
+      <template #filter-surgery_search="{ setValue }">
         <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Cirugía</label>
           <input
             type="text"
-            v-model="surgerySearch"
+            :value="surgerySearch"
             placeholder="Buscar tipo de cirugía..."
             class="form-input"
-            @input="onSurgerySearch"
+            @input="setValue($event.target.value)"
             @focus="showSurgeryOptions = true"
             @blur="hideSurgeryOptions"
             autocomplete="off"
           />
-          
-          <!-- Dropdown de opciones de cirugía -->
-          <div v-if="showSurgeryOptions && filteredSurgeries.length > 0"
-            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+
+          <div
+            v-if="showSurgeryOptions && filteredSurgeries.length > 0"
+            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+          >
             <button
               v-for="surgery in filteredSurgeries"
               :key="surgery.id"
@@ -57,22 +55,26 @@
             </button>
           </div>
         </div>
+      </template>
+
+      <template #filter-supplier_search="{ setValue }">
         <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-2">Proveedor</label>
           <input
             type="text"
-            v-model="supplierSearch"
+            :value="supplierSearch"
             placeholder="Buscar proveedor..."
             class="form-input"
-            @input="onSupplierSearch"
+            @input="setValue($event.target.value)"
             @focus="showSupplierOptions = true"
             @blur="hideSupplierOptions"
             autocomplete="off"
           />
-          
-          <!-- Dropdown de opciones de proveedor -->
-          <div v-if="showSupplierOptions && filteredSuppliers.length > 0"
-            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+
+          <div
+            v-if="showSupplierOptions && filteredSuppliers.length > 0"
+            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+          >
             <button
               v-for="supplier in filteredSuppliers"
               :key="supplier"
@@ -83,36 +85,13 @@
             </button>
           </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Alertas</label>
-          <div class="flex flex-col items-start gap-5">
-            <!-- ID 7: inline-flex restringe el área clickeable a la casilla y su etiqueta -->
-            <label class="inline-flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                v-model="filters.low_stock"
-                @change="applyFilters"
-                class="h-4 w-4 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-              />
-              <span class="text-sm text-gray-700">Stock bajo</span>
-            </label>
-            <label class="inline-flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                v-model="filters.near_expiration"
-                @change="applyFilters"
-                class="h-4 w-4 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-              />
-              <span class="text-sm text-gray-700">Próximo a vencer</span>
-            </label>
-          </div>
-        </div>
-      </div>
-      <div class="mt-4 flex justify-end space-x-2">
-        <button @click="clearFilters" class="btn-secondary">Limpiar Filtros</button>
+      </template>
+
+      <template #actions>
+        <button @click="clearFilters" class="btn-secondary" :disabled="!hasActiveFilters">Limpiar Filtros</button>
         <button @click="applyFilters" class="btn-primary">Aplicar Filtros</button>
-      </div>
-    </div>
+      </template>
+    </FilterPanel>
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -425,10 +404,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 import inventoryService from '@/services/inventory/inventoryService'
 import surgeryService from '@/services/management/surgeryService'
 
 const route = useRoute()
+const initialStoreId = Array.isArray(route.query.store_id) ? route.query.store_id[0] : route.query.store_id
+const initialSurgeryId = Array.isArray(route.query.surgery_id) ? route.query.surgery_id[0] : route.query.surgery_id
 
 const loading = ref(false)
 const error = ref(null)
@@ -437,12 +419,13 @@ const stores = ref([])
 const surgeries = ref([])
 
 const filters = ref({
-  store_id: '',
-  surgery_id: '',
+  store_id: initialStoreId ? String(initialStoreId) : '',
+  surgery_id: initialSurgeryId ? String(initialSurgeryId) : '',
   supplier: '',
   low_stock: false,
   near_expiration: false
 })
+const filterPanelKey = ref(0)
 
 // Estados para autocompletado
 const surgerySearch = ref('')
@@ -466,6 +449,55 @@ const normalizeText = (text) => {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 }
+
+const filterConfig = computed(() => [
+  {
+    type: 'select',
+    key: 'store_id',
+    label: 'Bodega',
+    default: filters.value.store_id,
+    options: [
+      { value: '', label: 'Todas las bodegas' },
+      ...stores.value.map(store => ({ value: String(store.id), label: store.name }))
+    ]
+  },
+  {
+    type: 'custom',
+    key: 'surgery_search',
+    label: 'Tipo de Cirugía',
+    default: surgerySearch.value
+  },
+  {
+    type: 'custom',
+    key: 'supplier_search',
+    label: 'Proveedor',
+    default: supplierSearch.value
+  },
+  {
+    type: 'checkbox',
+    key: 'low_stock',
+    label: 'Alerta de stock',
+    checkboxLabel: 'Stock bajo',
+    default: filters.value.low_stock
+  },
+  {
+    type: 'checkbox',
+    key: 'near_expiration',
+    label: 'Alerta de vencimiento',
+    checkboxLabel: 'Próximo a vencer',
+    default: filters.value.near_expiration
+  }
+])
+
+const hasActiveFilters = computed(() =>
+  filters.value.store_id !== '' ||
+  filters.value.surgery_id !== '' ||
+  filters.value.supplier.trim() !== '' ||
+  filters.value.low_stock ||
+  filters.value.near_expiration ||
+  surgerySearch.value.trim() !== '' ||
+  supplierSearch.value.trim() !== ''
+)
 
 // Computed para proveedores únicos del inventario
 const uniqueSuppliers = computed(() => {
@@ -606,6 +638,30 @@ const applyFilters = () => {
   loadInventory()
 }
 
+const onFilterChange = (key, value) => {
+  switch (key) {
+    case 'store_id':
+      filters.value.store_id = value
+      applyFilters()
+      break
+    case 'surgery_search':
+      surgerySearch.value = value
+      onSurgerySearch()
+      break
+    case 'supplier_search':
+      supplierSearch.value = value
+      onSupplierSearch()
+      break
+    case 'low_stock':
+    case 'near_expiration':
+      filters.value[key] = value
+      applyFilters()
+      break
+    default:
+      break
+  }
+}
+
 const clearFilters = () => {
   filters.value = {
     store_id: '',
@@ -616,6 +672,9 @@ const clearFilters = () => {
   }
   surgerySearch.value = ''
   supplierSearch.value = ''
+  showSurgeryOptions.value = false
+  showSupplierOptions.value = false
+  filterPanelKey.value += 1
   applyFilters()
 }
 
@@ -628,8 +687,10 @@ const onSurgerySearch = () => {
   )
   if (exactMatch) {
     filters.value.surgery_id = exactMatch.id.toString()
+    debouncedApplyFilters()
   } else if (surgerySearch.value.trim() === '') {
     filters.value.surgery_id = ''
+    debouncedApplyFilters()
   }
 }
 
@@ -746,21 +807,15 @@ onMounted(async () => {
   // Cargar datos auxiliares
   await Promise.all([loadStores(), loadSurgeries()])
   
-  // Aplicar filtros de la URL si existen
-  if (route.query.surgery_id) {
-    filters.value.surgery_id = route.query.surgery_id
-    // Establecer el nombre de la cirugía en el campo de búsqueda
-    const selectedSurgery = surgeries.value.find(s => s.id === parseInt(route.query.surgery_id))
+  // Inicializar nombre de cirugía si vino desde query params
+  if (filters.value.surgery_id) {
+    const selectedSurgery = surgeries.value.find(s => s.id === parseInt(filters.value.surgery_id))
     if (selectedSurgery) {
       surgerySearch.value = selectedSurgery.name
     }
-  }
-  if (route.query.store_id) {
-    filters.value.store_id = route.query.store_id
   }
   
   // Cargar inventario
   await loadInventory()
 })
 </script>
-

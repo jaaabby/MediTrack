@@ -1,0 +1,1 @@
+import{d as t}from"./index-CwU-zGAo.js";function i(){const o=t();return{show:(r,e="info",n=5e3)=>o.show(r,e,n),success:(r,e=5e3)=>o.success(r,e),error:(r,e=6e3)=>o.error(r,e),warning:(r,e=5e3)=>o.warning(r,e),info:(r,e=5e3)=>o.info(r,e),remove:r=>{o.remove(r)},clear:()=>{o.clear()}}}export{i as u};

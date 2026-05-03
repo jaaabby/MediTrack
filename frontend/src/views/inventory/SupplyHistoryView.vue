@@ -23,35 +23,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card">
-      <div class="flex flex-col md:flex-row gap-4 items-end">
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
-          <input type="text" v-model="searchTerm" placeholder="Nombre, QR, estado, usuario..." class="form-input" />
-        </div>
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Desde</label>
-          <input type="date" v-model="filters.from_date" class="form-input" />
-        </div>
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Hasta</label>
-          <input type="date" v-model="filters.to_date" class="form-input" />
-        </div>
-        <div>
-          <button 
-            @click="clearFilters" 
-            :disabled="!hasActiveFilters"
-            class="btn-secondary flex items-center justify-center whitespace-nowrap"
-            :class="{ 'opacity-50 cursor-not-allowed': !hasActiveFilters }"
-          >
-            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Limpiar Filtros
-          </button>
-        </div>
-      </div>
-    </div>
+    <FilterPanel :filters="filterConfig" :result-count="filteredHistory.length" @filter-change="onFilterChange" />
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -416,26 +388,35 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import supplyHistoryService from '@/services/inventory/supplyHistoryService'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useNotification } from '@/composables/useNotification'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 
 const history = ref([])
 const loading = ref(false)
-const searchTerm = ref('')
 const showDetailsModal = ref(false)
 const selectedItem = ref(null)
 const route = useRoute()
 const { success: showSuccess, error: showError } = useNotification()
 
-const filters = ref({
-  from_date: '',
-  to_date: ''
+const filterState = reactive({
+  search: route.query.search || '',
+  from_date: route.query.from_date || '',
+  to_date: route.query.to_date || ''
 })
+
+const filterConfig = [
+  { type: 'text', key: 'search', label: 'Buscar', placeholder: 'Nombre, QR, estado, usuario...', default: filterState.search },
+  { type: 'date', key: 'from_date', label: 'Desde', default: filterState.from_date },
+  { type: 'date', key: 'to_date', label: 'Hasta', default: filterState.to_date }
+]
+
+const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
 
 // Estado de ordenamiento (por defecto ordenado por fecha más reciente primero)
 const sortKey = ref('date_time')
@@ -459,17 +440,16 @@ const parseDateTimeToLocal = (dateStr) => {
   return new Date(dateStr)
 }
 
-const hasActiveFilters = computed(() => {
-  return searchTerm.value !== '' || filters.value.from_date !== '' || filters.value.to_date !== ''
-})
+const hasActiveFilters = computed(() =>
+  filterState.search !== '' || filterState.from_date !== '' || filterState.to_date !== ''
+)
 
 const filteredHistory = computed(() => {
   let filtered = [...history.value]
-  
-  // Filtrar por búsqueda de texto
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase()
-    filtered = filtered.filter(item => 
+
+  if (filterState.search) {
+    const term = filterState.search.toLowerCase()
+    filtered = filtered.filter(item =>
       item.supply_name?.toLowerCase().includes(term) ||
       item.qr_code?.toLowerCase().includes(term) ||
       item.medical_supply_id?.toString().includes(term) ||
@@ -478,28 +458,23 @@ const filteredHistory = computed(() => {
       item.destination_type?.toLowerCase().includes(term)
     )
   }
-  
-  // Filtrar por rango de fechas
-  if (filters.value.from_date) {
-    // Crear fecha local a las 00:00:00
-    const fromDate = new Date(filters.value.from_date + 'T00:00:00')
+
+  if (filterState.from_date) {
+    const fromDate = new Date(filterState.from_date + 'T00:00:00')
     filtered = filtered.filter(item => {
       if (!item.date_time) return false
-      const itemDate = parseDateTimeToLocal(item.date_time)
-      return itemDate >= fromDate
+      return parseDateTimeToLocal(item.date_time) >= fromDate
     })
   }
-  
-  if (filters.value.to_date) {
-    // Crear fecha local a las 23:59:59.999
-    const toDate = new Date(filters.value.to_date + 'T23:59:59.999')
+
+  if (filterState.to_date) {
+    const toDate = new Date(filterState.to_date + 'T23:59:59.999')
     filtered = filtered.filter(item => {
       if (!item.date_time) return false
-      const itemDate = parseDateTimeToLocal(item.date_time)
-      return itemDate <= toDate
+      return parseDateTimeToLocal(item.date_time) <= toDate
     })
   }
-  
+
   return filtered
 })
 
@@ -570,13 +545,6 @@ const loadHistory = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const clearFilters = () => {
-  searchTerm.value = ''
-  filters.value.from_date = ''
-  filters.value.to_date = ''
-  currentPage.value = 1
 }
 
 const viewDetails = (item) => {
@@ -683,16 +651,6 @@ const exportToExcel = async () => {
 }
 
 onMounted(() => {
-  // Pre-llenar filtros si se navega desde otro contexto
-  if (route.query.search) {
-    searchTerm.value = route.query.search
-  }
-  if (route.query.from_date) {
-    filters.value.from_date = route.query.from_date
-  }
-  if (route.query.to_date) {
-    filters.value.to_date = route.query.to_date
-  }
   loadHistory()
 })
 </script>

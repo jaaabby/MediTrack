@@ -18,24 +18,31 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card">
-      <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1 relative">
+    <FilterPanel
+      :key="filterPanelKey"
+      :filters="filterConfig"
+      :result-count="filteredTypicalSupplies.length"
+      :show-clear="false"
+      @filter-change="onFilterChange"
+    >
+      <template #filter-surgery_search="{ setValue }">
+        <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por Cirugía</label>
           <input
             type="text"
-            v-model="surgerySearch"
+            :value="surgerySearch"
             placeholder="Buscar cirugía..."
             class="form-input w-full"
-            @input="onSurgerySearch"
+            @input="setValue($event.target.value)"
             @focus="showSurgeryOptions = true"
             @blur="hideSurgeryOptions"
             autocomplete="off"
           />
-          
-          <!-- Dropdown de opciones de cirugía -->
-          <div v-if="showSurgeryOptions && filteredSurgeries.length > 0"
-            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+
+          <div
+            v-if="showSurgeryOptions && filteredSurgeries.length > 0"
+            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+          >
             <button
               v-for="surgery in filteredSurgeries"
               :key="surgery.id"
@@ -45,8 +52,7 @@
               {{ surgery.name }}
             </button>
           </div>
-          
-          <!-- Botón para limpiar cirugía seleccionada -->
+
           <button
             v-if="surgerySearch"
             @click="clearSurgeryFilter"
@@ -58,29 +64,18 @@
             </svg>
           </button>
         </div>
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Buscar por Insumo</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input type="text" placeholder="Buscar por código o nombre de insumo..." 
-              class="form-input pl-10 w-full" v-model="searchTerm" @input="handleSearch" />
-          </div>
-        </div>
-        <div class="flex items-end">
-          <button 
-            class="btn-secondary px-4 py-2 h-10" 
-            @click="clearFilters" 
-            :disabled="!selectedSurgeryId && !searchTerm && !surgerySearch && sortField === 'none'"
-          >
-            Limpiar Filtros
-          </button>
-        </div>
-      </div>
-    </div>
+      </template>
+
+      <template #actions>
+        <button
+          class="btn-secondary px-4 py-2 h-10"
+          @click="clearFilters"
+          :disabled="!selectedSurgeryId && !searchTerm && !surgerySearch && sortField === 'none'"
+        >
+          Limpiar Filtros
+        </button>
+      </template>
+    </FilterPanel>
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -601,6 +596,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
 import surgeryService from '@/services/management/surgeryService'
 import supplyCodeService from '@/services/config/supplyCodeService'
@@ -617,6 +613,7 @@ const loading = ref(false)
 const error = ref(null)
 const searchTerm = ref('')
 const selectedSurgeryId = ref('')
+const filterPanelKey = ref(0)
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
@@ -666,6 +663,22 @@ const normalizeText = (text) => {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 }
+
+const filterConfig = computed(() => [
+  {
+    type: 'custom',
+    key: 'surgery_search',
+    label: 'Filtrar por Cirugía',
+    default: surgerySearch.value
+  },
+  {
+    type: 'text',
+    key: 'search_term',
+    label: 'Buscar por Insumo',
+    placeholder: 'Buscar por código o nombre de insumo...',
+    default: searchTerm.value
+  }
+])
 
 // Computed para cirugías filtradas (autocomplete)
 const filteredSurgeries = computed(() => {
@@ -854,6 +867,30 @@ const handleSearch = () => {
   }, 300)
 }
 
+const onFilterChange = (key, value) => {
+  if (key === 'search_term') {
+    searchTerm.value = value
+    handleSearch()
+    return
+  }
+
+  if (key === 'surgery_search') {
+    surgerySearch.value = value
+
+    if (!value.trim()) {
+      selectedSurgeryId.value = ''
+      showSurgeryOptions.value = false
+      currentPage.value = 1
+      return
+    }
+
+    const selectedSurgery = surgeries.value.find(s => s.id === selectedSurgeryId.value)
+    if (!selectedSurgery || selectedSurgery.name !== value) {
+      onSurgerySearch()
+    }
+  }
+}
+
 const filterBySurgery = () => {
   currentPage.value = 1 // Resetear a la primera página al filtrar
 }
@@ -862,9 +899,11 @@ const clearFilters = () => {
   selectedSurgeryId.value = ''
   searchTerm.value = ''
   surgerySearch.value = ''
+  showSurgeryOptions.value = false
   sortField.value = 'none'
   sortDirection.value = 'asc'
   currentPage.value = 1
+  filterPanelKey.value += 1
 }
 
 const sortBy = (field, direction) => {
@@ -1203,4 +1242,3 @@ onMounted(async () => {
   }
 })
 </script>
-

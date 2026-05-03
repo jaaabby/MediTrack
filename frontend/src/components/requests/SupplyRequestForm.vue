@@ -375,6 +375,7 @@
                   @input="onSupplyCodeChange(index, $event.target.value)"
                   @focus="onSupplyCodeFocus(index)"
                   @blur="onSupplyCodeBlur(index)"
+                  @keydown.enter.prevent="onInsumoEnterKey(index, $event)"
                   placeholder="Escribir código..."
                   class="form-select text-sm"
                   :class="{ 'border-red-500': fieldErrors.items[index]?.supply_code }"
@@ -415,6 +416,7 @@
                   @input="onSupplyInputChange(index, $event.target.value)"
                   @focus="onSupplyInputFocus(index)"
                   @blur="onSupplyInputBlur(index)"
+                  @keydown.enter.prevent="onInsumoEnterKey(index, $event)"
                   placeholder="Escribir nombre..."
                   class="form-select text-sm"
                   :class="{ 
@@ -472,6 +474,7 @@
                   :class="{ 'border-red-500': fieldErrors.items[index]?.quantity_requested }"
                   :disabled="props.editMode && item.item_status === 'aceptado'"
                   :readonly="props.editMode && item.item_status === 'aceptado'"
+                  @keydown.enter.prevent="onInsumoEnterKey(index, $event)"
                 />
                 <p v-if="fieldErrors.items[index]?.quantity_requested" class="text-xs text-red-600 mt-1 font-medium">
                   {{ fieldErrors.items[index].quantity_requested }}
@@ -1280,6 +1283,18 @@ const toggleSupplyList = (index) => {
 const closeSupplyList = (index) => {
   if (currentSupplyListIndex.value === index) {
     currentSupplyListIndex.value = null
+  }
+}
+
+const onInsumoEnterKey = async (index, event) => {
+  const confirmed = await confirm(
+    '¿Terminaste de editar el insumo?',
+    'Edición de insumo',
+    { confirmText: 'Sí, continuar', cancelText: 'No, seguir editando', icon: 'question' }
+  )
+  if (confirmed) {
+    showSupplyDropdowns.value[index] = false
+    showCodeDropdowns.value[index] = false
   }
 }
 

@@ -61,17 +61,9 @@
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Todos los estados</option>
-            <option value="pendiente_pavedad">Pendiente Pavedad</option>
-            <option value="asignado_bodega">Asignado a Bodega</option>
-            <option value="en_proceso">En Proceso</option>
-            <option value="pendiente_revision">Pendiente Revisión</option>
-            <option value="devuelto">Devuelto al Solicitante</option>
-            <option value="devuelto_al_encargado">Devuelto al Encargado</option>
-            <option value="aprobado">Aprobado</option>
-            <option value="parcialmente_aprobado">Parcialmente Aprobado</option>
-            <option value="rechazado">Rechazado</option>
-            <option value="completado">Completado</option>
-            <option value="cancelado">Cancelado</option>
+            <option v-for="statusOption in SUPPLY_REQUEST_STATUS_OPTIONS" :key="statusOption.value" :value="statusOption.value">
+              {{ statusOption.label }}
+            </option>
           </select>
         </div>
 
@@ -620,6 +612,7 @@ import { es } from 'date-fns/locale'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
+import { SUPPLY_REQUEST_STATUS_OPTIONS } from '@/config/statuses'
 
 const router = useRouter()
 const authStore = useAuthStore()

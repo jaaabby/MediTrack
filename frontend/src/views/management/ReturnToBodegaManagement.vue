@@ -54,74 +54,11 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Búsqueda general -->
-        <div class="lg:col-span-2">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              v-model="searchText"
-              placeholder="Nombre, código QR o proveedor..."
-              class="form-input pl-9"
-            />
-          </div>
-        </div>
-
-        <!-- Filtro Bodega -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Bodega Destino</label>
-          <select v-model="filterBodega" class="form-input">
-            <option value="">Todas</option>
-            <option v-for="b in uniqueBodegas" :key="b" :value="b">{{ b }}</option>
-          </select>
-        </div>
-
-        <!-- Filtro Pabellón -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Pabellón Actual</label>
-          <select v-model="filterPavilion" class="form-input">
-            <option value="">Todos</option>
-            <option v-for="p in uniquePavilions" :key="p" :value="p">{{ p }}</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <!-- Filtro de criticidad -->
-        <div class="flex items-center gap-3">
-          <label class="text-sm font-medium text-gray-700">Mostrar:</label>
-          <div class="flex gap-2">
-            <button
-              @click="filterCritical = ''"
-              :class="filterCritical === '' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-              class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
-            >Todos ({{ suppliesForReturn.length }})</button>
-            <button
-              @click="filterCritical = 'critical'"
-              :class="filterCritical === 'critical' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-              class="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
-            >Críticos ({{ criticalSupplies.length }})</button>
-          </div>
-        </div>
-
-        <!-- Limpiar + contador -->
-        <div class="flex items-center gap-3">
-          <span class="text-sm text-gray-500">{{ filteredSupplies.length }} resultado(s)</span>
-          <button
-            @click="clearFilters"
-            :disabled="!hasActiveFilters"
-            class="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          >Limpiar filtros</button>
-        </div>
-      </div>
-    </div>
+    <FilterPanel
+      :filters="filterConfig"
+      :result-count="filteredSupplies.length"
+      @filter-change="onFilterChange"
+    />
 
     <!-- Supplies Table -->
     <div class="card">
@@ -374,7 +311,7 @@
                 </span>
                 <span v-else class="text-gray-400">—</span>
               </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]" 
+              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]"
                   :class="[isSupplyCritical(supply) ? 'bg-red-50' : 'bg-white', 'group-hover:bg-gray-50']"
                   @click.stop>
                 <div class="flex justify-end gap-2">
@@ -395,8 +332,8 @@
                   <span class="font-medium text-xs">{{ notifyingSupplies[supply.qrCode] ? 'Enviando...' : 'Notificar' }}</span>
                 </button>
 
-                <button 
-                    @click.stop="viewSupplyDetails(supply.qrCode)"
+                <button
+                    @click.stop="openDetailsModal(supply)"
                     class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
                   title="Ver Detalles"
                 >
@@ -434,13 +371,102 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal de detalles del insumo -->
+  <Teleport to="body">
+    <div v-if="showDetailsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeDetailsModal"></div>
+      <div class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+        <!-- Header -->
+        <div class="px-6 pt-5 pb-4 border-b border-gray-200 flex-shrink-0">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-blue-100">
+                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-medium text-gray-900">Detalle del Insumo</h3>
+            </div>
+            <button @click="closeDetailsModal" class="text-gray-400 hover:text-gray-600 p-1 rounded">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div v-if="selectedSupplyDetail" class="overflow-y-auto flex-1 px-6 py-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Código QR -->
+            <div class="flex flex-col items-center justify-center bg-gray-50 rounded-lg p-4 border">
+              <qrcode-vue :value="selectedSupplyDetail.qrCode" :size="160" level="M" class="mb-3" />
+              <p class="text-xs text-gray-500 font-mono break-all text-center">{{ selectedSupplyDetail.qrCode }}</p>
+              <span :class="getStatusClass(selectedSupplyDetail.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-2">
+                {{ getStatusText(selectedSupplyDetail.status) }}
+              </span>
+            </div>
+
+            <!-- Información -->
+            <div class="space-y-3">
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Insumo</p>
+                <p class="text-sm font-medium text-gray-900 mt-0.5">{{ selectedSupplyDetail.name }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tiempo sin consumir</p>
+                <p class="text-sm mt-0.5" :class="isSupplyCritical(selectedSupplyDetail) ? 'text-red-600 font-bold' : 'text-gray-900'">
+                  {{ formatBusinessHours(selectedSupplyDetail.businessHoursElapsed) }}
+                  <span v-if="isSupplyCritical(selectedSupplyDetail)" class="ml-1 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">Crítico</span>
+                </p>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recepcionado</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ formatDate(selectedSupplyDetail.receivedAt) }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Bodega destino</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ selectedSupplyDetail.storeName || '—' }}</p>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pabellón actual</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ selectedSupplyDetail.pavilionName || (selectedSupplyDetail.pavilionId ? 'Pabellón ' + selectedSupplyDetail.pavilionId : '—') }}</p>
+              </div>
+              <div v-if="selectedSupplyDetail.supplier">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Proveedor</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ selectedSupplyDetail.supplier }}</p>
+              </div>
+              <div v-if="selectedSupplyDetail.expirationDate">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Vencimiento</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ formatDate(selectedSupplyDetail.expirationDate) }}</p>
+              </div>
+              <div v-if="selectedSupplyDetail.batchId">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lote ID</p>
+                <p class="text-sm text-gray-900 mt-0.5">#{{ selectedSupplyDetail.batchId }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-end flex-shrink-0">
+          <button @click="closeDetailsModal" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import QrcodeVue from 'qrcode.vue'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
@@ -470,13 +496,15 @@ const refreshIntervalSeconds = 30 // Actualizar cada 30 segundos
 const sortField = ref('none')
 const sortDirection = ref('asc')
 
-// Estado de filtros
-const searchText = ref('')
-const filterBodega = ref('')
-const filterPavilion = ref('')
-const filterCritical = ref('')
+// Estado de filtros centralizado
+const filterState = reactive({ search: '', bodega: '', pavilion: '', critical: '' })
 
-// Opciones dinámicas de filtros
+const onFilterChange = (key, value) => {
+  filterState[key] = value
+  currentPage.value = 1
+}
+
+// Opciones dinámicas para el FilterPanel
 const uniqueBodegas = computed(() =>
   [...new Set(suppliesForReturn.value.map(s => s.storeName).filter(Boolean))].sort()
 )
@@ -487,9 +515,43 @@ const uniquePavilions = computed(() =>
       .filter(Boolean)
   )].sort()
 )
-const hasActiveFilters = computed(() =>
-  searchText.value !== '' || filterBodega.value !== '' || filterPavilion.value !== '' || filterCritical.value !== ''
-)
+
+const filterConfig = computed(() => [
+  {
+    type: 'text',
+    key: 'search',
+    label: 'Buscar',
+    placeholder: 'Nombre, código QR o proveedor...',
+    colSpan: 2
+  },
+  {
+    type: 'select',
+    key: 'bodega',
+    label: 'Bodega Destino',
+    options: [
+      { value: '', label: 'Todas' },
+      ...uniqueBodegas.value.map(b => ({ value: b, label: b }))
+    ]
+  },
+  {
+    type: 'select',
+    key: 'pavilion',
+    label: 'Pabellón Actual',
+    options: [
+      { value: '', label: 'Todos' },
+      ...uniquePavilions.value.map(p => ({ value: p, label: p }))
+    ]
+  },
+  {
+    type: 'toggle',
+    key: 'critical',
+    label: 'Mostrar:',
+    options: [
+      { value: '', label: `Todos (${suppliesForReturn.value.length})`, activeClass: 'bg-blue-600 text-white' },
+      { value: 'critical', label: `Críticos (${criticalSupplies.value.length})`, activeClass: 'bg-red-600 text-white' }
+    ]
+  }
+])
 
 // Computed properties
 const criticalSupplies = computed(() => {
@@ -500,8 +562,8 @@ const filteredSupplies = computed(() => {
   let filtered = [...suppliesForReturn.value]
 
   // Filtro de texto
-  if (searchText.value.trim()) {
-    const q = searchText.value.trim().toLowerCase()
+  if (filterState.search.trim()) {
+    const q = filterState.search.trim().toLowerCase()
     filtered = filtered.filter(s =>
       (s.name || '').toLowerCase().includes(q) ||
       (s.qrCode || '').toLowerCase().includes(q) ||
@@ -511,20 +573,20 @@ const filteredSupplies = computed(() => {
   }
 
   // Filtro bodega
-  if (filterBodega.value) {
-    filtered = filtered.filter(s => s.storeName === filterBodega.value)
+  if (filterState.bodega) {
+    filtered = filtered.filter(s => s.storeName === filterState.bodega)
   }
 
   // Filtro pabellón
-  if (filterPavilion.value) {
+  if (filterState.pavilion) {
     filtered = filtered.filter(s => {
       const pName = s.pavilionName || (s.pavilionId ? 'Pabellón ' + s.pavilionId : '')
-      return pName === filterPavilion.value
+      return pName === filterState.pavilion
     })
   }
 
   // Filtro criticidad
-  if (filterCritical.value === 'critical') {
+  if (filterState.critical === 'critical') {
     filtered = filtered.filter(s => s.shouldReturn || (s.businessHoursElapsed || 0) >= 8)
   }
 
@@ -581,18 +643,6 @@ const paginatedSupplies = computed(() => {
   return filteredSupplies.value.slice(startIndex.value, endIndex.value)
 })
 
-// Resetear página al cambiar filtros
-watch([searchText, filterBodega, filterPavilion, filterCritical], () => {
-  currentPage.value = 1
-})
-
-const clearFilters = () => {
-  searchText.value = ''
-  filterBodega.value = ''
-  filterPavilion.value = ''
-  filterCritical.value = ''
-  currentPage.value = 1
-}
 
 // Funciones principales
 const refreshData = async () => {
@@ -791,11 +841,17 @@ const returnIndividualSupply = async (supply) => {
   }
 }
 
-const viewSupplyDetails = (qrCode) => {
-  router.push({
-    name: 'QRDetails',
-    params: { qrCode: qrCode }
-  })
+const showDetailsModal = ref(false)
+const selectedSupplyDetail = ref(null)
+
+const openDetailsModal = (supply) => {
+  selectedSupplyDetail.value = supply
+  showDetailsModal.value = true
+}
+
+const closeDetailsModal = () => {
+  showDetailsModal.value = false
+  selectedSupplyDetail.value = null
 }
 
 // ID 17/18: Helper centralizado para determinar si un insumo es crítico
