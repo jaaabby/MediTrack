@@ -258,7 +258,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="item in paginatedInventory" :key="item.id"
-                :class="isExpired(item.expiration_date) ? 'bg-red-50 hover:bg-red-100' : item.in_transit ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'">
+                :class="isExpired(item.expiration_date) ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
@@ -271,7 +271,7 @@
                         <span class="text-sm font-medium text-gray-900">{{ item.supply_name }}</span>
                         <span v-if="item.in_transit"
                           class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                          🚚 En tránsito
+                          En tránsito
                         </span>
                       </div>
                       <div class="text-sm text-gray-500">Código: {{ item.supply_code }}</div>
@@ -307,10 +307,10 @@
                     {{ formatDate(item.expiration_date) }}
                   </span>
                   <div v-if="isExpired(item.expiration_date)" class="text-xs text-red-700 font-medium">
-                    🚨 Vencido
+                    Vencido
                   </div>
                   <div v-else-if="isNearExpiration(item.expiration_date)" class="text-xs text-orange-600 font-medium">
-                    ⚠️ Vence pronto
+                    Vence pronto
                   </div>
                 </td>
               </tr>
@@ -369,10 +369,10 @@ const filterConfig = computed(() => [
   },
   { type: 'text', key: 'supplier', label: 'Proveedor', placeholder: 'Buscar proveedor...' },
   {
-    type: 'toggle', key: 'transit', label: 'Incluir en tránsito', default: 'false',
+    type: 'toggle', key: 'transit', label: 'En tránsito', default: 'false',
     options: [
-      { value: 'false', label: 'No' },
-      { value: 'true', label: 'Sí', activeClass: 'bg-blue-600 text-white' }
+      { value: 'false', label: 'Todos' },
+      { value: 'true', label: 'En tránsito', activeClass: 'bg-blue-600 text-white' }
     ]
   }
 ])
@@ -380,7 +380,7 @@ const filterConfig = computed(() => [
 const onFilterChange = (key, value) => {
   filterState[key] = value
   currentPage.value = 1
-  if (key === 'pavilion' || key === 'transit') {
+  if (key === 'pavilion') {
     loadInventory()
   }
 }
@@ -404,6 +404,9 @@ const sortedInventory = computed(() => {
   if (!inventory.value || inventory.value.length === 0) return []
 
   let result = [...inventory.value]
+  if (filterState.transit === 'true') {
+    result = result.filter(item => item.in_transit)
+  }
   if (filterState.supplier.trim()) {
     const needle = normalizeText(filterState.supplier)
     result = result.filter(item => normalizeText(item.batch_supplier || '').includes(needle))
@@ -474,7 +477,7 @@ const loadInventory = async () => {
   try {
     const data = await inventoryService.getPavilionInventory(
       filterState.pavilion,
-      filterState.transit === 'true',
+      true,
       null
     )
     // Asegurarse de que inventory.value siempre sea un array
