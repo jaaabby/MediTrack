@@ -1,5 +1,6 @@
 node_modules
 .env
+frontend/dist/
 
 # Certificados SSL (desarrollo)
 backend/certs/*.crt
