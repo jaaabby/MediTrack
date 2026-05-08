@@ -146,6 +146,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 	query := `
 		SELECT DISTINCT ON (b.id)
 			b.id AS batch_id,
+			COALESCE(b.qr_code, '') AS qr_code,
 			b.expiration_date,
 			b.expiration_alert_days,
 			COALESCE(
@@ -195,6 +196,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		var (
 			item                = make(map[string]interface{})
 			batchID             int
+			qrCode              string
 			expirationDate      string
 			expirationAlertDays int
 			amount              int
@@ -213,6 +215,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 
 		err := rows.Scan(
 			&batchID,
+			&qrCode,
 			&expirationDate,
 			&expirationAlertDays,
 			&amount,
@@ -233,6 +236,7 @@ func (s *MedicalSupplyService) GetInventoryList() ([]map[string]interface{}, err
 		}
 
 		item["batch_id"] = batchID
+		item["qr_code"] = qrCode
 		item["expiration_date"] = expirationDate
 		item["expiration_alert_days"] = expirationAlertDays
 		item["amount"] = amount
@@ -1858,9 +1862,9 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 					if err := tx.Model(&models.SupplyCart{}).
 						Where("id = ? AND status != ?", cartItem.SupplyCartID, "closed").
 						Updates(map[string]interface{}{
-							"status":        "closed",
-							"closed_at":     &now2,
-							"closed_by":     &userRUT,
+							"status":         "closed",
+							"closed_at":      &now2,
+							"closed_by":      &userRUT,
 							"closed_by_name": &userName,
 						}).Error; err != nil {
 						fmt.Printf("⚠️ Error cerrando carrito %d: %v\n", cartItem.SupplyCartID, err)

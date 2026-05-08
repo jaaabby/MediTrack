@@ -52,67 +52,51 @@
         <div class="overflow-y-auto flex-1 px-4 sm:px-6 py-4">
           <!-- Tabla de items -->
           <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="item in items" :key="item.id" :class="getRowClass(item.item_status)">
-                  <td class="px-4 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">{{ item.supply_name }}</div>
-                    <div class="text-sm text-gray-500">Código: {{ item.supply_code }}</div>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ item.quantity_requested }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap">
-                    <span :class="getStatusBadgeClass(item.item_status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                      {{ getStatusLabel(item.item_status) }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                    <div v-if="item.item_status === 'pendiente'" class="flex space-x-2">
-                      <button
-                        @click="openActionModal(item, 'aceptado')"
-                        class="text-green-600 hover:text-green-900"
-                        title="Aceptar"
-                      >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </button>
-                      <button
-                        @click="openActionModal(item, 'rechazado')"
-                        class="text-red-600 hover:text-red-900"
-                        title="Rechazar"
-                      >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                      <button
-                        @click="openActionModal(item, 'devuelto')"
-                        class="text-yellow-600 hover:text-yellow-900"
-                        title="Devolver"
-                      >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div v-else class="text-gray-500 text-xs">
-                      <div v-if="item.reviewed_by_name">Por: {{ item.reviewed_by_name }}</div>
-                      <div v-if="item.item_notes" :class="getItemNotesClass(item.item_status)">{{ item.item_notes }}</div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <DataTable
+              :columns="tableColumns"
+              :rows="items"
+              :row-class="(row) => getRowClass(row.item_status)"
+              :items-per-page="50"
+            >
+              <template #cell-supply_name="{ row }">
+                <div class="text-sm font-medium text-gray-900">{{ row.supply_name }}</div>
+                <div class="text-sm text-gray-500">Código: {{ row.supply_code }}</div>
+              </template>
+
+              <template #cell-quantity_requested="{ row }">
+                <span class="text-sm text-gray-900">{{ row.quantity_requested }}</span>
+              </template>
+
+              <template #cell-item_status="{ row }">
+                <span :class="getStatusBadgeClass(row.item_status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                  {{ getStatusLabel(row.item_status) }}
+                </span>
+              </template>
+
+              <template #actions="{ row }">
+                <div v-if="row.item_status === 'pendiente'" class="flex space-x-2">
+                  <button @click="openActionModal(row, 'aceptado')" class="text-green-600 hover:text-green-900" title="Aceptar">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                  <button @click="openActionModal(row, 'rechazado')" class="text-red-600 hover:text-red-900" title="Rechazar">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <button @click="openActionModal(row, 'devuelto')" class="text-yellow-600 hover:text-yellow-900" title="Devolver">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                  </button>
+                </div>
+                <div v-else class="text-gray-500 text-xs">
+                  <div v-if="row.reviewed_by_name">Por: {{ row.reviewed_by_name }}</div>
+                  <div v-if="row.item_notes" :class="getItemNotesClass(row.item_status)">{{ row.item_notes }}</div>
+                </div>
+              </template>
+            </DataTable>
           </div>
 
           <!-- Mensaje de error -->
@@ -215,9 +199,16 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import DataTable from '@/components/common/DataTable.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import supplyRequestService from '@/services/requests/supplyRequestService'
+
+const tableColumns = [
+  { key: 'supply_name', label: 'Insumo', sortable: false },
+  { key: 'quantity_requested', label: 'Cantidad', sortable: false },
+  { key: 'item_status', label: 'Estado', sortable: false },
+]
 
 const props = defineProps({
   show: {

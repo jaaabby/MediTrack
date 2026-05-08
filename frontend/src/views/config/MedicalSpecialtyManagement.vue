@@ -6,7 +6,6 @@
         <div>
           <h2 class="text-2xl font-semibold text-gray-900">Especialidades Médicas</h2>
           <p class="text-gray-600 mt-1">Gestiona las especialidades médicas del sistema</p>
-          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedSpecialties.length }} especialidades</p>
         </div>
         <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,148 +47,35 @@
     </div>
 
     <!-- Tabla de especialidades -->
-    <div v-else class="card overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" @click="sortBy('id')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>ID</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'id' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'id' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('name')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Nombre</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Código
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Descripción
-              </th>
-              <th scope="col" @click="sortBy('is_active')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Estado</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'is_active' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'is_active' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="specialty in paginatedSpecialties" :key="specialty.id" 
-              class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                #{{ specialty.id }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ specialty.name }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ specialty.code || '-' }}
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" 
-                :title="specialty.description && specialty.description.trim() ? specialty.description : undefined">
-                {{ specialty.description || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="specialty.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Activa
-                </span>
-                <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  Inactiva
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <div class="flex justify-end space-x-2">
-                  <button @click="openEditModal(specialty)" 
-                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
-                    title="Editar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span class="font-medium text-xs">Editar</span>
-                  </button>
-                  <button @click="confirmDelete(specialty)" 
-                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
-                    title="Eliminar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Paginación -->
-    <div v-if="!loading && sortedSpecialties.length > 0" class="card">
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedSpecialties.length }} especialidades
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="previousPage">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
+    <DataTable
+      v-else
+      :columns="tableColumns"
+      :rows="filteredSpecialties"
+      default-sort-key="id"
+      empty-message="No hay especialidades médicas registradas"
+    >
+      <template #cell-name="{ row }">
+        <div class="text-sm font-medium text-gray-900">{{ row.name }}</div>
+      </template>
+      <template #cell-code="{ row }">{{ row.code || '-' }}</template>
+      <template #cell-description="{ row }">
+        <span class="block max-w-xs truncate" :title="row.description && row.description.trim() ? row.description : undefined">{{ row.description || '-' }}</span>
+      </template>
+      <template #cell-is_active="{ row }">
+        <span v-if="row.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Activa</span>
+        <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inactiva</span>
+      </template>
+      <template #actions="{ row }">
+        <div class="flex justify-end space-x-2">
+          <button @click="openEditModal(row)" class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center transition-colors" title="Editar">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
           </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="nextPage">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
+          <button @click="confirmDelete(row)" class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors" title="Eliminar">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
           </button>
         </div>
-      </div>
-    </div>
+      </template>
+    </DataTable>
 
     <!-- Mensaje sin resultados -->
     <div v-if="!loading && specialties.length === 0" class="card text-center py-12">
@@ -306,6 +192,7 @@ import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirmDanger } = useAlert()
@@ -314,18 +201,17 @@ const specialties = ref([])
 const loading = ref(false)
 const error = ref(null)
 const filterState = reactive({ search: '' })
-const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
+const onFilterChange = (key, value) => { filterState[key] = value }
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
 
-// Estado de ordenamiento
-const sortKey = ref('id')
-const sortOrder = ref('asc')
-
-// Estado de paginación
-const currentPage = ref(1)
-const itemsPerPage = 10
+const tableColumns = [
+  { key: 'name', label: 'Nombre' },
+  { key: 'code', label: 'Código', sortable: false },
+  { key: 'description', label: 'Descripción', sortable: false, wrap: true },
+  { key: 'is_active', label: 'Estado' }
+]
 
 const specialtyForm = ref({
   name: '',
@@ -341,59 +227,16 @@ const formErrors = ref({
   description: ''
 })
 
-// Computed para obtener la lista ordenada
-const sortedSpecialties = computed(() => {
+const filteredSpecialties = computed(() => {
   if (!specialties.value || specialties.value.length === 0) return []
-  
-  const sorted = [...specialties.value].sort((a, b) => {
-    let aVal = a[sortKey.value]
-    let bVal = b[sortKey.value]
-    
-    // Manejo de strings (comparación case-insensitive)
-    if (typeof aVal === 'string') {
-      aVal = aVal.toLowerCase()
-      bVal = bVal.toLowerCase()
-    }
-    
-    // Comparación
-    if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1
-    if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1
-    return 0
-  })
-  
-  // Aplicar búsqueda si existe
-  if (filterState.search.trim()) {
-    const term = filterState.search.toLowerCase().trim()
-    return sorted.filter(s =>
-      s.name.toLowerCase().includes(term) ||
-      (s.code && s.code.toLowerCase().includes(term)) ||
-      (s.description && s.description.toLowerCase().includes(term))
-    )
-  }
-
-  return sorted
+  if (!filterState.search.trim()) return specialties.value
+  const term = filterState.search.toLowerCase().trim()
+  return specialties.value.filter(s =>
+    s.name.toLowerCase().includes(term) ||
+    (s.code && s.code.toLowerCase().includes(term)) ||
+    (s.description && s.description.toLowerCase().includes(term))
+  )
 })
-
-// Computed properties para paginación
-const totalPages = computed(() => Math.ceil(sortedSpecialties.value.length / itemsPerPage))
-
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedSpecialties.value.length))
-
-const paginatedSpecialties = computed(() => {
-  return sortedSpecialties.value.slice(startIndex.value, endIndex.value)
-})
-
-// Función para ordenar por columna
-const sortBy = (key) => {
-  if (sortKey.value === key) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortKey.value = key
-    sortOrder.value = 'asc'
-  }
-  currentPage.value = 1
-}
 
 const loadSpecialties = async () => {
   loading.value = true
@@ -565,18 +408,6 @@ const confirmDelete = async (specialty) => {
   } catch (err) {
     console.error('Error al eliminar:', err)
     showError('Error al eliminar: ' + (err.response?.data?.error || err.message))
-  }
-}
-
-const previousPage = () => {
-  if (currentPage.value > 1) {
-    currentPage.value--
-  }
-}
-
-const nextPage = () => {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++
   }
 }
 
