@@ -118,6 +118,7 @@ func (s *InventoryService) GetPavilionInventory(
 			sc.name as supply_name,
 			supc.supplier_name as batch_supplier,
 			b.expiration_date as expiration_date,
+			(SELECT ms.qr_code FROM medical_supply ms WHERE ms.batch_id = pis.batch_id LIMIT 1) as qr_code,
 			mc.id as medical_center_id,
 			mc.name as medical_center_name`).
 		Joins("LEFT JOIN pavilion p ON pis.pavilion_id = p.id").
@@ -149,6 +150,7 @@ func (s *InventoryService) GetPavilionInventory(
 			SupplyName        string  `gorm:"column:supply_name"`
 			BatchSupplier     string  `gorm:"column:batch_supplier"`
 			ExpirationDate    string  `gorm:"column:expiration_date"`
+			QRCode            string  `gorm:"column:qr_code"`
 			MedicalCenterID   int     `gorm:"column:medical_center_id"`
 			MedicalCenterName *string `gorm:"column:medical_center_name"`
 		}
@@ -163,6 +165,7 @@ func (s *InventoryService) GetPavilionInventory(
 				sc.name AS supply_name,
 			supc.supplier_name AS batch_supplier,
 				TO_CHAR(b.expiration_date, 'YYYY-MM-DD') AS expiration_date,
+				MIN(ms.qr_code) AS qr_code,
 				COALESCE(mc.id, 0) AS medical_center_id,
 				mc.name AS medical_center_name`).
 			Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
@@ -190,6 +193,7 @@ func (s *InventoryService) GetPavilionInventory(
 					SupplyName:        row.SupplyName,
 					BatchSupplier:     row.BatchSupplier,
 					ExpirationDate:    row.ExpirationDate,
+					QRCode:            row.QRCode,
 					MedicalCenterID:   row.MedicalCenterID,
 					MedicalCenterName: row.MedicalCenterName,
 					InTransit:         true,

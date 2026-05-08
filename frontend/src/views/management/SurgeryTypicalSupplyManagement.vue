@@ -6,7 +6,6 @@
         <div>
           <h2 class="text-2xl font-semibold text-gray-900">Insumos Típicos por Cirugía</h2>
           <p class="text-gray-600 mt-1">Gestiona los insumos típicos asociados a cada tipo de cirugía</p>
-          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ typicalSupplies.length }} asociaciones</p>
         </div>
         <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,209 +101,62 @@
     </div>
 
     <!-- Tabla de insumos típicos -->
-    <div v-if="!loading && !error && filteredTypicalSupplies.length > 0" class="card overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                <div class="flex items-center justify-between">
-                  <span>Cirugía</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('surgery', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'surgery' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('surgery', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'surgery' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                <div class="flex items-center justify-between">
-                  <span>Código Insumo</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('supply_code', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'supply_code' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('supply_code', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'supply_code' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                <div class="flex items-center justify-between">
-                  <span>Nombre Insumo</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('supply_name', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'supply_name' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('supply_name', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'supply_name' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                <div class="flex items-center justify-between">
-                  <span>Cantidad Típica</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('typical_quantity', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'typical_quantity' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('typical_quantity', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'typical_quantity' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                <div class="flex items-center justify-between">
-                  <span>Requerido</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('is_required', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'is_required' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('is_required', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'is_required' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                Notas
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="supply in paginatedTypicalSupplies" :key="supply.id" 
-              class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ getSurgeryName(supply.surgery_id) }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ supply.supply_code }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ getSupplyName(supply.supply_code) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ supply.typical_quantity || 1 }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="supply.is_required" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  Sí
-                </span>
-                <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                  No
-                </span>
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" :title="supply.notes">
-                {{ supply.notes || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <div class="flex justify-end space-x-2">
-                  <button @click="openEditModal(supply)" 
-                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
-                    title="Editar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span class="font-medium text-xs">Editar</span>
-                  </button>
-                  <button @click="confirmDelete(supply)" 
-                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
-                    title="Eliminar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <!-- Paginación -->
-      <div v-if="filteredTypicalSupplies.length > itemsPerPage" class="px-6 py-4 border-t border-gray-200">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div class="text-sm text-gray-700">
-            Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ filteredTypicalSupplies.length }} asociaciones
-          </div>
-          <div class="flex items-center gap-2">
-            <button 
-              class="btn-secondary px-3 py-2 text-sm min-w-[80px]" 
-              :disabled="currentPage === 1"
-              @click="currentPage--"
-            >
-              Anterior
-            </button>
-            <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[100px] text-center">
-              Página {{ currentPage }} de {{ totalPages }}
-            </span>
-            <button 
-              class="btn-secondary px-3 py-2 text-sm min-w-[80px]" 
-              :disabled="currentPage === totalPages"
-              @click="currentPage++"
-            >
-              Siguiente
+    <DataTable
+      v-if="!loading && !error"
+      :columns="tableColumns"
+      :rows="filteredTypicalSupplies"
+      default-sort-key="supply_code"
+      empty-message="">
+      <template #cell-surgery_id="{ row }">
+        <div class="text-sm font-medium text-gray-900">{{ getSurgeryName(row.surgery_id) }}</div>
+      </template>
+      <template #cell-supply_name="{ row }">
+        {{ getSupplyName(row.supply_code) }}
+      </template>
+      <template #cell-typical_quantity="{ row }">
+        {{ row.typical_quantity || 1 }}
+      </template>
+      <template #cell-is_required="{ row }">
+        <span v-if="row.is_required" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sí</span>
+        <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">No</span>
+      </template>
+      <template #cell-notes="{ row }">
+        <span class="max-w-xs truncate block" :title="row.notes">{{ row.notes || '-' }}</span>
+      </template>
+      <template #empty>
+        <div class="text-center py-12">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No hay insumos típicos</h3>
+          <p class="mt-1 text-sm text-gray-500">{{ selectedSurgeryId || searchTerm ? 'No se encontraron resultados con los filtros aplicados.' : 'Comienza asociando insumos a cirugías.' }}</p>
+          <div class="mt-6" v-if="!selectedSurgeryId && !searchTerm">
+            <button @click="openCreateModal" class="btn-primary">
+              <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Crear Asociación
             </button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Mensaje sin resultados -->
-    <div v-if="!loading && filteredTypicalSupplies.length === 0" class="card text-center py-12">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No hay insumos típicos</h3>
-      <p class="mt-1 text-sm text-gray-500">{{ selectedSurgeryId || searchTerm ? 'No se encontraron resultados con los filtros aplicados.' : 'Comienza asociando insumos a cirugías.' }}</p>
-      <div class="mt-6" v-if="!selectedSurgeryId && !searchTerm">
-        <button @click="openCreateModal" class="btn-primary">
-          <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </template>
+      <template #actions="{ row }">
+        <button @click="openEditModal(row)"
+          class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
+          title="Editar">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
-          Crear Asociación
         </button>
-      </div>
-    </div>
+        <button @click="confirmDelete(row)"
+          class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
+          title="Eliminar">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </template>
+    </DataTable>
 
     <!-- Modal para seleccionar insumos -->
     <Teleport to="body">
@@ -597,6 +449,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
 import surgeryService from '@/services/management/surgeryService'
 import supplyCodeService from '@/services/config/supplyCodeService'
@@ -625,13 +478,14 @@ const formErrors = ref({
   supply_quantities: {}
 })
 
-// Estados para paginación
-const currentPage = ref(1)
-const itemsPerPage = 10
-
-// Estados para ordenamiento
-const sortField = ref('none')
-const sortDirection = ref('asc')
+const tableColumns = [
+  { key: 'surgery_id', label: 'Cirugía', sortable: false },
+  { key: 'supply_code', label: 'Código Insumo' },
+  { key: 'supply_name', label: 'Nombre Insumo', sortable: false },
+  { key: 'typical_quantity', label: 'Cantidad Típica' },
+  { key: 'is_required', label: 'Requerido', sortable: false },
+  { key: 'notes', label: 'Notas', sortable: false }
+]
 
 // Estados para autocomplete de cirugías
 const surgerySearch = ref('')
@@ -714,58 +568,7 @@ const filteredTypicalSupplies = computed(() => {
     })
   }
 
-  // Ordenamiento
-  if (sortField.value && sortField.value !== 'none') {
-    filtered.sort((a, b) => {
-      let aVal, bVal
-      
-      switch (sortField.value) {
-        case 'surgery':
-          aVal = getSurgeryName(a.surgery_id).toLowerCase()
-          bVal = getSurgeryName(b.surgery_id).toLowerCase()
-          break
-        case 'supply_code':
-          aVal = a.supply_code
-          bVal = b.supply_code
-          break
-        case 'supply_name':
-          aVal = getSupplyName(a.supply_code).toLowerCase()
-          bVal = getSupplyName(b.supply_code).toLowerCase()
-          break
-        case 'typical_quantity':
-          aVal = a.typical_quantity || 0
-          bVal = b.typical_quantity || 0
-          break
-        case 'is_required':
-          aVal = a.is_required ? 1 : 0
-          bVal = b.is_required ? 1 : 0
-          break
-        default:
-          return 0
-      }
-      
-      let result = 0
-      if (typeof aVal === 'string') {
-        result = aVal.localeCompare(bVal)
-      } else {
-        result = aVal - bVal
-      }
-      
-      return sortDirection.value === 'asc' ? result : -result
-    })
-  }
-
   return filtered
-})
-
-// Computed properties para paginación
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredTypicalSupplies.value.length / itemsPerPage)))
-
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, filteredTypicalSupplies.value.length))
-
-const paginatedTypicalSupplies = computed(() => {
-  return filteredTypicalSupplies.value.slice(startIndex.value, endIndex.value)
 })
 
 // Computed para filtrar y ordenar insumos en el modal de selección
@@ -863,7 +666,7 @@ const loadSupplyCodes = async () => {
 const handleSearch = () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
-    currentPage.value = 1 // Resetear a la primera página al buscar
+    // filter is reactive via filteredTypicalSupplies computed
   }, 300)
 }
 
@@ -880,7 +683,6 @@ const onFilterChange = (key, value) => {
     if (!value.trim()) {
       selectedSurgeryId.value = ''
       showSurgeryOptions.value = false
-      currentPage.value = 1
       return
     }
 
@@ -892,7 +694,7 @@ const onFilterChange = (key, value) => {
 }
 
 const filterBySurgery = () => {
-  currentPage.value = 1 // Resetear a la primera página al filtrar
+  // filter is reactive via filteredTypicalSupplies computed
 }
 
 const clearFilters = () => {
@@ -900,16 +702,7 @@ const clearFilters = () => {
   searchTerm.value = ''
   surgerySearch.value = ''
   showSurgeryOptions.value = false
-  sortField.value = 'none'
-  sortDirection.value = 'asc'
-  currentPage.value = 1
   filterPanelKey.value += 1
-}
-
-const sortBy = (field, direction) => {
-  sortField.value = field
-  sortDirection.value = direction
-  currentPage.value = 1
 }
 
 // Funciones para autocomplete de cirugías

@@ -6,13 +6,12 @@
         <div>
           <h2 class="text-2xl font-semibold text-gray-900">Historial de Insumos</h2>
           <p class="text-gray-600 mt-1">Rastrea todos los movimientos y cambios de estado de los insumos</p>
-          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ filteredHistory.length }} registros</p>
         </div>
         <button 
           @click="exportToExcel" 
-          :disabled="loading || sortedHistory.length === 0"
+          :disabled="loading || filteredHistory.length === 0"
           class="btn-secondary flex items-center justify-center"
-          :class="{ 'opacity-50 cursor-not-allowed': loading || sortedHistory.length === 0 }"
+          :class="{ 'opacity-50 cursor-not-allowed': loading || filteredHistory.length === 0 }"
         >
           <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -34,203 +33,35 @@
     </div>
 
     <!-- Tabla -->
-    <div v-else class="card overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" @click="sortBy('id')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>ID</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'id' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'id' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('supply_name')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Nombre Insumo</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'supply_name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'supply_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('qr_code')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>QR Code</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'qr_code' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'qr_code' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('status')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Estado</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'status' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'status' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('destination_type')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Destino</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'destination_type' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'destination_type' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('user_rut')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Usuario</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'user_rut' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'user_rut' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('date_time')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Fecha</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'date_time' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'date_time' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                Detalles
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="(item, index) in paginatedHistory" :key="item.id" class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#{{ startIndex + index + 1 }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm">
-                  <div class="font-medium text-gray-900">{{ item.supply_name || 'Sin nombre' }}</div>
-                  <div class="text-gray-500 text-xs">ID: {{ item.medical_supply_id }}</div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">{{ item.qr_code || 'N/A' }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(item.status)">
-                  {{ formatStatus(item.status) }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm">
-                  <div class="font-medium text-gray-900">{{ formatDestinationType(item.destination_type) }}</div>
-                  <div class="text-gray-500">ID: {{ item.destination_id }}</div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.user_rut || 'SYSTEM' }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDateTime(item.date_time) }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <button @click="viewDetails(item)" 
-                  class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
-                  title="Ver detalles">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <DataTable
+      v-else
+      :columns="tableColumns"
+      :rows="filteredHistory"
+      default-sort-key="date_time"
+      default-sort-order="desc"
+      empty-message="No hay registros en el historial"
+      :table-actions="[{ type: 'view', label: 'Ver detalles', onClick: (row) => viewDetails(row) }]">
+      <template #cell-supply_name="{ row }">
+        <div class="font-medium text-gray-900">{{ row.supply_name || 'Sin nombre' }}</div>
+      </template>
+      <template #cell-qr_code="{ row }">
+        <span class="text-gray-600">{{ row.qr_code || 'N/A' }}</span>
+      </template>
+      <template #cell-status="{ row }">
+        <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(row.status)">
+          {{ formatStatus(row.status) }}
+        </span>
+      </template>
+      <template #cell-destination_type="{ row }">
+        <div class="text-sm font-medium text-gray-900">{{ row.destination_name || formatDestinationType(row.destination_type) }}</div>
+      </template>
+      <template #cell-date_time="{ row }">
+        {{ formatDateTime(row.date_time) }}
+      </template>
 
-    <!-- Paginación -->
-    <div v-if="!loading && sortedHistory.length > 0" class="card">
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedHistory.length }} registros
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="currentPage--">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
-          </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="currentPage++">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    </DataTable>
+
+
 
     <!-- Modal de detalles -->
     <Teleport to="body">
@@ -396,6 +227,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useNotification } from '@/composables/useNotification'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 
 const history = ref([])
 const loading = ref(false)
@@ -416,24 +248,21 @@ const filterConfig = [
   { type: 'date', key: 'to_date', label: 'Hasta', default: filterState.to_date }
 ]
 
-const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
+const onFilterChange = (key, value) => { filterState[key] = value }
 
-// Estado de ordenamiento (por defecto ordenado por fecha más reciente primero)
-const sortKey = ref('date_time')
-const sortOrder = ref('desc')
+const tableColumns = [
+  { key: 'supply_name', label: 'Nombre Insumo' },
+  { key: 'qr_code', label: 'QR Code' },
+  { key: 'status', label: 'Estado' },
+  { key: 'destination_type', label: 'Destino' },
+  { key: 'user_rut', label: 'Usuario' },
+  { key: 'date_time', label: 'Fecha' }
+]
 
-// Estado de paginación
-const currentPage = ref(1)
-const itemsPerPage = 10
-
-// Computed para verificar si hay filtros activos
-// Helper para parsear fechas consistentemente
 const parseDateTimeToLocal = (dateStr) => {
   if (!dateStr) return null
   if (typeof dateStr === 'string') {
-    // Si no tiene información de zona horaria, asumir que es hora local
     if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
-      // Reemplazar espacio por 'T' para formato ISO compatible con hora local
       return new Date(dateStr.replace(' ', 'T'))
     }
   }
@@ -477,62 +306,6 @@ const filteredHistory = computed(() => {
 
   return filtered
 })
-
-// Computed para obtener la lista ordenada
-const sortedHistory = computed(() => {
-  if (!filteredHistory.value || filteredHistory.value.length === 0) return []
-  
-  const sorted = [...filteredHistory.value].sort((a, b) => {
-    let aVal = a[sortKey.value]
-    let bVal = b[sortKey.value]
-    
-    // Manejo de valores null/undefined
-    if (aVal == null) aVal = ''
-    if (bVal == null) bVal = ''
-    
-    // Manejo de strings (comparación case-insensitive)
-    if (typeof aVal === 'string' && sortKey.value !== 'date_time') {
-      aVal = aVal.toLowerCase()
-      bVal = typeof bVal === 'string' ? bVal.toLowerCase() : ''
-    }
-    
-    // Manejo de fechas
-    if (sortKey.value === 'date_time') {
-      aVal = aVal ? new Date(aVal).getTime() : 0
-      bVal = bVal ? new Date(bVal).getTime() : 0
-    }
-    
-    // Comparación
-    if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1
-    if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1
-    return 0
-  })
-  
-  return sorted
-})
-
-// Computed properties para paginación
-const totalPages = computed(() => Math.ceil(sortedHistory.value.length / itemsPerPage))
-
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedHistory.value.length))
-
-const paginatedHistory = computed(() => {
-  return sortedHistory.value.slice(startIndex.value, endIndex.value)
-})
-
-// Función para ordenar por columna
-const sortBy = (key) => {
-  if (sortKey.value === key) {
-    // Si ya estamos ordenando por esta columna, cambiar dirección
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    // Nueva columna, ordenar ascendente por defecto
-    sortKey.value = key
-    sortOrder.value = 'asc'
-  }
-  currentPage.value = 1 // Resetear a la primera página al ordenar
-}
 
 const loadHistory = async () => {
   loading.value = true
@@ -642,7 +415,7 @@ const exportToExcel = async () => {
       { key: 'notes', label: 'Notas' }
     ]
     
-    await exportExcel(sortedHistory.value, columns, 'historial_insumos')
+    await exportExcel(filteredHistory.value, columns, 'historial_insumos')
     showSuccess('El archivo Excel se ha descargado exitosamente')
   } catch (error) {
     console.error('Error al exportar:', error)

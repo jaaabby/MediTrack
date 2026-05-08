@@ -6,14 +6,13 @@
         <div>
           <h2 class="text-2xl font-semibold text-gray-900">Historial de Transferencias</h2>
           <p class="text-gray-600 mt-1">Consulta y gestiona las transferencias realizadas desde el escáner QR</p>
-          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedTransfers.length }} transferencias</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
           <button 
             @click="exportToExcel" 
-            :disabled="loading || sortedTransfers.length === 0"
+            :disabled="loading || filteredTransfers.length === 0"
             class="btn-secondary flex items-center justify-center"
-            :class="{ 'opacity-50 cursor-not-allowed': loading || sortedTransfers.length === 0 }"
+            :class="{ 'opacity-50 cursor-not-allowed': loading || filteredTransfers.length === 0 }"
           >
             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -31,7 +30,7 @@
     </div>
 
     <!-- Filtros -->
-    <FilterPanel :filters="filterConfig" :result-count="sortedTransfers.length" @filter-change="onFilterChange" />
+    <FilterPanel :filters="filterConfig" :result-count="filteredTransfers.length" @filter-change="onFilterChange" />
 
     <!-- Loading -->
     <div v-if="loading" class="card">
@@ -58,181 +57,29 @@
     </div>
 
     <!-- Tabla de transferencias -->
-    <div v-else class="card overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" @click="sortBy('transfer_code')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Código</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'transfer_code' && sortOrder === 'asc' ? 'text-brand-blue-dark' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'transfer_code' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('origin_name')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Origen</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'origin_name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'origin_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('destination_name')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Destino</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'destination_name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'destination_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Cantidad
-              </th>
-              <th scope="col" @click="sortBy('status')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Estado</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'status' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'status' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" @click="sortBy('created_at')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Fecha</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'created_at' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'created_at' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16 sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="transfer in paginatedTransfers" :key="transfer.transfer_code || transfer.id" class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-mono">
-                {{ transfer.transfer_code || transfer.code || 'N/A' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ getOriginName(transfer) }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ getDestinationName(transfer) }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">1</td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(transfer.status)">
-                  {{ getStatusLabel(transfer.status) }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(transfer.created_at) }}</td>
-              <td class="px-4 py-4 text-center text-sm font-medium w-16 sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <button @click="viewDetails(transfer)" 
-                  class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
-                  title="Ver detalles">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <DataTable
+      v-else
+      :columns="tableColumns"
+      :rows="filteredTransfers"
+      default-sort-key="created_at"
+      default-sort-order="desc"
+      empty-message="No hay transferencias registradas"
+      :table-actions="[{ type: 'view', onClick: (row) => viewDetails(row) }]"
+    >
+      <template #cell-transfer_code="{ row }">
+        <span>{{ row.transfer_code || row.code || 'N/A' }}</span>
+      </template>
+      <template #cell-origin_name="{ row }">{{ getOriginName(row) }}</template>
+      <template #cell-destination_name="{ row }">{{ getDestinationName(row) }}</template>
+      <template #cell-cantidad="{ row }">1</template>
+      <template #cell-status="{ row }">
+        <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(row.status)">
+          {{ getStatusLabel(row.status) }}
+        </span>
+      </template>
+      <template #cell-created_at="{ row }">{{ formatDate(row.created_at) }}</template>
 
-    <!-- Paginación -->
-    <div v-if="!loading && sortedTransfers.length > 0" class="card">
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedTransfers.length }} transferencias
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="currentPage--">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
-          </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="currentPage++">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Estado vacío -->
-    <div v-if="!loading && !error && transfers.length === 0" class="card">
-      <div class="text-center py-12">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-        </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">No hay transferencias</h3>
-        <p class="mt-1 text-sm text-gray-500">Las transferencias se crean desde el Escáner QR al transferir insumos entre ubicaciones.</p>
-        <div class="mt-6">
-          <router-link to="/qr" class="btn-primary inline-flex items-center">
-            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2zm0 0h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2z" />
-            </svg>
-            Ir a Escáner QR
-          </router-link>
-        </div>
-      </div>
-    </div>
+    </DataTable>
 
     <!-- Modal de detalles de transferencia -->
     <Teleport to="body">
@@ -572,8 +419,11 @@ import { useRoute } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import supplyTransferService from '@/services/management/supplyTransferService'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
 import { TRANSFER_STATUS_OPTIONS } from '@/config/statuses'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 const route = useRoute()
@@ -619,135 +469,48 @@ const filterConfig = [
 
 const onFilterChange = (key, value) => {
   filterState[key] = value
-  currentPage.value = 1
   if (key === 'status' || key === 'from_date' || key === 'to_date') {
     loadTransfers()
   }
 }
 
-// Estado de ordenamiento
-const sortKey = ref('created_at')
-const sortOrder = ref('desc')
-
-// Estado de paginación
-const currentPage = ref(1)
-const itemsPerPage = 10
-
-// Computed para obtener la lista ordenada
-const sortedTransfers = computed(() => {
-  if (!transfers.value || transfers.value.length === 0) return []
-
-  // Filtro client-side por código
-  const codeFilter = filterState.code?.trim().toLowerCase()
-  const filtered = codeFilter
-    ? transfers.value.filter(t => {
-        const code = (t.transfer_code || t.code || '').toLowerCase()
-        return code.includes(codeFilter)
-      })
-    : transfers.value
-  
-  const sorted = [...filtered].sort((a, b) => {
-    let aVal = a[sortKey.value]
-    let bVal = b[sortKey.value]
-    
-    // Manejo de valores null/undefined
-    if (aVal == null) aVal = ''
-    if (bVal == null) bVal = ''
-    
-    // Manejo de strings (comparación case-insensitive)
-    if (typeof aVal === 'string' && sortKey.value !== 'created_at' && sortKey.value !== 'send_date' && sortKey.value !== 'receive_date') {
-      aVal = aVal.toLowerCase()
-      bVal = typeof bVal === 'string' ? bVal.toLowerCase() : ''
-    }
-    
-    // Manejo de fechas
-    if (sortKey.value === 'created_at' || sortKey.value === 'send_date' || sortKey.value === 'receive_date') {
-      aVal = aVal ? new Date(aVal).getTime() : 0
-      bVal = bVal ? new Date(bVal).getTime() : 0
-    }
-    
-    // Comparación
-    if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1
-    if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1
-    return 0
-  })
-  
-  return sorted
-})
-
-// Computed properties para paginación
-const totalPages = computed(() => Math.ceil(sortedTransfers.value.length / itemsPerPage))
-
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedTransfers.value.length))
-
-const paginatedTransfers = computed(() => {
-  return sortedTransfers.value.slice(startIndex.value, endIndex.value)
-})
-
-// Función para ordenar por columna
-const sortBy = (key) => {
-  if (sortKey.value === key) {
-    // Si ya estamos ordenando por esta columna, cambiar dirección
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    // Nueva columna, ordenar ascendente por defecto
-    sortKey.value = key
-    sortOrder.value = 'asc'
-  }
-  currentPage.value = 1 // Resetear a la primera página al ordenar
-}
-
 const loadTransfers = async () => {
   loading.value = true
   error.value = null
-  currentPage.value = 1 // Resetear a la primera página al cargar
   try {
-    const data = await supplyTransferService.getTransfers(filterState)
-    // El backend devuelve { transfers: [], total: n, page: n, page_size: n }
-    transfers.value = data.transfers || data.data?.transfers || data || []
-    console.log('Transferencias cargadas:', transfers.value)
+    const result = await supplyTransferService.getTransfers({
+      status: filterState.status,
+      from_date: filterState.from_date,
+      to_date: filterState.to_date,
+      pavilion_id: filterState.pavilion_id,
+      store_id: filterState.store_id
+    })
+    transfers.value = Array.isArray(result) ? result : (result?.transfers || result?.results || result?.data || [])
   } catch (err) {
-    error.value = err.message || 'Error al cargar transferencias'
-    console.error('Error loading transfers:', err)
+    error.value = err?.response?.data?.message || err.message || 'Error al cargar transferencias'
   } finally {
     loading.value = false
   }
 }
 
-const viewDetails = (transfer) => {
-  selectedTransfer.value = transfer
-  activeTab.value = 'general' // Reset a la primera pestaña
-  showDetailsModal.value = true
-}
+const tableColumns = [
+  { key: 'transfer_code', label: 'Código' },
+  { key: 'origin_name', label: 'Origen', sortable: false },
+  { key: 'destination_name', label: 'Destino', sortable: false },
+  { key: 'cantidad', label: 'Cantidad', sortable: false },
+  { key: 'status', label: 'Estado' },
+  { key: 'created_at', label: 'Fecha' }
+]
 
-const closeDetailsModal = () => {
-  showDetailsModal.value = false
-  selectedTransfer.value = null
-  activeTab.value = 'general'
-}
-
-const clearFilters = () => {
-  filterState.code = ''
-  filterState.status = ''
-  filterState.from_date = ''
-  filterState.to_date = ''
-  filterState.pavilion_id = ''
-  filterState.store_id = ''
-  currentPage.value = 1
-  loadTransfers()
-}
-
-const formatDate = (date) => {
-  if (!date) return 'N/A'
-  return new Date(date).toLocaleDateString('es-CL', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+const filteredTransfers = computed(() => {
+  if (!transfers.value || transfers.value.length === 0) return []
+  const codeFilter = filterState.code?.trim().toLowerCase()
+  if (!codeFilter) return transfers.value
+  return transfers.value.filter(t => {
+    const code = (t.transfer_code || t.code || '').toLowerCase()
+    return code.includes(codeFilter)
   })
-}
+})
 
 const getOriginName = (transfer) => {
   if (transfer.origin_name) return transfer.origin_name
@@ -840,11 +603,31 @@ const exportToExcel = async () => {
       { key: 'rejection_reason', label: 'Motivo de Rechazo' }
     ]
     
-    await exportExcel(sortedTransfers.value, columns, 'transferencias')
+    await exportExcel(filteredTransfers.value, columns, 'transferencias')
     showNotification('Exportación a Excel completada exitosamente', 'success')
   } catch (error) {
     console.error('Error al exportar:', error)
     showNotification('Error al exportar a Excel: ' + error.message, 'error')
+  }
+}
+
+const viewDetails = (transfer) => {
+  selectedTransfer.value = transfer
+  showDetailsModal.value = true
+  activeTab.value = 'general'
+}
+
+const closeDetailsModal = () => {
+  showDetailsModal.value = false
+  selectedTransfer.value = null
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'No disponible'
+  try {
+    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+  } catch {
+    return dateString
   }
 }
 
