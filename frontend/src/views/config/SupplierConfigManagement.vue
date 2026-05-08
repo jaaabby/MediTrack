@@ -156,7 +156,6 @@ import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import FilterPanel from '@/components/common/FilterPanel.vue'
 import DataTable from '@/components/common/DataTable.vue'
-import DataTable from '@/components/common/DataTable.vue'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirmDanger } = useAlert()
