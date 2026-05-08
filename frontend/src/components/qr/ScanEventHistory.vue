@@ -111,9 +111,10 @@
       <div class="mt-4 flex space-x-2">
         <button
           @click="clearFilters"
-          class="btn-secondary text-sm"
+          :disabled="!hasActiveFilters"
+          class="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Limpiar Filtros
+          Limpiar filtros
         </button>
         <button
           @click="applyQuickFilter('today')"

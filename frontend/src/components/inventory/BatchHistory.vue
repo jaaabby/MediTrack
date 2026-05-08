@@ -63,7 +63,7 @@
             </select>
           </div>
           <div class="flex items-end">
-            <button @click="clearFilters" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+            <button @click="clearFilters" :disabled="!hasActiveFilters" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               Limpiar filtros
             </button>
           </div>
@@ -214,6 +214,8 @@ const showTechnicalDetails = ref({})
 const userFilter = ref('')
 const changeTypeFilter = ref('')
 const currentPage = ref(1)
+
+const hasActiveFilters = computed(() => userFilter.value !== '' || changeTypeFilter.value !== '')
 const itemsPerPage = 10
 
 // Computed

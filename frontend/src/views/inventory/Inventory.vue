@@ -501,7 +501,7 @@
               <div class="w-full sm:w-auto">
                 <button class="btn-secondary px-3 sm:px-4 py-2 h-10 text-xs sm:text-sm w-full sm:w-auto"
                   @click="clearHistorySearch" :disabled="!historySearchTerm">
-                  Limpiar
+                  Limpiar filtros
                 </button>
               </div>
             </div>
@@ -848,7 +848,7 @@
                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  <span>Limpiar</span>
+                  <span>Limpiar filtros</span>
                 </button>
               </div>
             </div>
@@ -1318,18 +1318,18 @@ const filterState = reactive({
 })
 
 const filterConfig = [
-  { type: 'text', key: 'search', label: 'Buscar insumo', placeholder: 'Buscar por número de lote, nombre, código o proveedor...', default: filterState.search },
+  { type: 'text', key: 'search', label: 'Buscar insumo', placeholder: 'Buscar por número de lote, nombre, código o proveedor...', default: '', initialValue: filterState.search },
   { type: 'date', key: 'from_date', label: 'Vencimiento desde' },
   { type: 'date', key: 'to_date', label: 'Vencimiento hasta' },
   {
-    type: 'toggle', key: 'low_stock', label: 'Stock crítico', default: filterState.low_stock,
+    type: 'toggle', key: 'low_stock', label: 'Stock crítico', default: '', initialValue: filterState.low_stock,
     options: [
       { value: '', label: 'Todos' },
       { value: 'true', label: 'Stock Crítico', activeClass: 'bg-red-600 text-white' }
     ]
   },
   {
-    type: 'toggle', key: 'expiring', label: 'Por vencer', default: filterState.expiring,
+    type: 'toggle', key: 'expiring', label: 'Por vencer', default: '', initialValue: filterState.expiring,
     options: [
       { value: '', label: 'Todos' },
       { value: 'true', label: 'Por Vencer', activeClass: 'bg-orange-500 text-white' }

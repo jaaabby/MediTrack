@@ -68,11 +68,11 @@
 
       <template #actions>
         <button
-          class="btn-secondary px-4 py-2 h-10"
+          class="btn-secondary px-4 py-2 h-10 disabled:opacity-40 disabled:cursor-not-allowed"
           @click="clearFilters"
           :disabled="!selectedSurgeryId && !searchTerm && !surgerySearch && sortField === 'none'"
         >
-          Limpiar Filtros
+          Limpiar filtros
         </button>
       </template>
     </FilterPanel>

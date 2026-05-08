@@ -107,7 +107,7 @@
         @click="clearAll"
         :disabled="!hasActiveFilters"
         class="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-      >Limpiar</button>
+      >Limpiar filtros</button>
       <slot name="actions" :has-active-filters="hasActiveFilters" :clear-all="clearAll" />
     </div>
   </div>
@@ -135,8 +135,10 @@ const emit = defineEmits(['filter-change'])
 const slots = useSlots()
 
 // Initialize internal state from filter defaults
+// `initialValue` allows pre-populating a field (e.g. from URL query params) without
+// changing the `default` (reset target), so hasActiveFilters detects it correctly.
 const modelValues = reactive(
-  Object.fromEntries(props.filters.map(f => [f.key, f.default ?? '']))
+  Object.fromEntries(props.filters.map(f => [f.key, f.initialValue ?? f.default ?? '']))
 )
 
 // Re-initialize when filters prop changes (e.g. new keys added)

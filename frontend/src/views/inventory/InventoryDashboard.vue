@@ -31,20 +31,33 @@
     <!-- Dashboard Content -->
     <div v-else class="space-y-8">
       <!-- Inventario por Tipo de Cirugía -->
-      <div class="card">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h3 class="text-xl font-semibold text-gray-900">Inventario por Tipo de Cirugía</h3>
-            <p class="text-gray-600 text-sm mt-2">Stock disponible organizado por procedimiento</p>
+      <div class="space-y-4">
+        <!-- Encabezado de sección -->
+        <div class="card">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 class="text-xl font-semibold text-gray-900">Inventario por Tipo de Cirugía</h3>
+              <p class="text-gray-600 text-sm mt-2">Stock disponible organizado por procedimiento</p>
+            </div>
+            <button @click="reloadSurgeryInventory" class="btn-secondary">
+              <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Actualizar
+            </button>
           </div>
-          <button @click="reloadSurgeryInventory" class="btn-secondary">
-            <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Actualizar
-          </button>
         </div>
 
+        <!-- Filtro de búsqueda -->
+        <FilterPanel
+          :key="filterPanelKey"
+          :filters="filterConfig"
+          :result-count="filteredSurgeryInventory.length"
+          @filter-change="onFilterChange"
+        />
+
+        <!-- Contenido de la tabla -->
+        <div class="card">
         <div v-if="surgeryInventoryLoading" class="flex justify-center items-center py-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue-dark"></div>
           <span class="ml-3 text-gray-600">Cargando...</span>
@@ -152,7 +165,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="item in sortedSurgeryInventory" :key="item.surgery_id" class="hover:bg-gray-50">
+              <tr v-for="item in filteredSurgeryInventory" :key="item.surgery_id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-brand-blue-light to-brand-blue-dark flex items-center justify-center">
@@ -189,7 +202,8 @@
           </table>
           </div>
         </div>
-      </div>
+        </div><!-- /card tabla -->
+      </div><!-- /space-y-4 sección cirugías -->
 
       <!-- Accesos Rápidos -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -313,6 +327,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 import inventoryService from '@/services/inventory/inventoryService'
 
 const loading = ref(false)
@@ -324,6 +339,26 @@ const surgeryInventoryError = ref(null)
 // Estado de ordenamiento para tabla de cirugías
 const surgerySortKey = ref('surgery_name')
 const surgerySortOrder = ref('asc')
+
+// Filtro de búsqueda por tipo de cirugía (client-side)
+const surgerySearchText = ref('')
+const filterPanelKey = ref(0)
+
+const filterConfig = computed(() => [
+  {
+    type: 'text',
+    key: 'surgery_search',
+    label: 'Buscar tipo de cirugía',
+    placeholder: 'Filtrar por nombre...',
+    default: ''
+  }
+])
+
+const onFilterChange = (key, value) => {
+  if (key === 'surgery_search') {
+    surgerySearchText.value = value
+  }
+}
 
 // Modal de detalle por cirugía
 const surgeryModal = ref({
@@ -437,6 +472,15 @@ const sortedSurgeryInventory = computed(() => {
   })
   
   return sorted
+})
+
+// Computed para filtrar inventario de cirugías por texto de búsqueda
+const filteredSurgeryInventory = computed(() => {
+  if (!surgerySearchText.value.trim()) return sortedSurgeryInventory.value
+  const q = surgerySearchText.value.toLowerCase().trim()
+  return sortedSurgeryInventory.value.filter(item =>
+    (item.surgery_name || '').toLowerCase().includes(q)
+  )
 })
 
 // Función para ordenar por columna

@@ -34,9 +34,9 @@
     </div>
 
     <!-- Filtros y búsqueda -->
-    <div class="mb-4 sm:mb-6 card p-3 sm:p-4">
-      <!-- Badge de filtro activo -->
-      <div v-if="filters.statusCategory" class="mb-3 flex items-center gap-2">
+    <div class="mb-4 sm:mb-6 space-y-2">
+      <!-- Badge de filtro activo por categoría de estadística -->
+      <div v-if="filters.statusCategory" class="card px-4 py-2 flex items-center gap-2">
         <span class="text-xs font-medium text-gray-600">Filtro activo:</span>
         <span :class="getFilterBadgeClass(filters.statusCategory)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
           {{ getFilterLabel(filters.statusCategory) }}
@@ -47,68 +47,32 @@
           </button>
         </span>
       </div>
-      
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <!-- Filtro por estado -->
-        <div>
-          <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">
-            Estado
-          </label>
-          <select
-            id="statusFilter"
-            v-model="filters.status"
-            @change="loadSupplyRequests"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Todos los estados</option>
-            <option v-for="statusOption in SUPPLY_REQUEST_STATUS_OPTIONS" :key="statusOption.value" :value="statusOption.value">
-              {{ statusOption.label }}
-            </option>
-          </select>
-        </div>
 
-        <!-- Filtro por fecha de cirugía -->
-        <div>
-          <label for="surgeryDateFilter" class="block text-sm font-medium text-gray-700 mb-1">
-            Fecha de Cirugía
-          </label>
-          <input
-            type="date"
-            id="surgeryDateFilter"
-            v-model="filters.surgeryDate"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        <!-- Búsqueda por número de solicitud -->
-        <div>
-          <label for="searchNumber" class="block text-sm font-medium text-gray-700 mb-1">
-            Número de Solicitud
-          </label>
-          <input
-            type="text"
-            id="searchNumber"
-            v-model="filters.search"
-            @input="filterRequests"
-            placeholder="SOL-XXXXXX"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        <!-- Botón refrescar -->
-        <div class="flex items-end">
+      <FilterPanel
+        :key="filterPanelKey"
+        :filters="filterConfig"
+        :result-count="totalRequests"
+        :show-clear="false"
+        @filter-change="onFilterChange"
+      >
+        <template #actions>
+          <button
+            @click="clearFilters"
+            :disabled="!hasActiveFilters"
+            class="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >Limpiar filtros</button>
           <button
             @click="refreshRequests"
             :disabled="loading"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            class="btn-secondary text-sm disabled:opacity-50 flex items-center"
           >
-            <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Refrescar
           </button>
-        </div>
-      </div>
+        </template>
+      </FilterPanel>
     </div>
 
     <!-- Estadísticas rápidas -->
@@ -603,6 +567,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 import supplyRequestService from '@/services/requests/supplyRequestService'
 import pavilionService from '@/services/config/pavilionService'
 import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
@@ -646,6 +611,72 @@ const filters = ref({
   statusCategory: '', // pending, approved, rejected, o '' para todos
   surgeryDate: '' // fecha de cirugía en formato YYYY-MM-DD
 })
+
+// Control de remontaje para FilterPanel
+const filterPanelKey = ref(0)
+
+// Configuración de FilterPanel
+const filterConfig = computed(() => [
+  {
+    type: 'select',
+    key: 'status',
+    label: 'Estado',
+    default: '',
+    options: [
+      { value: '', label: 'Todos los estados' },
+      ...SUPPLY_REQUEST_STATUS_OPTIONS.map(o => ({ value: o.value, label: o.label }))
+    ]
+  },
+  {
+    type: 'date',
+    key: 'surgeryDate',
+    label: 'Fecha de Cirugía',
+    default: ''
+  },
+  {
+    type: 'text',
+    key: 'search',
+    label: 'Número de Solicitud',
+    placeholder: 'SOL-XXXXXX',
+    default: ''
+  }
+])
+
+const hasActiveFilters = computed(() =>
+  filters.value.status !== '' ||
+  filters.value.surgeryDate !== '' ||
+  filters.value.search.trim() !== '' ||
+  filters.value.statusCategory !== ''
+)
+
+// Handler de FilterPanel
+const onFilterChange = (key, value) => {
+  if (key === 'status') {
+    filters.value.status = value
+    currentPage.value = 1
+    loadSupplyRequests()
+  } else if (key === 'surgeryDate') {
+    filters.value.surgeryDate = value
+    currentPage.value = 1
+  } else if (key === 'search') {
+    filters.value.search = value
+    currentPage.value = 1
+  }
+}
+
+// Limpiar filtros del panel y recargar
+const clearFilters = () => {
+  filters.value = {
+    status: '',
+    urgency: '',
+    search: '',
+    statusCategory: '',
+    surgeryDate: ''
+  }
+  filterPanelKey.value += 1
+  currentPage.value = 1
+  loadSupplyRequests()
+}
 
 // Computed properties
 const filteredRequests = computed(() => {
@@ -909,20 +940,8 @@ const filterByStatCategory = (category) => {
   currentPage.value = 1
 }
 
-const filterRequests = () => {
-  currentPage.value = 1
-}
-
 const refreshRequests = () => {
-  // Limpiar todos los filtros
-  filters.value = {
-    status: '',
-    urgency: '',
-    search: '',
-    statusCategory: '',
-    surgeryDate: ''
-  }
-  // Recargar solicitudes
+  // Recargar solicitudes sin limpiar filtros
   loadSupplyRequests()
 }
 

@@ -88,8 +88,7 @@
       </template>
 
       <template #actions>
-        <button @click="clearFilters" class="btn-secondary" :disabled="!hasActiveFilters">Limpiar Filtros</button>
-        <button @click="applyFilters" class="btn-primary">Aplicar Filtros</button>
+        <button @click="clearFilters" :disabled="!hasActiveFilters" class="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed">Limpiar filtros</button>
       </template>
     </FilterPanel>
 
