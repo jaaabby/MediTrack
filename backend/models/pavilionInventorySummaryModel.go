@@ -47,6 +47,7 @@ type PavilionInventorySummaryWithDetails struct {
 	SupplyName        string  `json:"supply_name"`
 	BatchSupplier     string  `json:"batch_supplier"`
 	ExpirationDate    string  `json:"expiration_date"`
+	QRCode            string  `json:"qr_code"`
 	MedicalCenterID   int     `json:"medical_center_id"`
 	MedicalCenterName *string `json:"medical_center_name,omitempty"`
 	InTransit         bool    `json:"in_transit" gorm:"-"`

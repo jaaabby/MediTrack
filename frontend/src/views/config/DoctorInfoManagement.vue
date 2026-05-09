@@ -5,7 +5,6 @@
       <div>
         <h2 class="text-2xl font-semibold text-gray-900">Gestión de Doctores</h2>
         <p class="text-gray-600 mt-1">Gestiona los doctores del sistema directamente desde la tabla de usuarios</p>
-        <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedDoctors.length }} doctores</p>
       </div>
     </div>
 
@@ -37,108 +36,35 @@
     </div>
 
     <!-- Tabla de doctores -->
-    <div v-else class="card overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                RUT
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Especialidad
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Centro Médico
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Estado
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="doctor in paginatedDoctors" :key="doctor.rut" 
-              class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {{ doctor.rut }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ doctor.name || '-' }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ doctor.email || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ getSpecialtyName(doctor.specialty_id) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ doctor.medical_center?.name || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="doctor.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Activo
-                </span>
-                <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  Inactivo
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <div class="flex justify-end space-x-2">
-                  <button @click="openEditModal(doctor)" 
-                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
-                    title="Editar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span class="font-medium text-xs">Editar</span>
-                  </button>
-                  <button @click="confirmDelete(doctor)" 
-                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
-                    title="Eliminar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Paginación -->
-    <div v-if="!loading && sortedDoctors.length > 0" class="card">
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedDoctors.length }} doctores
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="currentPage--">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
+    <DataTable
+      v-else
+      :columns="tableColumns"
+      :rows="filteredDoctors"
+      default-sort-key="name"
+      empty-message="No hay doctores registrados"
+    >
+      <template #cell-rut="{ row }"><span class="font-medium">{{ row.rut }}</span></template>
+      <template #cell-name="{ row }">
+        <div class="text-sm font-medium text-gray-900">{{ row.name || '-' }}</div>
+      </template>
+      <template #cell-email="{ row }">{{ row.email || '-' }}</template>
+      <template #cell-specialty_id="{ row }">{{ getSpecialtyName(row.specialty_id) }}</template>
+      <template #cell-medical_center="{ row }">{{ row.medical_center?.name || '-' }}</template>
+      <template #cell-is_active="{ row }">
+        <span v-if="row.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Activo</span>
+        <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inactivo</span>
+      </template>
+      <template #actions="{ row }">
+        <div class="flex justify-end space-x-2">
+          <button @click="openEditModal(row)" class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center transition-colors" title="Editar">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
           </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="currentPage++">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
+          <button @click="confirmDelete(row)" class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors" title="Eliminar">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
           </button>
         </div>
-      </div>
-    </div>
+      </template>
+    </DataTable>
 
     <!-- Mensaje sin resultados -->
     <div v-if="!loading && filteredDoctors.length === 0" class="card text-center py-12">
@@ -247,6 +173,7 @@ import medicalCenterService from '@/services/config/medicalCenterService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirmDanger } = useAlert()
@@ -261,10 +188,14 @@ const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
 
-// Estado de paginación
-const currentPage = ref(1)
-const itemsPerPage = 10
-
+const tableColumns = [
+  { key: 'rut', label: 'RUT', sortable: false },
+  { key: 'name', label: 'Nombre' },
+  { key: 'email', label: 'Email', sortable: false },
+  { key: 'specialty_id', label: 'Especialidad', sortable: false },
+  { key: 'medical_center', label: 'Centro Médico', sortable: false },
+  { key: 'is_active', label: 'Estado', sortable: false }
+]
 const doctorForm = ref({
   rut: '',
   name: '',
@@ -276,7 +207,7 @@ const doctorForm = ref({
   is_active: true
 })
 
-const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
+const onFilterChange = (key, value) => { filterState[key] = value }
 
 const filterConfig = computed(() => [
   {
@@ -310,25 +241,6 @@ const filteredDoctors = computed(() => {
   }
 
   return filtered
-})
-
-// Computed para ordenar
-const sortedDoctors = computed(() => {
-  return [...filteredDoctors.value].sort((a, b) => {
-    const nameA = (a.name || '').toLowerCase()
-    const nameB = (b.name || '').toLowerCase()
-    return nameA.localeCompare(nameB)
-  })
-})
-
-// Computed properties para paginación
-const totalPages = computed(() => Math.ceil(sortedDoctors.value.length / itemsPerPage))
-
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedDoctors.value.length))
-
-const paginatedDoctors = computed(() => {
-  return sortedDoctors.value.slice(startIndex.value, endIndex.value)
 })
 
 // Funciones auxiliares

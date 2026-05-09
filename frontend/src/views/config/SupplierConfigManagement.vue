@@ -6,7 +6,7 @@
         <div>
           <h2 class="text-2xl font-semibold text-gray-900">Configuración de Proveedores</h2>
           <p class="text-gray-600 mt-1">Gestiona los proveedores del sistema</p>
-          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ sortedConfigs.length }} configuraciones</p>
+          <p v-if="!loading" class="text-sm text-gray-500 mt-1">Total: {{ filteredConfigs.length }} configuraciones</p>
         </div>
         <div class="flex gap-2">
           <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
@@ -50,94 +50,30 @@
     </div>
 
     <!-- Tabla de configuraciones -->
-    <div v-else class="card overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" @click="sortBy('supplier_name')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Proveedor</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'supplier_name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'supplier_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Notas
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="config in paginatedConfigs" :key="config.supplier_name" 
-              class="hover:bg-gray-50 transition-colors duration-150">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ config.supplier_name }}</div>
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" :title="config.notes || '-'">
-                {{ config.notes || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <div class="flex justify-end space-x-2">
-                  <button @click="openEditModal(config)" 
-                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
-                    title="Editar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span class="font-medium text-xs">Editar</span>
-                  </button>
-                  <button @click="confirmDelete(config)" 
-                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
-                    title="Eliminar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Paginación -->
-    <div v-if="!loading && sortedConfigs.length > 0" class="card">
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedConfigs.length }} configuraciones
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="currentPage--">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
+    <DataTable
+      v-else
+      :columns="tableColumns"
+      :rows="filteredConfigs"
+      default-sort-key="supplier_name"
+      empty-message="No hay configuraciones de proveedores registradas"
+    >
+      <template #cell-supplier_name="{ row }">
+        <div class="text-sm font-medium text-gray-900">{{ row.supplier_name }}</div>
+      </template>
+      <template #cell-notes="{ row }">
+        <span class="block max-w-xs truncate" :title="row.notes || '-'">{{ row.notes || '-' }}</span>
+      </template>
+      <template #actions="{ row }">
+        <div class="flex justify-end space-x-2">
+          <button @click="openEditModal(row)" class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center transition-colors" title="Editar">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
           </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="currentPage++">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
+          <button @click="confirmDelete(row)" class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors" title="Eliminar">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
           </button>
         </div>
-      </div>
-    </div>
+      </template>
+    </DataTable>
 
     <!-- Mensaje sin resultados -->
     <div v-if="!loading && configs.length === 0" class="card text-center py-12">
@@ -219,6 +155,7 @@ import supplierConfigService from '@/services/config/supplierConfigService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirmDanger } = useAlert()
@@ -227,76 +164,25 @@ const configs = ref([])
 const loading = ref(false)
 const error = ref(null)
 const filterState = reactive({ search: '' })
-const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
+const onFilterChange = (key, value) => { filterState[key] = value }
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
 
-// Estado de ordenamiento
-const sortKey = ref('supplier_name')
-const sortOrder = ref('asc')
+const tableColumns = [
+  { key: 'supplier_name', label: 'Proveedor' },
+  { key: 'notes', label: 'Notas', sortable: false, wrap: true }
+]
 
-// Estado de paginación
-const currentPage = ref(1)
-const itemsPerPage = 10
-
-const configForm = ref({
-  supplier_name: '',
-  notes: ''
-})
-
-// Computed para obtener la lista ordenada
-const sortedConfigs = computed(() => {
+const filteredConfigs = computed(() => {
   if (!configs.value || configs.value.length === 0) return []
-  
-  const sorted = [...configs.value].sort((a, b) => {
-    let aVal = a[sortKey.value]
-    let bVal = b[sortKey.value]
-    
-    // Manejo de strings (comparación case-insensitive)
-    if (typeof aVal === 'string') {
-      aVal = aVal.toLowerCase()
-      bVal = bVal.toLowerCase()
-    }
-    
-    // Comparación
-    if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1
-    if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1
-    return 0
-  })
-  
-  // Aplicar búsqueda si existe
-  if (filterState.search.trim()) {
-    const term = filterState.search.toLowerCase().trim()
-    return sorted.filter(c =>
-      c.supplier_name.toLowerCase().includes(term) ||
-      (c.notes && c.notes.toLowerCase().includes(term))
-    )
-  }
-  
-  return sorted
+  if (!filterState.search.trim()) return configs.value
+  const term = filterState.search.toLowerCase().trim()
+  return configs.value.filter(c =>
+    c.supplier_name.toLowerCase().includes(term) ||
+    (c.notes && c.notes.toLowerCase().includes(term))
+  )
 })
-
-// Computed properties para paginación
-const totalPages = computed(() => Math.ceil(sortedConfigs.value.length / itemsPerPage))
-
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedConfigs.value.length))
-
-const paginatedConfigs = computed(() => {
-  return sortedConfigs.value.slice(startIndex.value, endIndex.value)
-})
-
-// Función para ordenar por columna
-const sortBy = (key) => {
-  if (sortKey.value === key) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortKey.value = key
-    sortOrder.value = 'asc'
-  }
-  currentPage.value = 1
-}
 
 const loadConfigs = async () => {
   loading.value = true

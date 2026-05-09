@@ -1,48 +1,41 @@
 <template>
   <div class="space-y-6">
     <!-- Header del inventario -->
-    <div>
-      <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Inventario de Insumos Médicos</h1>
-      <p class="text-sm sm:text-base text-gray-600 mt-1">Gestión y control de stock médico</p>
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-semibold text-gray-900">Inventario de Insumos Médicos</h1>
+          <p class="text-gray-600 mt-1">Gestión y control de stock médico</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button
+            @click="exportToExcel"
+            :disabled="loading || filteredSupplies.length === 0"
+            class="btn-secondary flex items-center justify-center px-3 py-2 text-sm"
+            :class="{ 'opacity-50 cursor-not-allowed': loading || filteredSupplies.length === 0 }"
+          >
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="hidden sm:inline">Exportar a Excel</span>
+            <span class="sm:hidden">Excel</span>
+          </button>
+          <button v-if="authStore.canViewAllRequests"
+            class="btn-primary flex items-center justify-center px-3 py-2 text-sm"
+            @click="openGlobalHistoryModal">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="hidden sm:inline">Historial de Movimientos</span>
+            <span class="sm:hidden">Historial</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Filtros y búsqueda -->
     <FilterPanel :filters="filterConfig" :result-count="filteredSupplies.length" @filter-change="onFilterChange" />
-
-    <!-- Tabla de inventario -->
-    <div class="card">
-      <div class="card-header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 class="card-title">Inventario de Insumos Médicos</h2>
-            <p class="text-sm text-gray-600">Total: {{ filteredSupplies.length }} lotes</p>
-          </div>
-          <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <button 
-              @click="exportToExcel" 
-              :disabled="loading || filteredSupplies.length === 0"
-              class="btn-secondary flex items-center justify-center px-3 py-2 text-sm"
-              :class="{ 'opacity-50 cursor-not-allowed': loading || filteredSupplies.length === 0 }"
-            >
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span class="hidden sm:inline">Exportar a Excel</span>
-              <span class="sm:hidden">Excel</span>
-            </button>
-            <button v-if="authStore.canViewAllRequests"
-              class="btn-primary flex items-center justify-center px-3 py-2 text-sm w-full sm:w-auto"
-              @click="openGlobalHistoryModal">
-              <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span class="hidden sm:inline">Historial de Movimientos</span>
-              <span class="sm:hidden">Historial</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       <!-- Indicador de carga -->
       <div v-if="loading" class="flex justify-center items-center py-8">
@@ -72,186 +65,47 @@
       </div>
 
       <!-- Tabla de datos -->
-      <div v-else class="table-container">
-        <!-- Indicador de scroll horizontal para móviles -->
-        <div class="md:hidden bg-blue-50 border-b border-blue-200 px-3 py-2 text-center sticky left-0 z-10">
-          <div class="flex items-center justify-center text-blue-700 text-xs">
-            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-            </svg>
-            Desliza horizontalmente para ver todas las columnas
-          </div>
-        </div>
-
-        <table class="min-w-full divide-y divide-gray-200" style="min-width: 900px;">
-          <thead class="table-header">
-            <tr>
-              <th
-                class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                <div class="flex items-center justify-between">
-                  <span>N° de lote</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('batch_id', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'batch_id' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('batch_id', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'batch_id' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="table-header-cell">
-                <div class="flex items-center justify-between">
-                  <span>Nombre del Insumo</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('name', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'name' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('name', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'name' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="table-header-cell">
-                <div class="flex items-center justify-between">
-                  <span>Código Interno</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('code', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'code' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('code', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'code' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="table-header-cell">
-                <div class="flex items-center justify-between">
-                  <span>F. Vencimiento</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('expiration_date', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'expiration_date' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('expiration_date', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'expiration_date' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="table-header-cell">
-                <div class="flex items-center justify-between">
-                  <span>Cantidad</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('amount', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'amount' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('amount', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'amount' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="table-header-cell">
-                <div class="flex items-center justify-between">
-                  <span>Proveedor</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('supplier', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'supplier' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('supplier', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'supplier' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="table-header-cell sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="supply in paginatedSupplies" :key="supply.batch_id" class="hover:bg-gray-50 cursor-pointer"
-              @click="openBatchDetailsModal(supply)">
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-mono text-gray-900">{{
-                supply.batch_id }}</td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <div>
-                  <div class="font-medium text-gray-900 text-xs sm:text-sm">{{ supply.name }}</div>
-                </div>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span class="text-gray-700 text-xs sm:text-sm">{{ supply.code }}</span>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span :class="getExpirationClass(supply.expiration_date, supply.expiration_alert_days)" class="text-xs sm:text-sm">
-                  {{ formatDate(supply.expiration_date) }}
-                </span>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span :class="getAmountClass(supply.amount, supply.critical_stock)" class="font-medium text-xs sm:text-sm">{{ supply.amount }}</span>
-                <span :class="getAmountClass(supply.amount, supply.critical_stock)" class="text-xs ml-1">unidades</span>
-                <span v-if="supply.critical_stock" class="text-xs text-gray-500 block mt-0.5">
-                  crítico: {{ supply.critical_stock }}
-                </span>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span class="text-gray-700 text-xs sm:text-sm">{{ supply.supplier }}</span>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]" @click.stop>
-                <div class="flex flex-row justify-end gap-2">
-                  <button class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 text-xs transition-colors" @click.stop="editSupply(supply)" title="Editar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span class="font-medium">Editar</span>
-                  </button>
-                  <button class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded inline-flex items-center justify-center transition-colors" @click.stop="deleteSupply(supply)" title="Eliminar">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else>
+        <DataTable
+          :columns="tableColumnsSupplies"
+          :rows="filteredSupplies"
+          default-sort-key="qr_code"
+          :items-per-page="10"
+          :row-class="() => 'hover:bg-gray-50'"
+          :table-actions="[
+            { type: 'view', onClick: (row) => openBatchDetailsModal(row) },
+            { type: 'edit', onClick: (row) => editSupply(row) },
+            { type: 'delete', onClick: (row) => deleteSupply(row) },
+          ]"
+        >
+          <template #cell-qr_code="{ row }">
+            <div class="text-sm">
+              <div class="font-medium text-gray-900">{{ row.name }}</div>
+              <div class="text-gray-500 text-xs">{{ row.qr_code }}</div>
+            </div>
+          </template>
+          <template #cell-code="{ row }">
+            <span class="text-gray-700">{{ row.code }}</span>
+          </template>
+          <template #cell-expiration_date="{ row }">
+            <span :class="getExpirationClass(row.expiration_date, row.expiration_alert_days)">
+              {{ formatDate(row.expiration_date) }}
+            </span>
+          </template>
+          <template #cell-amount="{ row }">
+            <span :class="getAmountClass(row.amount, row.critical_stock)" class="font-medium">{{ row.amount }}</span>
+            <span :class="getAmountClass(row.amount, row.critical_stock)" class="text-xs ml-1">unidades</span>
+            <span v-if="row.critical_stock" class="text-xs text-gray-500 block mt-0.5">
+              cr&#237;tico: {{ row.critical_stock }}
+            </span>
+          </template>
+          <template #cell-supplier="{ row }">
+            <span class="text-gray-700">{{ row.supplier }}</span>
+          </template>
+          <template #actions="{ row }">
+            <!-- legacy slot kept intentionally empty; actions handled via tableActions prop -->
+          </template>
+        </DataTable>
       </div>
 
       <!-- Modal de edición -->
@@ -259,33 +113,32 @@
       <div v-if="showBatchDetailsModal"
         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
         <div
-          class="relative top-4 sm:top-20 mx-2 sm:mx-auto p-4 sm:p-8 border w-auto sm:w-full max-w-2xl shadow-lg rounded-xl bg-white">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-            <h3 class="text-lg sm:text-2xl font-bold text-gray-900">Detalles del lote de {{ supplyName || '...' }}</h3>
-            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <button 
-                @click="downloadAllBatchQRs" 
+          class="relative top-4 sm:top-10 mx-2 sm:mx-auto p-4 sm:p-8 border w-auto sm:w-full max-w-4xl shadow-lg rounded-xl bg-white">
+          <div class="flex flex-row items-center justify-between gap-4 mb-4 sm:mb-6">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-900 min-w-0">Detalles del lote de {{ supplyName || '...' }}</h3>
+            <div class="flex flex-row flex-shrink-0 gap-2">
+              <button
+                @click="downloadAllBatchQRs"
                 :disabled="downloadingAllBatch || batchDetails.length === 0"
-                class="btn-primary px-3 py-2 rounded-lg text-xs sm:text-sm w-full sm:w-auto flex items-center justify-center gap-1.5"
+                class="btn-primary px-3 py-2 rounded-lg text-sm whitespace-nowrap flex items-center gap-1.5"
               >
-                <svg v-if="!downloadingAllBatch" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!downloadingAllBatch" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <div v-else class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span class="hidden sm:inline">{{ downloadingAllBatch ? 'Generando...' : 'Descargar QRs' }}</span>
-                <span class="sm:hidden">{{ downloadingAllBatch ? 'PDF...' : 'QRs' }}</span>
+                <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                {{ downloadingAllBatch ? 'Generando...' : 'Descargar QRs' }}
               </button>
-              <button 
+              <button
                 @click="goToSupplyHistory"
-                class="btn-secondary px-3 py-2 rounded-lg text-xs sm:text-sm w-full sm:w-auto flex items-center justify-center gap-1.5"
+                class="btn-secondary px-3 py-2 rounded-lg text-sm whitespace-nowrap flex items-center gap-1.5"
               >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>Historial</span>
+                Historial
               </button>
               <button @click="closeBatchDetailsModal"
-                class="btn-secondary px-3 py-2 rounded-lg text-xs sm:text-sm w-full sm:w-auto">Cerrar</button>
+                class="btn-secondary px-3 py-2 rounded-lg text-sm whitespace-nowrap">Cerrar</button>
             </div>
           </div>
           <div v-if="batchDetailsLoading" class="flex justify-center items-center py-8">
@@ -299,75 +152,28 @@
             No se encontraron insumos para este lote.
           </div>
           <div v-else>
-            <!-- Información de paginación -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4">
-              <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Mostrando {{ batchDetailsStartIndex + 1 }} a {{ batchDetailsEndIndex }} de {{ batchDetails.length }}
-                insumos
-              </div>
-              <div class="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
-                Página {{ batchDetailsCurrentPage }} de {{ batchDetailsTotalPages }}
-              </div>
-            </div>
-
-            <div class="overflow-x-auto -mx-4 sm:mx-0">
-              <table class="min-w-full divide-y divide-gray-200 mb-6 rounded-lg overflow-hidden shadow">
-                <thead class="bg-gray-100">
-                  <tr>
-                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">ID
-                    </th>
-                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">
-                      Estado</th>
-                    <th class="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">QR
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="item in paginatedBatchDetails" :key="item.id" class="hover:bg-gray-50">
-                    <td class="px-3 sm:px-6 py-3 sm:py-4 text-gray-900 font-mono text-xs sm:text-sm">{{ item.id }}</td>
-                    <td class="px-3 sm:px-6 py-3 sm:py-4">
-                      <span
-                        class="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
-                        :class="getStatusClass(item.status)">
-                        {{ getStatusDescription(item.status) }}
-                      </span>
-                    </td>
-                    <td class="px-3 sm:px-6 py-3 sm:py-4">
-                      <div class="flex flex-col items-center justify-center text-center space-y-2">
-                        <qrcode-vue :value="item.qr_code" :size="40" class="mx-auto" />
-                        <button @click="handleDownloadQR(item.qr_code)"
-                          class="btn-secondary text-xs px-2 sm:px-3 py-1 rounded whitespace-nowrap">Descargar
-                          QR</button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Paginación -->
-            <div v-if="batchDetails.length > batchDetailsItemsPerPage"
-              class="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
-              <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Mostrando {{ batchDetailsStartIndex + 1 }} a {{ batchDetailsEndIndex }} de {{ batchDetails.length }}
-                insumos
-              </div>
-              <div class="flex items-center gap-2">
-                <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]" :disabled="batchDetailsCurrentPage === 1"
-                  @click="batchDetailsCurrentPage--">
-                  <span class="hidden sm:inline">Anterior</span>
-                  <span class="sm:hidden">Ant.</span>
-                </button>
-                <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[100px] text-center">
-                  Página {{ batchDetailsCurrentPage }} de {{ batchDetailsTotalPages }}
+            <DataTable
+              :columns="tableColumnsBatchDetails"
+              :rows="batchDetails"
+              :items-per-page="5"
+            >
+              <template #cell-id="{ row }">
+                <span class="text-gray-900">{{ supplyName || '—' }}</span>
+              </template>
+              <template #cell-status="{ row }">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                  :class="getStatusClass(row.status)">
+                  {{ getStatusDescription(row.status) }}
                 </span>
-                <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]"
-                  :disabled="batchDetailsCurrentPage === batchDetailsTotalPages" @click="batchDetailsCurrentPage++">
-                  <span class="hidden sm:inline">Siguiente</span>
-                  <span class="sm:hidden">Sig.</span>
-                </button>
-              </div>
-            </div>
+              </template>
+              <template #cell-qr_code="{ row }">
+                <div class="flex flex-col items-center justify-center text-center space-y-2">
+                  <qrcode-vue :value="row.qr_code" :size="40" class="mx-auto" />
+                  <button @click="handleDownloadQR(row.qr_code)"
+                    class="btn-secondary text-xs px-2 py-1 rounded whitespace-nowrap">Descargar QR</button>
+                </div>
+              </template>
+            </DataTable>
           </div>
         </div>
       </div>
@@ -549,7 +355,7 @@
               <!-- Vista de tarjetas para móviles -->
               <div class="md:hidden">
                 <div class="space-y-3">
-                  <div v-for="movement in paginatedHistory" :key="movement.id || movement.date_time"
+                  <div v-for="movement in filteredHistory" :key="movement.id || movement.date_time"
                     class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                     <!-- Fecha y tipo -->
                     <div class="flex items-start justify-between mb-2 pb-2 border-b border-gray-100">
@@ -601,171 +407,44 @@
               </div>
 
               <!-- Vista de tabla para desktop -->
-              <div class="hidden md:block table-container">
-                <table class="min-w-full divide-y divide-gray-200" style="min-width: 700px;">
-                  <thead class="table-header">
-                    <tr>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Fecha</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortHistoryBy('date', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': sortHistoryField === 'date' && sortHistoryDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortHistoryBy('date', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': sortHistoryField === 'date' && sortHistoryDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px] sm:min-w-[150px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Tipo</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortHistoryBy('type', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': sortHistoryField === 'type' && sortHistoryDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortHistoryBy('type', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': sortHistoryField === 'type' && sortHistoryDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Cantidad</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortHistoryBy('amount', 'asc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': sortHistoryField === 'amount' && sortHistoryDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortHistoryBy('amount', 'desc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': sortHistoryField === 'amount' && sortHistoryDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Usuario</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortHistoryBy('user', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': sortHistoryField === 'user' && sortHistoryDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortHistoryBy('user', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': sortHistoryField === 'user' && sortHistoryDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px] sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                        Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="movement in paginatedHistory" :key="movement.id || movement.date_time"
-                      class="hover:bg-gray-50">
-                      <td
-                        class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-mono text-gray-900">
-                        {{ formatDate(movement.date_time || movement.date) }}
-                      </td>
-                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <span :class="getStatusBadgeClass(movement.type || movement.action)" class="text-xs sm:text-sm">
-                          {{ movement.action || movement.type || 'N/A' }}
-                        </span>
-                      </td>
-                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <span :class="getAmountClass(movement.details?.amount || movement.amount || 0)"
-                          class="font-medium text-xs sm:text-sm">{{ movement.details?.amount || movement.amount || 'N/A'
-                          }}</span>
-                        <span v-if="movement.details?.amount || movement.amount"
-                          :class="getAmountClass(movement.details?.amount || movement.amount)"
-                          class="text-xs ml-1">unidades</span>
-                      </td>
-                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <span class="text-gray-700 text-xs sm:text-sm">{{ movement.user_rut || movement.user || 'N/A'
-                          }}</span>
-                      </td>
-                      <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                        <button class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded flex items-center gap-1 text-xs transition-colors"
-                          @click="viewMovementDetails(movement)">
-                          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <span class="font-medium">Ver</span>
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div class="hidden md:block">
+                <DataTable
+                  :columns="tableColumnsHistory"
+                  :rows="filteredHistory"
+                  default-sort-key="date_time"
+                  default-sort-order="desc"
+                  :items-per-page="10"
+                >
+                  <template #cell-date_time="{ row }">
+                    {{ formatDate(row.date_time || row.date) }}
+                  </template>
+                  <template #cell-type="{ row }">
+                    <span :class="getStatusBadgeClass(row.type || row.action)">
+                      {{ row.action || row.type || 'N/A' }}
+                    </span>
+                  </template>
+                  <template #cell-amount="{ row }">
+                    <span :class="getAmountClass(row.details?.amount || row.amount || 0)" class="font-medium">{{ row.details?.amount || row.amount || 'N/A' }}</span>
+                    <span v-if="row.details?.amount || row.amount" :class="getAmountClass(row.details?.amount || row.amount)" class="text-xs ml-1">unidades</span>
+                  </template>
+                  <template #cell-user_rut="{ row }">
+                    <span class="text-gray-700">{{ row.user_rut || row.user || 'N/A' }}</span>
+                  </template>
+                  <template #actions="{ row }">
+                    <button class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded flex items-center gap-1 text-xs transition-colors"
+                      @click="viewMovementDetails(row)">
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span class="font-medium">Ver</span>
+                    </button>
+                  </template>
+                </DataTable>
               </div>
-            </div>
-
-            <!-- Paginación -->
-            <div class="flex flex-col sm:flex-row items-center justify-between mt-4 sm:mt-6 gap-3 sm:gap-4">
-              <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Mostrando {{ filteredHistory.length > 0 ? historyStartIndex + 1 : 0 }} a {{ historyEndIndex }} de {{
-                filteredHistory.length }} resultados
-              </div>
-              <div class="flex items-center gap-2 w-full sm:w-auto">
-                <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]"
-                  :disabled="historyCurrentPage === 1" @click="historyCurrentPage--">
-                  <span class="hidden sm:inline">Anterior</span>
-                  <span class="sm:hidden">Ant.</span>
-                </button>
-                <span
-                  class="px-3 py-2 text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-md text-center whitespace-nowrap">
-                  <span class="hidden sm:inline">Página {{ historyCurrentPage }} de {{ historyTotalPages }}</span>
-                  <span class="sm:hidden">{{ historyCurrentPage }} / {{ historyTotalPages }}</span>
-                </span>
-                <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]"
-                  :disabled="historyCurrentPage === historyTotalPages" @click="historyCurrentPage++">
-                  <span class="hidden sm:inline">Siguiente</span>
-                  <span class="sm:hidden">Sig.</span>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
+      </div>
       </div>
 
       <!-- Modal de historial global -->
@@ -910,7 +589,7 @@
               <!-- Vista de tarjetas para móviles -->
               <div class="md:hidden">
                 <div class="space-y-3">
-                  <div v-for="movement in paginatedGlobalHistory" :key="movement.id"
+                  <div v-for="movement in filteredGlobalHistory" :key="movement.id"
                     class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                     <!-- Header: Fecha y N° Lote -->
                     <div class="flex items-start justify-between mb-2 pb-2 border-b border-gray-100">
@@ -996,285 +675,53 @@
               </div>
 
               <!-- Vista de tabla para desktop -->
-              <div class="hidden md:block table-container">
-                <table class="min-w-full divide-y divide-gray-200" style="min-width: 900px;">
-                  <thead class="table-header">
-                    <tr>
-                      <th
-                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px] md:min-w-[120px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Fecha</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortGlobalHistoryBy('date', 'asc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortGlobalHistoryBy('date', 'desc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'date' && globalHistorySortDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">N° Lote</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortGlobalHistoryBy('batch_id', 'asc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortGlobalHistoryBy('batch_id', 'desc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'batch_id' && globalHistorySortDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px] sm:min-w-[150px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Detalles</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortGlobalHistoryBy('change_details', 'asc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortGlobalHistoryBy('change_details', 'desc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'change_details' && globalHistorySortDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Valores Ant.</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortGlobalHistoryBy('previous_values', 'asc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortGlobalHistoryBy('previous_values', 'desc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'previous_values' && globalHistorySortDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Valores Nuevos</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortGlobalHistoryBy('new_values', 'asc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortGlobalHistoryBy('new_values', 'desc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'new_values' && globalHistorySortDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">RUT</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortGlobalHistoryBy('user_rut', 'asc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortGlobalHistoryBy('user_rut', 'desc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'user_rut' && globalHistorySortDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px] sm:min-w-[120px]">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs sm:text-sm">Usuario</span>
-                          <div class="flex flex-col ml-1 sm:ml-2">
-                            <button @click="sortGlobalHistoryBy('user_name', 'asc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'asc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <button @click="sortGlobalHistoryBy('user_name', 'desc')"
-                              class="text-gray-400 hover:text-gray-600 p-1"
-                              :class="{ 'text-blue-600': globalHistorySortField === 'user_name' && globalHistorySortDirection === 'desc' }">
-                              <svg class="w-2 h-2 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="movement in paginatedGlobalHistory" :key="movement.id" class="hover:bg-gray-50">
-                      <td
-                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm font-mono text-gray-900">
-                        {{ formatDate(movement.date_time) }}
-                      </td>
-                      <td
-                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm font-mono text-gray-900">
-                        {{ movement.batch_id }}
-                      </td>
-                      <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                        <div class="font-medium text-gray-900 text-[10px] sm:text-xs md:text-sm">{{
-                          movement.change_details }}</div>
-                      </td>
-                      <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-gray-700">
-                        <div v-if="movement.previous_values && Object.keys(movement.previous_values).length > 0"
-                          class="text-[9px] sm:text-[10px] md:text-xs space-y-0.5">
-                          <div v-if="movement.previous_values.amount" class="truncate">Cant: {{
-                            movement.previous_values.amount }}</div>
-                          <div v-if="movement.previous_values.supplier" class="truncate">Prov: {{
-                            movement.previous_values.supplier }}</div>
-                          <div v-if="movement.previous_values.expiration_date" class="truncate">Venc: {{
-                            formatDate(movement.previous_values.expiration_date) }}</div>
-                        </div>
-                        <span v-else class="text-gray-400 text-[10px] sm:text-xs">N/A</span>
-                      </td>
-                      <td class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-gray-700">
-                        <div v-if="movement.new_values && Object.keys(movement.new_values).length > 0"
-                          class="text-[9px] sm:text-[10px] md:text-xs space-y-0.5">
-                          <div v-if="movement.new_values.amount" class="truncate">Cant: {{ movement.new_values.amount }}
-                          </div>
-                          <div v-if="movement.new_values.supplier" class="truncate">Prov: {{
-                            movement.new_values.supplier }}</div>
-                          <div v-if="movement.new_values.expiration_date" class="truncate">Venc: {{
-                            formatDate(movement.new_values.expiration_date) }}</div>
-                        </div>
-                        <span v-else class="text-gray-400 text-[10px] sm:text-xs">N/A</span>
-                      </td>
-                      <td
-                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm text-gray-700">
-                        {{ movement.user_rut }}
-                      </td>
-                      <td
-                        class="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap text-[10px] sm:text-xs md:text-sm text-gray-700">
-                        {{ movement.user_name || 'N/A' }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div class="hidden md:block">
+                <DataTable
+                  :columns="tableColumnsGlobalHistory"
+                  :rows="filteredGlobalHistory"
+                  default-sort-key="date_time"
+                  default-sort-order="desc"
+                  :items-per-page="5"
+                >
+                  <template #cell-date_time="{ row }">
+                    <span class="font-mono">{{ formatDate(row.date_time) }}</span>
+                  </template>
+                  <template #cell-batch_id="{ row }">
+                    <span class="font-mono">{{ row.batch_id }}</span>
+                  </template>
+                  <template #cell-change_details="{ row }">
+                    <div class="font-medium text-gray-900">{{ row.change_details }}</div>
+                  </template>
+                  <template #cell-previous_values="{ row }">
+                    <div v-if="row.previous_values && Object.keys(row.previous_values).length > 0" class="text-xs space-y-0.5">
+                      <div v-if="row.previous_values.amount" class="truncate">Cant: {{ row.previous_values.amount }}</div>
+                      <div v-if="row.previous_values.supplier" class="truncate">Prov: {{ row.previous_values.supplier }}</div>
+                      <div v-if="row.previous_values.expiration_date" class="truncate">Venc: {{ formatDate(row.previous_values.expiration_date) }}</div>
+                    </div>
+                    <span v-else class="text-gray-400 text-xs">N/A</span>
+                  </template>
+                  <template #cell-new_values="{ row }">
+                    <div v-if="row.new_values && Object.keys(row.new_values).length > 0" class="text-xs space-y-0.5">
+                      <div v-if="row.new_values.amount" class="truncate">Cant: {{ row.new_values.amount }}</div>
+                      <div v-if="row.new_values.supplier" class="truncate">Prov: {{ row.new_values.supplier }}</div>
+                      <div v-if="row.new_values.expiration_date" class="truncate">Venc: {{ formatDate(row.new_values.expiration_date) }}</div>
+                    </div>
+                    <span v-else class="text-gray-400 text-xs">N/A</span>
+                  </template>
+                  <template #cell-user_rut="{ row }">
+                    <span class="text-gray-700">{{ row.user_rut }}</span>
+                  </template>
+                  <template #cell-user_name="{ row }">
+                    <span class="text-gray-700">{{ row.user_name || 'N/A' }}</span>
+                  </template>
+                </DataTable>
               </div>
             </div>
-
-            <!-- Paginación -->
-            <div class="flex flex-col sm:flex-row items-center justify-between mt-4 sm:mt-6 gap-3 sm:gap-4">
-              <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Mostrando {{ filteredGlobalHistory.length > 0 ? globalHistoryStartIndex + 1 : 0 }} a {{
-                globalHistoryEndIndex }} de {{
-                  filteredGlobalHistory.length }} resultados
-              </div>
-              <div class="flex items-center gap-2 w-full sm:w-auto">
-                <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]"
-                  :disabled="globalHistoryCurrentPage === 1" @click="globalHistoryCurrentPage--">
-                  <span class="hidden sm:inline">Anterior</span>
-                  <span class="sm:hidden">Ant.</span>
-                </button>
-                <span
-                  class="px-3 py-2 text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-md text-center whitespace-nowrap">
-                  <span class="hidden sm:inline">Página {{ globalHistoryCurrentPage }} de {{ globalHistoryTotalPages
-                    }}</span>
-                  <span class="sm:hidden">{{ globalHistoryCurrentPage }} / {{ globalHistoryTotalPages }}</span>
-                </span>
-                <button class="btn-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none sm:min-w-[80px]"
-                  :disabled="globalHistoryCurrentPage === globalHistoryTotalPages" @click="globalHistoryCurrentPage++">
-                  <span class="hidden sm:inline">Siguiente</span>
-                  <span class="sm:hidden">Sig.</span>
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
+      </div>
       </div>
 
 
-      <!-- Paginación -->
-      <div class="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4">
-        <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ filteredSupplies.length }} resultados
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="currentPage--">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
-          </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="currentPage++">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -1293,6 +740,38 @@ import QrcodeVue from 'qrcode.vue'
 import { exportToExcel as exportExcel, formatDateForExcel } from '@/utils/excelExport'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
+import DataTable from '@/components/common/DataTable.vue'
+
+const tableColumnsSupplies = [
+  { key: 'qr_code', label: 'Lote' },
+  { key: 'code', label: 'Código Interno' },
+  { key: 'expiration_date', label: 'F. Vencimiento' },
+  { key: 'amount', label: 'Cantidad' },
+  { key: 'supplier', label: 'Proveedor' },
+]
+
+const tableColumnsBatchDetails = [
+  { key: 'id', label: 'Insumo', sortable: false },
+  { key: 'status', label: 'Estado', sortable: false },
+  { key: 'qr_code', label: 'QR', sortable: false, align: 'center' },
+]
+
+const tableColumnsHistory = [
+  { key: 'date_time', label: 'Fecha' },
+  { key: 'type', label: 'Tipo' },
+  { key: 'amount', label: 'Cantidad' },
+  { key: 'user_rut', label: 'Usuario' },
+]
+
+const tableColumnsGlobalHistory = [
+  { key: 'date_time', label: 'Fecha' },
+  { key: 'batch_id', label: 'N° Lote' },
+  { key: 'change_details', label: 'Detalles' },
+  { key: 'previous_values', label: 'Valores Ant.' },
+  { key: 'new_values', label: 'Valores Nuevos' },
+  { key: 'user_rut', label: 'RUT' },
+  { key: 'user_name', label: 'Usuario' },
+]
 
 const route = useRoute()
 const router = useRouter()
@@ -1304,10 +783,6 @@ const { alert, confirmDanger } = useAlert()
 const supplies = ref([])
 const loading = ref(false)
 const error = ref(null)
-const sortField = ref('none')
-const sortDirection = ref('asc')
-const currentPage = ref(1)
-const itemsPerPage = 10
 
 const filterState = reactive({
   search: route.query.search || '',
@@ -1337,7 +812,7 @@ const filterConfig = [
   }
 ]
 
-const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
+const onFilterChange = (key, value) => { filterState[key] = value }
 
 // Estado del modal de edición
 const showEditModal = ref(false)
@@ -1352,8 +827,6 @@ const globalHistoryBatchFilter = ref('')
 const globalHistoryUserFilter = ref('')
 const globalHistorySortField = ref('date')
 const globalHistorySortDirection = ref('desc')
-const globalHistoryCurrentPage = ref(1)
-const globalHistoryItemsPerPage = 5
 const globalHistoryLoading = ref(false)
 const globalHistoryError = ref(null)
 const globalHistoryData = ref([])
@@ -1363,16 +836,10 @@ const showHistoryModal = ref(false)
 const historySearchTerm = ref('')
 const historySortField = ref('date')
 const historySortDirection = ref('desc')
-const historyCurrentPage = ref(1)
-const historyItemsPerPage = 10
 const historyLoading = ref(false)
 const historyError = ref(null)
 const historyData = ref([])
 const selectedSupplyForHistory = ref(null)
-
-// Estado del modal de detalles de lote con paginación
-const batchDetailsCurrentPage = ref(1)
-const batchDetailsItemsPerPage = 5 // Constante, no ref
 
 // Sistema de notificaciones unificado - usa useNotification()
 
@@ -1430,46 +897,7 @@ const filteredSupplies = computed(() => {
     })
   }
 
-  // Solo aplicar ordenamiento si se ha seleccionado explícitamente un campo
-  if (sortField.value && sortField.value !== 'none') {
-    filtered.sort((a, b) => {
-      let result = 0
-
-      switch (sortField.value) {
-        case 'batch_id':
-          result = a.batch_id - b.batch_id
-          break
-        case 'code':
-          result = a.code - b.code
-          break
-        case 'expiration_date':
-          result = new Date(a.expiration_date) - new Date(b.expiration_date)
-          break
-        case 'amount':
-          result = a.amount - b.amount
-          break
-        case 'supplier':
-          result = (a.supplier || '').localeCompare(b.supplier || '')
-          break
-        default:
-          result = a.name.localeCompare(b.name)
-          break
-      }
-
-      return sortDirection.value === 'asc' ? result : -result
-    })
-  }
-
   return filtered
-})
-
-const totalPages = computed(() => Math.ceil(filteredSupplies.value.length / itemsPerPage))
-
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, filteredSupplies.value.length))
-
-const paginatedSupplies = computed(() => {
-  return filteredSupplies.value.slice(startIndex.value, endIndex.value)
 })
 
 // Computed properties para historial
@@ -1485,49 +913,7 @@ const filteredHistory = computed(() => {
     )
   }
 
-  // Ordenamiento
-  filtered.sort((a, b) => {
-    let result = 0
-
-    switch (historySortField.value) {
-      case 'date':
-        result = new Date(a.date_time || a.date) - new Date(b.date_time || b.date)
-        break
-      case 'type':
-        result = (a.action || a.type || '').localeCompare(b.action || b.type || '')
-        break
-      case 'amount':
-        const amountA = a.details?.amount || a.amount || 0
-        const amountB = b.details?.amount || b.amount || 0
-        result = amountA - amountB
-        break
-      case 'user':
-        result = (a.user_rut || a.user || '').localeCompare(b.user_rut || b.user || '')
-        break
-      default:
-        result = new Date(a.date_time || a.date) - new Date(b.date_time || b.date) // Fallback to date sort
-        break
-    }
-
-    return historySortDirection.value === 'asc' ? result : -result
-  })
-
   return filtered
-})
-
-const historyTotalPages = computed(() => Math.max(1, Math.ceil(filteredHistory.value.length / historyItemsPerPage)))
-
-const historyStartIndex = computed(() => {
-  if (filteredHistory.value.length === 0) return 0
-  return (historyCurrentPage.value - 1) * historyItemsPerPage
-})
-const historyEndIndex = computed(() => {
-  if (filteredHistory.value.length === 0) return 0
-  return Math.min(historyStartIndex.value + historyItemsPerPage, filteredHistory.value.length)
-})
-
-const paginatedHistory = computed(() => {
-  return filteredHistory.value.slice(historyStartIndex.value, historyEndIndex.value)
 })
 
 // Computed properties para historial global
@@ -1573,56 +959,7 @@ const filteredGlobalHistory = computed(() => {
     )
   }
 
-  // Ordenamiento
-  filtered.sort((a, b) => {
-    let result = 0
-
-    switch (globalHistorySortField.value) {
-      case 'date':
-        result = new Date(a.date_time) - new Date(b.date_time)
-        break
-      case 'batch_id':
-        result = (a.batch_id || 0) - (b.batch_id || 0)
-        break
-      case 'change_details':
-        result = (a.change_details || '').localeCompare(b.change_details || '')
-        break
-      case 'previous_values':
-        result = JSON.stringify(a.previous_values || {}).localeCompare(JSON.stringify(b.previous_values || {}))
-        break
-      case 'new_values':
-        result = JSON.stringify(a.new_values || {}).localeCompare(JSON.stringify(b.new_values || {}))
-        break
-      case 'user_rut':
-        result = (a.user_rut || '').localeCompare(b.user_rut || '')
-        break
-      case 'user_name':
-        result = (a.user_name || '').localeCompare(b.user_name || '')
-        break
-      default:
-        result = new Date(a.date_time) - new Date(b.date_time) // Fallback to date sort
-        break
-    }
-
-    return globalHistorySortDirection.value === 'asc' ? result : -result
-  })
-
   return filtered
-})
-
-const globalHistoryTotalPages = computed(() => Math.max(1, Math.ceil(filteredGlobalHistory.value.length / globalHistoryItemsPerPage)))
-
-const globalHistoryStartIndex = computed(() => {
-  if (filteredGlobalHistory.value.length === 0) return 0
-  return (globalHistoryCurrentPage.value - 1) * globalHistoryItemsPerPage
-})
-const globalHistoryEndIndex = computed(() => {
-  if (filteredGlobalHistory.value.length === 0) return 0
-  return Math.min(globalHistoryStartIndex.value + globalHistoryItemsPerPage, filteredGlobalHistory.value.length)
-})
-
-const paginatedGlobalHistory = computed(() => {
-  return filteredGlobalHistory.value.slice(globalHistoryStartIndex.value, globalHistoryEndIndex.value)
 })
 
 // Verificar si hay filtros activos
@@ -1632,26 +969,12 @@ const hasActiveFilters = computed(() => {
     globalHistoryUserFilter.value
 })
 
-// Computed properties para paginación del modal de detalles de lote
-const batchDetailsTotalPages = computed(() => Math.ceil(batchDetails.value.length / batchDetailsItemsPerPage))
-
-const batchDetailsStartIndex = computed(() => (batchDetailsCurrentPage.value - 1) * batchDetailsItemsPerPage)
-const batchDetailsEndIndex = computed(() => Math.min(batchDetailsStartIndex.value + batchDetailsItemsPerPage, batchDetails.value.length))
-
-const paginatedBatchDetails = computed(() => {
-  return batchDetails.value.slice(batchDetailsStartIndex.value, batchDetailsEndIndex.value)
-})
-
 const clearSearch = () => {
-  sortField.value = 'none'
-  sortDirection.value = 'asc'
-  currentPage.value = 1
+  // DataTable handles sort/pagination internally
 }
 
 const sortBy = (field, direction) => {
-  sortField.value = field
-  sortDirection.value = direction
-  currentPage.value = 1
+  // DataTable handles sorting internally
 }
 
 const formatDate = (dateString) => {
@@ -1905,7 +1228,6 @@ const openBatchDetailsModal = async (batch) => {
   showBatchDetailsModal.value = true
   batchDetailsLoading.value = true
   batchDetailsError.value = null
-  batchDetailsCurrentPage.value = 1 // Resetear paginación
   selectedBatch.value = batch
   supplyName.value = batch.name || 'Insumo' // Usar el nombre del batch directamente
   try {
@@ -1941,7 +1263,6 @@ const closeBatchDetailsModal = () => {
   batchDetails.value = []
   selectedBatch.value = null
   batchDetailsError.value = null
-  batchDetailsCurrentPage.value = 1 // Resetear paginación
 }
 
 const downloadAllBatchQRs = async () => {
@@ -2072,9 +1393,6 @@ const openGlobalHistoryModal = () => {
   globalHistoryChangeTypeFilter.value = ''
   globalHistoryBatchFilter.value = ''
   globalHistoryUserFilter.value = ''
-  globalHistoryCurrentPage.value = 1
-  globalHistorySortField.value = 'date'
-  globalHistorySortDirection.value = 'desc'
   showGlobalHistoryModal.value = true
 
   // Cargar historial global
@@ -2091,17 +1409,14 @@ const clearGlobalHistoryFilters = () => {
   globalHistoryChangeTypeFilter.value = ''
   globalHistoryBatchFilter.value = ''
   globalHistoryUserFilter.value = ''
-  globalHistoryCurrentPage.value = 1
 }
 
 const applyFilters = () => {
-  globalHistoryCurrentPage.value = 1
+  // filters are reactive; DataTable resets page automatically
 }
 
 const sortGlobalHistoryBy = (field, direction) => {
-  globalHistorySortField.value = field
-  globalHistorySortDirection.value = direction
-  globalHistoryCurrentPage.value = 1
+  // DataTable handles sorting internally
 }
 
 const loadGlobalHistory = async () => {
@@ -2130,9 +1445,6 @@ const viewSupply = (supply) => {
 
   selectedSupplyForHistory.value = supply
   historySearchTerm.value = ''
-  historyCurrentPage.value = 1
-  historySortField.value = 'date'
-  historySortDirection.value = 'desc'
   showHistoryModal.value = true
 
   // Cargar historial del insumo
@@ -2148,13 +1460,10 @@ const closeHistoryModal = () => {
 
 const clearHistorySearch = () => {
   historySearchTerm.value = ''
-  historyCurrentPage.value = 1
 }
 
 const sortHistoryBy = (field, direction) => {
-  historySortField.value = field
-  historySortDirection.value = direction
-  historyCurrentPage.value = 1
+  // DataTable handles sorting internally
 }
 
 const loadHistory = async () => {
@@ -2238,10 +1547,7 @@ onMounted(() => {
 
 // Watchers para los filtros del historial global
 watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUserFilter], () => {
-  if (showGlobalHistoryModal.value) {
-    // Resetear la página cuando se cambian los filtros
-    globalHistoryCurrentPage.value = 1
-  }
+  // DataTable resets page automatically when rows change
 })
 </script>
 
@@ -2451,7 +1757,19 @@ watch([globalHistoryChangeTypeFilter, globalHistoryBatchFilter, globalHistoryUse
 
 /* Estilos para el select de filtros */
 .form-select {
-  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  font-size: 0.875rem;
+}
+
+.form-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: #3b82f6;
 }
 
 /* Mejoras para dispositivos móviles */

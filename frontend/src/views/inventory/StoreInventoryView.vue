@@ -6,16 +6,7 @@
         <div>
           <h2 class="text-2xl font-semibold text-gray-900">Inventario de Bodegas</h2>
           <p class="text-gray-600 mt-1">Stock detallado en cada bodega del sistema</p>
-          <p v-if="!loading && inventory.length > 0" class="text-sm text-gray-500 mt-1">
-            Total: {{ inventory.length }} lotes encontrados
-          </p>
         </div>
-        <router-link to="/inventory/dashboard" class="btn-secondary flex items-center justify-center">
-          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          Volver al Dashboard
-        </router-link>
       </div>
     </div>
 
@@ -23,7 +14,7 @@
     <FilterPanel
       :key="filterPanelKey"
       :filters="filterConfig"
-      :result-count="sortedInventory.length"
+      :result-count="filteredInventory.length"
       :show-clear="false"
       @filter-change="onFilterChange"
     >
@@ -127,276 +118,72 @@
       </p>
     </div>
 
-    <div v-else class="card overflow-hidden">
-      <div class="overflow-x-auto">
-        <div class="max-h-[600px] overflow-y-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50 sticky top-0 z-10">
-            <tr>
-              <th @click="sortBy('store_name')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Bodega</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'store_name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'store_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th @click="sortBy('created_at')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>F. Ingreso</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors"
-                      :class="sortKey === 'created_at' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'"
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors"
-                      :class="sortKey === 'created_at' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'"
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th @click="sortBy('supply_name')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Insumo</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'supply_name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'supply_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th @click="sortBy('surgery_name')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Tipo Cirugía</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'surgery_name' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'surgery_name' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th @click="sortBy('current_in_store')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Stock Actual</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'current_in_store' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'current_in_store' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th @click="sortBy('original_amount')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Stock Original</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'original_amount' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'original_amount' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th @click="sortBy('total_transferred_out')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Movimientos</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'total_transferred_out' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'total_transferred_out' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th @click="sortBy('batch_supplier')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>Proveedor</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'batch_supplier' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'batch_supplier' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-              <th @click="sortBy('expiration_date')"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                <div class="flex items-center space-x-1">
-                  <span>F. Vencimiento</span>
-                  <span class="flex flex-col -space-y-1">
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'expiration_date' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                    </svg>
-                    <svg class="h-3 w-3 transition-colors" 
-                      :class="sortKey === 'expiration_date' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                      fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </span>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <!-- ID 22/23: fondo de fila según nivel de stock -->
-            <tr v-for="item in paginatedInventory" :key="item.id" :class="getRowClass(item.current_in_store, item.original_amount)">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                  </div>
-                  <div class="ml-3">
-                    <div class="text-sm font-medium text-gray-900">{{ item.store_name }}</div>
-                    <div class="text-sm text-gray-500">ID: {{ item.store_id }}</div>
-                  </div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ formatDate(item.created_at) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ item.supply_name }}</div>
-                <div class="text-sm text-gray-500">Código: {{ item.supply_code }}</div>
-                <div class="text-sm text-gray-500">Lote: {{ item.batch_id }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="item.surgery_name" class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
-                  {{ item.surgery_name }}
-                </span>
-                <span v-else class="text-sm text-gray-400">Sin asignar</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <span :class="getStockClass(item.current_in_store, item.original_amount)" class="text-lg font-bold">
-                    {{ item.current_in_store }}
-                  </span>
-                  <span class="text-xs text-gray-500 ml-1">unidades</span>
-                </div>
-                <!-- ID 22/23: badges diferenciados por nivel de stock -->
-                <div v-if="isLowStock(item.current_in_store, item.original_amount)" class="text-xs text-red-600 font-medium">
-                  ⚠️ Stock bajo
-                </div>
-                <div v-else-if="isMediumStock(item.current_in_store, item.original_amount)" class="text-xs text-orange-600 font-medium">
-                  ⚠️ Stock medio
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ item.original_amount }} unidades
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">Transferidos: {{ item.total_transferred_out || 0 }}</div>
-                <div class="text-xs text-gray-500">
-                  Consumidos: {{ (item.total_consumed_in_store || 0) + (item.total_consumed_from_pavilions || 0) }}
-                </div>
-                <div class="text-xs text-gray-500">Devueltos: {{ item.total_returned_in || 0 }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ item.batch_supplier }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getExpirationClass(item.expiration_date)" class="text-sm font-medium">
-                  {{ formatDate(item.expiration_date) }}
-                </span>
-                <!-- ID 26: badges distintos para vencido vs próximo a vencer -->
-                <div v-if="isExpired(item.expiration_date)" class="text-xs text-red-700 font-semibold">
-                  🔴 Vencido
-                </div>
-                <div v-else-if="isNearExpiration(item.expiration_date)" class="text-xs text-orange-600 font-medium">
-                  ⚠️ Vence pronto
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-      </div>
-    </div>
+    <DataTable
+      v-else
+      :columns="tableColumns"
+      :rows="filteredInventory"
+      default-sort-key="created_at"
+      default-sort-order="desc"
+      :row-class="(row) => getRowClass(row.current_in_store, row.original_amount)"
+      :items-per-page="10"
+    >
 
-    <!-- Paginación -->
-    <div v-if="!loading && sortedInventory.length > 0" class="card">
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ sortedInventory.length }} lotes
+
+
+
+
+
+
+
+
+      <template #cell-store_name="{ row }">
+        {{ row.store_name }}
+      </template>
+
+      <template #cell-created_at="{ row }">
+        {{ formatDate(row.created_at) }}
+      </template>
+
+      <template #cell-supply_name="{ row }">
+        <div>{{ row.supply_name }}</div>
+        <div class="text-xs text-gray-500">Código: {{ row.supply_code }}</div>
+        <div class="text-xs text-gray-500">Lote: {{ row.batch_id }}</div>
+      </template>
+
+      <template #cell-surgery_name="{ row }">
+        {{ row.surgery_name || 'Sin asignar' }}
+      </template>
+
+      <template #cell-current_in_store="{ row }">
+        <div>{{ row.current_in_store }} unidades</div>
+        <div v-if="isLowStock(row.current_in_store, row.original_amount)" class="text-xs text-red-600">
+          ⚠️ Stock bajo
         </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="currentPage--">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
-          </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="currentPage++">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
-          </button>
+        <div v-else-if="isMediumStock(row.current_in_store, row.original_amount)" class="text-xs text-orange-600">
+          ⚠️ Stock medio
         </div>
-      </div>
-    </div>
+      </template>
+
+      <template #cell-original_amount="{ row }">
+        {{ row.original_amount }} unidades
+      </template>
+
+      <template #cell-total_transferred_out="{ row }">
+        <div>Transferidos: {{ row.total_transferred_out || 0 }}</div>
+        <div class="text-xs text-gray-500">Consumidos: {{ (row.total_consumed_in_store || 0) + (row.total_consumed_from_pavilions || 0) }}</div>
+        <div class="text-xs text-gray-500">Devueltos: {{ row.total_returned_in || 0 }}</div>
+      </template>
+
+      <template #cell-batch_supplier="{ row }">
+        {{ row.batch_supplier }}
+      </template>
+
+      <template #cell-expiration_date="{ row }">
+        <div :class="getExpirationClass(row.expiration_date)">{{ formatDate(row.expiration_date) }}</div>
+        <div v-if="isExpired(row.expiration_date)" class="text-xs text-red-700">🔴 Vencido</div>
+        <div v-else-if="isNearExpiration(row.expiration_date)" class="text-xs text-orange-600">⚠️ Vence pronto</div>
+      </template>
+    </DataTable>
   </div>
 </template>
 
@@ -404,6 +191,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 import inventoryService from '@/services/inventory/inventoryService'
 import surgeryService from '@/services/management/surgeryService'
 
@@ -433,12 +221,19 @@ const supplierSearch = ref('')
 const showSupplierOptions = ref(false)
 
 // Paginación
-const currentPage = ref(1)
-const itemsPerPage = 10
+// (manejada por DataTable)
 
-// Estado de ordenamiento – ID 13: orden inicial por fecha de ingreso, más reciente primero
-const sortKey = ref('created_at')
-const sortOrder = ref('desc')
+const tableColumns = [
+  { key: 'store_name', label: 'Bodega' },
+  { key: 'created_at', label: 'F. Ingreso' },
+  { key: 'supply_name', label: 'Insumo' },
+  { key: 'surgery_name', label: 'Tipo Cirugía' },
+  { key: 'current_in_store', label: 'Stock Actual' },
+  { key: 'original_amount', label: 'Stock Original' },
+  { key: 'total_transferred_out', label: 'Movimientos' },
+  { key: 'batch_supplier', label: 'Proveedor' },
+  { key: 'expiration_date', label: 'F. Vencimiento' },
+]
 
 // ID 6: normaliza texto eliminando tildes y convirtiendo a minúsculas
 const normalizeText = (text) => {
@@ -529,59 +324,17 @@ const filteredSuppliers = computed(() => {
   ).slice(0, 10)
 })
 
-// Computed para ordenar inventario
-const sortedInventory = computed(() => {
+// Computed para filtrar inventario (solo filtro client-side de proveedor)
+const filteredInventory = computed(() => {
   if (!inventory.value || inventory.value.length === 0) return []
 
   // ID 6: filtro client-side de proveedor, insensible a mayúsculas y tildes
   const supplierQuery = normalizeText(filters.value.supplier)
-  const base = supplierQuery
-    ? inventory.value.filter(item =>
-        normalizeText(item.batch_supplier).includes(supplierQuery)
-      )
-    : inventory.value
-
-  const sorted = [...base].sort((a, b) => {
-    let aVal = a[sortKey.value]
-    let bVal = b[sortKey.value]
-    
-    // Manejo de valores nulos/undefined
-    if (aVal === null || aVal === undefined) aVal = ''
-    if (bVal === null || bVal === undefined) bVal = ''
-    
-    // Manejo de strings (comparación case-insensitive)
-    if (typeof aVal === 'string') {
-      aVal = aVal.toLowerCase()
-      bVal = (bVal || '').toString().toLowerCase()
-    }
-    
-    // Comparación
-    if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1
-    if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1
-    return 0
-  })
-  
-  return sorted
+  if (!supplierQuery) return inventory.value
+  return inventory.value.filter(item =>
+    normalizeText(item.batch_supplier).includes(supplierQuery)
+  )
 })
-
-const totalPages = computed(() => Math.ceil(sortedInventory.value.length / itemsPerPage))
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, sortedInventory.value.length))
-
-const paginatedInventory = computed(() => {
-  return sortedInventory.value.slice(startIndex.value, endIndex.value)
-})
-
-// Función para ordenar por columna
-const sortBy = (key) => {
-  if (sortKey.value === key) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortKey.value = key
-    sortOrder.value = 'asc'
-  }
-  currentPage.value = 1
-}
 
 let debounceTimeout = null
 const debouncedApplyFilters = () => {
@@ -633,7 +386,6 @@ const loadSurgeries = async () => {
 }
 
 const applyFilters = () => {
-  currentPage.value = 1
   loadInventory()
 }
 

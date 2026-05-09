@@ -1,11 +1,23 @@
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div>
-      <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Gestión de Retornos a Bodega</h1>
-      <p class="text-sm sm:text-base text-gray-600 mt-1">
-        Monitoreo y gestión de insumos que deben regresar a bodega después de 8 horas laborales sin consumir
-      </p>
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <div class="flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-semibold text-gray-900">Gestión de Retornos a Bodega</h1>
+          <p class="text-gray-600 mt-1">Monitoreo y gestión de insumos que deben regresar a bodega después de 8 horas laborales sin consumir</p>
+        </div>
+        <button @click="notifyAllPavilions" :disabled="processingReturns || criticalSupplies.length === 0" class="inline-flex items-center whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          <svg v-if="processingReturns" class="animate-spin h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <svg v-else class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          {{ processingReturns ? 'Notificando...' : `Notificar Retornos Automáticos (${criticalSupplies.length})` }}
+        </button>
+      </div>
     </div>
 
     <!-- Stats Cards -->
@@ -60,56 +72,7 @@
       @filter-change="onFilterChange"
     />
 
-    <!-- Supplies Table -->
-    <div class="card">
-      <div class="card-header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 class="card-title">Insumos Pendientes de Retorno</h2>
-            <p class="text-sm text-gray-600">Total: {{ filteredSupplies.length }} insumos</p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button
-              @click="refreshData"
-              :disabled="loading"
-              class="btn-primary flex items-center px-3 py-2 text-sm"
-            >
-              <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              {{ loading ? 'Actualizando...' : 'Actualizar Datos' }}
-            </button>
-            <button
-              @click="notifyAllPavilions"
-              :disabled="processingReturns || criticalSupplies.length === 0"
-              class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg v-if="processingReturns" class="animate-spin h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <svg v-else class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              {{ processingReturns ? 'Notificando...' : `Notificar Retornos Automáticos (${criticalSupplies.length})` }}
-            </button>
-            <button
-              @click="toggleAutoRefresh"
-              :class="autoRefreshEnabled ? 'btn-secondary' : 'btn-secondary opacity-50'"
-              class="flex items-center px-3 py-2 text-sm"
-              :title="autoRefreshEnabled ? 'Actualización automática activa (cada 30s)' : 'Actualización automática desactivada'"
-            >
-              <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path v-if="autoRefreshEnabled" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {{ autoRefreshEnabled ? 'Actualización: ON' : 'Actualización: OFF' }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Indicador de carga -->
+    <!-- Indicador de carga -->
       <div v-if="loading" class="flex justify-center items-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <span class="ml-2 text-gray-600">Cargando datos...</span>
@@ -145,231 +108,50 @@
         <p class="text-sm text-gray-500 mt-1">Todos los insumos están siendo utilizados correctamente</p>
       </div>
 
-      <div v-else class="table-container">
-        <!-- Indicador de scroll horizontal para móviles -->
-        <div class="md:hidden bg-blue-50 border-b border-blue-200 px-3 py-2 text-center sticky left-0 z-10">
-          <div class="flex items-center justify-center text-blue-700 text-xs">
-            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-            </svg>
-            Desliza horizontalmente para ver todas las columnas
-          </div>
-        </div>
+      <DataTable
+        :columns="tableColumns"
+        :rows="filteredSupplies"
+        default-sort-key="businessHoursElapsed"
+        default-sort-order="desc"
+        :table-actions="[
+          {
+            type: 'notify',
+            label: 'Notificar',
+            disabled: (row) => !!notifyingSupplies[row.qrCode],
+            loading: (row) => !!notifyingSupplies[row.qrCode],
+            title: (row) => notifyingSupplies[row.qrCode] ? 'Enviando...' : 'Notificar Pabellón por correo',
+            onClick: (row) => notifyPavilion(row)
+          },
+          { type: 'view', label: 'Ver detalles', onClick: (row) => openDetailsModal(row) }
+        ]"
+      >
 
-        <table class="min-w-full divide-y divide-gray-200" style="min-width: 900px;">
-          <thead class="table-header sticky top-0 z-20">
-            <tr>
-              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[180px]">
-                <div class="flex items-center justify-between">
-                  <span>Insumo</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('name', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'name' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('name', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'name' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
-                <div class="flex items-center justify-between">
-                  <span>Estado</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('status', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'status' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('status', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'status' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[150px]">
-                <div class="flex items-center justify-between">
-                  <span>Tiempo Sin Consumir</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('businessHoursElapsed', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'businessHoursElapsed' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('businessHoursElapsed', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'businessHoursElapsed' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[150px]">
-                <div class="flex items-center justify-between">
-                  <span>Recepcionado</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('receivedAt', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'receivedAt' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('receivedAt', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'receivedAt' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[150px]">
-                <div class="flex items-center justify-between">
-                  <span>Bodega Destino</span>
-                  <div class="flex flex-col ml-2">
-                    <button @click="sortBy('storeName', 'asc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'storeName' && sortDirection === 'asc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button @click="sortBy('storeName', 'desc')" class="text-gray-400 hover:text-gray-600 p-1"
-                      :class="{ 'text-blue-600': sortField === 'storeName' && sortDirection === 'desc' }">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </th>
-              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[140px]">
-                Pabellón Actual
-              </th>
-              <th class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)] min-w-[120px]">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="supply in paginatedSupplies" :key="supply.id" 
-                class="group hover:bg-gray-50 cursor-pointer"
-                :class="{ 'bg-red-50': isSupplyCritical(supply) }">
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
-                    <div class="h-8 w-8 sm:h-10 sm:w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg class="h-4 w-4 sm:h-6 sm:w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 9.172V5L8 4z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div class="ml-3 sm:ml-4">
-                    <div class="text-xs sm:text-sm font-medium text-gray-900">{{ supply.name }}</div>
-                    <div class="text-xs sm:text-sm text-gray-500">{{ supply.qrCode }}</div>
-                  </div>
-                </div>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <span :class="getStatusClass(supply.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                  {{ getStatusText(supply.status) }}
-                </span>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <span :class="{ 'text-red-600 font-bold': isSupplyCritical(supply), 'text-gray-600': !isSupplyCritical(supply) }" class="text-xs sm:text-sm">
-                    {{ formatBusinessHours(supply.businessHoursElapsed) }}
-                  </span>
-                  <svg v-if="isSupplyCritical(supply)" class="h-3 w-3 sm:h-4 sm:w-4 text-red-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-2.694-.833-3.464 0L3.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                {{ formatDate(supply.receivedAt) }}
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                {{ supply.storeName }}
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
-                <span v-if="supply.pavilionName || supply.pavilionId"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-medium">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  {{ supply.pavilionName || ('Pabellón ' + supply.pavilionId) }}
-                </span>
-                <span v-else class="text-gray-400">—</span>
-              </td>
-              <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap sticky right-0 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]"
-                  :class="[isSupplyCritical(supply) ? 'bg-red-50' : 'bg-white', 'group-hover:bg-gray-50']"
-                  @click.stop>
-                <div class="flex justify-end gap-2">
-                <!-- Botón Notificar Pabellón -->
-                <button
-                  @click.stop="notifyPavilion(supply)"
-                  :disabled="notifyingSupplies[supply.qrCode]"
-                  class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 p-1.5 rounded transition-colors inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                  :title="notifyingSupplies[supply.qrCode] ? 'Enviando...' : 'Notificar Pabellón por correo'"
-                >
-                  <svg v-if="notifyingSupplies[supply.qrCode]" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <span class="font-medium text-xs">{{ notifyingSupplies[supply.qrCode] ? 'Enviando...' : 'Notificar' }}</span>
-                </button>
 
-                <button
-                    @click.stop="openDetailsModal(supply)"
-                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
-                  title="Ver Detalles"
-                >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
 
-      <!-- Paginación -->
-      <div v-if="!loading && suppliesForReturn.length > 0" class="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 px-4 pb-4">
-        <div class="text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ filteredSupplies.length }} resultados
-    </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === 1"
-            @click="currentPage--">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
-          </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[90px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
+
+
+        <template #cell-name="{ row }">
+          <div class="text-xs sm:text-sm font-medium text-gray-900">{{ row.name }}</div>
+        </template>
+        <template #cell-status="{ row }">
+          <span :class="getStatusClass(row.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+            {{ getStatusText(row.status) }}
           </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[70px]" :disabled="currentPage === totalPages"
-            @click="currentPage++">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
-          </button>
-        </div>
-      </div>
-    </div>
+        </template>
+        <template #cell-businessHoursElapsed="{ row }">
+          <span class="text-xs sm:text-sm text-gray-600">
+            {{ formatBusinessHours(row.businessHoursElapsed) }}
+          </span>
+        </template>
+        <template #cell-receivedAt="{ row }">{{ formatDate(row.receivedAt) }}</template>
+        <template #cell-storeName="{ row }">{{ row.storeName }}</template>
+        <template #cell-pavilionName="{ row }">
+          <span v-if="row.pavilionName || row.pavilionId" class="text-sm text-gray-900">
+            {{ row.pavilionName || ('Pabellón ' + row.pavilionId) }}
+          </span>
+          <span v-else class="text-gray-400">—</span>
+        </template>
+      </DataTable>
   </div>
 
   <!-- Modal de detalles del insumo -->
@@ -467,6 +249,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import QrcodeVue from 'qrcode.vue'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 import returnToBodegaService from '@/services/management/returnToBodegaService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
@@ -478,6 +261,15 @@ const { generateQRPdfAsBase64 } = useQRPdfDownload()
 
 const router = useRouter()
 
+const tableColumns = [
+  { key: 'name', label: 'Insumo' },
+  { key: 'qrCode', label: 'Código QR' },
+  { key: 'businessHoursElapsed', label: 'Tiempo Sin Consumir' },
+  { key: 'receivedAt', label: 'Recepcionado' },
+  { key: 'storeName', label: 'Bodega Destino' },
+  { key: 'pavilionName', label: 'Pabellón Actual', sortable: false },
+]
+
 // Estado del componente
 const loading = ref(false)
 const error = ref(null)
@@ -486,22 +278,15 @@ const processingReturns = ref(false)
 const returningSupplies = ref({})
 const notifyingSupplies = ref({})
 const lastProcessDate = ref(null)
-const currentPage = ref(1)
-const itemsPerPage = 10
 const autoRefreshInterval = ref(null)
 const autoRefreshEnabled = ref(true)
 const refreshIntervalSeconds = 30 // Actualizar cada 30 segundos
-
-// Estado de ordenamiento
-const sortField = ref('none')
-const sortDirection = ref('asc')
 
 // Estado de filtros centralizado
 const filterState = reactive({ search: '', bodega: '', pavilion: '', critical: '' })
 
 const onFilterChange = (key, value) => {
   filterState[key] = value
-  currentPage.value = 1
 }
 
 // Opciones dinámicas para el FilterPanel
@@ -590,57 +375,7 @@ const filteredSupplies = computed(() => {
     filtered = filtered.filter(s => s.shouldReturn || (s.businessHoursElapsed || 0) >= 8)
   }
 
-  // Solo aplicar ordenamiento si se ha seleccionado explícitamente un campo
-  if (sortField.value && sortField.value !== 'none') {
-    filtered.sort((a, b) => {
-      let aValue, bValue
-
-      switch (sortField.value) {
-        case 'name':
-          aValue = (a.name || '').toLowerCase()
-          bValue = (b.name || '').toLowerCase()
-          break
-        case 'status':
-          aValue = (a.status || '').toLowerCase()
-          bValue = (b.status || '').toLowerCase()
-          break
-        case 'businessHoursElapsed':
-          aValue = a.businessHoursElapsed || 0
-          bValue = b.businessHoursElapsed || 0
-          break
-        case 'receivedAt':
-          aValue = new Date(a.receivedAt || 0).getTime()
-          bValue = new Date(b.receivedAt || 0).getTime()
-          break
-        case 'storeName':
-          aValue = (a.storeName || '').toLowerCase()
-          bValue = (b.storeName || '').toLowerCase()
-          break
-        default:
-          return 0
-      }
-
-      let result = 0
-      if (typeof aValue === 'string') {
-        result = aValue.localeCompare(bValue)
-      } else {
-        result = aValue - bValue
-      }
-
-      return sortDirection.value === 'asc' ? result : -result
-    })
-  }
-
   return filtered
-})
-
-const totalPages = computed(() => Math.ceil(filteredSupplies.value.length / itemsPerPage))
-
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, filteredSupplies.value.length))
-
-const paginatedSupplies = computed(() => {
-  return filteredSupplies.value.slice(startIndex.value, endIndex.value)
 })
 
 
@@ -680,7 +415,6 @@ const refreshData = async () => {
     lastProcessDate.value = new Date().toLocaleString()
     
     console.log('✅ Datos cargados exitosamente:', suppliesForReturn.value.length, 'insumos')
-    currentPage.value = 1 // Resetear a la primera página al cargar nuevos datos
   } catch (err) {
     console.error('❌ Error refreshing data:', err)
     error.value = err.message || 'Error al cargar los datos'
@@ -858,13 +592,6 @@ const closeDetailsModal = () => {
 // Un insumo es crítico si el backend lo marca como tal O si lleva >= 8 horas laborales
 const isSupplyCritical = (supply) => {
   return supply.shouldReturn || (supply.businessHoursElapsed || 0) >= 8
-}
-
-// Función de ordenamiento
-const sortBy = (field, direction) => {
-  sortField.value = field
-  sortDirection.value = direction
-  currentPage.value = 1
 }
 
 // Funciones auxiliares

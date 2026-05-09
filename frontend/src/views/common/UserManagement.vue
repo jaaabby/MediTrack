@@ -1,194 +1,77 @@
 <template>
-  <div class="max-w-7xl mx-auto">
+  <div class="space-y-6">
     <!-- Header -->
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">Gestión de Usuarios</h1>
-        <p class="mt-1 text-sm text-gray-600">Administra las cuentas de usuarios del sistema</p>
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-semibold text-gray-900">Gestión de Usuarios</h1>
+          <p class="text-gray-600 mt-1">Administra las cuentas de usuarios del sistema</p>
+        </div>
+        <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Crear Usuario
+        </button>
       </div>
-      <button @click="openCreateModal" class="btn-primary flex items-center justify-center">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Crear Usuario
-      </button>
     </div>
 
     <!-- Filtros y búsqueda -->
-    <FilterPanel :filters="filterConfig" :result-count="filteredUsers.length" @filter-change="onFilterChange" class="mb-6" />
+    <FilterPanel :filters="filterConfig" :result-count="filteredUsers.length" @filter-change="onFilterChange" />
 
-    <!-- Lista de usuarios -->
-    <div class="card">
-      <div class="card-header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 class="card-title">Lista de Usuarios</h2>
-            <p class="text-sm text-gray-600">Total: {{ filteredUsers.length }} usuario(s)</p>
-            <p v-if="hasActiveFilters" class="text-xs text-gray-500 mt-1">
-              Mostrando {{ filteredUsers.length }} de {{ users.length }} usuario(s)
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Indicador de carga -->
+    <!-- Indicador de carga -->
       <div v-if="loading" class="flex justify-center items-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <span class="ml-2 text-gray-600">Cargando usuarios...</span>
       </div>
 
       <!-- Tabla de usuarios -->
-      <div v-else class="table-container">
-        <!-- Indicador de scroll horizontal para móviles -->
-        <div class="md:hidden bg-blue-50 border-b border-blue-200 px-3 py-2 text-center sticky left-0 z-10">
-          <div class="flex items-center justify-center text-blue-700 text-xs">
-            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-            </svg>
-            Desliza horizontalmente para ver todas las columnas
-          </div>
-        </div>
-
-        <table class="min-w-full divide-y divide-gray-200" style="min-width: 1200px;">
-          <thead class="table-header">
-            <tr>
-              <th class="table-header-cell">
-                <span>Usuario</span>
-              </th>
-              <th class="table-header-cell">
-                <span>Email</span>
-              </th>
-              <th class="table-header-cell">
-                <span>Rol</span>
-              </th>
-              <th class="table-header-cell">
-                <span>Centro Médico</span>
-              </th>
-              <th class="table-header-cell">
-                <span>Pabellón</span>
-              </th>
-              <th class="table-header-cell">
-                <span>Especialidad</span>
-              </th>
-              <th class="table-header-cell">
-                <span>Estado</span>
-              </th>
-              <th class="table-header-cell sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <span>Acciones</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-if="filteredUsers.length === 0">
-              <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">
-                <div v-if="hasActiveFilters" class="space-y-2">
-                  <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p>No se encontraron usuarios con los filtros aplicados</p>
-                  <p class="text-xs text-gray-400">Usa el panel de filtros para limpiar la búsqueda</p>
-                </div>
-                <div v-else>
-                  No hay usuarios registrados
-                </div>
-              </td>
-            </tr>
-            <tr v-for="user in paginatedUsers" :key="user.id" class="hover:bg-gray-50 transition-colors">
-              <td class="table-cell">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
-                    <div class="text-sm text-gray-500">{{ user.rut }}</div>
-                  </div>
-                </div>
-              </td>
-              <td class="table-cell">
-                <div class="text-sm text-gray-900">{{ user.email }}</div>
-              </td>
-              <td class="table-cell">
-                <span
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                  :class="getRoleBadgeClass(user.role)"
-                >
-                  {{ user.role }}
-                </span>
-              </td>
-              <td class="table-cell">
-                <div class="text-sm text-gray-900">{{ getMedicalCenterName(user.medical_center_id) }}</div>
-              </td>
-              <td class="table-cell">
-                <div class="text-sm text-gray-900">{{ getPavilionName(user.pavilion_id) }}</div>
-              </td>
-              <td class="table-cell">
-                <div class="text-sm text-gray-900">{{ getSpecialtyName(user.specialty_id) }}</div>
-              </td>
-              <td class="table-cell">
-                <span
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                  :class="user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                >
-                  {{ user.is_active ? 'Activo' : 'Inactivo' }}
-                </span>
-              </td>
-              <td class="table-cell sticky right-0 bg-white z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <div class="flex justify-end space-x-2">
-                  <button
-                    @click.stop="openEditModal(user)"
-                    class="text-warning-600 hover:text-warning-800 hover:bg-warning-50 p-1.5 rounded inline-flex items-center gap-1 transition-colors"
-                    title="Editar usuario"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span class="font-medium text-xs">Editar</span>
-                  </button>
-                  <button
-                    @click.stop="openDeleteModal(user)"
-                    class="text-danger-600 hover:text-danger-800 hover:bg-danger-50 p-1.5 rounded transition-colors"
-                    title="Eliminar usuario"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Paginación -->
-      <div v-if="filteredUsers.length > itemsPerPage"
-        class="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3 px-4 pb-4">
-        <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-          Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ filteredUsers.length }} usuario(s)
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]" :disabled="currentPage === 1"
-            @click="currentPage--">
-            <span class="hidden sm:inline">Anterior</span>
-            <span class="sm:hidden">Ant.</span>
-          </button>
-          <span class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md min-w-[100px] text-center">
-            Página {{ currentPage }} de {{ totalPages }}
+      <DataTable
+        v-else
+        :columns="tableColumns"
+        :rows="filteredUsers"
+        default-sort-key="name"
+        empty-message="No hay usuarios registrados"
+        :table-actions="[
+          { type: 'edit', label: 'Editar', onClick: (row) => openEditModal(row) },
+          { type: 'delete', onClick: (row) => openDeleteModal(row) },
+        ]"
+      >
+        <template #cell-name="{ row }">
+          <div class="text-sm font-medium text-gray-900">{{ row.name }}</div>
+          <div class="text-sm text-gray-500">{{ row.rut }}</div>
+        </template>
+        <template #cell-email="{ row }">
+          <div class="text-sm text-gray-900">{{ row.email }}</div>
+        </template>
+        <template #cell-role="{ row }">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="getRoleBadgeClass(row.role)">{{ row.role }}</span>
+        </template>
+        <template #cell-medical_center_id="{ row }">
+          <div class="text-sm text-gray-900">{{ getMedicalCenterName(row.medical_center_id) }}</div>
+        </template>
+        <template #cell-pavilion_id="{ row }">
+          <div class="text-sm text-gray-900">{{ getPavilionName(row.pavilion_id) }}</div>
+        </template>
+        <template #cell-specialty_id="{ row }">
+          <div class="text-sm text-gray-900">{{ getSpecialtyName(row.specialty_id) }}</div>
+        </template>
+        <template #cell-is_active="{ row }">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="row.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+            {{ row.is_active ? 'Activo' : 'Inactivo' }}
           </span>
-          <button class="btn-secondary px-3 py-2 text-sm min-w-[80px]"
-            :disabled="currentPage === totalPages" @click="currentPage++">
-            <span class="hidden sm:inline">Siguiente</span>
-            <span class="sm:hidden">Sig.</span>
-          </button>
-        </div>
-      </div>
-    </div>
+        </template>
+        <template #empty>
+          <div v-if="hasActiveFilters" class="space-y-2">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>No se encontraron usuarios con los filtros aplicados</p>
+            <p class="text-xs text-gray-400">Usa el panel de filtros para limpiar la búsqueda</p>
+          </div>
+          <div v-else>No hay usuarios registrados</div>
+        </template>
+      </DataTable>
 
     <!-- Modal para crear/editar usuario -->
     <div
@@ -496,6 +379,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import DataTable from '@/components/common/DataTable.vue'
 import { userService } from '@/services/common/userService'
 import medicalCenterService from '@/services/config/medicalCenterService'
 import pavilionService from '@/services/config/pavilionService'
@@ -526,7 +410,7 @@ const rutDv = computed(() => {
 // Filtros
 const filterState = reactive({ search: '', role: '', medicalCenter: '', status: '' })
 
-const onFilterChange = (key, value) => { filterState[key] = value; currentPage.value = 1 }
+const onFilterChange = (key, value) => { filterState[key] = value }
 
 const filterConfig = computed(() => [
   { type: 'text', key: 'search', label: 'Buscar usuario', placeholder: 'Buscar por nombre, RUT o email...' },
@@ -588,22 +472,20 @@ const filteredUsers = computed(() => {
   return filtered
 })
 
+const tableColumns = [
+  { key: 'name', label: 'Usuario' },
+  { key: 'email', label: 'Email', sortable: false },
+  { key: 'role', label: 'Rol' },
+  { key: 'medical_center_id', label: 'Centro Médico' },
+  { key: 'pavilion_id', label: 'Pabellón' },
+  { key: 'specialty_id', label: 'Especialidad' },
+  { key: 'is_active', label: 'Estado', sortable: false }
+]
+
 // Verificar si hay filtros activos
 const hasActiveFilters = computed(() =>
   filterState.search || filterState.role || filterState.medicalCenter || filterState.status !== ''
 )
-
-// Paginación
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-// Computed para paginación
-const totalPages = computed(() => Math.ceil(filteredUsers.value.length / itemsPerPage.value))
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage.value, filteredUsers.value.length))
-const paginatedUsers = computed(() => {
-  return filteredUsers.value.slice(startIndex.value, endIndex.value)
-})
 
 // Formulario de usuario
 const userForm = reactive({

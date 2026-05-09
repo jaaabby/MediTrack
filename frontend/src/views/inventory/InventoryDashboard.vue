@@ -31,6 +31,7 @@
     <!-- Dashboard Content -->
     <div v-else class="space-y-8">
       <!-- Inventario por Tipo de Cirugía -->
+<<<<<<< HEAD
       <div class="space-y-4">
         <!-- Encabezado de sección -->
         <div class="card">
@@ -65,6 +66,15 @@
 
         <!-- Error al actualizar (solo aparece al usar el botón Actualizar, no en carga inicial) -->
         <div v-else-if="surgeryInventoryError" class="bg-red-50 border border-red-200 rounded-md p-4">
+=======
+      <div v-if="surgeryInventoryLoading" class="card flex justify-center items-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue-dark"></div>
+        <span class="ml-3 text-gray-600">Cargando...</span>
+      </div>
+
+      <div v-else-if="surgeryInventoryError" class="card">
+        <div class="bg-red-50 border border-red-200 rounded-md p-4">
+>>>>>>> test
           <div class="flex">
             <svg class="h-5 w-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -76,6 +86,7 @@
             </div>
           </div>
         </div>
+<<<<<<< HEAD
 
         <div v-else-if="surgeryInventory.length === 0" class="text-center py-8">
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,45 +215,34 @@
         </div>
         </div><!-- /card tabla -->
       </div><!-- /space-y-4 sección cirugías -->
-
-      <!-- Accesos Rápidos -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        <!-- Ver Inventario de Bodegas -->
-        <router-link to="/inventory/store" class="card hover:shadow-lg transition-shadow cursor-pointer group">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 h-12 w-12 rounded-lg bg-brand-blue-light bg-opacity-30 flex items-center justify-center group-hover:bg-brand-blue-light group-hover:bg-opacity-50 transition-colors">
-              <svg class="h-6 w-6 text-brand-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-            <div class="ml-4 flex-1">
-              <h3 class="text-lg font-semibold text-gray-900 group-hover:text-brand-blue-dark transition-colors">Inventario de Bodegas</h3>
-              <p class="text-sm text-gray-600">Ver stock detallado por bodega</p>
-            </div>
-            <svg class="h-5 w-5 text-gray-400 group-hover:text-brand-blue-dark transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </router-link>
-
-        <!-- Ver Inventario de Pabellones -->
-        <router-link to="/inventory/pavilion" class="card hover:shadow-lg transition-shadow cursor-pointer group">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
-              <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <div class="ml-4 flex-1">
-              <h3 class="text-lg font-semibold text-gray-900 group-hover:text-green-600 transition-colors">Inventario de Pabellones</h3>
-              <p class="text-sm text-gray-600">Ver stock en cada pabellón</p>
-            </div>
-            <svg class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </router-link>
+=======
       </div>
+>>>>>>> test
+
+      <DataTable
+        v-else
+        :columns="tableColumns"
+        :rows="surgeryInventory"
+        default-sort-key="surgery_name"
+        default-sort-order="asc"
+        max-height="600px"
+        empty-message="No hay inventario organizado por tipo de cirugía"
+        :table-actions="[{ type: 'view', onClick: (row) => openSurgeryModal(row) }]"
+      >
+        <template #cell-surgery_name="{ row }">
+          {{ row.surgery_name || 'Sin tipo de cirugía' }}
+        </template>
+        <template #cell-total_in_store="{ row }">
+          {{ row.total_in_store || 0 }} unidades
+        </template>
+        <template #cell-total_transferred="{ row }">
+          {{ row.total_transferred || 0 }} unidades
+        </template>
+        <template #cell-batch_count="{ row }">
+          {{ row.batch_count || 0 }} lotes
+        </template>
+      </DataTable>
+
     </div>
   </div>
 
@@ -288,24 +288,24 @@
           <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bodega</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
+                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
+                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bodega</th>
+                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-100">
               <tr v-for="row in surgeryModal.items" :key="row.id || (row.supply_name + row.store_name)" class="hover:bg-gray-50">
-                <td class="px-4 py-3">
+                <td class="px-6 py-4">
                   <div class="font-medium text-gray-900">{{ row.supply_name || row.name || '—' }}</div>
                   <div v-if="row.supply_code" class="text-xs text-gray-400">Cód. {{ row.supply_code }}</div>
                 </td>
-                <td class="px-4 py-3 text-gray-700">{{ row.store_name || row.store || '—' }}</td>
-                <td class="px-4 py-3">
+                <td class="px-6 py-4 text-gray-700">{{ row.store_name || row.store || '—' }}</td>
+                <td class="px-6 py-4">
                   <span class="font-semibold text-sm" :class="stockColorClass(row.current_in_store ?? 0, row.critical_stock ?? 1)">{{ row.current_in_store ?? 0 }}</span>
                   <span class="text-xs ml-1" :class="stockColorClass(row.current_in_store ?? 0, row.critical_stock ?? 1)">unidades</span>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-6 py-4">
                   <span v-if="row.expiration_date" :class="expiryColorClass(row.expiration_date)">
                     {{ formatModalDate(row.expiration_date) }}
                   </span>
@@ -326,9 +326,21 @@
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { ref, computed, onMounted } from 'vue'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+=======
+import { ref, onMounted } from 'vue'
+>>>>>>> test
 import inventoryService from '@/services/inventory/inventoryService'
+import DataTable from '@/components/common/DataTable.vue'
+
+const tableColumns = [
+  { key: 'surgery_name', label: 'Tipo de Cirugía' },
+  { key: 'total_in_store', label: 'Stock en Bodega' },
+  { key: 'total_transferred', label: 'Total Transferido' },
+  { key: 'batch_count', label: 'N° de Lotes', align: 'center' },
+]
 
 const loading = ref(false)
 const error = ref(null)
@@ -336,6 +348,7 @@ const surgeryInventory = ref([])
 const surgeryInventoryLoading = ref(false)
 const surgeryInventoryError = ref(null)
 
+<<<<<<< HEAD
 // Estado de ordenamiento para tabla de cirugías
 const surgerySortKey = ref('surgery_name')
 const surgerySortOrder = ref('asc')
@@ -360,6 +373,8 @@ const onFilterChange = (key, value) => {
   }
 }
 
+=======
+>>>>>>> test
 // Modal de detalle por cirugía
 const surgeryModal = ref({
   show: false,
@@ -447,6 +462,7 @@ const reloadSurgeryInventory = async () => {
   }
 }
 
+<<<<<<< HEAD
 // Computed para ordenar inventario de cirugías
 const sortedSurgeryInventory = computed(() => {
   if (!surgeryInventory.value || surgeryInventory.value.length === 0) return []
@@ -493,6 +509,8 @@ const sortSurgeryBy = (key) => {
   }
 }
 
+=======
+>>>>>>> test
 onMounted(async () => {
   await loadDashboard()
   // Prefetch del componente StoreInventoryView para acelerar la navegación

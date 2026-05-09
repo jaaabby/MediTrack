@@ -1,15 +1,15 @@
 <template>
-  <div class="max-w-7xl mx-auto p-3 sm:p-6">
+  <div class="space-y-4 sm:space-y-6">
     <!-- Encabezado -->
-    <div class="mb-4 sm:mb-6">
+    <div class="bg-white rounded-lg shadow-sm border p-6">
       <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
-          <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Solicitudes de Insumo</h1>
-          <p class="mt-1 text-sm sm:text-base text-gray-600">Gestión de solicitudes con trazabilidad QR</p>
+          <h1 class="text-2xl font-semibold text-gray-900">Solicitudes de Insumo</h1>
+          <p class="text-gray-600 mt-1">Gestión de solicitudes con trazabilidad QR</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <button 
-            @click="exportToExcel" 
+          <button
+            @click="exportToExcel"
             :disabled="loading || filteredRequests.length === 0"
             class="btn-secondary flex items-center justify-center"
             :class="{ 'opacity-50 cursor-not-allowed': loading || filteredRequests.length === 0 }"
@@ -22,7 +22,7 @@
           <router-link
             v-if="authStore.canCreateRequests"
             to="/supply-requests/new"
-            class="btn-primary w-full sm:w-auto"
+            class="btn-primary w-full sm:w-auto flex items-center justify-center"
           >
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -33,6 +33,7 @@
       </div>
     </div>
 
+<<<<<<< HEAD
     <!-- Filtros y búsqueda -->
     <div class="mb-4 sm:mb-6 space-y-2">
       <!-- Badge de filtro activo por categoría de estadística -->
@@ -75,6 +76,8 @@
       </FilterPanel>
     </div>
 
+=======
+>>>>>>> test
     <!-- Estadísticas rápidas -->
     <div v-if="stats" class="mb-4 sm:mb-6 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div @click="filterByStatCategory('pending')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
@@ -136,8 +139,85 @@
           </div>
           <div class="ml-2 sm:ml-3 min-w-0">
             <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Total</p>
-            <p class="text-base sm:text-lg font-semibold text-gray-900">{{ totalRequests }}</p>
+            <p class="text-base sm:text-lg font-semibold text-gray-900">{{ filteredRequests.length }}</p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros y búsqueda -->
+    <div class="card p-3 sm:p-4">
+      <!-- Badge de filtro activo -->
+      <div v-if="filters.statusCategory" class="mb-3 flex items-center gap-2">
+        <span class="text-xs font-medium text-gray-600">Filtro activo:</span>
+        <span :class="getFilterBadgeClass(filters.statusCategory)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+          {{ getFilterLabel(filters.statusCategory) }}
+          <button @click="filterByStatCategory('')" class="ml-1.5 hover:bg-white hover:bg-opacity-20 rounded-full">
+            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </span>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <!-- Filtro por estado -->
+        <div>
+          <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">
+            Estado
+          </label>
+          <select
+            id="statusFilter"
+            v-model="filters.status"
+            @change="loadSupplyRequests"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Todos los estados</option>
+            <option v-for="statusOption in SUPPLY_REQUEST_STATUS_OPTIONS" :key="statusOption.value" :value="statusOption.value">
+              {{ statusOption.label }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Filtro por fecha de cirugía -->
+        <div>
+          <label for="surgeryDateFilter" class="block text-sm font-medium text-gray-700 mb-1">
+            Fecha de Cirugía
+          </label>
+          <input
+            type="date"
+            id="surgeryDateFilter"
+            v-model="filters.surgeryDate"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        <!-- Búsqueda por número de solicitud -->
+        <div>
+          <label for="searchNumber" class="block text-sm font-medium text-gray-700 mb-1">
+            Número de Solicitud
+          </label>
+          <input
+            type="text"
+            id="searchNumber"
+            v-model="filters.search"
+            placeholder="SOL-XXXXXX"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        <!-- Botón refrescar -->
+        <div class="flex items-end">
+          <button
+            @click="refreshRequests"
+            :disabled="loading"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refrescar
+          </button>
         </div>
       </div>
     </div>
@@ -192,7 +272,7 @@
         <div class="md:hidden">
           <div class="space-y-3 p-3">
             <div 
-              v-for="request in paginatedRequests" 
+              v-for="request in filteredRequests" 
               :key="request.id"
               @click="viewRequest(request.id)"
               class="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -320,229 +400,97 @@
           </div>
         </div>
 
-        <!-- Vista de tabla para desktop -->
-        <div class="hidden md:block overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                @click="toggleSort('request_number')"
-              >
-                <div class="flex items-center gap-1">
-                  <span>Solicitud</span>
-                  <span v-if="sortBy === 'request_number'" class="text-gray-400 text-[10px]">
-                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                  </span>
-                </div>
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                @click="toggleSort('pavilion')"
-              >
-                <div class="flex items-center gap-1">
-                  <span>Pabellón</span>
-                  <span v-if="sortBy === 'pavilion'" class="text-gray-400 text-[10px]">
-                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                  </span>
-                </div>
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                @click="toggleSort('requester')"
-              >
-                <div class="flex items-center gap-1">
-                  <span>Solicitante</span>
-                  <span v-if="sortBy === 'requester'" class="text-gray-400 text-[10px]">
-                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                  </span>
-                </div>
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                @click="toggleSort('status')"
-              >
-                <div class="flex items-center gap-1">
-                  <span>Estado</span>
-                  <span v-if="sortBy === 'status'" class="text-gray-400 text-[10px]">
-                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                  </span>
-                </div>
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                @click="toggleSort('surgery_datetime')"
-              >
-                <div class="flex items-center gap-1">
-                  <span>Fecha de Cirugía</span>
-                  <span v-if="sortBy === 'surgery_datetime'" class="text-gray-400 text-[10px]">
-                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                  </span>
-                </div>
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                @click="toggleSort('items')"
-              >
-                <div class="flex items-center gap-1">
-                  <span>Items</span>
-                  <span v-if="sortBy === 'items'" class="text-gray-400 text-[10px]">
-                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                  </span>
-                </div>
-              </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr
-              v-for="request in paginatedRequests"
-              :key="request.id"
-              class="hover:bg-gray-50 cursor-pointer"
-              @click="viewRequest(request.id)"
-            >
-              <!-- Número de solicitud -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-2">
-                <div class="text-sm font-medium text-gray-900">
-                  {{ request.request_number }}
-                  </div>
-                  <!-- Badge de urgencia -->
-                  <span v-if="isEmergency(request) || isUrgent(request)" 
-                        :class="getUrgencyBadgeClass(request)" 
-                        class="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full border">
-                    {{ getUrgencyLabel(request) }}
-                  </span>
-                </div>
-              </td>
+        <div class="hidden md:block">
+          <DataTable
+            :columns="tableColumns"
+            :rows="filteredRequests"
+            :items-per-page="10"
+            empty-message="No se encontraron solicitudes con los filtros aplicados"
+          >
 
-              <!-- Pabellón -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">
-                  {{ getPavilionName(request.pavilion_id) }}
-                </div>
-              </td>
 
-              <!-- Solicitante -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">
-                  {{ request.requested_by_name }}
-                </div>
-                <div class="text-sm text-gray-500">
-                  {{ request.requested_by }}
-                </div>
-              </td>
 
-              <!-- Estado -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getStatusBadgeClass(request.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                  {{ getStatusLabel(request.status) }}
+
+
+
+
+            <template #cell-request_number="{ row }">
+              <div class="flex items-center gap-2">
+                <div class="text-sm font-medium text-gray-900">{{ row.request_number }}</div>
+                <span v-if="isEmergency(row) || isUrgent(row)"
+                      :class="getUrgencyBadgeClass(row)"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full border">
+                  {{ getUrgencyLabel(row) }}
                 </span>
-              </td>
+              </div>
+            </template>
 
-              <!-- Fecha de Cirugía -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">
-                  {{ formatDate(request.surgery_datetime) }}
-                </div>
-                <span v-if="isEmergency(request) || isUrgent(request)" 
-                      :class="getUrgencyBadgeClass(request)" 
-                      class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 border">
-                  {{ getUrgencyLabel(request) }}
-                </span>
-              </td>
+            <template #cell-pavilion_id="{ row }">
+              <div class="text-sm text-gray-900">{{ getPavilionName(row.pavilion_id) }}</div>
+            </template>
 
-              <!-- Número de items -->
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ request.total_items || 'N/A' }} items
-              </td>
+            <template #cell-requested_by_name="{ row }">
+              <div class="text-sm font-medium text-gray-900">{{ row.requested_by_name }}</div>
+              <div class="text-sm text-gray-500">{{ row.requested_by }}</div>
+            </template>
 
-              <!-- Acciones -->
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
-                <div class="flex justify-end space-x-2">
-                  <button
-                    @click.stop="viewRequest(request.id)"
-                    class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
-                    title="Ver detalles"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </button>
+            <template #cell-status="{ row }">
+              <span :class="getStatusBadgeClass(row.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                {{ getStatusLabel(row.status) }}
+              </span>
+            </template>
 
-                  <!-- Botón de Asignar para Pavedad -->
-                  <button
-                    @click.stop="authStore.isPavedad && request.status === 'pendiente_pavedad' ? openAssignModal(request) : null"
-                    :disabled="!authStore.isPavedad || request.status !== 'pendiente_pavedad'"
-                    :class="[
-                      'p-1.5 rounded transition-colors',
-                      authStore.isPavedad && request.status === 'pendiente_pavedad'
-                        ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-50 cursor-pointer'
-                        : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                    ]"
-                    :title="!authStore.isPavedad ? 'Solo Pavedad puede asignar' : request.status === 'pendiente_pavedad' ? 'Asignar' : 'Ya asignada'"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                    </svg>
-                  </button>
+            <template #cell-surgery_datetime="{ row }">
+              <div class="text-sm text-gray-900">{{ formatDate(row.surgery_datetime) }}</div>
+              <span v-if="isEmergency(row) || isUrgent(row)"
+                    :class="getUrgencyBadgeClass(row)"
+                    class="inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 border">
+                {{ getUrgencyLabel(row) }}
+              </span>
+            </template>
 
-                  <!-- Botón Revisar Items para Encargado de Bodega -->
-                  <button
-                    @click.stop="authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut && (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? openReviewItemsModal(request) : null"
-                    :disabled="!authStore.isWarehouseManager || request.assigned_to !== authStore.getUserRut || (request.status !== 'asignado_bodega' && request.status !== 'en_proceso' && request.status !== 'devuelto_al_encargado')"
-                    :class="[
-                      'p-1.5 rounded transition-colors',
-                      authStore.isWarehouseManager && request.assigned_to === authStore.getUserRut && (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado')
-                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 cursor-pointer'
-                        : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                    ]"
-                    :title="!authStore.isWarehouseManager ? 'Solo Encargado de Bodega' : request.assigned_to !== authStore.getUserRut ? 'No asignado a ti' : (request.status === 'asignado_bodega' || request.status === 'en_proceso' || request.status === 'devuelto_al_encargado') ? 'Revisar insumos' : 'Ya revisada'"
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            <template #cell-total_items="{ row }">
+              <span class="text-sm text-gray-900">{{ row.total_items || 'N/A' }} items</span>
+            </template>
+
+            <template #actions="{ row }">
+              <div class="flex justify-end space-x-2">
+                <button
+                  @click.stop="viewRequest(row.id)"
+                  class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded transition-colors"
+                  title="Ver detalles"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+                <button
+                  @click.stop="authStore.isPavedad && row.status === 'pendiente_pavedad' ? openAssignModal(row) : null"
+                  :disabled="!authStore.isPavedad || row.status !== 'pendiente_pavedad'"
+                  :class="['p-1.5 rounded transition-colors', authStore.isPavedad && row.status === 'pendiente_pavedad' ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-50 cursor-pointer' : 'text-gray-400 bg-gray-100 cursor-not-allowed']"
+                  :title="!authStore.isPavedad ? 'Solo Pavedad puede asignar' : row.status === 'pendiente_pavedad' ? 'Asignar' : 'Ya asignada'"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  </svg>
+                </button>
+                <button
+                  @click.stop="authStore.isWarehouseManager && row.assigned_to === authStore.getUserRut && (row.status === 'asignado_bodega' || row.status === 'en_proceso' || row.status === 'devuelto_al_encargado') ? openReviewItemsModal(row) : null"
+                  :disabled="!authStore.isWarehouseManager || row.assigned_to !== authStore.getUserRut || (row.status !== 'asignado_bodega' && row.status !== 'en_proceso' && row.status !== 'devuelto_al_encargado')"
+                  :class="['p-1.5 rounded transition-colors', authStore.isWarehouseManager && row.assigned_to === authStore.getUserRut && (row.status === 'asignado_bodega' || row.status === 'en_proceso' || row.status === 'devuelto_al_encargado') ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 cursor-pointer' : 'text-gray-400 bg-gray-100 cursor-not-allowed']"
+                  :title="!authStore.isWarehouseManager ? 'Solo Encargado de Bodega' : row.assigned_to !== authStore.getUserRut ? 'No asignado a ti' : (row.status === 'asignado_bodega' || row.status === 'en_proceso' || row.status === 'devuelto_al_encargado') ? 'Revisar insumos' : 'Ya revisada'"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </button>
+              </div>
+            </template>
+          </DataTable>
         </div>
       </div>
 
-      <!-- Paginación -->
-      <div class="px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-gray-50">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-          <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-            Mostrando {{ filteredRequests.length > 0 ? startIndex + 1 : 0 }} a {{ endIndex }} de {{ totalRequests }} solicitudes
-          </div>
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              @click="previousPage"
-              :disabled="currentPage === 1"
-              class="btn-secondary px-3 py-2 text-xs sm:text-sm min-w-[60px] sm:min-w-[70px] disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-initial"
-            >
-              <span class="hidden sm:inline">Anterior</span>
-              <span class="sm:hidden">Ant.</span>
-            </button>
-            <span class="px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-md min-w-[80px] sm:min-w-[90px] text-center font-medium whitespace-nowrap">
-              Pág {{ currentPage }} / {{ totalPages }}
-            </span>
-            <button
-              @click="nextPage"
-              :disabled="currentPage === totalPages"
-              class="btn-secondary px-3 py-2 text-xs sm:text-sm min-w-[60px] sm:min-w-[70px] disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-initial"
-            >
-              <span class="hidden sm:inline">Siguiente</span>
-              <span class="sm:hidden">Sig.</span>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Modal de Asignación -->
@@ -572,6 +520,7 @@ import supplyRequestService from '@/services/requests/supplyRequestService'
 import pavilionService from '@/services/config/pavilionService'
 import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
+import DataTable from '@/components/common/DataTable.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useNotification } from '@/composables/useNotification'
@@ -592,16 +541,19 @@ const selectedRequestForAssignment = ref(null)
 const showReviewItemsModal = ref(false)
 const selectedRequestForReview = ref(null)
 
+const tableColumns = [
+  { key: 'request_number', label: 'Solicitud' },
+  { key: 'pavilion_id', label: 'Pabellón', sortable: false },
+  { key: 'requested_by_name', label: 'Solicitante' },
+  { key: 'status', label: 'Estado', sortable: false },
+  { key: 'surgery_datetime', label: 'Fecha de Cirugía' },
+  { key: 'total_items', label: 'Items' },
+]
+
 // Estado reactivo
 const loading = ref(false)
 const requests = ref([])
 const pavilions = ref([])
-const currentPage = ref(1)
-const pageSize = ref(10)
-
-// Ordenamiento de tabla
-const sortBy = ref('') // 'request_number', 'pavilion', 'requester', 'status', 'surgery_datetime', 'items'
-const sortDirection = ref('asc') // 'asc' | 'desc'
 
 // Filtros
 const filters = ref({
@@ -728,39 +680,8 @@ const filteredRequests = computed(() => {
     )
   }
 
-  // Ordenar: si hay sortBy activo, usarlo; si no, usar orden por urgencia parecido al backend
+  // Ordenar por urgencia por defecto (DataTable maneja ordenamiento por columna)
   filtered.sort((a, b) => {
-    const direction = sortDirection.value === 'desc' ? -1 : 1
-
-    if (sortBy.value === 'request_number') {
-      return direction * a.request_number.localeCompare(b.request_number)
-    }
-
-    if (sortBy.value === 'pavilion') {
-      return direction * getPavilionName(a.pavilion_id).localeCompare(getPavilionName(b.pavilion_id))
-    }
-
-    if (sortBy.value === 'requester') {
-      return direction * a.requested_by_name.localeCompare(b.requested_by_name)
-    }
-
-    if (sortBy.value === 'status') {
-      return direction * getStatusLabel(a.status).localeCompare(getStatusLabel(b.status))
-    }
-
-    if (sortBy.value === 'surgery_datetime') {
-      const aDate = a.surgery_datetime ? new Date(a.surgery_datetime).getTime() : Infinity
-      const bDate = b.surgery_datetime ? new Date(b.surgery_datetime).getTime() : Infinity
-      return direction * (aDate - bDate)
-    }
-
-    if (sortBy.value === 'items') {
-      const aItems = a.total_items || 0
-      const bItems = b.total_items || 0
-      return direction * (aItems - bItems)
-    }
-
-    // Orden por defecto (sin sortBy): mismas reglas que el backend
     // 1) Completadas siempre al final
     const aCompleted = a.status === 'completado'
     const bCompleted = b.status === 'completado'
@@ -794,18 +715,6 @@ const filteredRequests = computed(() => {
 
   return filtered
 })
-
-const paginatedRequests = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredRequests.value.slice(start, end)
-})
-
-const totalRequests = computed(() => filteredRequests.value.length)
-const totalPages = computed(() => Math.ceil(totalRequests.value / pageSize.value))
-
-const startIndex = computed(() => (currentPage.value - 1) * pageSize.value)
-const endIndex = computed(() => Math.min(startIndex.value + pageSize.value, totalRequests.value))
 
 // Calcular estadísticas localmente basándose en las solicitudes filtradas
 const stats = computed(() => {
@@ -936,8 +845,11 @@ const filterByStatCategory = (category) => {
     // Mostrar todas
     filters.value.statusCategory = ''
   }
+<<<<<<< HEAD
   
   currentPage.value = 1
+=======
+>>>>>>> test
 }
 
 const refreshRequests = () => {
@@ -945,15 +857,6 @@ const refreshRequests = () => {
   loadSupplyRequests()
 }
 
-const toggleSort = (column) => {
-  if (sortBy.value === column) {
-    // Alternar asc/desc
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortBy.value = column
-    sortDirection.value = 'asc'
-  }
-}
 
 const viewRequest = (id) => {
   router.push(`/supply-requests/${id}`)
@@ -1036,17 +939,6 @@ const handleItemsReviewed = () => {
 }
 
 
-const previousPage = () => {
-  if (currentPage.value > 1) {
-    currentPage.value--
-  }
-}
-
-const nextPage = () => {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++
-  }
-}
 
 // Utilidades
 const formatDate = (dateString) => {
