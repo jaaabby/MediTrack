@@ -19,6 +19,7 @@
     <!-- Búsqueda -->
     <FilterPanel
       :filters="[{ type: 'text', key: 'search', label: 'Buscar especialidad', placeholder: 'Buscar por nombre o código...' }]"
+      :result-count="filteredSpecialties.length"
       @filter-change="onFilterChange"
     />
 

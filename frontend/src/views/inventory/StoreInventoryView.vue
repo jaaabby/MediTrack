@@ -124,7 +124,6 @@
       :rows="filteredInventory"
       default-sort-key="created_at"
       default-sort-order="desc"
-      :row-class="(row) => getRowClass(row.current_in_store, row.original_amount)"
       :items-per-page="10"
     >
 
@@ -155,13 +154,8 @@
       </template>
 
       <template #cell-current_in_store="{ row }">
-        <div>{{ row.current_in_store }} unidades</div>
-        <div v-if="isLowStock(row.current_in_store, row.original_amount)" class="text-xs text-red-600">
-          ⚠️ Stock bajo
-        </div>
-        <div v-else-if="isMediumStock(row.current_in_store, row.original_amount)" class="text-xs text-orange-600">
-          ⚠️ Stock medio
-        </div>
+        <span :class="getStockClass(row.current_in_store, row.critical_stock)" class="font-medium">{{ row.current_in_store }}</span>
+        <span :class="getStockClass(row.current_in_store, row.critical_stock)" class="text-xs ml-1">unidades</span>
       </template>
 
       <template #cell-original_amount="{ row }">
@@ -179,9 +173,9 @@
       </template>
 
       <template #cell-expiration_date="{ row }">
-        <div :class="getExpirationClass(row.expiration_date)">{{ formatDate(row.expiration_date) }}</div>
-        <div v-if="isExpired(row.expiration_date)" class="text-xs text-red-700">🔴 Vencido</div>
-        <div v-else-if="isNearExpiration(row.expiration_date)" class="text-xs text-orange-600">⚠️ Vence pronto</div>
+        <span :class="getExpirationClass(row.expiration_date, row.expiration_alert_days)">
+          {{ formatDate(row.expiration_date) }}
+        </span>
       </template>
     </DataTable>
   </div>
@@ -324,14 +318,21 @@ const filteredSuppliers = computed(() => {
   ).slice(0, 10)
 })
 
-// Computed para filtrar inventario (solo filtro client-side de proveedor)
+// Computed para filtrar inventario (filtros client-side de proveedor y stock bajo)
 const filteredInventory = computed(() => {
   if (!inventory.value || inventory.value.length === 0) return []
 
+  let result = inventory.value
+
+  // Filtro client-side de stock bajo usando critical_stock (regla consolidada del frontend)
+  if (filters.value.low_stock) {
+    result = result.filter(item => isLowStock(item.current_in_store, item.critical_stock))
+  }
+
   // ID 6: filtro client-side de proveedor, insensible a mayúsculas y tildes
   const supplierQuery = normalizeText(filters.value.supplier)
-  if (!supplierQuery) return inventory.value
-  return inventory.value.filter(item =>
+  if (!supplierQuery) return result
+  return result.filter(item =>
     normalizeText(item.batch_supplier).includes(supplierQuery)
   )
 })
@@ -496,61 +497,44 @@ const formatDate = (dateString) => {
   }
 }
 
-// ID 22: stock bajo = menos del 20% del original
-const isLowStock = (current, original) => {
-  if (!original) return false
-  return current < original * 0.2
+// Stock bajo = en o por debajo del umbral crítico del insumo (misma regla que Inventory.vue)
+const isLowStock = (current, critical) => {
+  if (critical == null) return false
+  const threshold = critical || 1
+  return current <= threshold
 }
 
-// ID 23: stock medio = entre 20% y 50% del original
-const isMediumStock = (current, original) => {
-  if (!original) return false
-  return current >= original * 0.2 && current < original * 0.5
+// Stock medio = entre crítico y 2x crítico (misma regla que Inventory.vue)
+const isMediumStock = (current, critical) => {
+  if (critical == null) return false
+  const threshold = critical || 1
+  return current > threshold && current <= threshold * 2
 }
 
-// ID 22/23: color del número de stock (prioridad: rojo > naranja > verde)
-const getStockClass = (current, original) => {
-  if (isLowStock(current, original)) return 'text-red-600'
-  if (isMediumStock(current, original)) return 'text-orange-600'
-  return 'text-green-600'
+// Color del número de stock (prioridad: rojo > naranja > gris)
+const getStockClass = (current, critical) => {
+  if (isLowStock(current, critical)) return 'text-red-600 font-semibold'
+  if (isMediumStock(current, critical)) return 'text-orange-600 font-semibold'
+  return 'text-gray-900'
 }
 
-// ID 22/23: color de fondo de la fila según nivel de stock
-const getRowClass = (current, original) => {
-  if (isLowStock(current, original)) return 'bg-red-50 hover:bg-red-100'
-  if (isMediumStock(current, original)) return 'bg-orange-50 hover:bg-orange-100'
+// Color de fondo de la fila según nivel de stock
+const getRowClass = (current, critical) => {
+  if (isLowStock(current, critical)) return 'bg-red-50 hover:bg-red-100'
+  if (isMediumStock(current, critical)) return 'bg-orange-50 hover:bg-orange-100'
   return 'hover:bg-gray-50'
 }
 
-// ID 26: lote con fecha ya vencida
-const isExpired = (expirationDate) => {
-  if (!expirationDate) return false
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return new Date(expirationDate) < today
-}
 
-// ID 26: próximo a vencer = dentro de los próximos 30 días (sin estar vencido)
-const isNearExpiration = (expirationDate) => {
-  if (!expirationDate) return false
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const expDate = new Date(expirationDate)
-  const days = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
-  return days >= 0 && days <= 30
-}
-
-// ID 26: colores diferenciados: rojo oscuro = vencido, naranja = próximo a vencer
-const getExpirationClass = (expirationDate) => {
+const getExpirationClass = (expirationDate, alertDays) => {
   if (!expirationDate) return 'text-gray-900'
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
   const expDate = new Date(expirationDate)
   const days = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
+  const threshold = alertDays && alertDays > 0 ? alertDays : 90
 
-  if (days < 0) return 'text-red-700 font-semibold'   // Vencido
-  if (days <= 30) return 'text-orange-600 font-semibold' // Próximo a vencer
-  if (days <= 90) return 'text-yellow-600'               // Vence en 1-3 meses
+  if (days < 0) return 'text-red-600 font-semibold'
+  if (days <= threshold) return 'text-red-600 font-semibold'
   return 'text-gray-900'
 }
 

@@ -29,44 +29,8 @@
     </div>
 
     <!-- Dashboard Content -->
-    <div v-else class="space-y-8">
+    <div v-else class="space-y-4">
       <!-- Inventario por Tipo de Cirugía -->
-<<<<<<< HEAD
-      <div class="space-y-4">
-        <!-- Encabezado de sección -->
-        <div class="card">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h3 class="text-xl font-semibold text-gray-900">Inventario por Tipo de Cirugía</h3>
-              <p class="text-gray-600 text-sm mt-2">Stock disponible organizado por procedimiento</p>
-            </div>
-            <button @click="reloadSurgeryInventory" class="btn-secondary">
-              <svg class="h-5 w-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Actualizar
-            </button>
-          </div>
-        </div>
-
-        <!-- Filtro de búsqueda -->
-        <FilterPanel
-          :key="filterPanelKey"
-          :filters="filterConfig"
-          :result-count="filteredSurgeryInventory.length"
-          @filter-change="onFilterChange"
-        />
-
-        <!-- Contenido de la tabla -->
-        <div class="card">
-        <div v-if="surgeryInventoryLoading" class="flex justify-center items-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue-dark"></div>
-          <span class="ml-3 text-gray-600">Cargando...</span>
-        </div>
-
-        <!-- Error al actualizar (solo aparece al usar el botón Actualizar, no en carga inicial) -->
-        <div v-else-if="surgeryInventoryError" class="bg-red-50 border border-red-200 rounded-md p-4">
-=======
       <div v-if="surgeryInventoryLoading" class="card flex justify-center items-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue-dark"></div>
         <span class="ml-3 text-gray-600">Cargando...</span>
@@ -74,7 +38,6 @@
 
       <div v-else-if="surgeryInventoryError" class="card">
         <div class="bg-red-50 border border-red-200 rounded-md p-4">
->>>>>>> test
           <div class="flex">
             <svg class="h-5 w-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -86,163 +49,50 @@
             </div>
           </div>
         </div>
-<<<<<<< HEAD
-
-        <div v-else-if="surgeryInventory.length === 0" class="text-center py-8">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-          </svg>
-          <p class="mt-2 text-sm text-gray-500">No hay inventario organizado por tipo de cirugía</p>
-        </div>
-
-        <div v-else class="overflow-x-auto">
-          <div class="max-h-[600px] overflow-y-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50 sticky top-0 z-10">
-              <tr>
-                <th @click="sortSurgeryBy('surgery_name')"
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                  <div class="flex items-center space-x-1">
-                    <span>Tipo de Cirugía</span>
-                    <span class="flex flex-col -space-y-1">
-                      <svg class="h-3 w-3 transition-colors" 
-                        :class="surgerySortKey === 'surgery_name' && surgerySortOrder === 'asc' ? 'text-brand-blue-dark' : 'text-gray-300'" 
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                      </svg>
-                      <svg class="h-3 w-3 transition-colors" 
-                        :class="surgerySortKey === 'surgery_name' && surgerySortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                      </svg>
-                    </span>
-                  </div>
-                </th>
-                <th @click="sortSurgeryBy('total_in_store')"
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                  <div class="flex items-center space-x-1">
-                    <span>Stock en Bodega</span>
-                    <span class="flex flex-col -space-y-1">
-                      <svg class="h-3 w-3 transition-colors" 
-                        :class="surgerySortKey === 'total_in_store' && surgerySortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                      </svg>
-                      <svg class="h-3 w-3 transition-colors" 
-                        :class="surgerySortKey === 'total_in_store' && surgerySortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                      </svg>
-                    </span>
-                  </div>
-                </th>
-                <th @click="sortSurgeryBy('total_transferred')"
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                  <div class="flex items-center space-x-1">
-                    <span>Total Transferido</span>
-                    <span class="flex flex-col -space-y-1">
-                      <svg class="h-3 w-3 transition-colors" 
-                        :class="surgerySortKey === 'total_transferred' && surgerySortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                      </svg>
-                      <svg class="h-3 w-3 transition-colors" 
-                        :class="surgerySortKey === 'total_transferred' && surgerySortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                      </svg>
-                    </span>
-                  </div>
-                </th>
-                <th @click="sortSurgeryBy('batch_count')"
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none">
-                  <div class="flex items-center space-x-1">
-                    <span>N° de Lotes</span>
-                    <span class="flex flex-col -space-y-1">
-                      <svg class="h-3 w-3 transition-colors" 
-                        :class="surgerySortKey === 'batch_count' && surgerySortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'" 
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"/>
-                      </svg>
-                      <svg class="h-3 w-3 transition-colors" 
-                        :class="surgerySortKey === 'batch_count' && surgerySortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'" 
-                        fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"/>
-                      </svg>
-                    </span>
-                  </div>
-                </th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="item in filteredSurgeryInventory" :key="item.surgery_id" class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-brand-blue-light to-brand-blue-dark flex items-center justify-center">
-                      <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                    </div>
-                    <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">{{ item.surgery_name || 'Sin tipo de cirugía' }}</div>
-                      <div class="text-sm text-gray-500">ID: {{ item.surgery_id || 'N/A' }}</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="text-sm font-semibold text-gray-900">{{ item.total_in_store || 0 }}</span>
-                  <span class="text-xs text-gray-500 ml-1">unidades</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="text-sm text-gray-900">{{ item.total_transferred || 0 }}</span>
-                  <span class="text-xs text-gray-500 ml-1">unidades</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="px-2 py-1 text-xs font-semibold rounded-full bg-brand-blue-light bg-opacity-30 text-brand-blue-dark">
-                    {{ item.batch_count || 0 }} lotes
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button @click="openSurgeryModal(item)" class="text-brand-blue-dark hover:text-brand-blue-medium">
-                    Ver detalles →
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        </div>
-        </div><!-- /card tabla -->
-      </div><!-- /space-y-4 sección cirugías -->
-=======
       </div>
->>>>>>> test
 
-      <DataTable
-        v-else
-        :columns="tableColumns"
-        :rows="surgeryInventory"
-        default-sort-key="surgery_name"
-        default-sort-order="asc"
-        max-height="600px"
-        empty-message="No hay inventario organizado por tipo de cirugía"
-        :table-actions="[{ type: 'view', onClick: (row) => openSurgeryModal(row) }]"
-      >
-        <template #cell-surgery_name="{ row }">
-          {{ row.surgery_name || 'Sin tipo de cirugía' }}
-        </template>
-        <template #cell-total_in_store="{ row }">
-          {{ row.total_in_store || 0 }} unidades
-        </template>
-        <template #cell-total_transferred="{ row }">
-          {{ row.total_transferred || 0 }} unidades
-        </template>
-        <template #cell-batch_count="{ row }">
-          {{ row.batch_count || 0 }} lotes
-        </template>
-      </DataTable>
+      <template v-else>
+        <FilterPanel
+          :key="mainFilterKey"
+          :filters="mainFilterConfig"
+          :result-count="filteredSurgeryInventory.length"
+          :show-clear="false"
+          @filter-change="onMainFilterChange"
+        >
+          <template #actions>
+            <button
+              class="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="!mainSearch"
+              @click="clearMainFilter"
+            >
+              Limpiar filtros
+            </button>
+          </template>
+        </FilterPanel>
 
+        <DataTable
+          :columns="tableColumns"
+          :rows="filteredSurgeryInventory"
+          default-sort-key="surgery_name"
+          default-sort-order="asc"
+          max-height="600px"
+          empty-message="No hay cirugías que coincidan con el filtro"
+          :table-actions="[{ type: 'view', onClick: (row) => openSurgeryModal(row) }]"
+        >
+          <template #cell-surgery_name="{ row }">
+            {{ row.surgery_name || 'Sin tipo de cirugía' }}
+          </template>
+          <template #cell-total_in_store="{ row }">
+            {{ row.total_in_store || 0 }} unidades
+          </template>
+          <template #cell-total_transferred="{ row }">
+            {{ row.total_transferred || 0 }} unidades
+          </template>
+          <template #cell-batch_count="{ row }">
+            {{ row.batch_count || 0 }} lotes
+          </template>
+        </DataTable>
+      </template>
     </div>
   </div>
 
@@ -263,7 +113,7 @@
       </div>
 
       <!-- Body -->
-      <div class="overflow-y-auto flex-1 p-6">
+      <div class="overflow-y-auto flex-1 p-6 space-y-4">
         <!-- Loading -->
         <div v-if="surgeryModal.loading" class="flex justify-center items-center py-12">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue-dark"></div>
@@ -283,38 +133,62 @@
           No hay insumos disponibles para este tipo de cirugía.
         </div>
 
-        <!-- Tabla -->
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
-                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bodega</th>
-                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-100">
-              <tr v-for="row in surgeryModal.items" :key="row.id || (row.supply_name + row.store_name)" class="hover:bg-gray-50">
-                <td class="px-6 py-4">
-                  <div class="font-medium text-gray-900">{{ row.supply_name || row.name || '—' }}</div>
-                  <div v-if="row.supply_code" class="text-xs text-gray-400">Cód. {{ row.supply_code }}</div>
-                </td>
-                <td class="px-6 py-4 text-gray-700">{{ row.store_name || row.store || '—' }}</td>
-                <td class="px-6 py-4">
-                  <span class="font-semibold text-sm" :class="stockColorClass(row.current_in_store ?? 0, row.critical_stock ?? 1)">{{ row.current_in_store ?? 0 }}</span>
-                  <span class="text-xs ml-1" :class="stockColorClass(row.current_in_store ?? 0, row.critical_stock ?? 1)">unidades</span>
-                </td>
-                <td class="px-6 py-4">
-                  <span v-if="row.expiration_date" :class="expiryColorClass(row.expiration_date)">
-                    {{ formatModalDate(row.expiration_date) }}
-                  </span>
-                  <span v-else class="text-gray-400">—</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <!-- Filtro + Tabla -->
+        <template v-else>
+          <FilterPanel
+            :key="modalFilterKey"
+            :filters="modalFilterConfig"
+            :result-count="filteredModalItems.length"
+            :show-clear="false"
+            @filter-change="onModalFilterChange"
+          >
+            <template #actions>
+              <button
+                class="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="!modalSearch && !modalStoreFilter"
+                @click="clearModalFilter"
+              >
+                Limpiar filtros
+              </button>
+            </template>
+          </FilterPanel>
+
+          <div v-if="filteredModalItems.length === 0" class="text-center py-8 text-gray-500 text-sm">
+            No hay insumos que coincidan con el filtro.
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
+                  <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bodega</th>
+                  <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                  <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-100">
+                <tr v-for="row in filteredModalItems" :key="row.id || (row.supply_name + row.store_name)" class="hover:bg-gray-50">
+                  <td class="px-6 py-4">
+                    <div class="font-medium text-gray-900">{{ row.supply_name || row.name || '—' }}</div>
+                    <div v-if="row.supply_code" class="text-xs text-gray-400">Cód. {{ row.supply_code }}</div>
+                  </td>
+                  <td class="px-6 py-4 text-gray-700">{{ row.store_name || row.store || '—' }}</td>
+                  <td class="px-6 py-4">
+                    <span class="font-semibold text-sm" :class="stockColorClass(row.current_in_store ?? 0, row.critical_stock ?? 1)">{{ row.current_in_store ?? 0 }}</span>
+                    <span class="text-xs ml-1" :class="stockColorClass(row.current_in_store ?? 0, row.critical_stock ?? 1)">unidades</span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <span v-if="row.expiration_date" :class="expiryColorClass(row.expiration_date)">
+                      {{ formatModalDate(row.expiration_date) }}
+                    </span>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
       </div>
 
       <!-- Footer -->
@@ -326,14 +200,10 @@
 </template>
 
 <script setup>
-<<<<<<< HEAD
 import { ref, computed, onMounted } from 'vue'
-import FilterPanel from '@/components/common/FilterPanel.vue'
-=======
-import { ref, onMounted } from 'vue'
->>>>>>> test
 import inventoryService from '@/services/inventory/inventoryService'
 import DataTable from '@/components/common/DataTable.vue'
+import FilterPanel from '@/components/common/FilterPanel.vue'
 
 const tableColumns = [
   { key: 'surgery_name', label: 'Tipo de Cirugía' },
@@ -348,16 +218,11 @@ const surgeryInventory = ref([])
 const surgeryInventoryLoading = ref(false)
 const surgeryInventoryError = ref(null)
 
-<<<<<<< HEAD
-// Estado de ordenamiento para tabla de cirugías
-const surgerySortKey = ref('surgery_name')
-const surgerySortOrder = ref('asc')
+// --- Filtro vista principal ---
+const mainSearch = ref('')
+const mainFilterKey = ref(0)
 
-// Filtro de búsqueda por tipo de cirugía (client-side)
-const surgerySearchText = ref('')
-const filterPanelKey = ref(0)
-
-const filterConfig = computed(() => [
+const mainFilterConfig = [
   {
     type: 'text',
     key: 'surgery_search',
@@ -365,17 +230,31 @@ const filterConfig = computed(() => [
     placeholder: 'Filtrar por nombre...',
     default: ''
   }
-])
+]
 
-const onFilterChange = (key, value) => {
-  if (key === 'surgery_search') {
-    surgerySearchText.value = value
-  }
+const normalizeText = (text) => {
+  if (!text) return ''
+  return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-=======
->>>>>>> test
-// Modal de detalle por cirugía
+const filteredSurgeryInventory = computed(() => {
+  if (!mainSearch.value.trim()) return surgeryInventory.value
+  const q = normalizeText(mainSearch.value)
+  return surgeryInventory.value.filter(item =>
+    normalizeText(item.surgery_name).includes(q)
+  )
+})
+
+const onMainFilterChange = (_key, value) => {
+  mainSearch.value = value
+}
+
+const clearMainFilter = () => {
+  mainSearch.value = ''
+  mainFilterKey.value += 1
+}
+
+// --- Modal de detalle por cirugía ---
 const surgeryModal = ref({
   show: false,
   loading: false,
@@ -384,7 +263,64 @@ const surgeryModal = ref({
   items: []
 })
 
+// --- Filtro del modal ---
+const modalSearch = ref('')
+const modalStoreFilter = ref('')
+const modalFilterKey = ref(0)
+
+const modalStoreOptions = computed(() => {
+  const names = surgeryModal.value.items
+    .map(row => row.store_name || row.store || '')
+    .filter(Boolean)
+  const unique = [...new Set(names)].sort()
+  return [
+    { value: '', label: 'Todas las bodegas' },
+    ...unique.map(name => ({ value: name, label: name }))
+  ]
+})
+
+const modalFilterConfig = computed(() => [
+  {
+    type: 'text',
+    key: 'modal_search',
+    label: 'Buscar insumo',
+    placeholder: 'Filtrar por nombre...',
+    default: ''
+  },
+  {
+    type: 'select',
+    key: 'modal_store',
+    label: 'Bodega',
+    default: '',
+    options: modalStoreOptions.value
+  }
+])
+
+const filteredModalItems = computed(() => {
+  return surgeryModal.value.items.filter(row => {
+    const matchesSearch = !modalSearch.value.trim() ||
+      normalizeText(row.supply_name || row.name || '').includes(normalizeText(modalSearch.value))
+    const matchesStore = !modalStoreFilter.value ||
+      (row.store_name || row.store || '') === modalStoreFilter.value
+    return matchesSearch && matchesStore
+  })
+})
+
+const onModalFilterChange = (key, value) => {
+  if (key === 'modal_search') modalSearch.value = value
+  if (key === 'modal_store') modalStoreFilter.value = value
+}
+
+const clearModalFilter = () => {
+  modalSearch.value = ''
+  modalStoreFilter.value = ''
+  modalFilterKey.value += 1
+}
+
 const openSurgeryModal = async (item) => {
+  modalSearch.value = ''
+  modalStoreFilter.value = ''
+  modalFilterKey.value += 1
   surgeryModal.value = { show: true, loading: true, error: null, surgeryName: item.surgery_name || 'Sin tipo de cirugía', items: [] }
   try {
     const data = await inventoryService.getStoreInventory({ surgery_id: item.surgery_id })
@@ -425,9 +361,8 @@ const stockColorClass = (qty, critical) => {
 const loadDashboard = async () => {
   loading.value = true
   error.value = null
-  
+
   try {
-    // Cargar inventario por cirugía
     await loadSurgeryInventory()
   } catch (err) {
     error.value = err.message || 'Error al cargar el dashboard'
@@ -441,18 +376,16 @@ const loadSurgeryInventory = async () => {
   surgeryInventoryLoading.value = true
   try {
     const data = await inventoryService.getInventoryBySurgeryType()
-    // Asegurarse de que siempre sea un array
     surgeryInventory.value = Array.isArray(data) ? data : []
   } catch (err) {
     console.error('Error loading surgery inventory:', err)
     surgeryInventory.value = []
-    throw err // Propagar para que el llamador decida cómo manejarlo
+    throw err
   } finally {
     surgeryInventoryLoading.value = false
   }
 }
 
-// Wrapper para el botón "Actualizar": muestra error inline sin ocultar el dashboard
 const reloadSurgeryInventory = async () => {
   surgeryInventoryError.value = null
   try {
@@ -462,60 +395,8 @@ const reloadSurgeryInventory = async () => {
   }
 }
 
-<<<<<<< HEAD
-// Computed para ordenar inventario de cirugías
-const sortedSurgeryInventory = computed(() => {
-  if (!surgeryInventory.value || surgeryInventory.value.length === 0) return []
-  
-  const sorted = [...surgeryInventory.value].sort((a, b) => {
-    let aVal = a[surgerySortKey.value]
-    let bVal = b[surgerySortKey.value]
-    
-    // Manejo de valores nulos/undefined
-    if (aVal === null || aVal === undefined) aVal = ''
-    if (bVal === null || bVal === undefined) bVal = ''
-    
-    // Manejo de strings (comparación case-insensitive)
-    if (typeof aVal === 'string') {
-      aVal = aVal.toLowerCase()
-      bVal = (bVal || '').toString().toLowerCase()
-    }
-    
-    // Comparación
-    if (aVal < bVal) return surgerySortOrder.value === 'asc' ? -1 : 1
-    if (aVal > bVal) return surgerySortOrder.value === 'asc' ? 1 : -1
-    return 0
-  })
-  
-  return sorted
-})
-
-// Computed para filtrar inventario de cirugías por texto de búsqueda
-const filteredSurgeryInventory = computed(() => {
-  if (!surgerySearchText.value.trim()) return sortedSurgeryInventory.value
-  const q = surgerySearchText.value.toLowerCase().trim()
-  return sortedSurgeryInventory.value.filter(item =>
-    (item.surgery_name || '').toLowerCase().includes(q)
-  )
-})
-
-// Función para ordenar por columna
-const sortSurgeryBy = (key) => {
-  if (surgerySortKey.value === key) {
-    surgerySortOrder.value = surgerySortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    surgerySortKey.value = key
-    surgerySortOrder.value = 'asc'
-  }
-}
-
-=======
->>>>>>> test
 onMounted(async () => {
   await loadDashboard()
-  // Prefetch del componente StoreInventoryView para acelerar la navegación
-  // al hacer clic en "Ver detalles" de cualquier fila (ID 11)
   import('@/views/inventory/StoreInventoryView.vue')
 })
 </script>
-

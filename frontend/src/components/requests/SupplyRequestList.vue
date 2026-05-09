@@ -33,7 +33,6 @@
       </div>
     </div>
 
-<<<<<<< HEAD
     <!-- Filtros y búsqueda -->
     <div class="mb-4 sm:mb-6 space-y-2">
       <!-- Badge de filtro activo por categoría de estadística -->
@@ -52,7 +51,7 @@
       <FilterPanel
         :key="filterPanelKey"
         :filters="filterConfig"
-        :result-count="totalRequests"
+        :result-count="filteredRequests.length"
         :show-clear="false"
         @filter-change="onFilterChange"
       >
@@ -75,9 +74,6 @@
         </template>
       </FilterPanel>
     </div>
-
-=======
->>>>>>> test
     <!-- Estadísticas rápidas -->
     <div v-if="stats" class="mb-4 sm:mb-6 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div @click="filterByStatCategory('pending')" class="bg-white p-3 sm:p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow">
@@ -845,11 +841,6 @@ const filterByStatCategory = (category) => {
     // Mostrar todas
     filters.value.statusCategory = ''
   }
-<<<<<<< HEAD
-  
-  currentPage.value = 1
-=======
->>>>>>> test
 }
 
 const refreshRequests = () => {

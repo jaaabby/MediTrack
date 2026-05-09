@@ -67,9 +67,9 @@
 
       <template #actions>
         <button
-          class="btn-secondary px-4 py-2 h-10 disabled:opacity-40 disabled:cursor-not-allowed"
+          class="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
           @click="clearFilters"
-          :disabled="!selectedSurgeryId && !searchTerm && !surgerySearch && sortField === 'none'"
+          :disabled="!selectedSurgeryId && !searchTerm && !surgerySearch"
         >
           Limpiar filtros
         </button>
@@ -108,7 +108,7 @@
       default-sort-key="supply_code"
       empty-message="">
       <template #cell-surgery_id="{ row }">
-        <div class="text-sm font-medium text-gray-900">{{ getSurgeryName(row.surgery_id) }}</div>
+        <div class="text-sm font-medium text-gray-900 truncate max-w-xs" :title="getSurgeryName(row.surgery_id)">{{ getSurgeryName(row.surgery_id) }}</div>
       </template>
       <template #cell-supply_name="{ row }">
         {{ getSupplyName(row.supply_code) }}
@@ -715,7 +715,6 @@ const selectSurgery = (surgery) => {
   selectedSurgeryId.value = surgery.id
   surgerySearch.value = surgery.name
   showSurgeryOptions.value = false
-  currentPage.value = 1
 }
 
 const hideSurgeryOptions = () => {
@@ -727,7 +726,6 @@ const hideSurgeryOptions = () => {
 const clearSurgeryFilter = () => {
   selectedSurgeryId.value = ''
   surgerySearch.value = ''
-  currentPage.value = 1
 }
 
 const openCreateModal = () => {
