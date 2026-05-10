@@ -1,18 +1,21 @@
 <template>
   <div class="card overflow-hidden">
-    <div class="overflow-x-auto">
-      <div :class="maxHeight ? 'overflow-y-auto' : ''" :style="maxHeight ? `max-height: ${maxHeight}` : ''">
+    <div
+      class="overflow-x-auto"
+      :class="maxHeight ? 'overflow-y-auto' : ''"
+      :style="maxHeight ? `max-height: ${maxHeight}` : ''"
+    >
         <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50 z-20 relative" :class="maxHeight ? 'sticky top-0' : ''">
+          <thead :class="maxHeight ? 'sticky top-0 z-20' : ''">
             <tr>
               <th
                 v-for="col in columns"
                 :key="col.key"
                 :class="[
-                  'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider',
+                  'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50',
                   col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
-                  col.sortable !== false ? 'cursor-pointer hover:bg-gray-100 transition-colors select-none' : '',
-                  col.sticky ? 'sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]' : '',
+                  col.sortable !== false ? 'cursor-pointer hover:bg-gray-100 select-none' : '',
+                  col.sticky ? 'sticky right-0 z-30 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]' : '',
                   col.headerClass || ''
                 ]"
                 @click="col.sortable !== false ? sortBy(col.key) : undefined"
@@ -48,7 +51,7 @@
               <!-- Actions column header -->
               <th
                 v-if="$slots.actions || tableActions.length"
-                class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]"
+                class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 sticky right-0 z-30 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]"
               >
                 Acciones
               </th>
@@ -156,7 +159,6 @@
             </tr>
           </tbody>
         </table>
-      </div>
     </div>
 
     <!-- Pagination -->

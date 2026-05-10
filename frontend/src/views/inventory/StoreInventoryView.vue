@@ -203,8 +203,8 @@ const filters = ref({
   store_id: initialStoreId ? String(initialStoreId) : '',
   surgery_id: initialSurgeryId ? String(initialSurgeryId) : '',
   supplier: '',
-  low_stock: false,
-  near_expiration: false
+  low_stock: '',
+  near_expiration: ''
 })
 const filterPanelKey = ref(0)
 
@@ -243,7 +243,8 @@ const filterConfig = computed(() => [
     type: 'select',
     key: 'store_id',
     label: 'Bodega',
-    default: filters.value.store_id,
+    default: '',
+    initialValue: filters.value.store_id,
     options: [
       { value: '', label: 'Todas las bodegas' },
       ...stores.value.map(store => ({ value: String(store.id), label: store.name }))
@@ -253,27 +254,33 @@ const filterConfig = computed(() => [
     type: 'custom',
     key: 'surgery_search',
     label: 'Tipo de Cirugía',
-    default: surgerySearch.value
+    default: ''
   },
   {
     type: 'custom',
     key: 'supplier_search',
     label: 'Proveedor',
-    default: supplierSearch.value
+    default: ''
   },
   {
-    type: 'checkbox',
+    type: 'toggle',
     key: 'low_stock',
-    label: 'Alerta de stock',
-    checkboxLabel: 'Stock bajo',
-    default: filters.value.low_stock
+    label: 'Stock crítico',
+    default: '',
+    options: [
+      { value: '', label: 'Todos' },
+      { value: 'true', label: 'Stock Crítico', activeClass: 'bg-red-600 text-white' }
+    ]
   },
   {
-    type: 'checkbox',
+    type: 'toggle',
     key: 'near_expiration',
-    label: 'Alerta de vencimiento',
-    checkboxLabel: 'Próximo a vencer',
-    default: filters.value.near_expiration
+    label: 'Por vencer',
+    default: '',
+    options: [
+      { value: '', label: 'Todos' },
+      { value: 'true', label: 'Por Vencer', activeClass: 'bg-orange-500 text-white' }
+    ]
   }
 ])
 
@@ -281,8 +288,8 @@ const hasActiveFilters = computed(() =>
   filters.value.store_id !== '' ||
   filters.value.surgery_id !== '' ||
   filters.value.supplier.trim() !== '' ||
-  filters.value.low_stock ||
-  filters.value.near_expiration ||
+  filters.value.low_stock !== '' ||
+  filters.value.near_expiration !== '' ||
   surgerySearch.value.trim() !== '' ||
   supplierSearch.value.trim() !== ''
 )
@@ -325,7 +332,7 @@ const filteredInventory = computed(() => {
   let result = inventory.value
 
   // Filtro client-side de stock bajo usando critical_stock (regla consolidada del frontend)
-  if (filters.value.low_stock) {
+  if (filters.value.low_stock === 'true') {
     result = result.filter(item => isLowStock(item.current_in_store, item.critical_stock))
   }
 
@@ -419,8 +426,8 @@ const clearFilters = () => {
     store_id: '',
     surgery_id: '',
     supplier: '',
-    low_stock: false,
-    near_expiration: false
+    low_stock: '',
+    near_expiration: ''
   }
   surgerySearch.value = ''
   supplierSearch.value = ''
