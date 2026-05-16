@@ -338,7 +338,7 @@
                 <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-900 truncate">Cirugías</h3>
                 <span class="text-xs bg-brand-pink bg-opacity-20 text-brand-pink px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">{{ surgeries.length }}</span>
               </div>
-              <div class="text-xs sm:text-sm text-gray-500 flex-shrink-0">Prom: {{ avgSurgeryDuration }}h</div>
+
             </div>
             <input v-model="surgerySearch" type="text" placeholder="Buscar..." class="text-xs sm:text-sm border rounded px-2 sm:px-3 py-1.5 sm:py-2 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:ring-opacity-30 w-full" />
           </div>
