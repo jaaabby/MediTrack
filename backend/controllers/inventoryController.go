@@ -226,6 +226,20 @@ func (c *InventoryController) GetInventorySummary(ctx *gin.Context) {
 	sendSuccess(ctx, http.StatusOK, "Resumen de inventario obtenido", summary)
 }
 
+// GetSurgerySupplyStats obtiene ingresos y consumos reales por cirugía
+func (c *InventoryController) GetSurgerySupplyStats(ctx *gin.Context) {
+	stats, err := c.inventoryService.GetSurgerySupplyStats()
+	if err != nil {
+		sendError(ctx, http.StatusInternalServerError, "Error al obtener estadísticas de cirugías", err.Error())
+		return
+	}
+
+	sendSuccess(ctx, http.StatusOK, "Estadísticas de cirugías obtenidas", gin.H{
+		"stats": stats,
+		"count": len(stats),
+	})
+}
+
 // GetInventoryBySurgeryType obtiene inventario agrupado por tipo de cirugía
 func (c *InventoryController) GetInventoryBySurgeryType(ctx *gin.Context) {
 	storeID, _ := parseIntQuery(ctx, "store_id")

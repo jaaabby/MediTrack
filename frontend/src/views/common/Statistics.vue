@@ -590,6 +590,7 @@ const bySurgery = ref([])
 const surgeries = ref([])
 const completedRequests = ref([])
 const realConsumptionStats = ref([])
+const surgerySupplyStats = ref([]) // ingresos y consumos reales por cirugía (vía supply_request)
 const avgSurgeryDuration = computed(() => {
   if (!surgeries.value.length) return 0
   const sum = surgeries.value.reduce((a, s) => a + Number(s.duration || 0), 0)
@@ -621,12 +622,15 @@ const surgeryStatistics = computed(() => {
     proceduresMap.set(req.surgery_id, (proceduresMap.get(req.surgery_id) || 0) + 1)
   })
 
-  // Transferencias por cirugía desde inventario
-  const transferredMap = new Map(
-    (bySurgery.value || []).map(it => [it.surgery_id, Number(it.total_transferred || 0)])
+  // Ingresos y consumidos reales desde supply_request → supply_request_qr_assignment
+  const assignedMap = new Map(
+    surgerySupplyStats.value.map(it => [Number(it.surgery_id), Number(it.total_assigned || 0)])
+  )
+  const consumedMap = new Map(
+    surgerySupplyStats.value.map(it => [Number(it.surgery_id), Number(it.total_consumed || 0)])
   )
 
-  // Consumos por cirugía desde supply_history
+  // Desglose de consumo por tipo de insumo (desde supply_history via batch, como fallback)
   const consumptionBySurgery = new Map()
   realConsumptionStats.value.forEach(c => {
     if (!c.surgery_id) return
@@ -635,13 +639,12 @@ const surgeryStatistics = computed(() => {
   })
 
   const stats = surgeries.value.map(s => {
+    // Desglose por tipo (para mostrar qué insumos se consumieron)
     const consumptions = consumptionBySurgery.get(s.id) || []
-    let totalConsumed = 0
     const consumptionMap = new Map()
     consumptions.forEach(c => {
       const count = Number(c.consumed_count || 0)
       if (count > 0) {
-        totalConsumed += count
         if (!consumptionMap.has(c.supply_code)) {
           consumptionMap.set(c.supply_code, {
             supply_code: c.supply_code,
@@ -657,13 +660,13 @@ const surgeryStatistics = computed(() => {
       surgery_name: s.name,
       duration: Number(s.duration || 0),
       procedures_count: proceduresMap.get(s.id) || 0,
-      total_transferred: transferredMap.get(s.id) || 0,
-      total_consumed: totalConsumed,
+      total_transferred: assignedMap.get(s.id) || 0,
+      total_consumed: consumedMap.get(s.id) || 0,
       consumption_by_type: Array.from(consumptionMap.values()).sort((a, b) => b.count - a.count),
     }
   })
 
-  // Ordenar: más procedimientos primero, luego más transferencias
+  // Ordenar: más procedimientos primero, luego más ingresos
   stats.sort((a, b) => {
     if (b.procedures_count !== a.procedures_count) return b.procedures_count - a.procedures_count
     return b.total_transferred - a.total_transferred
@@ -997,7 +1000,7 @@ async function loadData() {
   error.value = ''
   try {
     // Todas las llamadas en paralelo: datos base + distribuciones + métricas
-    const [[summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp, inventoryResp]] =
+    const [[summaryResp, bySurgResp, surgResp, lowStockResp, consumptionStatsResp, inventoryResp, surgeryStatsResp]] =
       await Promise.all([
         Promise.all([
           inventoryService.getInventorySummary(),
@@ -1006,6 +1009,7 @@ async function loadData() {
           inventoryService.getStoreInventory({ low_stock: true, page: 1, page_size: 8 }),
           supplyHistoryService.getConsumptionStatsBySurgery(),
           inventoryService.getInventory().catch(() => []),
+          inventoryService.getSurgerySupplyStats(),
         ]),
         loadTrend(),
         loadPavilionDistribution(),
@@ -1020,6 +1024,7 @@ async function loadData() {
     surgeries.value = Array.isArray(surgResp) ? surgResp : []
     lowStockList.value = Array.isArray(lowStockResp) ? lowStockResp : []
     realConsumptionStats.value = Array.isArray(consumptionStatsResp) ? consumptionStatsResp : []
+    surgerySupplyStats.value = Array.isArray(surgeryStatsResp) ? surgeryStatsResp : []
     inventoryItems.value = Array.isArray(inventoryResp)
       ? inventoryResp
       : Array.isArray(inventoryResp?.inventory_items)

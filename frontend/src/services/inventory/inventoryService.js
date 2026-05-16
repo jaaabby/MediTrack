@@ -558,6 +558,21 @@ class InventoryService {
     }
   }
 
+  // Obtener ingresos y consumos reales por cirugía (vía supply_request)
+  async getSurgerySupplyStats() {
+    try {
+      const response = await this.api.get('/inventory/surgery-stats', { timeout: 8000 })
+      const data = response.data.data || response.data
+      if (data && typeof data === 'object' && Array.isArray(data.stats)) {
+        return data.stats
+      }
+      return Array.isArray(data) ? data : []
+    } catch (error) {
+      console.error('Error al obtener estadísticas de cirugías:', error)
+      return []
+    }
+  }
+
   // Obtener todos los pabellones
   async getAllPavilions() {
     try {
