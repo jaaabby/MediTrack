@@ -173,7 +173,7 @@
 
           <!-- Búsqueda y Filtros -->
           <div class="mb-4 space-y-3">
-            <div class="flex gap-3">
+            <div class="flex flex-col sm:flex-row gap-3">
               <div class="flex-1">
                 <input
                   type="text"
@@ -182,8 +182,8 @@
                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <div class="w-48">
-                <select v-model="supplySortBy" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+              <div class="shrink-0">
+                <select v-model="supplySortBy" class="px-4 py-2 pr-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
                   <option value="name">Ordenar por Nombre</option>
                   <option value="code">Ordenar por Código</option>
                 </select>
@@ -222,49 +222,76 @@
               <p>No se encontraron insumos</p>
             </div>
             <div v-else class="divide-y divide-gray-200">
-              <label
+              <div
                 v-for="supply in filteredAndSortedSupplies"
                 :key="supply.code"
-                class="flex items-start p-4 hover:bg-gray-50 cursor-pointer"
+                class="p-4"
+                :class="isTempSelected(supply.code) ? 'bg-blue-50' : 'hover:bg-gray-50'"
               >
-                <input
-                  type="checkbox"
-                  :value="supply.code"
-                  v-model="tempSelectedSupplyCodes"
-                  class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <div class="ml-3 flex-1">
-                  <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                      <div class="font-medium text-gray-900 text-base">{{ supply.name }}</div>
-                      <div class="mt-1 flex flex-wrap gap-3 text-sm">
-                        <div class="text-gray-600">
-                          <span class="font-medium">Código:</span> {{ supply.code }}
-                        </div>
-                        <div v-if="supply.code_supplier" class="text-gray-600">
-                          <span class="font-medium">Código Proveedor:</span> {{ supply.code_supplier }}
-                        </div>
-                        <div v-if="supply.critical_stock !== undefined && supply.critical_stock !== null" class="text-gray-600">
-                          <span class="font-medium">Stock Crítico:</span> {{ supply.critical_stock }}
+                <div class="flex items-start">
+                  <input
+                    type="checkbox"
+                    :checked="isTempSelected(supply.code)"
+                    @change="toggleTempSupply(supply)"
+                    class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                  />
+                  <div class="ml-3 flex-1">
+                    <div class="flex items-start justify-between">
+                      <div class="flex-1">
+                        <div class="font-medium text-gray-900 text-base">{{ supply.name }}</div>
+                        <div class="mt-1 flex flex-wrap gap-3 text-sm">
+                          <div class="text-gray-600">
+                            <span class="font-medium">Código:</span> {{ supply.code }}
+                          </div>
+                          <div v-if="supply.code_supplier" class="text-gray-600">
+                            <span class="font-medium">Código Proveedor:</span> {{ supply.code_supplier }}
+                          </div>
+                          <div v-if="supply.critical_stock !== undefined && supply.critical_stock !== null" class="text-gray-600">
+                            <span class="font-medium">Stock Crítico:</span> {{ supply.critical_stock }}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div v-if="isSupplyAlreadySelected(supply.code)" class="ml-2 flex-shrink-0">
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Ya seleccionado
-                      </span>
+
+                    <!-- Cantidad y notas inline al seleccionar -->
+                    <div v-if="isTempSelected(supply.code)" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                          Cantidad Típica <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          :value="getTempSupply(supply.code).typical_quantity"
+                          @input="getTempSupply(supply.code).typical_quantity = parseInt($event.target.value) || 1"
+                          class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Ej: 5"
+                          @click.stop
+                        />
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Notas (opcional)</label>
+                        <input
+                          type="text"
+                          :value="getTempSupply(supply.code).notes"
+                          @input="getTempSupply(supply.code).notes = $event.target.value"
+                          class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Notas para este insumo..."
+                          @click.stop
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </label>
+              </div>
             </div>
           </div>
 
           <!-- Footer del modal -->
           <div class="flex justify-between items-center mt-4 pt-4 border-t">
             <div class="text-sm text-gray-600">
-              <span v-if="tempSelectedSupplyCodes.length > 0">
-                {{ tempSelectedSupplyCodes.length }} insumo(s) seleccionado(s)
+              <span v-if="tempSelectedSupplies.length > 0">
+                {{ tempSelectedSupplies.length }} insumo(s) seleccionado(s)
               </span>
               <span v-else>Ningún insumo seleccionado</span>
             </div>
@@ -280,9 +307,9 @@
                 type="button"
                 @click="confirmSupplySelection"
                 class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
-                :disabled="tempSelectedSupplyCodes.length === 0"
+                :disabled="tempSelectedSupplies.length === 0"
               >
-                Confirmar Selección ({{ tempSelectedSupplyCodes.length }})
+                Confirmar Selección ({{ tempSelectedSupplies.length }})
               </button>
             </div>
           </div>
@@ -292,154 +319,163 @@
 
     <!-- Modal para crear/editar -->
     <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click.self="closeModal">
-        <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
-          <div class="space-y-4">
-            <div class="flex justify-between items-center border-b pb-3">
-              <h3 class="text-xl font-semibold text-gray-900">
-                {{ isEditing ? 'Editar Insumo Típico' : 'Crear Insumo Típico' }}
-              </h3>
-              <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
-                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <form @submit.prevent="saveTypicalSupply" class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Cirugía <span class="text-red-500">*</span>
-                </label>
-                <select 
-                  v-model="typicalSupplyForm.surgery_id" 
-                  class="form-select" 
-                  :class="{ 'border-red-500': formErrors.surgery_id }"
+      <div v-if="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-start justify-center z-50 p-4 pt-10" @click.self="closeModal">
+        <div class="w-full max-w-lg shadow-lg rounded-md bg-white border flex flex-col max-h-[90vh]">
+
+          <!-- Header fijo -->
+          <div class="flex justify-between items-center border-b px-5 pt-5 pb-3 flex-shrink-0">
+            <h3 class="text-xl font-semibold text-gray-900">
+              {{ isEditing ? 'Editar Insumo Típico' : 'Crear Insumo Típico' }}
+            </h3>
+            <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Contenido scrolleable -->
+          <div class="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Cirugía <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <input
+                  type="text"
+                  v-model="modalSurgerySearch"
+                  :placeholder="isEditing ? getSurgeryName(typicalSupplyForm.surgery_id) : 'Buscar cirugía...' "
                   :disabled="isEditing"
-                  @change="formErrors.surgery_id = ''"
+                  class="form-input w-full"
+                  :class="{ 'border-red-500': formErrors.surgery_id }"
+                  autocomplete="off"
+                  @input="onModalSurgeryInput"
+                  @focus="showModalSurgeryOptions = true"
+                  @blur="hideModalSurgeryOptions"
+                />
+                <div
+                  v-if="showModalSurgeryOptions && modalFilteredSurgeries.length > 0"
+                  class="absolute z-[70] w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-52 overflow-auto"
                 >
-                  <option value="">Seleccione una cirugía</option>
-                  <option v-for="surgery in surgeries" :key="surgery.id" :value="surgery.id">
-                    {{ surgery.name }}
-                  </option>
-                </select>
-                <p v-if="formErrors.surgery_id" class="mt-1 text-sm text-red-600">{{ formErrors.surgery_id }}</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Insumos <span class="text-red-500">*</span>
-                </label>
-                <button
-                  type="button"
-                  @click="openSupplySelectionModal"
-                  class="w-full px-4 py-2 border rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-                  :class="formErrors.supplies ? 'border-red-500' : 'border-gray-300'"
-                  :disabled="isEditing || !typicalSupplyForm.surgery_id"
-                >
-                  <span v-if="selectedSupplies.length === 0">Seleccionar Insumos</span>
-                  <span v-else>{{ selectedSupplies.length }} insumo(s) seleccionado(s)</span>
-                </button>
-                <p v-if="formErrors.supplies" class="text-sm text-red-600 mb-2">{{ formErrors.supplies }}</p>
-                <p v-if="!typicalSupplyForm.surgery_id" class="mt-1 text-xs text-gray-500 mb-3">
-                  Primero seleccione una cirugía
-                </p>
-                <p v-else-if="selectedSupplies.length === 0 && !formErrors.supplies" class="mt-1 text-xs text-gray-500 mb-3">
-                  Haga clic para seleccionar uno o más insumos
-                </p>
-
-                <!-- Lista de insumos seleccionados con sus configuraciones -->
-                <div v-if="selectedSupplies.length > 0" class="space-y-4 mt-4">
-                  <div 
-                    v-for="(supply, index) in selectedSupplies" 
-                    :key="supply.code"
-                    class="p-4 bg-blue-50 border border-blue-200 rounded-lg"
+                  <button
+                    v-for="surgery in modalFilteredSurgeries"
+                    :key="surgery.id"
+                    type="button"
+                    @mousedown.prevent="selectModalSurgery(surgery)"
+                    class="w-full text-left px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-b-0"
                   >
-                    <div class="flex items-start justify-between mb-3">
-                      <div class="flex-1">
-                        <div class="font-medium text-base text-gray-900">{{ supply.name }}</div>
-                        <div class="text-sm text-gray-600 mt-1">Código: {{ supply.code }}</div>
-                      </div>
-                      <button
-                        v-if="!isEditing"
-                        type="button"
-                        @click="removeSelectedSupply(index)"
-                        class="ml-2 text-red-500 hover:text-red-700 flex-shrink-0"
-                        title="Eliminar insumo"
-                      >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                    {{ surgery.name }}
+                  </button>
+                </div>
+              </div>
+              <p v-if="formErrors.surgery_id" class="mt-1 text-sm text-red-600">{{ formErrors.surgery_id }}</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Insumos <span class="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                @click="openSupplySelectionModal"
+                class="w-full px-4 py-2 border rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                :class="formErrors.supplies ? 'border-red-500' : 'border-gray-300'"
+                :disabled="isEditing || !typicalSupplyForm.surgery_id"
+              >
+                <span v-if="selectedSupplies.length === 0">Seleccionar Insumos</span>
+                <span v-else>{{ selectedSupplies.length }} insumo(s) seleccionado(s)</span>
+              </button>
+              <p v-if="formErrors.supplies" class="text-sm text-red-600 mb-2">{{ formErrors.supplies }}</p>
+              <p v-if="!typicalSupplyForm.surgery_id" class="mt-1 text-xs text-gray-500 mb-3">
+                Primero seleccione una cirugía
+              </p>
+              <p v-else-if="selectedSupplies.length === 0 && !formErrors.supplies" class="mt-1 text-xs text-gray-500 mb-3">
+                Haga clic para seleccionar uno o más insumos
+              </p>
+
+              <!-- Lista de insumos seleccionados con sus configuraciones -->
+              <div v-if="selectedSupplies.length > 0" class="space-y-4 mt-4">
+                <div 
+                  v-for="(supply, index) in selectedSupplies" 
+                  :key="supply.code"
+                  class="p-4 bg-blue-50 border border-blue-200 rounded-lg"
+                >
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                      <div class="font-medium text-base text-gray-900">{{ supply.name }}</div>
+                      <div class="text-sm text-gray-600 mt-1">Código: {{ supply.code }}</div>
                     </div>
+                    <button
+                      v-if="!isEditing"
+                      type="button"
+                      @click="removeSelectedSupply(index)"
+                      class="ml-2 text-red-500 hover:text-red-700 flex-shrink-0"
+                      title="Eliminar insumo"
+                    >
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <!-- Cantidad Típica -->
-                      <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                          Cantidad Típica <span class="text-red-500">*</span>
-                        </label>
-                        <input 
-                          v-model.number="supply.typical_quantity" 
-                          type="number" 
-                          min="1" 
-                          class="form-input" 
-                          :class="{ 'border-red-500': formErrors.supply_quantities[supply.code] }"
-                          placeholder="Ej: 5"
-                          @input="delete formErrors.supply_quantities[supply.code]"
-                        />
-                        <p v-if="formErrors.supply_quantities[supply.code]" class="mt-1 text-sm text-red-600">{{ formErrors.supply_quantities[supply.code] }}</p>
-                        <p v-else class="mt-1 text-xs text-gray-500">Cantidad típica para este insumo</p>
-                      </div>
-
-                      <!-- Insumo Requerido -->
-                      <div class="flex items-end">
-                        <label class="flex items-center space-x-2 cursor-pointer">
-                          <input 
-                            v-model="supply.is_required" 
-                            type="checkbox" 
-                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span class="text-sm font-medium text-gray-700">Insumo requerido</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <!-- Notas por insumo -->
-                    <div class="mt-3">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Cantidad Típica -->
+                    <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Notas (opcional)
+                        Cantidad Típica <span class="text-red-500">*</span>
                       </label>
-                      <textarea 
-                        v-model="supply.notes" 
-                        rows="2" 
-                        class="form-input text-sm" 
-                        placeholder="Notas específicas para este insumo..."
-                      ></textarea>
+                      <input 
+                        v-model.number="supply.typical_quantity" 
+                        type="number" 
+                        min="1" 
+                        class="form-input" 
+                        :class="{ 'border-red-500': formErrors.supply_quantities[supply.code] }"
+                        placeholder="Ej: 5"
+                        @input="delete formErrors.supply_quantities[supply.code]"
+                      />
+                      <p v-if="formErrors.supply_quantities[supply.code]" class="mt-1 text-sm text-red-600">{{ formErrors.supply_quantities[supply.code] }}</p>
+                      <p v-else class="mt-1 text-xs text-gray-500">Cantidad típica para este insumo</p>
                     </div>
+
+                    <!-- Insumo Requerido -->
+                    <div class="flex items-end">
+                      <label class="flex items-center space-x-2 cursor-pointer">
+                        <input 
+                          v-model="supply.is_required" 
+                          type="checkbox" 
+                          class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span class="text-sm font-medium text-gray-700">Insumo requerido</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Notas por insumo -->
+                  <div class="mt-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Notas (opcional)
+                    </label>
+                    <textarea 
+                      v-model="supply.notes" 
+                      rows="2" 
+                      class="form-input text-sm" 
+                      placeholder="Notas específicas para este insumo..."
+                    ></textarea>
                   </div>
                 </div>
               </div>
-
-              <div class="flex justify-end space-x-3 pt-4 border-t">
-                <button type="button" @click="closeModal" class="btn-secondary">Cancelar</button>
-                <button 
-                  v-if="!isEditing" 
-                  type="button" 
-                  @click="saveTypicalSupplyAndAddAnother" 
-                  :disabled="saving" 
-                  class="btn-secondary"
-                >
-                  <span v-if="saving">Guardando...</span>
-                  <span v-else>Crear y Agregar Más</span>
-                </button>
-                <button type="button" @click="saveTypicalSupply" :disabled="saving" class="btn-primary">
-                  <span v-if="saving">Guardando...</span>
-                  <span v-else>{{ isEditing ? 'Actualizar' : 'Crear' }}</span>
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
+
+          <!-- Footer fijo -->
+          <div class="flex justify-end space-x-3 px-5 py-4 border-t flex-shrink-0">
+            <button type="button" @click="closeModal" class="btn-secondary">Cancelar</button>
+            <button type="button" @click="saveTypicalSupply" :disabled="saving" class="btn-primary">
+              <span v-if="saving">Guardando...</span>
+              <span v-else>{{ isEditing ? 'Actualizar' : 'Crear' }}</span>
+            </button>
+          </div>
+
         </div>
       </div>
     </Teleport>
@@ -487,16 +523,20 @@ const tableColumns = [
   { key: 'notes', label: 'Notas', sortable: false }
 ]
 
-// Estados para autocomplete de cirugías
+// Estados para autocomplete de cirugías (filtro)
 const surgerySearch = ref('')
 const showSurgeryOptions = ref(false)
+
+// Estados para combobox de cirugía en el modal
+const modalSurgerySearch = ref('')
+const showModalSurgeryOptions = ref(false)
 
 // Estados para el modal de selección de insumos
 const showSupplySelectionModal = ref(false)
 const loadingSupplies = ref(false)
 const supplySearchTerm = ref('')
 const supplySortBy = ref('name')
-const tempSelectedSupplyCodes = ref([])
+const tempSelectedSupplies = ref([]) // Array of { ...supply, typical_quantity, is_required, notes }
 const selectedSupplies = ref([]) // Insumos seleccionados para el formulario
 
 const typicalSupplyForm = ref({
@@ -533,6 +573,18 @@ const filterConfig = computed(() => [
     default: searchTerm.value
   }
 ])
+
+// Computed para cirugías filtradas en el modal
+const modalFilteredSurgeries = computed(() => {
+  if (!modalSurgerySearch.value.trim()) {
+    return surgeries.value
+  }
+  const term = normalizeText(modalSurgerySearch.value.trim())
+  return surgeries.value.filter(surgery => {
+    const name = normalizeText(surgery.name || '')
+    return name.includes(term)
+  })
+})
 
 // Computed para cirugías filtradas (autocomplete)
 const filteredSurgeries = computed(() => {
@@ -734,6 +786,32 @@ const openCreateModal = () => {
   showModal.value = true
 }
 
+const onModalSurgeryInput = () => {
+  showModalSurgeryOptions.value = true
+  // Clear selection if user edits text
+  typicalSupplyForm.value.surgery_id = ''
+  formErrors.value.surgery_id = ''
+  selectedSupplies.value = []
+}
+
+const selectModalSurgery = (surgery) => {
+  typicalSupplyForm.value.surgery_id = surgery.id
+  modalSurgerySearch.value = surgery.name
+  showModalSurgeryOptions.value = false
+  formErrors.value.surgery_id = ''
+  selectedSupplies.value = []
+}
+
+const hideModalSurgeryOptions = () => {
+  setTimeout(() => {
+    showModalSurgeryOptions.value = false
+    // If no surgery was selected, clear the text
+    if (!typicalSupplyForm.value.surgery_id) {
+      modalSurgerySearch.value = ''
+    }
+  }, 200)
+}
+
 const resetForm = () => {
   typicalSupplyForm.value = {
     surgery_id: '',
@@ -743,6 +821,8 @@ const resetForm = () => {
     notes: ''
   }
   selectedSupplies.value = []
+  modalSurgerySearch.value = ''
+  showModalSurgeryOptions.value = false
   
   // Limpiar errores
   formErrors.value = {
@@ -758,8 +838,8 @@ const openSupplySelectionModal = () => {
     return
   }
   
-  // Inicializar con los insumos ya seleccionados
-  tempSelectedSupplyCodes.value = selectedSupplies.value.map(s => s.code)
+  // Inicializar con los insumos ya seleccionados (con copia para no mutar los originales)
+  tempSelectedSupplies.value = selectedSupplies.value.map(s => ({ ...s }))
   supplySearchTerm.value = ''
   supplySortBy.value = 'name'
   showSupplySelectionModal.value = true
@@ -767,36 +847,34 @@ const openSupplySelectionModal = () => {
 
 const closeSupplySelectionModal = () => {
   showSupplySelectionModal.value = false
-  tempSelectedSupplyCodes.value = []
+  tempSelectedSupplies.value = []
   supplySearchTerm.value = ''
+}
+
+const isTempSelected = (code) => tempSelectedSupplies.value.some(s => s.code === code)
+
+const getTempSupply = (code) => tempSelectedSupplies.value.find(s => s.code === code)
+
+const toggleTempSupply = (supply) => {
+  const idx = tempSelectedSupplies.value.findIndex(s => s.code === supply.code)
+  if (idx >= 0) {
+    tempSelectedSupplies.value.splice(idx, 1)
+  } else {
+    // Preserve existing config if supply was already in selectedSupplies
+    const existing = selectedSupplies.value.find(s => s.code === supply.code)
+    tempSelectedSupplies.value.push(existing ? { ...existing } : {
+      ...supply,
+      typical_quantity: 1,
+      is_required: false,
+      notes: ''
+    })
+  }
 }
 
 const confirmSupplySelection = () => {
   // Limpiar error de insumos al seleccionar
   formErrors.value.supplies = ''
-  
-  // Convertir códigos seleccionados a objetos de insumos con configuración inicial
-  const newSelectedCodes = tempSelectedSupplyCodes.value.filter(code => 
-    !selectedSupplies.value.some(s => s.code === code)
-  )
-  
-  const newSupplies = newSelectedCodes
-    .map(code => {
-      const supply = supplyCodes.value.find(s => s.code === code)
-      if (supply) {
-        return {
-          ...supply,
-          typical_quantity: 1, // Valor por defecto
-          is_required: false,
-          notes: ''
-        }
-      }
-      return null
-    })
-    .filter(s => s !== null)
-  
-  // Mantener los insumos ya seleccionados y agregar los nuevos
-  selectedSupplies.value = [...selectedSupplies.value, ...newSupplies]
+  selectedSupplies.value = tempSelectedSupplies.value.map(s => ({ ...s }))
   closeSupplySelectionModal()
 }
 
@@ -809,17 +887,21 @@ const isSupplyAlreadySelected = (code) => {
 }
 
 const selectAllFilteredSupplies = () => {
-  const filteredCodes = filteredAndSortedSupplies.value.map(s => s.code)
-  // Agregar solo los que no están ya seleccionados
-  filteredCodes.forEach(code => {
-    if (!tempSelectedSupplyCodes.value.includes(code)) {
-      tempSelectedSupplyCodes.value.push(code)
+  filteredAndSortedSupplies.value.forEach(supply => {
+    if (!isTempSelected(supply.code)) {
+      const existing = selectedSupplies.value.find(s => s.code === supply.code)
+      tempSelectedSupplies.value.push(existing ? { ...existing } : {
+        ...supply,
+        typical_quantity: 1,
+        is_required: false,
+        notes: ''
+      })
     }
   })
 }
 
 const deselectAllSupplies = () => {
-  tempSelectedSupplyCodes.value = []
+  tempSelectedSupplies.value = []
 }
 
 const openEditModal = (supply) => {
@@ -832,6 +914,7 @@ const openEditModal = (supply) => {
     is_required: supply.is_required || false,
     notes: supply.notes || ''
   }
+  modalSurgerySearch.value = getSurgeryName(supply.surgery_id)
   
   // En modo edición, cargar el insumo seleccionado con su configuración
   const supplyInfo = supplyCodes.value.find(s => s.code === supply.supply_code)
