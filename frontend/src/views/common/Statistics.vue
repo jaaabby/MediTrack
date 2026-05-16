@@ -286,32 +286,39 @@
           </div>
           <div class="space-y-2.5 sm:space-y-3">
             <div class="flex items-center gap-2 sm:gap-3">
-              <span class="text-xs sm:text-sm text-gray-600 w-16 sm:w-20 flex-shrink-0">Stock</span>
+              <span class="text-xs sm:text-sm text-gray-600 w-20 sm:w-28 flex-shrink-0">Stock</span>
               <div class="flex-1 bg-gray-200 rounded-full h-1.5 sm:h-2">
                 <div class="bg-brand-blue-dark h-1.5 sm:h-2 rounded-full" :style="{ width: Math.min(100, mainMetrics.totalSupplies ? 90 : 0) + '%' }"></div>
               </div>
               <span class="text-xs sm:text-sm font-medium text-gray-900 w-10 sm:w-12 text-right">{{ mainMetrics.totalSupplies }}</span>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
-              <span class="text-xs sm:text-sm text-gray-600 w-16 sm:w-20 flex-shrink-0">Entradas</span>
+              <span class="text-xs sm:text-sm text-gray-600 w-20 sm:w-28 flex-shrink-0">Entradas</span>
               <div class="flex-1 bg-gray-200 rounded-full h-1.5 sm:h-2">
                 <div class="bg-brand-green h-1.5 sm:h-2 rounded-full" :style="{ width: Math.min(100, movementBars.entradas ? 70 : 0) + '%' }"></div>
               </div>
               <span class="text-xs sm:text-sm font-medium text-gray-900 w-10 sm:w-12 text-right">{{ movementBars.entradas }}</span>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
-              <span class="text-xs sm:text-sm text-gray-600 w-16 sm:w-20 flex-shrink-0">Salidas</span>
+              <span class="text-xs sm:text-sm text-gray-600 w-20 sm:w-28 flex-shrink-0">Salidas</span>
               <div class="flex-1 bg-gray-200 rounded-full h-1.5 sm:h-2">
                 <div class="bg-brand-blue-medium h-1.5 sm:h-2 rounded-full" :style="{ width: Math.min(100, movementBars.salidas ? 60 : 0) + '%' }"></div>
               </div>
               <span class="text-xs sm:text-sm font-medium text-gray-900 w-10 sm:w-12 text-right">{{ movementBars.salidas }}</span>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
-              <span class="text-xs sm:text-sm text-gray-600 w-16 sm:w-20 flex-shrink-0">Consumos</span>
+              <span class="text-xs sm:text-sm text-gray-600 w-20 sm:w-28 flex-shrink-0">Consumos</span>
               <div class="flex-1 bg-gray-200 rounded-full h-1.5 sm:h-2">
                 <div class="bg-brand-blue-light h-1.5 sm:h-2 rounded-full" :style="{ width: Math.min(100, movementBars.consumos ? 80 : 0) + '%' }"></div>
               </div>
               <span class="text-xs sm:text-sm font-medium text-gray-900 w-10 sm:w-12 text-right">{{ movementBars.consumos }}</span>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <span class="text-xs sm:text-sm text-gray-600 w-20 sm:w-28 flex-shrink-0">Devoluciones</span>
+              <div class="flex-1 bg-gray-200 rounded-full h-1.5 sm:h-2">
+                <div class="bg-brand-pink h-1.5 sm:h-2 rounded-full" :style="{ width: Math.min(100, movementBars.devoluciones ? 50 : 0) + '%' }"></div>
+              </div>
+              <span class="text-xs sm:text-sm font-medium text-gray-900 w-10 sm:w-12 text-right">{{ movementBars.devoluciones }}</span>
             </div>
           </div>
         </div>
@@ -698,6 +705,7 @@ const movementBars = ref({
   salidas: 0,
   transferencias: 0,
   consumos: 0,
+  devoluciones: 0,
 })
 const transferTrend = ref([])
 const totalTransfers = computed(() => transferTrend.value.reduce((a, x) => a + (Number(x.count)||0), 0))
@@ -1031,6 +1039,7 @@ async function loadData() {
     movementBars.value.consumos = Number(summary.value.total_consumed || 0)
     movementBars.value.entradas = Number(summary.value.total_in_stores || 0)
     movementBars.value.salidas = Number(summary.value.total_transferred || 0)
+    movementBars.value.devoluciones = Number(summary.value.total_returned || 0)
   } catch (e) {
     error.value = e?.message || 'Error cargando estadísticas'
   } finally {

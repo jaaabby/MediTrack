@@ -431,6 +431,13 @@ func (s *InventoryService) GetInventorySummary(medicalCenterID *int) (map[string
 		Scan(&totalConsumed)
 	summary["total_consumed"] = totalConsumed
 
+	// Total devuelto (devoluciones de pabellones a bodega)
+	var totalReturned int64
+	query.Model(&models.StoreInventorySummary{}).
+		Select("COALESCE(SUM(total_returned_in), 0)").
+		Scan(&totalReturned)
+	summary["total_returned"] = totalReturned
+
 	// Stock crítico en bodegas: cuenta lotes (filas de store_inventory_summary)
 	// donde el stock actual está en o bajo el critical_stock del insumo.
 	// Usamos sis.supply_code directamente sin pasar por medical_supply para evitar
