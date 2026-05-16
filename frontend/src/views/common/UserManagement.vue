@@ -386,6 +386,7 @@ import pavilionService from '@/services/config/pavilionService'
 import storeService from '@/services/inventory/storeService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
+import { formatRut, cleanRut, validateRutFormat, calculateDv, handleRutBodyInput as rutBodyInputHandler } from '@/utils/rut'
 
 const { success: showSuccess, error: showError } = useNotification()
 
@@ -572,69 +573,12 @@ watch(() => userForm.specialty_id, () => {
 })
 
 // Funciones de formateo de RUT
-const formatRut = (rut) => {
-  // Eliminar todo excepto números y K (eliminar guiones también)
-  let rutLimpio = rut.replace(/[^0-9kK]/g, '')
-  
-  if (rutLimpio.length === 0) return ''
-  
-  // Si solo hay un carácter, devolverlo sin formato
-  if (rutLimpio.length === 1) return rutLimpio
-  
-  // Si tiene más de 9 caracteres, limitar a 9
-  if (rutLimpio.length > 9) {
-    rutLimpio = rutLimpio.slice(0, 9)
-  }
-  
-  // Separar cuerpo y dígito verificador (el último carácter siempre es el DV)
-  let cuerpo = rutLimpio.slice(0, -1)
-  let dv = rutLimpio.slice(-1).toUpperCase()
-  
-  // Retornar con guión automático
-  return `${cuerpo}-${dv}`
-}
-
-const cleanRut = (rut) => {
-  // Eliminar puntos y espacios, mantener solo números, K y guión
-  let rutLimpio = rut.replace(/[^0-9kK]/g, '')
-  
-  if (rutLimpio.length <= 1) return rutLimpio
-  
-  // Separar cuerpo y dígito verificador
-  let cuerpo = rutLimpio.slice(0, -1)
-  let dv = rutLimpio.slice(-1).toUpperCase()
-  
-  // Retornar sin puntos pero con guión
-  return `${cuerpo}-${dv}`
-}
-
-const validateRutFormat = (rut) => {
-  // Validar formato básico del RUT chileno (sin validar dígito verificador)
-  const rutPattern = /^[0-9]{1,8}-[0-9kK]$/
-  return rutPattern.test(rut)
-}
-
-// Calcular dígito verificador del RUT chileno (módulo 11)
-const calculateDv = (body) => {
-  if (!body || body.length === 0) return ''
-  let sum = 0
-  let multiplier = 2
-  for (let i = body.length - 1; i >= 0; i--) {
-    sum += parseInt(body[i]) * multiplier
-    multiplier = multiplier === 7 ? 2 : multiplier + 1
-  }
-  const remainder = 11 - (sum % 11)
-  if (remainder === 11) return '0'
-  if (remainder === 10) return 'K'
-  return String(remainder)
-}
-
 // Manejar input del cuerpo del RUT (solo dígitos, DV en campo separado)
 const handleRutBodyInput = (event) => {
-  const digits = event.target.value.replace(/[^0-9]/g, '').slice(0, 8)
-  rutBody.value = digits
-  event.target.value = digits
-  userForm.rut = digits.length > 0 ? `${digits}-${calculateDv(digits)}` : ''
+  rutBodyInputHandler(event, (digits, rutCompleto) => {
+    rutBody.value = digits
+    userForm.rut = rutCompleto
+  })
 }
 
 // Cargar usuarios

@@ -320,7 +320,9 @@
     <!-- Modal para crear/editar -->
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-start justify-center z-50 p-4 pt-10" @click.self="closeModal">
-        <div class="w-full max-w-lg shadow-lg rounded-md bg-white border flex flex-col max-h-[90vh]">
+        <div class="w-full max-w-lg shadow-lg rounded-md bg-white border flex flex-col max-h-[90vh]"
+             :class="showModalSurgeryOptions ? 'min-h-[26rem]' : ''"
+        >
 
           <!-- Header fijo -->
           <div class="flex justify-between items-center border-b px-5 pt-5 pb-3 flex-shrink-0">
