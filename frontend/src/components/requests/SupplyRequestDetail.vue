@@ -212,6 +212,7 @@
                   placeholder="Nombre o RUT de la persona..."
                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-400 focus:border-orange-400"
                 />
+                <p class="mt-1 text-xs text-gray-400">Ingrese el RUT sin puntos y con guión. Ej: 12345678-9</p>
                 <div v-if="showUserSuggestions && filteredUsers.length > 0"
                      class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                   <div
@@ -248,9 +249,7 @@
                   </svg>
                 </button>
               </div>
-              <div v-else class="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <p class="text-xs text-orange-700">Busque y seleccione a la persona autorizada para guardar la configuración.</p>
-              </div>
+
             </div>
           </div>
 
@@ -1055,6 +1054,7 @@ import cartService from '@/services/requests/cartService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useNotification } from '@/composables/useNotification'
+import { formatRut } from '@/utils/rut'
 import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
 import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
 import QrcodeVue from 'qrcode.vue'
@@ -1812,6 +1812,15 @@ const normalizeText = (text) => {
 // Buscar usuarios según búsqueda (con debounce)
 let searchTimeout = null
 const onUserSearch = async () => {
+  // Aplicar formato RUT si el input parece un RUT (solo dígitos y K)
+  const raw = userSearchQuery.value
+  if (/^[0-9kK\-]+$/.test(raw.replace(/\s/g, ''))) {
+    const formatted = formatRut(raw)
+    if (formatted !== raw) {
+      userSearchQuery.value = formatted
+    }
+  }
+
   const query = userSearchQuery.value.trim()
   
   // Limpiar timeout anterior

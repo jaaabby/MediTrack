@@ -1755,6 +1755,40 @@ DO UPDATE SET
     updated_at         = NOW();
 
 -- ============================================================================
+-- SIMULAR DEVOLUCIONES DE PABELLONES A BODEGAS (≈15% de lo recibido)
+-- Se ejecuta DESPUÉS de todos los INSERTs explícitos de inventario para que
+-- no sean sobreescritos por el ON CONFLICT DO UPDATE de dichos INSERTs.
+-- ============================================================================
+
+-- Paso 1: Registrar devoluciones en pabellones (cualquier lote con stock disponible)
+UPDATE pavilion_inventory_summary pis
+SET
+    total_returned    = pis.total_returned + LEAST(
+                            pis.current_available,
+                            GREATEST(1, CEILING(pis.total_received * 0.15)::int)
+                        ),
+    current_available = pis.current_available - LEAST(
+                            pis.current_available,
+                            GREATEST(1, CEILING(pis.total_received * 0.15)::int)
+                        ),
+    updated_at        = NOW()
+WHERE pis.current_available >= 1;
+
+-- Paso 2: Acreditar devoluciones en las bodegas correspondientes
+UPDATE store_inventory_summary sis
+SET
+    total_returned_in = sis.total_returned_in + devuelto.qty,
+    current_in_store  = sis.current_in_store  + devuelto.qty,
+    updated_at        = NOW()
+FROM (
+    SELECT batch_id, SUM(total_returned) AS qty
+    FROM pavilion_inventory_summary
+    WHERE total_returned > 0
+    GROUP BY batch_id
+) devuelto
+WHERE sis.batch_id = devuelto.batch_id;
+
+-- ============================================================================
 -- DATOS DE PRUEBA QA: INSUMOS EN TRÁNSITO AL PABELLÓN 3
 -- El backend busca medical_supply.status = 'en_camino_a_pabellon'
 -- con location_type = 'pavilion' y location_id = 3.
