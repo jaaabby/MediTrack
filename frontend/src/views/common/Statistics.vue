@@ -324,69 +324,86 @@
         </div>
       </div>
 
-      <!-- Cirugías -->
-      <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border p-3 sm:p-4 md:p-6">
-        <div class="flex flex-col gap-2 sm:gap-3 mb-3 sm:mb-4">
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2 min-w-0 flex-1">
-              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-pink bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v7"/><path d="M5 10h14"/></svg>
-              </div>
-              <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-900 truncate">Cirugías</h3>
-              <span class="text-xs bg-brand-pink bg-opacity-20 text-brand-pink px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">{{ surgeryStatistics.length }}</span>
-            </div>
-            <div class="text-xs sm:text-sm text-gray-500 flex-shrink-0">Prom: {{ avgSurgeryDuration }}h</div>
-          </div>
-          <input v-model="surgerySearch" type="text" placeholder="Buscar..." class="text-xs sm:text-sm border rounded px-2 sm:px-3 py-1.5 sm:py-2 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:ring-opacity-30 w-full" />
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-          <!-- Estadísticas por cirugía -->
-          <div class="space-y-3 max-h-52 sm:max-h-60 md:max-h-80 overflow-y-auto pr-1 sm:pr-2">
-            <div class="text-xs sm:text-sm font-semibold text-gray-900 mb-2 sticky top-0 bg-white py-1">Estadísticas por cirugía</div>
-            <div
-              v-for="stat in surgeryStatistics"
-              :key="stat.surgery_id"
-              class="p-2 sm:p-3 bg-gray-50 rounded-lg shadow-sm"
-            >
-              <div class="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
-                <div class="flex items-center gap-2 min-w-0 flex-1">
-                  <div class="w-6 h-6 sm:w-7 sm:h-7 rounded bg-brand-pink bg-opacity-20 flex items-center justify-center flex-shrink-0 shadow-inner">
-                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M12 2v7M5 10h14"/>
-                    </svg>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <div class="font-medium text-gray-900 truncate text-xs sm:text-sm md:text-base">{{ stat.surgery_name || 'Sin nombre' }}</div>
-                    <div class="text-xs text-gray-500">{{ stat.procedures_count }} procedimiento{{ stat.procedures_count !== 1 ? 's' : '' }}</div>
-                  </div>
+      <!-- Cirugías y Top Insumos -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+
+        <!-- Cirugías -->
+        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border p-3 sm:p-4 md:p-6">
+          <div class="flex flex-col gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-pink bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v7"/><path d="M5 10h14"/></svg>
                 </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
-                  <span class="text-xs sm:text-sm font-semibold text-gray-900">{{ stat.total_consumed }}</span>
-                  <span class="text-xs text-gray-500 hidden sm:inline">consumidos</span>
+                <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-900 truncate">Cirugías</h3>
+                <span class="text-xs bg-brand-pink bg-opacity-20 text-brand-pink px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">{{ surgeries.length }}</span>
+              </div>
+              <div class="text-xs sm:text-sm text-gray-500 flex-shrink-0">Prom: {{ avgSurgeryDuration }}h</div>
+            </div>
+            <input v-model="surgerySearch" type="text" placeholder="Buscar..." class="text-xs sm:text-sm border rounded px-2 sm:px-3 py-1.5 sm:py-2 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:ring-opacity-30 w-full" />
+          </div>
+          <div class="space-y-3 max-h-52 sm:max-h-60 md:max-h-80 overflow-y-auto pr-1 sm:pr-2">
+            <div
+              v-for="(stat, idx) in surgeryStatistics"
+              :key="stat.surgery_id"
+              class="p-2 sm:p-3 bg-pink-50 border-l-4 border-brand-pink rounded-lg shadow-sm"
+            >
+              <!-- Nombre + duración -->
+              <div class="flex items-start gap-2 mb-2">
+                <div class="w-6 h-6 sm:w-7 sm:h-7 rounded bg-brand-pink bg-opacity-20 flex items-center justify-center flex-shrink-0 shadow-inner mt-0.5">
+                  <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v7M5 10h14"/>
+                  </svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="font-medium text-gray-900 truncate text-xs sm:text-sm">{{ stat.surgery_name || 'Sin nombre' }}</div>
+                  <span v-if="stat.duration" class="inline-block text-xs text-gray-500 bg-gray-200 rounded px-1.5 py-0.5 mt-0.5">{{ stat.duration }}h</span>
+                </div>
+              </div>
+              <!-- Mini-estadísticas -->
+              <div class="grid grid-cols-3 gap-1 mb-2">
+                <div class="text-center bg-white rounded p-1 shadow-inner cursor-default" title="Cantidad de veces que se realizó esta cirugía (solicitudes completadas)">
+                  <div class="text-xs sm:text-sm font-semibold text-brand-pink">{{ stat.procedures_count }}</div>
+                  <div class="text-xs text-gray-500 leading-tight">Proced.</div>
+                </div>
+                <div class="text-center bg-white rounded p-1 shadow-inner cursor-default" title="Total de unidades de insumos ingresadas al pabellón para esta cirugía">
+                  <div class="text-xs sm:text-sm font-semibold text-brand-blue-medium">{{ stat.total_transferred }}</div>
+                  <div class="text-xs text-gray-500 leading-tight">Ingresos</div>
+                </div>
+                <div class="text-center bg-white rounded p-1 shadow-inner cursor-default" title="Total de unidades de insumos efectivamente consumidas durante esta cirugía">
+                  <div class="text-xs sm:text-sm font-semibold text-brand-blue-light">{{ stat.total_consumed }}</div>
+                  <div class="text-xs text-gray-500 leading-tight">Consumid.</div>
                 </div>
               </div>
               <!-- Consumo por tipo -->
-              <div v-if="stat.consumption_by_type && stat.consumption_by_type.length > 0" class="mt-2 space-y-1">
-                <div class="text-xs font-medium text-gray-700 mb-1">Consumo por tipo:</div>
+              <div v-if="stat.consumption_by_type && stat.consumption_by_type.length > 0" class="space-y-1">
+                <div class="text-xs font-medium text-gray-600 mb-0.5">Insumos consumidos:</div>
                 <div v-for="(consumption, idx) in stat.consumption_by_type.slice(0, 3)" :key="idx" class="flex items-center justify-between text-xs">
                   <span class="text-gray-600 truncate flex-1 mr-2">{{ consumption.supply_name || `Código ${consumption.supply_code}` }}</span>
                   <span class="text-gray-900 font-medium flex-shrink-0">{{ consumption.count }}</span>
                 </div>
-                <div v-if="stat.consumption_by_type.length > 3" class="text-xs text-gray-500 italic">
+                <div v-if="stat.consumption_by_type.length > 3" class="text-xs text-gray-400 italic">
                   +{{ stat.consumption_by_type.length - 3 }} tipo{{ stat.consumption_by_type.length - 3 !== 1 ? 's' : '' }} más
                 </div>
               </div>
-              <div v-else class="text-xs text-gray-500 italic mt-1">Sin datos de consumo</div>
             </div>
-            <div v-if="surgeryStatistics.length === 0" class="text-xs sm:text-sm text-gray-500 text-center py-4">
-              <div>Sin datos de procedimientos</div>
-              <div class="text-xs text-gray-400 mt-1">Las estadísticas aparecerán cuando haya solicitudes completadas con cirugías asociadas</div>
-            </div>
+            <div v-if="surgeryStatistics.length === 0" class="text-xs sm:text-sm text-gray-500 text-center py-4">Sin cirugías registradas</div>
           </div>
-          
-          <!-- Top Insumos -->
+        </div>
+
+        <!-- Top Insumos más utilizados -->
+        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border p-3 sm:p-4 md:p-6">
+          <div class="flex items-center gap-2 mb-3 sm:mb-4">
+            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-blue-dark bg-opacity-20 flex items-center justify-center flex-shrink-0">
+              <svg class="w-3 h-3 sm:w-4 sm:h-4 text-brand-blue-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="3" width="12" height="6" rx="1"/>
+                <path d="M8 9v9a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V9"/>
+                <path d="M9 6h6"/>
+              </svg>
+            </div>
+            <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-900">Top Insumos más utilizados</h3>
+          </div>
           <div class="space-y-2 max-h-52 sm:max-h-60 md:max-h-80 overflow-y-auto pr-1 sm:pr-2">
-            <div class="text-xs sm:text-sm font-semibold text-gray-900 mb-2 sticky top-0 bg-white py-1">Top Insumos más utilizados</div>
             <div v-for="s in topSupplies" :key="s.code" class="p-2 sm:p-3 bg-gray-50 rounded-lg shadow-sm">
               <div class="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
                 <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -414,6 +431,7 @@
             <div v-if="!topSupplies.length" class="text-xs sm:text-sm text-gray-500 text-center py-4">Sin datos disponibles</div>
           </div>
         </div>
+
       </div>
 
       <!-- Bodegas -->
@@ -592,96 +610,68 @@ const surgeriesWithTotals = computed(() => {
   return all.filter(x => (x.surgery_name || '').toLowerCase().includes(term))
 })
 
-// Estadísticas por cirugía: ordenadas por cantidad de procedimientos realizados
+// Estadísticas por cirugía: todas las cirugías con datos disponibles
 const surgeryStatistics = computed(() => {
-  if (!realConsumptionStats.value.length && !completedRequests.value.length) return []
   if (!surgeries.value.length) return []
-  
-  // Crear mapa de cirugías por ID
-  const surgeryMap = new Map()
-  surgeries.value.forEach(s => {
-    surgeryMap.set(s.id, s.name)
-  })
-  
-  // Agrupar solicitudes completadas por surgery_id para contar procedimientos
-  const bySurgeryId = new Map()
+
+  // Procedimientos desde solicitudes completadas/aprobadas
+  const proceduresMap = new Map()
   completedRequests.value.forEach(req => {
     if (!req.surgery_id) return
-    const surgeryId = req.surgery_id
-    if (!bySurgeryId.has(surgeryId)) {
-      bySurgeryId.set(surgeryId, {
-        surgery_id: surgeryId,
-        surgery_name: surgeryMap.get(surgeryId) || 'Sin nombre',
-        procedures_count: 0,
-        request_ids: [],
-      })
-    }
-    const stat = bySurgeryId.get(surgeryId)
-    stat.procedures_count++
-    stat.request_ids.push(req.id)
+    proceduresMap.set(req.surgery_id, (proceduresMap.get(req.surgery_id) || 0) + 1)
   })
-  
-  // Procesar datos REALES de consumo desde supply_history
-  realConsumptionStats.value.forEach(consumption => {
-    const surgeryId = consumption.surgery_id
-    if (!surgeryId) return
-    
-    // Si la cirugía no está en el mapa (porque no tiene solicitudes completadas), agregarla
-    if (!bySurgeryId.has(surgeryId)) {
-      bySurgeryId.set(surgeryId, {
-        surgery_id: surgeryId,
-        surgery_name: consumption.surgery_name || surgeryMap.get(surgeryId) || 'Sin nombre',
-        procedures_count: 0, // Sin procedimientos registrados
-        request_ids: [],
-      })
-    }
+
+  // Transferencias por cirugía desde inventario
+  const transferredMap = new Map(
+    (bySurgery.value || []).map(it => [it.surgery_id, Number(it.total_transferred || 0)])
+  )
+
+  // Consumos por cirugía desde supply_history
+  const consumptionBySurgery = new Map()
+  realConsumptionStats.value.forEach(c => {
+    if (!c.surgery_id) return
+    if (!consumptionBySurgery.has(c.surgery_id)) consumptionBySurgery.set(c.surgery_id, [])
+    consumptionBySurgery.get(c.surgery_id).push(c)
   })
-  
-  const stats = Array.from(bySurgeryId.values())
-  
-  // Ordenar por cantidad de procedimientos (descendente)
-  stats.sort((a, b) => b.procedures_count - a.procedures_count)
-  
-  // Calcular total consumido REAL desde supply_history
-  stats.forEach(stat => {
-    // Obtener consumos reales para esta cirugía desde supply_history
-    const consumptionsForSurgery = realConsumptionStats.value.filter(c => c.surgery_id === stat.surgery_id)
+
+  const stats = surgeries.value.map(s => {
+    const consumptions = consumptionBySurgery.get(s.id) || []
     let totalConsumed = 0
     const consumptionMap = new Map()
-    
-    consumptionsForSurgery.forEach(consumption => {
-      const supplyCode = consumption.supply_code
-      const supplyName = consumption.supply_name || `Código ${supplyCode}`
-      const count = Number(consumption.consumed_count || 0)
-      
+    consumptions.forEach(c => {
+      const count = Number(c.consumed_count || 0)
       if (count > 0) {
         totalConsumed += count
-        if (!consumptionMap.has(supplyCode)) {
-          consumptionMap.set(supplyCode, {
-            supply_code: supplyCode,
-            supply_name: supplyName,
+        if (!consumptionMap.has(c.supply_code)) {
+          consumptionMap.set(c.supply_code, {
+            supply_code: c.supply_code,
+            supply_name: c.supply_name || `Código ${c.supply_code}`,
             count: 0
           })
         }
-        consumptionMap.get(supplyCode).count += count
+        consumptionMap.get(c.supply_code).count += count
       }
     })
-    
-    stat.total_consumed = totalConsumed
-    stat.consumption_by_type = Array.from(consumptionMap.values())
-      .sort((a, b) => b.count - a.count)
+    return {
+      surgery_id: s.id,
+      surgery_name: s.name,
+      duration: Number(s.duration || 0),
+      procedures_count: proceduresMap.get(s.id) || 0,
+      total_transferred: transferredMap.get(s.id) || 0,
+      total_consumed: totalConsumed,
+      consumption_by_type: Array.from(consumptionMap.values()).sort((a, b) => b.count - a.count),
+    }
   })
-  
-  // Aplicar filtro de búsqueda si existe
-  let filtered = stats
-  if (surgerySearch.value) {
-    const term = surgerySearch.value.toLowerCase()
-    filtered = stats.filter(stat => 
-      (stat.surgery_name || '').toLowerCase().includes(term)
-    )
-  }
-  
-  return filtered
+
+  // Ordenar: más procedimientos primero, luego más transferencias
+  stats.sort((a, b) => {
+    if (b.procedures_count !== a.procedures_count) return b.procedures_count - a.procedures_count
+    return b.total_transferred - a.total_transferred
+  })
+
+  if (!surgerySearch.value) return stats
+  const term = surgerySearch.value.toLowerCase()
+  return stats.filter(x => (x.surgery_name || '').toLowerCase().includes(term))
 })
 
 const lowStockList = ref([])
