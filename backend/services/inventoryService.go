@@ -499,6 +499,45 @@ func (s *InventoryService) GetInventoryBySurgeryType(storeID *int) ([]map[string
 	return results, nil
 }
 
+// GetSurgerySupplyStats obtiene ingresos y consumos reales por cirugía
+// usando supply_request como puente (ya que los lotes generales no tienen surgery_id)
+func (s *InventoryService) GetSurgerySupplyStats() ([]map[string]interface{}, error) {
+	query := `
+		SELECT
+			sr.surgery_id,
+			COUNT(DISTINCT srqa.id) AS total_assigned,
+			COUNT(DISTINCT CASE WHEN sh.status = 'consumido' THEN sh.id END) AS total_consumed
+		FROM supply_request sr
+		LEFT JOIN supply_request_qr_assignment srqa ON srqa.supply_request_id = sr.id
+		LEFT JOIN supply_history sh
+			ON sh.medical_supply_id = srqa.medical_supply_id
+			AND sh.status = 'consumido'
+		WHERE sr.surgery_id IS NOT NULL
+		GROUP BY sr.surgery_id
+	`
+
+	rows, err := s.DB.Raw(query).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var surgeryID, totalAssigned, totalConsumed int
+		if err := rows.Scan(&surgeryID, &totalAssigned, &totalConsumed); err != nil {
+			return nil, err
+		}
+		results = append(results, map[string]interface{}{
+			"surgery_id":     surgeryID,
+			"total_assigned": totalAssigned,
+			"total_consumed": totalConsumed,
+		})
+	}
+
+	return results, nil
+}
+
 // GetTransferReport obtiene un reporte de transferencias
 func (s *InventoryService) GetTransferReport(
 	startDate time.Time,

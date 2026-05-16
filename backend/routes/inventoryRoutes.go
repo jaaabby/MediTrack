@@ -28,6 +28,9 @@ func SetupInventoryRoutes(router *gin.RouterGroup, inventoryService *services.In
 		// Inventario por tipo de cirugía
 		inventory.GET("/by-surgery", inventoryController.GetInventoryBySurgeryType)
 
+		// Estadísticas de ingresos y consumos por cirugía (vía supply_request)
+		inventory.GET("/surgery-stats", inventoryController.GetSurgerySupplyStats)
+
 		// Reportes
 		inventory.GET("/reports/transfers", inventoryController.GetTransferReport)
 	}
