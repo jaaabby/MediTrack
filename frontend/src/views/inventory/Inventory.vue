@@ -88,7 +88,7 @@
             <span class="text-gray-700">{{ row.code }}</span>
           </template>
           <template #cell-expiration_date="{ row }">
-            <span :class="getExpirationClass(row.expiration_date, row.expiration_alert_days)">
+            <span :class="getExpirationClass(row.expiration_date)">
               {{ formatDate(row.expiration_date) }}
             </span>
           </template>
@@ -741,6 +741,10 @@ import { exportToExcel as exportExcel, formatDateForExcel } from '@/utils/excelE
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import DataTable from '@/components/common/DataTable.vue'
+import { useInventoryAlerts } from '@/composables/useInventoryAlerts'
+import { normalize } from '@/utils/normalize'
+
+const { getExpirationClass, getStockClass: getAmountClass } = useInventoryAlerts()
 
 const tableColumnsSupplies = [
   { key: 'qr_code', label: 'Lote' },
@@ -855,26 +859,23 @@ const filteredSupplies = computed(() => {
     })
   }
 
-  // Filtro de próximos a vencer (usa los días de alerta de cada lote)
+  // Filtro de próximos a vencer: muestra los que vencen en ≤ 30 días (consistente con colores)
   if (filterState.expiring === 'true') {
     const today = new Date()
     filtered = filtered.filter(supply => {
       if (!supply.expiration_date) return false
-      const expDate = new Date(supply.expiration_date)
-      const daysUntil = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
-      const threshold = supply.expiration_alert_days && supply.expiration_alert_days > 0
-        ? supply.expiration_alert_days
-        : 90
-      return daysUntil <= threshold
+      const daysUntil = Math.ceil((new Date(supply.expiration_date) - today) / (1000 * 60 * 60 * 24))
+      return daysUntil <= 30
     })
   }
 
   if (filterState.search) {
+    const q = normalize(filterState.search)
     filtered = filtered.filter(supply =>
       supply.batch_id.toString().includes(filterState.search) ||
       supply.code.toString().includes(filterState.search) ||
-      supply.name.toLowerCase().includes(filterState.search.toLowerCase()) ||
-      supply.supplier.toLowerCase().includes(filterState.search.toLowerCase())
+      normalize(supply.name).includes(q) ||
+      normalize(supply.supplier).includes(q)
     )
   }
 
@@ -999,32 +1000,6 @@ const formatFilterDate = (dateString) => {
   }
 }
 
-const getExpirationClass = (expirationDate, alertDays) => {
-  const today = new Date()
-  const expDate = new Date(expirationDate)
-  const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
-  const threshold = alertDays && alertDays > 0 ? alertDays : 90
-
-  if (daysUntilExpiration < 0) return 'text-red-600 font-semibold'
-  if (daysUntilExpiration <= threshold) return 'text-red-600 font-semibold'
-  return 'text-gray-900'
-}
-
-const getAmountClass = (currentAmount, criticalStock) => {
-  // Usar el critical_stock definido para el insumo
-  const critical = criticalStock || 1 // Por defecto 1 si no está definido
-  
-  // Definir umbrales basados en el stock crítico
-  const warningThreshold = critical * 2 // El doble del stock crítico como advertencia
-  
-  if (currentAmount <= critical) {
-    return 'text-red-600 font-semibold' // Stock crítico o menor - ROJO
-  }
-  if (currentAmount <= warningThreshold) {
-    return 'text-orange-600 font-semibold' // Entre crítico y el doble - NARANJA
-  }
-  return 'text-gray-900' // Por encima del doble del crítico - NORMAL
-}
 
 const getStatusBadgeClass = (status) => {
   const statusLower = (status || '').toLowerCase()

@@ -116,22 +116,18 @@
         default-sort-key="supply_name"
         max-height="600px"
         empty-message="Este pabellón no tiene insumos registrados actualmente"
-        :row-class="(row) => isExpired(row.expiration_date) ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'"
+        :row-class="(row) => row.in_transit ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'"
         :table-actions="[{ type: 'view', label: 'Ver detalles', onClick: (row) => openDetailModal(row) }]"
       >
         <!-- Columna Insumo -->
         <template #cell-supply_name="{ row }">
-          <div>
-            {{ row.supply_name }}
-            <span v-if="row.in_transit" class="ml-1 text-xs text-blue-700">En tránsito</span>
-          </div>
+          <div>{{ row.supply_name }}</div>
           <div class="text-xs text-gray-500">{{ row.qr_code || '—' }}</div>
         </template>
 
         <!-- Columna Disponible -->
         <template #cell-current_available="{ row }">
           <div>{{ row.current_available }} unidades</div>
-          <div v-if="row.current_available < 5" class="text-xs text-red-600">Stock bajo</div>
         </template>
 
         <!-- Columna Total Recibido -->
@@ -152,8 +148,6 @@
         <!-- Columna F. Vencimiento -->
         <template #cell-expiration_date="{ row }">
           <div :class="getExpirationClass(row.expiration_date)">{{ formatDate(row.expiration_date) }}</div>
-          <div v-if="isExpired(row.expiration_date)" class="text-xs text-red-700">Vencido</div>
-          <div v-else-if="isNearExpiration(row.expiration_date)" class="text-xs text-orange-600">Vence pronto</div>
         </template>
       </DataTable>
     </div>
@@ -193,7 +187,6 @@
             <div class="bg-gray-50 rounded-lg p-3">
               <p class="text-xs text-gray-500">Disponible</p>
               <p class="text-lg font-semibold text-gray-900">{{ detailModal.row?.current_available }} unidades</p>
-              <p v-if="detailModal.row?.current_available < 5" class="text-xs text-red-600">Stock bajo</p>
             </div>
             <div class="bg-gray-50 rounded-lg p-3">
               <p class="text-xs text-gray-500">Total Recibido</p>
@@ -216,8 +209,6 @@
               <p class="text-sm font-medium" :class="getExpirationClass(detailModal.row?.expiration_date)">
                 {{ formatDate(detailModal.row?.expiration_date) }}
               </p>
-              <p v-if="isExpired(detailModal.row?.expiration_date)" class="text-xs text-red-600">Vencido</p>
-              <p v-else-if="isNearExpiration(detailModal.row?.expiration_date)" class="text-xs text-orange-500">Vence pronto</p>
             </div>
           </div>
         </div>
@@ -237,6 +228,9 @@ import QRCode from 'qrcode'
 import inventoryService from '@/services/inventory/inventoryService'
 import FilterPanel from '@/components/common/FilterPanel.vue'
 import DataTable from '@/components/common/DataTable.vue'
+import { useInventoryAlerts } from '@/composables/useInventoryAlerts'
+
+const { isExpired, isNearExpiration, getExpirationClass } = useInventoryAlerts()
 
 const loading = ref(false)
 const error = ref(null)
@@ -347,13 +341,6 @@ const getTotalConsumed = () => {
   return inventory.value.reduce((sum, item) => sum + (item.total_consumed || 0), 0)
 }
 
-const getAvailabilityClass = (available) => {
-  if (available === 0) return 'text-red-600'
-  if (available < 5) return 'text-orange-600'
-  if (available < 10) return 'text-yellow-600'
-  return 'text-green-600'
-}
-
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   try {
@@ -363,25 +350,6 @@ const formatDate = (dateString) => {
   }
 }
 
-const isExpired = (expirationDate) => {
-  if (!expirationDate) return false
-  return Math.ceil((new Date(expirationDate) - new Date()) / (1000 * 60 * 60 * 24)) < 0
-}
-
-const isNearExpiration = (expirationDate) => {
-  if (!expirationDate) return false
-  const days = Math.ceil((new Date(expirationDate) - new Date()) / (1000 * 60 * 60 * 24))
-  return days >= 0 && days <= 90
-}
-
-const getExpirationClass = (expirationDate) => {
-  if (!expirationDate) return 'text-gray-900'
-  const days = Math.ceil((new Date(expirationDate) - new Date()) / (1000 * 60 * 60 * 24))
-  if (days < 0) return 'text-red-600'
-  if (days <= 30) return 'text-red-600'
-  if (days <= 90) return 'text-orange-600'
-  return 'text-gray-900'
-}
 
 const detailModal = reactive({ show: false, row: null, qrImage: null, qrLoading: false })
 

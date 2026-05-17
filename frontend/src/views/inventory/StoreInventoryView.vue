@@ -173,7 +173,7 @@
       </template>
 
       <template #cell-expiration_date="{ row }">
-        <span :class="getExpirationClass(row.expiration_date, row.expiration_alert_days)">
+        <span :class="getExpirationClass(row.expiration_date)">
           {{ formatDate(row.expiration_date) }}
         </span>
       </template>
@@ -188,6 +188,9 @@ import FilterPanel from '@/components/common/FilterPanel.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import inventoryService from '@/services/inventory/inventoryService'
 import surgeryService from '@/services/management/surgeryService'
+import { useInventoryAlerts } from '@/composables/useInventoryAlerts'
+
+const { isLowStock, isMediumStock, getStockClass, getExpirationClass } = useInventoryAlerts()
 
 const route = useRoute()
 const initialStoreId = Array.isArray(route.query.store_id) ? route.query.store_id[0] : route.query.store_id
@@ -308,9 +311,9 @@ const filteredSurgeries = computed(() => {
   if (!surgerySearch.value.trim()) {
     return surgeries.value.slice(0, 10)
   }
-  const search = surgerySearch.value.toLowerCase().trim()
-  return surgeries.value.filter(surgery => 
-    surgery.name.toLowerCase().includes(search)
+  const search = normalizeText(surgerySearch.value)
+  return surgeries.value.filter(surgery =>
+    normalizeText(surgery.name).includes(search)
   ).slice(0, 10)
 })
 
@@ -442,7 +445,7 @@ const onSurgerySearch = () => {
   showSurgeryOptions.value = true
   // Si el texto coincide exactamente con una cirugía, seleccionarla automáticamente
   const exactMatch = surgeries.value.find(surgery => 
-    surgery.name.toLowerCase() === surgerySearch.value.toLowerCase()
+    normalizeText(surgery.name) === normalizeText(surgerySearch.value)
   )
   if (exactMatch) {
     filters.value.surgery_id = exactMatch.id.toString()
@@ -504,45 +507,11 @@ const formatDate = (dateString) => {
   }
 }
 
-// Stock bajo = en o por debajo del umbral crítico del insumo (misma regla que Inventory.vue)
-const isLowStock = (current, critical) => {
-  if (critical == null) return false
-  const threshold = critical || 1
-  return current <= threshold
-}
-
-// Stock medio = entre crítico y 2x crítico (misma regla que Inventory.vue)
-const isMediumStock = (current, critical) => {
-  if (critical == null) return false
-  const threshold = critical || 1
-  return current > threshold && current <= threshold * 2
-}
-
-// Color del número de stock (prioridad: rojo > naranja > gris)
-const getStockClass = (current, critical) => {
-  if (isLowStock(current, critical)) return 'text-red-600 font-semibold'
-  if (isMediumStock(current, critical)) return 'text-orange-600 font-semibold'
-  return 'text-gray-900'
-}
-
 // Color de fondo de la fila según nivel de stock
 const getRowClass = (current, critical) => {
   if (isLowStock(current, critical)) return 'bg-red-50 hover:bg-red-100'
   if (isMediumStock(current, critical)) return 'bg-orange-50 hover:bg-orange-100'
   return 'hover:bg-gray-50'
-}
-
-
-const getExpirationClass = (expirationDate, alertDays) => {
-  if (!expirationDate) return 'text-gray-900'
-  const today = new Date()
-  const expDate = new Date(expirationDate)
-  const days = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24))
-  const threshold = alertDays && alertDays > 0 ? alertDays : 90
-
-  if (days < 0) return 'text-red-600 font-semibold'
-  if (days <= threshold) return 'text-red-600 font-semibold'
-  return 'text-gray-900'
 }
 
 onMounted(async () => {

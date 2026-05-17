@@ -233,46 +233,47 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
         <!-- Tendencia de transferencias -->
         <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border p-3 sm:p-4 md:p-6">
-          <div class="flex flex-col gap-2 mb-3 sm:mb-4">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-pink bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/></svg>
+          <!-- Header -->
+          <div class="flex items-start justify-between gap-3 mb-2 sm:mb-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-pink bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-5"/></svg>
+                </div>
+                <h3 class="text-sm sm:text-base font-semibold text-gray-900">Transferencias de insumos</h3>
               </div>
-              <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-900 truncate">Tendencia de transferencias</h3>
+              <p v-if="dateRangeLabel" class="text-xs text-gray-400 mt-0.5 ml-9">{{ dateRangeLabel }} · por {{ transferPeriodLabel }}</p>
             </div>
-            <div class="flex gap-1.5 flex-wrap">
-              <button class="px-2 py-1 text-xs rounded border flex-1 sm:flex-initial whitespace-nowrap" :class="transferRange==='7d' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink' : 'bg-white text-gray-700'" @click="transferRange='7d'">7d</button>
-              <button class="px-2 py-1 text-xs rounded border flex-1 sm:flex-initial whitespace-nowrap" :class="transferRange==='30d' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink' : 'bg-white text-gray-700'" @click="transferRange='30d'">30d</button>
-              <button class="px-2 py-1 text-xs rounded border flex-1 sm:flex-initial whitespace-nowrap" :class="transferRange==='6m' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink' : 'bg-white text-gray-700'" @click="transferRange='6m'">6m</button>
-              <button class="px-2 py-1 text-xs rounded border flex-1 sm:flex-initial whitespace-nowrap" :class="transferRange==='1y' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink' : 'bg-white text-gray-700'" @click="transferRange='1y'">1a</button>
-              <button class="px-2 py-1 text-xs rounded border flex-1 sm:flex-initial whitespace-nowrap" :class="transferRange==='all' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink' : 'bg-white text-gray-700'" @click="transferRange='all'">Todo</button>
-            </div>
-          </div>
-          <div class="h-20 sm:h-24 flex items-center justify-center" v-if="!hasTrendData">
-            <div class="text-center">
-              <div class="text-xs sm:text-sm text-gray-500">Sin transferencias</div>
-              <div class="text-xs text-gray-400">en el periodo seleccionado</div>
+            <div class="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+              <button class="px-2 py-1 text-xs rounded border transition-colors" :class="transferRange==='7d' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink font-medium' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'" @click="transferRange='7d'">7d</button>
+              <button class="px-2 py-1 text-xs rounded border transition-colors" :class="transferRange==='30d' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink font-medium' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'" @click="transferRange='30d'">30d</button>
+              <button class="px-2 py-1 text-xs rounded border transition-colors" :class="transferRange==='6m' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink font-medium' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'" @click="transferRange='6m'">6m</button>
+              <button class="px-2 py-1 text-xs rounded border transition-colors" :class="transferRange==='1y' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink font-medium' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'" @click="transferRange='1y'">1a</button>
+              <button class="px-2 py-1 text-xs rounded border transition-colors" :class="transferRange==='all' ? 'bg-brand-pink bg-opacity-20 border-brand-pink text-brand-pink font-medium' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'" @click="transferRange='all'">Todo</button>
             </div>
           </div>
-          <div class="h-20 sm:h-24" v-else>
-            <svg width="100%" height="100%" viewBox="0 0 220 48" preserveAspectRatio="none" style="overflow: visible;">
-              <defs>
-                <linearGradient id="spark" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stop-color="#FA92B9" stop-opacity="0.4"/>
-                  <stop offset="100%" stop-color="#FA92B9" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-              <path 
-                v-if="sparklinePath && sparklinePath.length > 0"
-                :d="sparklinePath" 
-                stroke="#FA92B9" 
-                fill="none" 
-                stroke-width="2" 
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
+
+          <!-- Pills resumen -->
+          <div v-if="hasTrendData" class="flex gap-2 mb-3 ml-9 flex-wrap">
+            <span class="inline-flex items-center gap-1 text-xs bg-gray-50 border border-gray-200 rounded-full px-2.5 py-0.5 text-gray-600">
+              <span class="font-semibold text-gray-900">{{ totalTransfers }}</span> totales
+            </span>
+            <span class="inline-flex items-center gap-1 text-xs bg-gray-50 border border-gray-200 rounded-full px-2.5 py-0.5 text-gray-600">
+              ~<span class="font-semibold text-gray-900">{{ averageTransfers }}</span> / {{ transferPeriodLabel }}
+            </span>
+          </div>
+
+          <!-- Empty state -->
+          <div v-if="!hasTrendData" class="h-52 sm:h-64 flex flex-col items-center justify-center gap-2 text-gray-400">
+            <svg class="w-10 h-10 opacity-30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 16v-4M11 16V8M15 16v-6M19 16v-2"/>
             </svg>
-            <div class="text-xs text-gray-500 mt-2">Total: {{ totalTransfers }}</div>
+            <span class="text-xs sm:text-sm">Sin transferencias en el periodo seleccionado</span>
+          </div>
+
+          <!-- Chart -->
+          <div v-else class="h-52 sm:h-64">
+            <Bar :key="transferRange" :data="transferChartData" :options="transferChartOptions" />
           </div>
         </div>
 
@@ -393,18 +394,22 @@
 
         <!-- Top Insumos más utilizados -->
         <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border p-3 sm:p-4 md:p-6">
-          <div class="flex items-center gap-2 mb-3 sm:mb-4">
-            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-blue-dark bg-opacity-20 flex items-center justify-center flex-shrink-0">
-              <svg class="w-3 h-3 sm:w-4 sm:h-4 text-brand-blue-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="6" y="3" width="12" height="6" rx="1"/>
-                <path d="M8 9v9a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V9"/>
-                <path d="M9 6h6"/>
-              </svg>
+          <div class="flex flex-col gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-blue-dark bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3 sm:w-4 sm:h-4 text-brand-blue-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="6" y="3" width="12" height="6" rx="1"/>
+                  <path d="M8 9v9a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V9"/>
+                  <path d="M9 6h6"/>
+                </svg>
+              </div>
+              <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-900 truncate">Top Insumos más utilizados</h3>
+              <span class="text-xs bg-brand-blue-dark bg-opacity-10 text-brand-blue-dark px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">{{ topSupplies.length }}</span>
             </div>
-            <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-900">Top Insumos más utilizados</h3>
+            <input v-model="supplySearch" type="text" placeholder="Buscar..." class="text-xs sm:text-sm border rounded px-2 sm:px-3 py-1.5 sm:py-2 focus:outline-none focus:ring-2 focus:ring-brand-blue-dark focus:ring-opacity-30 w-full" />
           </div>
           <div class="space-y-2 max-h-52 sm:max-h-60 md:max-h-80 overflow-y-auto pr-1 sm:pr-2">
-            <div v-for="s in topSupplies" :key="s.code" class="p-2 sm:p-3 bg-gray-50 rounded-lg shadow-sm">
+            <div v-for="s in filteredTopSupplies" :key="s.code" class="p-2 sm:p-3 bg-gray-50 rounded-lg shadow-sm">
               <div class="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
                 <div class="flex items-center gap-2 min-w-0 flex-1">
                   <div class="w-6 h-6 sm:w-7 sm:h-7 rounded bg-brand-blue-dark bg-opacity-20 flex items-center justify-center flex-shrink-0 shadow-inner">
@@ -428,7 +433,9 @@
                 <div class="h-1.5 sm:h-2 bg-brand-blue-dark rounded-full" :style="{ width: Math.min(100, Math.round((Number(s.total||0) / maxTopSupply) * 100)) + '%' }"></div>
               </div>
             </div>
-            <div v-if="!topSupplies.length" class="text-xs sm:text-sm text-gray-500 text-center py-4">Sin datos disponibles</div>
+            <div v-if="!filteredTopSupplies.length" class="text-xs sm:text-sm text-gray-500 text-center py-4">
+              {{ supplySearch ? 'Sin resultados para la búsqueda' : 'Sin datos disponibles' }}
+            </div>
           </div>
         </div>
 
@@ -536,6 +543,18 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { Bar } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js'
 import inventoryService from '@/services/inventory/inventoryService'
 import supplyRequestService from '@/services/requests/supplyRequestService'
 import surgeryService from '@/services/management/surgeryService'
@@ -543,6 +562,9 @@ import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import doctorInfoService from '@/services/config/doctorInfoService'
 import surgeryTypicalSupplyService from '@/services/management/surgeryTypicalSupplyService'
 import supplyHistoryService from '@/services/inventory/supplyHistoryService'
+import { normalize } from '@/utils/normalize'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend)
 
 const router = useRouter()
 
@@ -607,8 +629,8 @@ const surgeriesWithTotals = computed(() => {
     total_transferred: totalsMap.get(s.id) || 0,
   }))
   if (!surgerySearch.value) return all
-  const term = surgerySearch.value.toLowerCase()
-  return all.filter(x => (x.surgery_name || '').toLowerCase().includes(term))
+  const term = normalize(surgerySearch.value)
+  return all.filter(x => normalize(x.surgery_name || '').includes(term))
 })
 
 // Estadísticas por cirugía: todas las cirugías con datos disponibles
@@ -673,8 +695,8 @@ const surgeryStatistics = computed(() => {
   })
 
   if (!surgerySearch.value) return stats
-  const term = surgerySearch.value.toLowerCase()
-  return stats.filter(x => (x.surgery_name || '').toLowerCase().includes(term))
+  const term = normalize(surgerySearch.value)
+  return stats.filter(x => normalize(x.surgery_name || '').includes(term))
 })
 
 const lowStockList = ref([])
@@ -702,16 +724,101 @@ const movementBars = ref({
 })
 const transferTrend = ref([])
 const totalTransfers = computed(() => transferTrend.value.reduce((a, x) => a + (Number(x.count)||0), 0))
-const hasTrendData = computed(() => {
-  // Tener datos si hay puntos Y si el total es mayor a 0
-  return transferTrend.value.length > 0 && totalTransfers.value > 0
-})
 const transferRange = ref('7d')
+
+const aggregatedTrend = computed(() => {
+  const data = transferTrend.value
+  const range = transferRange.value
+
+  // Lookup de datos reales por fecha "YYYY-MM-DD"
+  const dataMap = new Map()
+  data.forEach(p => { if (p.date) dataMap.set(p.date.slice(0, 10), Number(p.count) || 0) })
+
+  const toStr = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+  const { start, now: rangeEnd } = getStartDateByRange(range)
+  const finish = new Date(rangeEnd); finish.setHours(0,0,0,0)
+  const points = []
+
+  if (range === '7d' || range === '30d') {
+    // Un punto por día
+    const cursor = new Date(start); cursor.setHours(0,0,0,0)
+    while (cursor <= finish) {
+      const ds = toStr(cursor)
+      points.push({ date: ds, label: cursor.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' }), count: dataMap.get(ds) || 0 })
+      cursor.setDate(cursor.getDate() + 1)
+    }
+  } else if (range === '6m') {
+    // Un punto por semana (lunes como inicio)
+    const cursor = new Date(start); cursor.setHours(0,0,0,0)
+    cursor.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7)) // retroceder al lunes
+    while (cursor <= finish) {
+      let weekCount = 0
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(cursor); d.setDate(cursor.getDate() + i)
+        weekCount += dataMap.get(toStr(d)) || 0
+      }
+      points.push({ date: toStr(cursor), label: cursor.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' }), count: weekCount })
+      cursor.setDate(cursor.getDate() + 7)
+    }
+  } else {
+    // Un punto por mes
+    const cursor = new Date(range === 'all' && data.length
+      ? [...data].filter(p => p.date).map(p => p.date).sort()[0] + 'T00:00:00'
+      : start)
+    cursor.setDate(1); cursor.setHours(0,0,0,0)
+    while (cursor <= finish) {
+      const year = cursor.getFullYear(); const month = cursor.getMonth()
+      const daysInMonth = new Date(year, month + 1, 0).getDate()
+      let monthCount = 0
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(year, month, day)
+        if (d <= finish) monthCount += dataMap.get(toStr(d)) || 0
+      }
+      points.push({ date: toStr(new Date(year, month, 1)), label: cursor.toLocaleDateString('es-CL', { month: 'short', year: 'numeric' }), count: monthCount })
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
+  }
+
+  return points
+})
+
+const transferPeriodLabel = computed(() => {
+  if (transferRange.value === '6m') return 'semana'
+  if (transferRange.value === '1y' || transferRange.value === 'all') return 'mes'
+  return 'día'
+})
+
+const dateRangeLabel = computed(() => {
+  const range = transferRange.value
+  if (range === 'all') return 'Todo el historial'
+  const fmt = (d) => d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })
+  const { start, now } = getStartDateByRange(range)
+  return `${fmt(start)} → ${fmt(now)}`
+})
+
+const averageTransfers = computed(() => {
+  const pts = aggregatedTrend.value
+  if (!pts.length) return 0
+  return Math.round(totalTransfers.value / pts.length)
+})
+
+const hasTrendData = computed(() => aggregatedTrend.value.length > 0 && totalTransfers.value > 0)
 
 const pavilionList = ref([])
 const storeList = ref([])
 
 const topSupplies = ref([])
+const supplySearch = ref('')
+const filteredTopSupplies = computed(() => {
+  if (!supplySearch.value.trim()) return topSupplies.value
+  const term = normalize(supplySearch.value)
+  return topSupplies.value.filter(s =>
+    normalize(s.name).includes(term) ||
+    normalize(String(s.code)).includes(term)
+  )
+})
 const maxTopSupply = computed(() => {
   if (!topSupplies.value.length) return 1
   return Math.max(...topSupplies.value.map(s => Number(s.total || 0)), 1)
@@ -766,47 +873,89 @@ function formatISODate(d) {
   return new Date(d).toISOString().slice(0, 10)
 }
 
-function buildSparklinePath(points, width = 220, height = 48) {
-  if (!points.length) return ''
-  
-  // Obtener todos los counts y encontrar el máximo
-  const counts = points.map(p => Number(p.count) || 0)
-  const maxY = Math.max(...counts, 1) // Al menos 1 para evitar división por cero
-  
-  // Si solo hay un punto, duplicarlo al inicio y al final para que se vea la línea
-  let processedPoints = points
-  if (points.length === 1) {
-    processedPoints = [
-      { count: 0, date: '' },
-      { ...points[0] },
-      { count: 0, date: '' }
-    ]
+function formatChartDate(dateStr, range) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (range === '7d' || range === '30d') {
+    return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
   }
-  
-  const pointCount = processedPoints.length
-  const stepX = pointCount > 1 ? width / (pointCount - 1) : width
-  const padding = 4 // Padding vertical para que no toque los bordes
-  const scaleY = (val) => {
-    const scaled = (val / maxY) * (height - padding * 2)
-    return height - scaled - padding
-  }
-  
-  // Construir el path
-  let path = ''
-  processedPoints.forEach((p, i) => {
-    const x = i * stepX
-    const y = scaleY(Number(p.count) || 0)
-    if (i === 0) {
-      path = `M ${x} ${y}`
-    } else {
-      path += ` L ${x} ${y}`
-    }
-  })
-  
-  return path
+  return d.toLocaleDateString('es-CL', { month: 'short', year: '2-digit' })
 }
 
-const sparklinePath = computed(() => buildSparklinePath(transferTrend.value))
+const transferChartData = computed(() => {
+  const pts = aggregatedTrend.value
+  const avg = pts.length ? totalTransfers.value / pts.length : 0
+  return {
+    labels: pts.map(p => p.label || formatChartDate(p.date, transferRange.value)),
+    datasets: [
+      {
+        type: 'bar',
+        label: 'Transferencias',
+        data: pts.map(p => Number(p.count) || 0),
+        backgroundColor: 'rgba(250, 146, 185, 0.5)',
+        borderColor: '#FA92B9',
+        borderWidth: 1.5,
+        borderRadius: 4,
+        hoverBackgroundColor: 'rgba(250, 146, 185, 0.85)',
+        order: 2,
+      },
+      {
+        type: 'line',
+        label: 'Promedio',
+        data: pts.map(() => Math.round(avg * 10) / 10),
+        borderColor: 'rgba(100, 116, 139, 0.45)',
+        borderWidth: 1.5,
+        borderDash: [5, 4],
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+        order: 1,
+      },
+    ],
+  }
+})
+
+const transferChartOptions = computed(() => {
+  const period = transferPeriodLabel.value
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: { boxWidth: 10, padding: 10, font: { size: 10 } },
+      },
+      tooltip: {
+        callbacks: {
+          title: (ctx) => {
+            const label = ctx[0]?.label ?? ''
+            if (period === 'semana') return `Semana del ${label}`
+            if (period === 'mes') return label.charAt(0).toUpperCase() + label.slice(1)
+            return label
+          },
+          label: (ctx) => {
+            const v = ctx.parsed.y
+            if (ctx.dataset.label === 'Promedio') return ` Promedio: ${v} / ${period}`
+            return ` ${v} transferencia${v !== 1 ? 's' : ''}`
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { maxRotation: 0, font: { size: 10 }, maxTicksLimit: 12 },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { precision: 0, font: { size: 10 } },
+        grid: { color: 'rgba(0,0,0,0.05)' },
+      },
+    },
+  }
+})
 
 async function loadPavilionDistribution() {
   const pavilions = await inventoryService.getAllPavilions()
@@ -870,16 +1019,24 @@ function getStartDateByRange(range) {
   return { start, now }
 }
 
+const trendCache = new Map()
+
 async function loadTrend() {
+  if (trendCache.has(transferRange.value)) {
+    transferTrend.value = trendCache.get(transferRange.value)
+    movementBars.value.transferencias = totalTransfers.value
+    return
+  }
   try {
     const { start, now } = getStartDateByRange(transferRange.value)
     const transferReport = await inventoryService.getTransferReport(formatISODate(start), formatISODate(now), 'date')
-    // El backend devuelve {report: [...], ...}, necesitamos extraer el array de report
     const reportData = transferReport?.report || transferReport || []
-    transferTrend.value = (Array.isArray(reportData) ? reportData : []).map(r => ({
+    const points = (Array.isArray(reportData) ? reportData : []).map(r => ({
       date: r.transfer_date || r.date || '',
       count: Number(r.transfer_count || 0),
     }))
+    transferTrend.value = points
+    trendCache.set(transferRange.value, points)
     movementBars.value.transferencias = totalTransfers.value
   } catch (err) {
     console.error('Error cargando tendencia de transferencias:', err)

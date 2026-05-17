@@ -83,7 +83,10 @@
             {{ row.surgery_name || 'Sin tipo de cirugía' }}
           </template>
           <template #cell-total_in_store="{ row }">
-            {{ row.total_in_store || 0 }} unidades
+            <span :class="getSurgeryStockClass(row)" class="font-semibold">{{ row.total_in_store || 0 }}</span>
+            <span :class="getSurgeryStockClass(row)" class="text-xs ml-1">unidades</span>
+            <span v-if="row.critical_batch_count > 0" class="block text-xs text-red-500 mt-0.5">{{ row.critical_batch_count }} lote{{ row.critical_batch_count > 1 ? 's' : '' }} crítico{{ row.critical_batch_count > 1 ? 's' : '' }}</span>
+            <span v-else-if="row.warning_batch_count > 0" class="block text-xs text-orange-500 mt-0.5">{{ row.warning_batch_count }} lote{{ row.warning_batch_count > 1 ? 's' : '' }} en alerta</span>
           </template>
           <template #cell-total_transferred="{ row }">
             {{ row.total_transferred || 0 }} unidades
@@ -204,6 +207,16 @@ import { ref, computed, onMounted } from 'vue'
 import inventoryService from '@/services/inventory/inventoryService'
 import DataTable from '@/components/common/DataTable.vue'
 import FilterPanel from '@/components/common/FilterPanel.vue'
+import { normalize } from '@/utils/normalize'
+import { useInventoryAlerts } from '@/composables/useInventoryAlerts'
+
+const { getExpirationClass, getStockClass } = useInventoryAlerts()
+
+const getSurgeryStockClass = (row) => {
+  if ((row.critical_batch_count ?? 0) > 0) return 'text-red-600'
+  if ((row.warning_batch_count ?? 0) > 0) return 'text-orange-600'
+  return 'text-gray-900'
+}
 
 const tableColumns = [
   { key: 'surgery_name', label: 'Tipo de Cirugía' },
@@ -232,16 +245,11 @@ const mainFilterConfig = [
   }
 ]
 
-const normalizeText = (text) => {
-  if (!text) return ''
-  return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-}
-
 const filteredSurgeryInventory = computed(() => {
   if (!mainSearch.value.trim()) return surgeryInventory.value
-  const q = normalizeText(mainSearch.value)
+  const q = normalize(mainSearch.value)
   return surgeryInventory.value.filter(item =>
-    normalizeText(item.surgery_name).includes(q)
+    normalize(item.surgery_name).includes(q)
   )
 })
 
@@ -299,7 +307,7 @@ const modalFilterConfig = computed(() => [
 const filteredModalItems = computed(() => {
   return surgeryModal.value.items.filter(row => {
     const matchesSearch = !modalSearch.value.trim() ||
-      normalizeText(row.supply_name || row.name || '').includes(normalizeText(modalSearch.value))
+      normalize(row.supply_name || row.name || '').includes(normalize(modalSearch.value))
     const matchesStore = !modalStoreFilter.value ||
       (row.store_name || row.store || '') === modalStoreFilter.value
     return matchesSearch && matchesStore
@@ -342,21 +350,8 @@ const formatModalDate = (dateStr) => {
   return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
 }
 
-const expiryColorClass = (dateStr) => {
-  if (!dateStr) return 'text-gray-400'
-  const expiry = new Date(dateStr)
-  const now = new Date()
-  const diffDays = (expiry - now) / (1000 * 60 * 60 * 24)
-  if (diffDays <= 15) return 'text-red-600 font-medium'
-  if (diffDays <= 30) return 'text-orange-500 font-medium'
-  return 'text-gray-500'
-}
-
-const stockColorClass = (qty, critical) => {
-  if (qty <= critical) return 'text-red-600'
-  if (qty <= critical * 2) return 'text-orange-500'
-  return 'text-gray-900'
-}
+const expiryColorClass = getExpirationClass
+const stockColorClass = getStockClass
 
 const loadDashboard = async () => {
   loading.value = true

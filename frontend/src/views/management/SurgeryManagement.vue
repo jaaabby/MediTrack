@@ -165,6 +165,7 @@ import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import FilterPanel from '@/components/common/FilterPanel.vue'
 import DataTable from '@/components/common/DataTable.vue'
+import { normalize } from '@/utils/normalize'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirmDanger } = useAlert()
@@ -188,10 +189,10 @@ const tableColumns = [
 const filteredSurgeries = computed(() => {
   if (!surgeries.value || surgeries.value.length === 0) return []
   if (!filterState.search.trim()) return surgeries.value
-  const term = filterState.search.toLowerCase().trim()
+  const term = normalize(filterState.search)
   return surgeries.value.filter(s =>
-    (s.name || '').toLowerCase().includes(term) ||
-    (s.description || '').toLowerCase().includes(term)
+    normalize(s.name).includes(term) ||
+    normalize(s.description).includes(term)
   )
 })
 

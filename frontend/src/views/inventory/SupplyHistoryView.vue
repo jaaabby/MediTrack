@@ -228,6 +228,7 @@ import { es } from 'date-fns/locale'
 import { useNotification } from '@/composables/useNotification'
 import FilterPanel from '@/components/common/FilterPanel.vue'
 import DataTable from '@/components/common/DataTable.vue'
+import { normalize } from '@/utils/normalize'
 
 const history = ref([])
 const loading = ref(false)
@@ -277,14 +278,14 @@ const filteredHistory = computed(() => {
   let filtered = [...history.value]
 
   if (filterState.search) {
-    const term = filterState.search.toLowerCase()
+    const term = normalize(filterState.search)
     filtered = filtered.filter(item =>
-      item.supply_name?.toLowerCase().includes(term) ||
-      item.qr_code?.toLowerCase().includes(term) ||
-      item.medical_supply_id?.toString().includes(term) ||
-      item.status?.toLowerCase().includes(term) ||
-      item.user_rut?.toLowerCase().includes(term) ||
-      item.destination_type?.toLowerCase().includes(term)
+      normalize(item.supply_name).includes(term) ||
+      item.qr_code?.toLowerCase().includes(filterState.search.toLowerCase()) ||
+      item.medical_supply_id?.toString().includes(filterState.search) ||
+      normalize(item.status).includes(term) ||
+      item.user_rut?.toLowerCase().includes(filterState.search.toLowerCase()) ||
+      normalize(item.destination_type).includes(term)
     )
   }
 

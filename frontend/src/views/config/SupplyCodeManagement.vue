@@ -164,6 +164,7 @@ import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import FilterPanel from '@/components/common/FilterPanel.vue'
 import DataTable from '@/components/common/DataTable.vue'
+import { normalize } from '@/utils/normalize'
 
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 const { confirm, confirmDanger } = useAlert()
@@ -217,10 +218,10 @@ const onFilterChange = (key, value) => { filterState[key] = value }
 const filteredSupplyCodes = computed(() => {
   if (!supplyCodes.value || supplyCodes.value.length === 0) return []
   if (!filterState.search.trim()) return supplyCodes.value
-  const term = filterState.search.toLowerCase().trim()
+  const term = normalize(filterState.search)
   return supplyCodes.value.filter(sc =>
     String(sc.code).includes(term) ||
-    sc.name.toLowerCase().includes(term) ||
+    normalize(sc.name).includes(term) ||
     String(sc.code_supplier).includes(term)
   )
 })

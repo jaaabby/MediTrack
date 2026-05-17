@@ -192,6 +192,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
+import { normalize } from '@/utils/normalize'
 
 // Props
 const props = defineProps({
@@ -226,10 +227,10 @@ const filteredHistory = computed(() => {
   
   // Filtro por usuario
   if (userFilter.value) {
-    const filter = userFilter.value.toLowerCase()
-    filtered = filtered.filter(entry => 
+    const filter = normalize(userFilter.value)
+    filtered = filtered.filter(entry =>
       entry.user_rut?.toLowerCase().includes(filter) ||
-      entry.user_name?.toLowerCase().includes(filter)
+      normalize(entry.user_name).includes(filter)
     )
   }
   
@@ -251,10 +252,10 @@ const totalPages = computed(() => {
   let filtered = [...historyData.value]
   
   if (userFilter.value) {
-    const filter = userFilter.value.toLowerCase()
-    filtered = filtered.filter(entry => 
+    const filter = normalize(userFilter.value)
+    filtered = filtered.filter(entry =>
       entry.user_rut?.toLowerCase().includes(filter) ||
-      entry.user_name?.toLowerCase().includes(filter)
+      normalize(entry.user_name).includes(filter)
     )
   }
   

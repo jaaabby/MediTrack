@@ -254,6 +254,7 @@ import returnToBodegaService from '@/services/management/returnToBodegaService'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import { useQRPdfDownload } from '@/composables/useQRPdfDownload'
+import { normalize } from '@/utils/normalize'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 const { confirm } = useAlert()
@@ -332,8 +333,8 @@ const filterConfig = computed(() => [
     key: 'critical',
     label: 'Mostrar:',
     options: [
-      { value: '', label: `Todos (${suppliesForReturn.value.length})`, activeClass: 'bg-blue-600 text-white' },
-      { value: 'critical', label: `Críticos (${criticalSupplies.value.length})`, activeClass: 'bg-red-600 text-white' }
+      { value: '', label: 'Todos', activeClass: 'bg-blue-600 text-white' },
+      { value: 'critical', label: 'Críticos', activeClass: 'bg-red-600 text-white' }
     ]
   }
 ])
@@ -348,11 +349,11 @@ const filteredSupplies = computed(() => {
 
   // Filtro de texto
   if (filterState.search.trim()) {
-    const q = filterState.search.trim().toLowerCase()
+    const q = normalize(filterState.search)
     filtered = filtered.filter(s =>
-      (s.name || '').toLowerCase().includes(q) ||
-      (s.qrCode || '').toLowerCase().includes(q) ||
-      (s.supplier || '').toLowerCase().includes(q) ||
+      normalize(s.name).includes(q) ||
+      normalize(s.qrCode).includes(q) ||
+      normalize(s.supplier).includes(q) ||
       String(s.batchId || '').includes(q)
     )
   }

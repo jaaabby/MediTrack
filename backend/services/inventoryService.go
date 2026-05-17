@@ -116,6 +116,7 @@ func (s *InventoryService) GetPavilionInventory(
 		Select(`pis.*,
 			p.name as pavilion_name,
 			sc.name as supply_name,
+			COALESCE(sc.critical_stock, 1) as critical_stock,
 			supc.supplier_name as batch_supplier,
 			b.expiration_date as expiration_date,
 			(SELECT ms.qr_code FROM medical_supply ms WHERE ms.batch_id = pis.batch_id LIMIT 1) as qr_code,
@@ -484,8 +485,12 @@ func (s *InventoryService) GetInventoryBySurgeryType(storeID *int) ([]map[string
 			surg.name as surgery_name,
 			SUM(sis.current_in_store) as total_in_store,
 			SUM(sis.total_transferred_out) as total_transferred,
-			COUNT(DISTINCT sis.batch_id) as batch_count`).
+			COUNT(DISTINCT sis.batch_id) as batch_count,
+			COUNT(CASE WHEN sis.current_in_store <= COALESCE(sc.critical_stock, 1) THEN 1 END) as critical_batch_count,
+			COUNT(CASE WHEN sis.current_in_store > COALESCE(sc.critical_stock, 1)
+				AND sis.current_in_store <= COALESCE(sc.critical_stock, 1) * 2 THEN 1 END) as warning_batch_count`).
 		Joins("LEFT JOIN surgery surg ON sis.surgery_id = surg.id").
+		Joins("LEFT JOIN supply_code sc ON sis.supply_code = sc.code").
 		Group("surg.id, surg.name")
 
 	if storeID != nil {

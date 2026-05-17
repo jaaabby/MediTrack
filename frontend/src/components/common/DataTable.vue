@@ -196,6 +196,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { normalize } from '@/utils/normalize'
 
 const props = defineProps({
   /**
@@ -266,8 +267,8 @@ const sortedRows = computed(() => {
     let aVal = a[sortKey.value] ?? ''
     let bVal = b[sortKey.value] ?? ''
     if (typeof aVal === 'string') {
-      aVal = aVal.toLowerCase()
-      bVal = (bVal || '').toString().toLowerCase()
+      aVal = normalize(aVal)
+      bVal = normalize((bVal || '').toString())
     }
     if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1
     if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1

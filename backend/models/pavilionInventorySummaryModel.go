@@ -51,4 +51,5 @@ type PavilionInventorySummaryWithDetails struct {
 	MedicalCenterID   int     `json:"medical_center_id"`
 	MedicalCenterName *string `json:"medical_center_name,omitempty"`
 	InTransit         bool    `json:"in_transit" gorm:"-"`
+	CriticalStock     int     `json:"critical_stock"`
 }
