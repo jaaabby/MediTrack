@@ -426,8 +426,8 @@ ON CONFLICT (supplier_name) DO NOTHING;
 INSERT INTO batch (id, expiration_date, amount, supplier_id, store_id, supply_code, qr_code, surgery_id, location_type, location_id) VALUES
 -- Insumos generales
 (1, '2026-12-31', 150, 1, 1, 1001, 'BATCH_1001_001', NULL, 'store', 1),
-(2, '2026-01-15', 200, 1, 1, 1002, 'BATCH_1002_001', NULL, 'store', 1), -- VENCIDO (hace 1 mes)
-(3, '2026-03-10', 120, 2, 1, 1003, 'BATCH_1003_001', NULL, 'store', 1), -- PRÓXIMO A VENCIMIENTO (23 días)
+(2, CURRENT_DATE - INTERVAL '30 days', 200, 1, 1, 1002, 'BATCH_1002_001', NULL, 'store', 1), -- VENCIDO (~30 días)
+(3, CURRENT_DATE + INTERVAL '15 days', 120, 2, 1, 1003, 'BATCH_1003_001', NULL, 'store', 1), -- PRÓXIMO (~15 días)
 (4, '2026-08-30', 150, 2, 1, 1004, 'BATCH_1004_001', NULL, 'store', 1),
 (5, '2027-06-15', 300, 3, 1, 1005, 'BATCH_1005_001', NULL, 'store', 1),
 (6, '2026-11-20', 10, 4, 1, 1006, 'BATCH_1006_001', NULL, 'store', 1), -- STOCK BAJO (10 unidades, transferir 9)
@@ -1406,6 +1406,111 @@ INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, qu
 ((SELECT id FROM supply_request WHERE request_number = 'SOL-20250131163000'), 1401, 'Bisturí Eléctrico Desechable', 3, FALSE, 'rechazado', 'Stock insuficiente. Disponible: 1, Solicitado: 3', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '3 days')
 ON CONFLICT DO NOTHING;
 
+-- Solicitud 7: Parcialmente aprobada (algunos ítems aceptados, otros devueltos al médico)
+-- Este estado lo asigna automáticamente el backend cuando el encargado mezcla aceptado+devuelto
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id,
+    assigned_to, assigned_to_name, assigned_date, assigned_by_pavedad, assigned_by_pavedad_name,
+    approved_by, approved_by_name, approval_date
+) VALUES (
+    'SOL-20250208100000',
+    4,
+    '66666666-6',
+    'Dr. Roberto Silva',
+    NOW() - INTERVAL '3 days',
+    NOW() + INTERVAL '36 hours',
+    'parcialmente_aprobado',
+    'Encargado de bodega: Material ortopédico aprobado. Guantes devueltos al médico — stock disponible: 30 unidades, solicitado: 60. Ajuste la cantidad y reenvíe.',
+    1,
+    '66666666-6',
+    'Dr. Roberto Silva',
+    74,
+    (SELECT id FROM medical_specialty WHERE code = 'CIR_GEN'),
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '55 hours',
+    '44444444-4',
+    'Pavedad',
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '10 hours'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, quantity_approved, is_pediatric, item_status, item_notes, reviewed_by, reviewed_by_name, reviewed_at) VALUES
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250208100000'), 1001, 'Guantes Quirúrgicos Estériles', 60, NULL, FALSE, 'devuelto', 'Stock disponible: 30 unidades. Ajuste la cantidad solicitada.', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '10 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250208100000'), 1504, 'Tornillos Ortopédicos 3.5mm', 8, 8, FALSE, 'aceptado', NULL, '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '10 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250208100000'), 1505, 'Placas Ortopédicas Rectas', 3, 3, FALSE, 'aceptado', NULL, '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '10 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250208100000'), 1005, 'Gasas Estériles 10x10cm', 25, 25, FALSE, 'aceptado', NULL, '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '10 hours')
+ON CONFLICT DO NOTHING;
+
+-- Solicitud 8: Devuelta al solicitante (encargado pide correcciones)
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id,
+    assigned_to, assigned_to_name, assigned_date, assigned_by_pavedad, assigned_by_pavedad_name
+) VALUES (
+    'SOL-20250206100000',
+    1,
+    '33333333-3',
+    'Dr. Miguel Herrera',
+    NOW() - INTERVAL '2 days',
+    NOW() + INTERVAL '72 hours',
+    'devuelto',
+    'Encargado de bodega: Solicitud devuelta al médico. Se requiere especificar el tipo de sutura (reabsorbible o no reabsorbible) y ajustar cantidad de guantes (máximo disponible: 40 unidades).',
+    1,
+    '33333333-3',
+    'Dr. Miguel Herrera',
+    26,
+    (SELECT id FROM medical_specialty WHERE code = 'CIR_GEN'),
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '36 hours',
+    '44444444-4',
+    'Pavedad'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric, item_status, item_notes, reviewed_by, reviewed_by_name, reviewed_at) VALUES
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250206100000'), 1001, 'Guantes Quirúrgicos Estériles', 80, FALSE, 'devuelto', 'Stock máximo disponible: 40 unidades. Ajuste cantidad.', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '30 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250206100000'), 1101, 'Sutura Vicryl 2-0', 10, FALSE, 'devuelto', 'Especifique si reabsorbible o no reabsorbible.', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '30 hours'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250206100000'), 1005, 'Gasas Estériles 10x10cm', 30, FALSE, 'aceptado', NULL, '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '30 hours')
+ON CONFLICT DO NOTHING;
+
+-- Solicitud 9: Devuelta al encargado (doctor corrigió y reenvió)
+INSERT INTO supply_request (
+    request_number, pavilion_id, requested_by, requested_by_name,
+    request_date, surgery_datetime, status, notes, medical_center_id,
+    surgeon_id, surgeon_name, surgery_id, specialty_id,
+    assigned_to, assigned_to_name, assigned_date, assigned_by_pavedad, assigned_by_pavedad_name
+) VALUES (
+    'SOL-20250207150000',
+    2,
+    '55555555-5',
+    'Dr. Carlos Mendoza',
+    NOW() - INTERVAL '4 days',
+    NOW() + INTERVAL '24 hours',
+    'devuelto_al_encargado',
+    'Encargado de bodega: Solicitud devuelta, cantidad de guantes excede stock disponible. | Dr. Carlos Mendoza: Corregido — cantidad ajustada a 35 guantes y sutura especificada como Vicryl reabsorbible. Reenvío para procesamiento.',
+    1,
+    '55555555-5',
+    'Dr. Carlos Mendoza',
+    74,
+    (SELECT id FROM medical_specialty WHERE code = 'CIR_GEN'),
+    '11111111-1',
+    'Encargado Bodega',
+    NOW() - INTERVAL '3 days',
+    '44444444-4',
+    'Pavedad'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric, item_status, item_notes, reviewed_by, reviewed_by_name, reviewed_at) VALUES
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250207150000'), 1001, 'Guantes Quirúrgicos Estériles', 35, FALSE, 'devuelto', 'Cantidad original 60 — excedía stock. Corregido a 35.', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '2 days'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250207150000'), 1101, 'Sutura Vicryl 2-0', 8, FALSE, 'devuelto', 'Especificar tipo. Corregido: Vicryl reabsorbible.', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '2 days'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250207150000'), 1003, 'Jeringas 10ml', 15, FALSE, 'aceptado', NULL, '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '2 days')
+ON CONFLICT DO NOTHING;
+
 -- ============================================================================
 -- HISTORIAL INICIAL DE INSUMOS
 -- ============================================================================
@@ -1636,33 +1741,33 @@ ORDER BY orden_urgencia;
 -- Nuevos lotes para visualización QA (IDs 51-76, NO modificar IDs anteriores)
 INSERT INTO batch (id, expiration_date, amount, supplier_id, store_id, supply_code, qr_code, surgery_id, location_type, location_id) VALUES
 -- Pabellón 1 – 14 lotes (>10 → activa paginación)
-(51, '2025-12-01', 20, 18, 1, 1001, 'BATCH_PAB1_051', NULL, 'store', 1), -- stock 0  | VENCIDO
-(52, '2027-06-15', 20, 19, 1, 1002, 'BATCH_PAB1_052', NULL, 'store', 1), -- stock 0  | bueno
-(53, '2026-01-10', 15, 18, 1, 1003, 'BATCH_PAB1_053', NULL, 'store', 1), -- stock 2  | VENCIDO
-(54, '2026-03-10', 15, 20, 1, 1004, 'BATCH_PAB1_054', NULL, 'store', 1), -- stock 3  | próximo ~15d
-(55, '2026-03-15', 15, 20, 1, 1005, 'BATCH_PAB1_055', NULL, 'store', 1), -- stock 4  | próximo ~20d
-(56, '2026-04-14', 15, 19, 1, 1006, 'BATCH_PAB1_056', NULL, 'store', 1), -- stock 6  | próximo ~50d
-(57, '2027-09-20', 15, 21, 1, 1007, 'BATCH_PAB1_057', NULL, 'store', 1), -- stock 7  | bueno
-(58, '2028-01-15', 15, 21, 1, 1008, 'BATCH_PAB1_058', NULL, 'store', 1), -- stock 8  | bueno
-(59, '2026-03-05', 25, 22, 1, 1009, 'BATCH_PAB1_059', NULL, 'store', 1), -- stock 12 | próximo ~10d
-(60, '2027-12-31', 25, 22, 1, 1010, 'BATCH_PAB1_060', NULL, 'store', 1), -- stock 15 | bueno
-(61, '2028-06-30', 15, 23, 1, 1101, 'BATCH_PAB1_061', NULL, 'store', 1), -- stock 5  | bueno
-(62, '2028-10-15', 15, 18, 1, 1102, 'BATCH_PAB1_062', NULL, 'store', 1), -- stock 1  | bueno
-(63, '2025-08-10', 25, 23, 1, 1103, 'BATCH_PAB1_063', NULL, 'store', 1), -- stock 20 | VENCIDO
-(64, '2026-03-20', 15, 24, 1, 1104, 'BATCH_PAB1_064', NULL, 'store', 1), -- stock 9  | próximo ~25d
+(51, CURRENT_DATE - INTERVAL '60 days', 20, 18, 1, 1001, 'BATCH_PAB1_051', NULL, 'store', 1), -- stock 0  | VENCIDO
+(52, '2027-06-15',                     20, 19, 1, 1002, 'BATCH_PAB1_052', NULL, 'store', 1), -- stock 0  | bueno
+(53, CURRENT_DATE - INTERVAL '45 days', 15, 18, 1, 1003, 'BATCH_PAB1_053', NULL, 'store', 1), -- stock 2  | VENCIDO
+(54, CURRENT_DATE + INTERVAL '10 days', 15, 20, 1, 1004, 'BATCH_PAB1_054', NULL, 'store', 1), -- stock 3  | próximo ~10d
+(55, CURRENT_DATE + INTERVAL '20 days', 15, 20, 1, 1005, 'BATCH_PAB1_055', NULL, 'store', 1), -- stock 4  | próximo ~20d
+(56, CURRENT_DATE + INTERVAL '50 days', 15, 19, 1, 1006, 'BATCH_PAB1_056', NULL, 'store', 1), -- stock 6  | próximo ~50d
+(57, '2027-09-20',                      15, 21, 1, 1007, 'BATCH_PAB1_057', NULL, 'store', 1), -- stock 7  | bueno
+(58, '2028-01-15',                      15, 21, 1, 1008, 'BATCH_PAB1_058', NULL, 'store', 1), -- stock 8  | bueno
+(59, CURRENT_DATE + INTERVAL '7 days',  25, 22, 1, 1009, 'BATCH_PAB1_059', NULL, 'store', 1), -- stock 12 | próximo ~7d
+(60, '2027-12-31',                      25, 22, 1, 1010, 'BATCH_PAB1_060', NULL, 'store', 1), -- stock 15 | bueno
+(61, '2028-06-30',                      15, 23, 1, 1101, 'BATCH_PAB1_061', NULL, 'store', 1), -- stock 5  | bueno
+(62, '2028-10-15',                      15, 18, 1, 1102, 'BATCH_PAB1_062', NULL, 'store', 1), -- stock 1  | bueno
+(63, CURRENT_DATE - INTERVAL '90 days', 25, 23, 1, 1103, 'BATCH_PAB1_063', NULL, 'store', 1), -- stock 20 | VENCIDO
+(64, CURRENT_DATE + INTERVAL '25 days', 15, 24, 1, 1104, 'BATCH_PAB1_064', NULL, 'store', 1), -- stock 9  | próximo ~25d
 -- Pabellón 2 – 12 lotes (cambio de pabellón + paginación)
-(65, '2027-08-15', 20, 25, 1, 1201, 'BATCH_PAB2_065', NULL, 'store', 1), -- stock 15 | bueno
-(66, '2027-11-20', 20, 25, 1, 1202, 'BATCH_PAB2_066', NULL, 'store', 1), -- stock 10 | bueno
-(67, '2028-02-10', 15, 26, 1, 1203, 'BATCH_PAB2_067', NULL, 'store', 1), -- stock 8  | bueno
-(68, '2027-05-30', 15, 26, 1, 1204, 'BATCH_PAB2_068', NULL, 'store', 1), -- stock 5  | bueno
-(69, '2026-04-30', 10, 27, 1, 1205, 'BATCH_PAB2_069', NULL, 'store', 1), -- stock 3  | próximo ~66d
-(70, '2025-10-15', 15, 27, 1, 1301, 'BATCH_PAB2_070', NULL, 'store', 1), -- stock 0  | VENCIDO
-(71, '2028-09-01', 20, 28, 1, 1302, 'BATCH_PAB2_071', NULL, 'store', 1), -- stock 12 | bueno
-(72, '2026-02-20', 10, 28, 1, 1303, 'BATCH_PAB2_072', NULL, 'store', 1), -- stock 2  | VENCIDO
-(73, '2027-03-10', 15, 29, 1, 1304, 'BATCH_PAB2_073', NULL, 'store', 1), -- stock 7  | bueno
-(74, '2028-12-31', 25, 29, 1, 1305, 'BATCH_PAB2_074', NULL, 'store', 1), -- stock 20 | bueno
-(75, '2025-11-05', 10, 30, 1, 1401, 'BATCH_PAB2_075', NULL, 'store', 1), -- stock 4  | VENCIDO
-(76, '2027-07-20', 20, 30, 1, 1402, 'BATCH_PAB2_076', NULL, 'store', 1)  -- stock 11 | bueno
+(65, '2027-08-15',                      20, 25, 1, 1201, 'BATCH_PAB2_065', NULL, 'store', 1), -- stock 15 | bueno
+(66, '2027-11-20',                      20, 25, 1, 1202, 'BATCH_PAB2_066', NULL, 'store', 1), -- stock 10 | bueno
+(67, '2028-02-10',                      15, 26, 1, 1203, 'BATCH_PAB2_067', NULL, 'store', 1), -- stock 8  | bueno
+(68, '2027-05-30',                      15, 26, 1, 1204, 'BATCH_PAB2_068', NULL, 'store', 1), -- stock 5  | bueno
+(69, CURRENT_DATE + INTERVAL '66 days', 10, 27, 1, 1205, 'BATCH_PAB2_069', NULL, 'store', 1), -- stock 3  | próximo ~66d
+(70, CURRENT_DATE - INTERVAL '30 days', 15, 27, 1, 1301, 'BATCH_PAB2_070', NULL, 'store', 1), -- stock 0  | VENCIDO
+(71, '2028-09-01',                      20, 28, 1, 1302, 'BATCH_PAB2_071', NULL, 'store', 1), -- stock 12 | bueno
+(72, CURRENT_DATE - INTERVAL '20 days', 10, 28, 1, 1303, 'BATCH_PAB2_072', NULL, 'store', 1), -- stock 2  | VENCIDO
+(73, '2027-03-10',                      15, 29, 1, 1304, 'BATCH_PAB2_073', NULL, 'store', 1), -- stock 7  | bueno
+(74, '2028-12-31',                      25, 29, 1, 1305, 'BATCH_PAB2_074', NULL, 'store', 1), -- stock 20 | bueno
+(75, CURRENT_DATE - INTERVAL '50 days', 10, 30, 1, 1401, 'BATCH_PAB2_075', NULL, 'store', 1), -- stock 4  | VENCIDO
+(76, '2027-07-20',                      20, 30, 1, 1402, 'BATCH_PAB2_076', NULL, 'store', 1)  -- stock 11 | bueno
 ON CONFLICT (id) DO NOTHING;
 
 -- Generar medical_supply para los nuevos lotes
@@ -1873,6 +1978,107 @@ FROM (
     GROUP BY p.id, p.name
 ) inventory
 ORDER BY pendientes_retorno DESC, total_insumos DESC;
+
+-- ============================================================================
+-- FECHAS DE VENCIMIENTO RELATIVAS — UPDATE idempotente
+-- Garantiza fechas correctas incluso si los lotes ya existían en la BD.
+-- Los INSERTs anteriores usan CURRENT_DATE + INTERVAL en las filas afectadas,
+-- pero estos UPDATEs cubren re-ejecuciones contra una BD ya poblada.
+-- ============================================================================
+
+-- Lotes bodega central
+UPDATE batch SET expiration_date = CURRENT_DATE - INTERVAL '30 days' WHERE id = 2  AND qr_code = 'BATCH_1002_001';
+UPDATE batch SET expiration_date = CURRENT_DATE + INTERVAL '15 days' WHERE id = 3  AND qr_code = 'BATCH_1003_001';
+
+-- Lotes Pabellón 1 – vencidos
+UPDATE batch SET expiration_date = CURRENT_DATE - INTERVAL '60 days' WHERE id = 51 AND qr_code = 'BATCH_PAB1_051';
+UPDATE batch SET expiration_date = CURRENT_DATE - INTERVAL '45 days' WHERE id = 53 AND qr_code = 'BATCH_PAB1_053';
+UPDATE batch SET expiration_date = CURRENT_DATE - INTERVAL '90 days' WHERE id = 63 AND qr_code = 'BATCH_PAB1_063';
+
+-- Lotes Pabellón 1 – próximos ≤30d (rojos en frontend)
+UPDATE batch SET expiration_date = CURRENT_DATE + INTERVAL '10 days' WHERE id = 54 AND qr_code = 'BATCH_PAB1_054';
+UPDATE batch SET expiration_date = CURRENT_DATE + INTERVAL '20 days' WHERE id = 55 AND qr_code = 'BATCH_PAB1_055';
+UPDATE batch SET expiration_date = CURRENT_DATE + INTERVAL '7 days'  WHERE id = 59 AND qr_code = 'BATCH_PAB1_059';
+UPDATE batch SET expiration_date = CURRENT_DATE + INTERVAL '25 days' WHERE id = 64 AND qr_code = 'BATCH_PAB1_064';
+
+-- Lotes Pabellón 1 – próximos 31–90d (filtro backend, grises en frontend)
+UPDATE batch SET expiration_date = CURRENT_DATE + INTERVAL '50 days' WHERE id = 56 AND qr_code = 'BATCH_PAB1_056';
+
+-- Lotes Pabellón 2 – vencidos
+UPDATE batch SET expiration_date = CURRENT_DATE - INTERVAL '30 days' WHERE id = 70 AND qr_code = 'BATCH_PAB2_070';
+UPDATE batch SET expiration_date = CURRENT_DATE - INTERVAL '20 days' WHERE id = 72 AND qr_code = 'BATCH_PAB2_072';
+UPDATE batch SET expiration_date = CURRENT_DATE - INTERVAL '50 days' WHERE id = 75 AND qr_code = 'BATCH_PAB2_075';
+
+-- Lotes Pabellón 2 – próximos 31–90d (filtro backend)
+UPDATE batch SET expiration_date = CURRENT_DATE + INTERVAL '66 days' WHERE id = 69 AND qr_code = 'BATCH_PAB2_069';
+
+-- ============================================================================
+-- TRANSFERENCIAS: ESTADOS RECHAZADO Y CANCELADO
+-- Complementan recibido/pendiente/en_transito ya existentes.
+-- Usan SUPPLY_9_* (batch 9, sutura Vicryl, 60 uds) y
+-- SUPPLY_11_* (batch 11, sutura Nylon, 45 uds) — sin conflicto con transfers previos.
+-- ============================================================================
+
+-- Estado: rechazado
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id,
+    origin_type, origin_id, destination_type, destination_id,
+    sent_by, sent_by_name,
+    picked_up_by, picked_up_by_name, picked_up_date,
+    status, transfer_reason, send_date, rejection_reason, notes
+)
+SELECT
+    'TRANS-SEED-REJ-0001', ms.qr_code, ms.id,
+    'store', 1, 'pavilion', 4,
+    '11111111-1', 'Encargado Bodega',
+    '22222222-2', 'María González', NOW() - INTERVAL '3 hours',
+    'rechazado',
+    'Insumo incorrecto para la cirugía programada',
+    NOW() - INTERVAL '4 hours',
+    'El pabellón rechazó el insumo por no corresponder a la solicitud activa',
+    'Insumo devuelto a bodega tras rechazo del pabellón'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_9_0001'
+UNION ALL
+SELECT
+    'TRANS-SEED-REJ-0002', ms.qr_code, ms.id,
+    'store', 1, 'pavilion', 5,
+    '11111111-1', 'Encargado Bodega',
+    '22222222-2', 'María González', NOW() - INTERVAL '2 days 1 hour',
+    'rechazado',
+    'Insumo próximo a vencer rechazado por pabellón',
+    NOW() - INTERVAL '2 days 2 hours',
+    'El insumo fue rechazado por estar próximo a vencer',
+    'Devuelto a bodega para revisión y reasignación'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_9_0002'
+ON CONFLICT (transfer_code) DO NOTHING;
+
+-- Estado: cancelado
+INSERT INTO supply_transfer (
+    transfer_code, qr_code, medical_supply_id,
+    origin_type, origin_id, destination_type, destination_id,
+    sent_by, sent_by_name,
+    status, transfer_reason, send_date, notes
+)
+SELECT
+    'TRANS-SEED-CAN-0001', ms.qr_code, ms.id,
+    'store', 1, 'pavilion', 2,
+    '11111111-1', 'Encargado Bodega',
+    'cancelado',
+    'Cirugía cancelada antes de ejecutarse',
+    NOW() - INTERVAL '1 day',
+    'Transferencia cancelada porque la cirugía fue reprogramada para la próxima semana'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_11_0001'
+UNION ALL
+SELECT
+    'TRANS-SEED-CAN-0002', ms.qr_code, ms.id,
+    'store', 1, 'pavilion', 3,
+    '11111111-1', 'Encargado Bodega',
+    'cancelado',
+    'Error en solicitud de insumos',
+    NOW() - INTERVAL '6 hours',
+    'Transferencia cancelada por error en la solicitud original, se reasignó otro lote'
+FROM medical_supply ms WHERE ms.qr_code = 'SUPPLY_11_0002'
+ON CONFLICT (transfer_code) DO NOTHING;
 
 -- ============================================================================
 -- RE-AJUSTE DE SECUENCIAS (después de todos los INSERTs con IDs explícitos)

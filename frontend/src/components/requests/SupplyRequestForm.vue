@@ -320,7 +320,8 @@
             :class="{
               'border-orange-400 bg-orange-50': isDuplicateItem(index),
               'border-green-300 bg-green-50': props.editMode && item.item_status === 'aceptado',
-              'border-gray-200': !isDuplicateItem(index) && !(props.editMode && item.item_status === 'aceptado')
+              'border-red-300 bg-red-50': props.editMode && item.item_status === 'rechazado',
+              'border-gray-200': !isDuplicateItem(index) && !(props.editMode && (item.item_status === 'aceptado' || item.item_status === 'rechazado'))
             }"
           >
             <!-- Advertencia de duplicado -->
@@ -482,12 +483,12 @@
               </div>
             </div>
 
-            <!-- Observaciones del item devuelto (solo en modo edición cuando item fue devuelto) -->
-            <div v-if="props.editMode && item.item_status === 'devuelto'" class="mt-4 space-y-3">
+            <!-- Observaciones del item devuelto/rechazado (solo en modo edición) -->
+            <div v-if="props.editMode && (item.item_status === 'devuelto' || item.item_status === 'rechazado')" class="mt-4 space-y-3">
               <!-- Mostrar observaciones anteriores del encargado -->
               <div v-if="item.item_notes" class="bg-orange-50 border border-orange-200 rounded-md p-3">
                 <label class="block text-xs font-semibold text-orange-800 mb-1">
-                  Motivo de devolución del encargado:
+                  {{ item.item_status === 'rechazado' ? 'Motivo de rechazo del encargado:' : 'Motivo de devolución del encargado:' }}
                 </label>
                 <p class="text-xs text-orange-900 whitespace-pre-wrap">{{ item.item_notes }}</p>
               </div>
@@ -1611,11 +1612,11 @@ const createNewRequest = async () => {
 
 // Reenviar solicitud devuelta
 const resubmitRequest = async () => {
-  // Preparar items: los devueltos (con ID) y los nuevos (sin ID)
+  // Preparar items: los devueltos/rechazados (con ID) y los nuevos (sin ID)
   const updatedItems = requestForm.items
     .filter(item => {
-      // Incluir items devueltos (con ID y status devuelto) o nuevos items (sin ID)
-      return (item.item_status === 'devuelto' && item.id) || (!item.id && item.supply_code && item.supply_name)
+      // Incluir items devueltos o rechazados (con ID) o nuevos items (sin ID)
+      return ((item.item_status === 'devuelto' || item.item_status === 'rechazado') && item.id) || (!item.id && item.supply_code && item.supply_name)
     })
     .map(item => {
       const itemData = {

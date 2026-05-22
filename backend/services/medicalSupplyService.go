@@ -1172,6 +1172,9 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 				return fmt.Errorf("error actualizando asignación QR: %v", err)
 			}
 			fmt.Printf("✅ Asignación QR actualizada para insumo %s\n", supply.QRCode)
+
+			// Recalculate supply request status based on all assignment statuses
+			updateRequestStatusAfterReturn(tx, assignment.SupplyRequestID)
 		}
 
 		// Log para depuración
@@ -1180,6 +1183,66 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 
 		return nil
 	})
+}
+
+// updateRequestStatusAfterReturn recalculates a supply request's status based on
+// the consumed/returned ratio of all its QR assignments. Only transitions from
+// RequestStatusApproved; all other states are left untouched.
+func updateRequestStatusAfterReturn(tx *gorm.DB, requestID int) {
+	var total, returned, consumed int64
+
+	tx.Model(&models.SupplyRequestQRAssignment{}).
+		Where("supply_request_id = ?", requestID).
+		Count(&total)
+
+	if total == 0 {
+		return
+	}
+
+	tx.Model(&models.SupplyRequestQRAssignment{}).
+		Where("supply_request_id = ? AND status = ?", requestID, models.AssignmentStatusReturned).
+		Count(&returned)
+
+	tx.Model(&models.SupplyRequestQRAssignment{}).
+		Where("supply_request_id = ? AND status = ?", requestID, models.AssignmentStatusConsumed).
+		Count(&consumed)
+
+	// Only act when every assignment has reached a terminal state
+	if returned+consumed < total {
+		return
+	}
+
+	var request models.SupplyRequest
+	if err := tx.First(&request, requestID).Error; err != nil {
+		return
+	}
+
+	if request.Status != models.RequestStatusApproved {
+		return
+	}
+
+	var newStatus string
+	switch {
+	case returned == 0:
+		newStatus = models.RequestStatusCompleted
+	case consumed == 0:
+		newStatus = models.RequestStatusReturnedToStore
+	default:
+		newStatus = models.RequestStatusPartiallyReturnedToStore
+	}
+
+	now := time.Now()
+	if err := tx.Model(&models.SupplyRequest{}).
+		Where("id = ?", requestID).
+		Updates(map[string]interface{}{
+			"status":     newStatus,
+			"updated_at": now,
+		}).Error; err != nil {
+		fmt.Printf("⚠️ Error actualizando estado de solicitud %d: %v\n", requestID, err)
+		return
+	}
+	fmt.Printf("✅ Solicitud %d → %s (devueltos=%d, consumidos=%d, total=%d)\n",
+		requestID, newStatus, returned, consumed, total)
 }
 
 // ReturnSupplyToStoreByQR regresa un insumo a bodega usando su código QR

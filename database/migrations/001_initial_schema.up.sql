@@ -318,7 +318,7 @@ CREATE TABLE IF NOT EXISTS supply_request (
     -- 'parcialmente_aprobado', 'pendiente_revision': Estados intermedios
     -- 'devuelto': Encargado devuelve items al solicitante para que los modifique
     -- 'devuelto_al_encargado': Doctor reenvía solicitud modificada al encargado
-    CONSTRAINT chk_supply_request_status CHECK (status IN ('pendiente_pavedad', 'asignado_bodega', 'en_proceso', 'aprobado', 'rechazado', 'completado', 'cancelado', 'parcialmente_aprobado', 'pendiente_revision', 'devuelto', 'devuelto_al_encargado')),
+    CONSTRAINT chk_supply_request_status CHECK (status IN ('pendiente_pavedad', 'asignado_bodega', 'en_proceso', 'aprobado', 'rechazado', 'completado', 'parcialmente_aprobado', 'devuelto', 'devuelto_al_encargado', 'parcialmente_devuelto_al_encargado')),
     CONSTRAINT chk_surgery_datetime_future CHECK (surgery_datetime >= request_date)
 );
 

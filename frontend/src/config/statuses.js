@@ -22,9 +22,8 @@ export const SUPPLY_REQUEST_STATUS_OPTIONS = [
   { value: 'aprobado', label: 'Aprobado' },
   { value: 'rechazado', label: 'Rechazado' },
   { value: 'completado', label: 'Completado' },
-  { value: 'cancelado', label: 'Cancelado' },
   { value: 'parcialmente_aprobado', label: 'Parcialmente Aprobado' },
-  { value: 'pendiente_revision', label: 'Pendiente Revisión' },
   { value: 'devuelto', label: 'Devuelto al Solicitante' },
-  { value: 'devuelto_al_encargado', label: 'Devuelto al Encargado' }
+  { value: 'devuelto_al_encargado', label: 'Devuelto al Encargado' },
+  { value: 'parcialmente_devuelto_al_encargado', label: 'Parcialmente Devuelto al Encargado' }
 ]

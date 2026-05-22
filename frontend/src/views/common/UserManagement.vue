@@ -45,7 +45,7 @@
           <div class="text-sm text-gray-900">{{ row.email }}</div>
         </template>
         <template #cell-role="{ row }">
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="getRoleBadgeClass(row.role)">{{ row.role }}</span>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="getRoleBadgeClass(row.role)">{{ getRoleLabel(row.role) }}</span>
         </template>
         <template #cell-medical_center_id="{ row }">
           <div class="text-sm text-gray-900">{{ getMedicalCenterName(row.medical_center_id) }}</div>
@@ -186,12 +186,7 @@
                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
                       <option value="">Seleccione un rol</option>
-                      <option value="admin">Administrador</option>
-                      <option value="encargado de bodega">Encargado de Bodega</option>
-                      <option value="pabellón">Pabellón</option>
-                      <option value="pavedad">Pavedad</option>
-                      <option value="enfermera">Enfermera</option>
-                      <option value="doctor">Doctor</option>
+                      <option v-for="opt in ROLE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                     </select>
                     <p v-if="formErrors.role" class="mt-1 text-sm text-red-600">{{ formErrors.role }}</p>
                   </div>
@@ -349,7 +344,7 @@
                   <p><strong>Usuario:</strong> {{ userToDelete.name }}</p>
                   <p><strong>RUT:</strong> {{ userToDelete.rut }}</p>
                   <p><strong>Email:</strong> {{ userToDelete.email }}</p>
-                  <p><strong>Rol:</strong> {{ userToDelete.role }}</p>
+                  <p><strong>Rol:</strong> {{ getRoleLabel(userToDelete.role) }}</p>
                 </div>
                 <p class="mt-2 text-xs text-danger-700 font-semibold">
                   Esta acción no se puede deshacer.
@@ -387,6 +382,7 @@ import storeService from '@/services/inventory/storeService'
 import medicalSpecialtyService from '@/services/config/medicalSpecialtyService'
 import { useNotification } from '@/composables/useNotification'
 import { formatRut, cleanRut, validateRutFormat, calculateDv, handleRutBodyInput as rutBodyInputHandler } from '@/utils/rut'
+import { ROLE_OPTIONS, getRoleLabel } from '@/config/roles'
 
 const { success: showSuccess, error: showError } = useNotification()
 
@@ -419,12 +415,7 @@ const filterConfig = computed(() => [
     type: 'select', key: 'role', label: 'Filtrar por Rol',
     options: [
       { value: '', label: 'Todos los roles' },
-      { value: 'admin', label: 'Administrador' },
-      { value: 'encargado de bodega', label: 'Encargado de Bodega' },
-      { value: 'pabellón', label: 'Pabellón' },
-      { value: 'pavedad', label: 'Pavedad' },
-      { value: 'enfermera', label: 'Enfermera' },
-      { value: 'doctor', label: 'Doctor' }
+      ...ROLE_OPTIONS
     ]
   },
   {

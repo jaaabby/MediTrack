@@ -247,7 +247,7 @@ const sortKey = ref(initialSortKey)
 const sortOrder = ref(props.defaultSortOrder)
 const currentPage = ref(1)
 
-// Reset to page 1 when rows change (e.g. after a filter)
+// Reset to page 1 when rows reference changes (e.g. after a filter)
 watch(() => props.rows, () => { currentPage.value = 1 })
 
 const sortBy = (key) => {
@@ -277,6 +277,14 @@ const sortedRows = computed(() => {
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(sortedRows.value.length / props.itemsPerPage)))
+
+// Corrige currentPage cuando totalPages baja (ej: al eliminar el último elemento de una página)
+watch(totalPages, (newTotal) => {
+  if (currentPage.value > newTotal) {
+    currentPage.value = Math.max(1, newTotal)
+  }
+})
+
 const startIndex = computed(() => (currentPage.value - 1) * props.itemsPerPage)
 const endIndex = computed(() => Math.min(startIndex.value + props.itemsPerPage, sortedRows.value.length))
 const paginatedRows = computed(() => sortedRows.value.slice(startIndex.value, endIndex.value))

@@ -838,7 +838,7 @@ func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]SupplyRequestWi
 	var requests []models.SupplyRequest
 	// Pavedad ve tanto las pendientes como las ya asignadas
 	// Ordenar por urgencia primero (urgentes primero), luego por fecha
-	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "parcialmente_aprobado", "pendiente_revision", "devuelto"}).
+	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "parcialmente_aprobado", "devuelto"}).
 		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
 		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
 		Order("surgery_datetime ASC").
@@ -870,7 +870,7 @@ func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]SupplyRequestWi
 func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseManagerRut string) ([]SupplyRequestWithItems, error) {
 	var requests []models.SupplyRequest
 	// Incluir todos los estados relevantes para el encargado de bodega
-	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "pendiente_revision", "devuelto", "devuelto_al_encargado", "completado"}).
+	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "devuelto", "devuelto_al_encargado", "parcialmente_devuelto_al_encargado", "completado"}).
 		// Ordenar por urgencia solo para solicitudes no completadas; las completadas se van al final
 		Order(`CASE 
 			WHEN status = 'completado' THEN 3
@@ -937,11 +937,16 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 			// FEFO (First Expired First Out): Priorizar productos próximos a vencer
 			var availableSupplies []models.MedicalSupply
 
+			assignedSubQuery := tx.Model(&models.SupplyRequestQRAssignment{}).
+				Select("qr_code").
+				Where("status NOT IN (?)", []string{models.AssignmentStatusConsumed, models.AssignmentStatusReturned})
+
 			if err := tx.Table("medical_supply ms").
 				Select("ms.*").
 				Joins("INNER JOIN batch b ON ms.batch_id = b.id").
 				Where("b.supply_code = ? AND ms.status = ? AND ms.location_type = ?",
 					item.SupplyCode, models.StatusAvailable, models.SupplyLocationStore).
+				Where("ms.qr_code NOT IN (?)", assignedSubQuery).
 				Order("ms.updated_at ASC").
 				Limit(item.QuantityRequested).
 				Find(&availableSupplies).Error; err != nil {
@@ -1347,14 +1352,17 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			return fmt.Errorf("solo se pueden reenviar solicitudes devueltas o parcialmente aprobadas con items devueltos")
 		}
 
-		// Si el estado es parcialmente_aprobado, verificar que haya items devueltos
+		// Si el estado es parcialmente_aprobado, verificar que haya items devueltos o rechazados
 		if request.Status == "parcialmente_aprobado" {
-			var returnedItemsCount int64
+			var returnedItemsCount, rejectedItemsCount int64
 			if err := tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", requestID, "devuelto").Count(&returnedItemsCount).Error; err != nil {
 				return fmt.Errorf("error verificando items devueltos: %v", err)
 			}
-			if returnedItemsCount == 0 {
-				return fmt.Errorf("no hay items devueltos para reenviar en esta solicitud")
+			if err := tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", requestID, "rechazado").Count(&rejectedItemsCount).Error; err != nil {
+				return fmt.Errorf("error verificando items rechazados: %v", err)
+			}
+			if returnedItemsCount == 0 && rejectedItemsCount == 0 {
+				return fmt.Errorf("no hay items devueltos o rechazados para reenviar en esta solicitud")
 			}
 		}
 
@@ -1412,8 +1420,8 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 				continue // Si no se encuentra el item, continuar
 			}
 
-			// Solo actualizar items que fueron devueltos
-			if item.ItemStatus == "devuelto" {
+			// Solo actualizar items que fueron devueltos o rechazados
+			if item.ItemStatus == "devuelto" || item.ItemStatus == "rechazado" {
 				// Actualizar cantidad si se modificó
 				if updatedItem.Quantity > 0 {
 					item.QuantityRequested = updatedItem.Quantity
@@ -1464,11 +1472,11 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			// Los items aceptados no se tocan, se mantienen como están
 		}
 
-		// Eliminar items devueltos que no están en la lista de items actualizados
+		// Eliminar items devueltos o rechazados que no están en la lista de items actualizados
 		// (es decir, items que el doctor eliminó del formulario)
 		var allReturnedItems []models.SupplyRequestItem
-		if err := tx.Where("supply_request_id = ? AND item_status = ?", requestID, "devuelto").Find(&allReturnedItems).Error; err != nil {
-			return fmt.Errorf("error obteniendo items devueltos: %v", err)
+		if err := tx.Where("supply_request_id = ? AND item_status IN ?", requestID, []string{"devuelto", "rechazado"}).Find(&allReturnedItems).Error; err != nil {
+			return fmt.Errorf("error obteniendo items devueltos/rechazados: %v", err)
 		}
 
 		// Crear un mapa de IDs de items actualizados para búsqueda rápida

@@ -470,6 +470,11 @@ func (s *SupplyTransferService) ReturnToStore(
 						}).Error; err != nil {
 						log.Printf("⚠️ Error desactivando items de carrito: %v\n", err)
 					}
+
+					// Actualizar estado de la solicitud de insumos
+					if assignment.SupplyRequestID != 0 {
+						updateRequestStatusAfterReturn(tx, assignment.SupplyRequestID)
+					}
 				}
 				log.Printf("✅ Marcadas %d asignaciones antiguas como 'returned' para QR %s\n", len(oldAssignments), qrCode)
 			}

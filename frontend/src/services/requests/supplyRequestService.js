@@ -307,12 +307,10 @@ class SupplyRequestService {
       'in_process': 'En Proceso',
       'completed': 'Completada',
       'completado': 'Completado',
-      'cancelled': 'Cancelada',
-      'cancelado': 'Cancelado',
       'parcialmente_aprobado': 'Parcialmente Aprobado',
-      'pendiente_revision': 'Pendiente de Revisión',
       'devuelto': 'Devuelto al Solicitante',
-      'devuelto_al_encargado': 'Devuelto al Encargado'
+      'devuelto_al_encargado': 'Devuelto al Encargado',
+      'parcialmente_devuelto_al_encargado': 'Parcialmente Devuelto al Encargado'
     }
     return labels[status] || status
   }
@@ -331,12 +329,10 @@ class SupplyRequestService {
       'in_process': 'blue',
       'completed': 'green',
       'completado': 'green',
-      'cancelled': 'gray',
-      'cancelado': 'gray',
       'parcialmente_aprobado': 'yellow',
-      'pendiente_revision': 'orange',
       'devuelto': 'orange',
-      'devuelto_al_encargado': 'blue'
+      'devuelto_al_encargado': 'blue',
+      'parcialmente_devuelto_al_encargado': 'orange'
     }
     return colors[status] || 'gray'
   }

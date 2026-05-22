@@ -95,30 +95,34 @@ export function formatDateForExcel(date) {
  */
 export function formatStatusForExcel(status) {
   const statusMap = {
+    // Estados de transferencia (valores canónicos del backend)
     'pendiente': 'Pendiente',
-    'en_transit': 'En Tránsito',
-    'in_transit': 'En Tránsito',
     'en_transito': 'En Tránsito',
-    'completed': 'Completado',
-    'completado': 'Completado',
     'recibido': 'Recibido',
-    'cancelled': 'Cancelado',
-    'cancelado': 'Cancelado',
     'rechazado': 'Rechazado',
+    // Valores legacy en inglés (compatibilidad con datos históricos)
+    'in_transit': 'En Tránsito',
+    'completed': 'Completado',
+    'cancelled': 'Cancelado',
+    // Estados de insumo médico
     'disponible': 'Disponible',
+    'pendiente_retiro': 'Pendiente de Retiro',
     'en_camino_a_pabellon': 'En Camino a Pabellón',
     'en_camino_a_bodega': 'En Camino a Bodega',
     'recepcionado': 'Recepcionado',
     'consumido': 'Consumido',
     'vencido': 'Vencido',
     'reservado': 'Reservado',
+    // Estados de solicitud de insumo
     'pendiente_pavedad': 'Pendiente Pavedad',
     'asignado_bodega': 'Asignado a Bodega',
+    'en_proceso': 'En Proceso',
+    'aprobado': 'Aprobado',
+    'completado': 'Completado',
+    'parcialmente_aprobado': 'Parcialmente Aprobado',
     'devuelto': 'Devuelto al Solicitante',
     'devuelto_al_encargado': 'Devuelto al Encargado',
-    'aprobado': 'Aprobado',
-    'parcialmente_aprobado': 'Parcialmente Aprobado',
-    'rechazado': 'Rechazado'
+    'parcialmente_devuelto_al_encargado': 'Parcialmente Devuelto al Encargado'
   }
   return statusMap[status] || status
 }

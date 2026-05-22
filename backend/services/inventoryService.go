@@ -78,9 +78,10 @@ func (s *InventoryService) GetStoreInventory(
 		query = query.Where("supc.supplier_name LIKE ?", "%"+*supplier+"%")
 	}
 	if nearExpiration {
-		// Productos que vencen en los próximos 90 días
-		expirationDate := time.Now().AddDate(0, 0, 90)
-		query = query.Where("b.expiration_date <= ?", expirationDate)
+		// Productos que vencen entre hoy y los próximos 90 días (excluye vencidos)
+		now := time.Now()
+		expirationDate := now.AddDate(0, 0, 90)
+		query = query.Where("b.expiration_date >= ? AND b.expiration_date <= ?", now, expirationDate)
 	}
 	if lowStock {
 		// Stock bajo (basado en critical_stock del supply_code)
@@ -457,12 +458,13 @@ func (s *InventoryService) GetInventorySummary(medicalCenterID *int) (map[string
 	lowStockQuery.Count(&lowStockStores)
 	summary["low_stock_stores"] = lowStockStores
 
-	// Productos próximos a vencer (90 días)
+	// Productos próximos a vencer (0–90 días, excluye vencidos)
 	var nearExpiration int64
-	expirationDate := time.Now().AddDate(0, 0, 90)
+	now := time.Now()
+	expirationDate := now.AddDate(0, 0, 90)
 	s.DB.Table("store_inventory_summary sis").
 		Joins("LEFT JOIN batch b ON sis.batch_id = b.id").
-		Where("b.expiration_date <= ?", expirationDate).
+		Where("b.expiration_date >= ? AND b.expiration_date <= ?", now, expirationDate).
 		Count(&nearExpiration)
 	summary["near_expiration"] = nearExpiration
 

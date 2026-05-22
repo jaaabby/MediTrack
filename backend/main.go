@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 
 	"meditrack/config"
@@ -149,6 +151,44 @@ func main() {
 
 	// Registrar rutas de consumo automático
 	routes.SetupAutomaticConsumptionRoutes(router, automaticConsumptionController, secretKey, db)
+
+	// Ruta de reseteo de BD (solo desarrollo)
+	router.GET("/dev/reset-db", func(c *gin.Context) {
+		scripts := []struct {
+			label string
+			path  string
+		}{
+			{"down (drop)", "../database/migrations/001_initial_schema.down.sql"},
+			{"up (create)", "../database/migrations/001_initial_schema.up.sql"},
+			{"seed (populate)", "../database/script.sql"},
+		}
+
+		var fullOutput strings.Builder
+		pgEnv := append(os.Environ(), "PGPASSWORD="+cfg.Database.Password)
+
+		for _, s := range scripts {
+			cmd := exec.Command("psql",
+				"-h", cfg.Database.Host,
+				"-p", strconv.Itoa(cfg.Database.Port),
+				"-U", cfg.Database.User,
+				"-d", cfg.Database.Name,
+				"-f", s.path,
+			)
+			cmd.Env = pgEnv
+			out, err := cmd.CombinedOutput()
+			fullOutput.WriteString(fmt.Sprintf("\n--- %s ---\n%s\n", s.label, string(out)))
+			if err != nil {
+				c.Data(500, "text/html; charset=utf-8", []byte(fmt.Sprintf(
+					"<h2>❌ Error en script: %s</h2><pre>%s</pre>", s.label, fullOutput.String(),
+				)))
+				return
+			}
+		}
+
+		c.Data(200, "text/html; charset=utf-8", []byte(
+			"<h2>✅ BD reseteada correctamente (down → up → seed)</h2><pre>"+fullOutput.String()+"</pre>",
+		))
+	})
 
 	// Iniciar el verificador automático de retornos a bodega en una goroutine
 	go medicalSupplyService.StartAutomaticReturnChecker()

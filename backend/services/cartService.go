@@ -478,7 +478,15 @@ func (s *CartService) processItemUse(tx *gorm.DB, cart *models.SupplyCart, cartI
 	} else {
 		cartItem.Notes = notes
 	}
-	return tx.Save(cartItem).Error
+	if err := tx.Save(cartItem).Error; err != nil {
+		return err
+	}
+
+	// Actualizar estado de la solicitud de insumos
+	if cartItem.SupplyRequestQRAssignment.SupplyRequestID != 0 {
+		updateRequestStatusAfterReturn(tx, cartItem.SupplyRequestQRAssignment.SupplyRequestID)
+	}
+	return nil
 }
 
 // processItemReturn procesa la devolución de un item
@@ -591,7 +599,15 @@ func (s *CartService) processItemReturn(tx *gorm.DB, cart *models.SupplyCart, ca
 	} else {
 		cartItem.Notes = notes
 	}
-	return tx.Save(cartItem).Error
+	if err := tx.Save(cartItem).Error; err != nil {
+		return err
+	}
+
+	// Actualizar estado de la solicitud de insumos
+	if cartItem.SupplyRequestQRAssignment.SupplyRequestID != 0 {
+		updateRequestStatusAfterReturn(tx, cartItem.SupplyRequestQRAssignment.SupplyRequestID)
+	}
+	return nil
 }
 
 // updateInventoryOnConsumption actualiza inventarios al consumir
@@ -769,20 +785,17 @@ func (s *CartService) forceCloseCart(cart *models.SupplyCart, closedByRUT, close
 			return fmt.Errorf("error desactivando items del carrito: %w", err)
 		}
 
-		// Actualizar el estado de la solicitud asociada para indicar que el flujo de bodega terminó
+		// Al cerrar el carrito, todos los insumos fueron físicamente procesados → completado
 		var request models.SupplyRequest
 		if err := tx.First(&request, cart.SupplyRequestID).Error; err == nil {
-			// Solo actualizar si aún no está marcada como completada/cancelada/rechazada
 			if request.Status != models.RequestStatusCompleted &&
-				request.Status != models.RequestStatusCancelled &&
 				request.Status != models.RequestStatusRejected {
-				if err := tx.Model(&request).Updates(map[string]interface{}{
+				now2 := time.Now()
+				tx.Model(&request).Updates(map[string]interface{}{
 					"status":         models.RequestStatusCompleted,
-					"completed_date": now,
-					"updated_at":     now,
-				}).Error; err != nil {
-					return fmt.Errorf("error actualizando estado de solicitud al cerrar carrito: %w", err)
-				}
+					"completed_date": now2,
+					"updated_at":     now2,
+				})
 			}
 		}
 
@@ -797,7 +810,7 @@ func (s *CartService) CheckAndAutoCloseCartForSupply(supplyID int, closedByRUT, 
 	}
 
 	var cartItem models.SupplyCartItem
-	if err := s.DB.Where("supply_request_qr_assignment_id = ? AND is_active = ?", assignment.ID, true).
+	if err := s.DB.Where("supply_request_qr_assignment_id = ?", assignment.ID).
 		First(&cartItem).Error; err != nil {
 		return nil
 	}
@@ -816,6 +829,11 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 
 		if !cart.CanAddItems() {
 			return fmt.Errorf("el carrito no está activo")
+		}
+
+		// Bloquear transferencia si hay items sin resolver en la solicitud
+		if cart.SupplyRequest.Status == "parcialmente_aprobado" {
+			return fmt.Errorf("no se puede transferir: la solicitud tiene items rechazados o devueltos pendientes de revisión")
 		}
 
 		// Obtener todos los items activos del carrito

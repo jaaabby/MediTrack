@@ -106,9 +106,9 @@ const (
 	RequestStatusApproved            = "aprobado"              // Encargado de bodega aprueba
 	RequestStatusRejected            = "rechazado"             // Encargado de bodega rechaza
 	RequestStatusCompleted           = "completado"            // Solicitud completada
-	RequestStatusCancelled           = "cancelado"             // Solicitud cancelada
-	RequestStatusReturnedToRequester = "devuelto"              // Encargado devuelve items al solicitante para modificar
-	RequestStatusReturnedToStore     = "devuelto_al_encargado" // Doctor reenvía solicitud devuelta al encargado
+	RequestStatusReturnedToRequester        = "devuelto"                       // Encargado devuelve items al solicitante para modificar
+	RequestStatusReturnedToStore            = "devuelto_al_encargado"           // Doctor reenvía solicitud devuelta al encargado / Pabellón devuelve todos los insumos
+	RequestStatusPartiallyReturnedToStore   = "parcialmente_devuelto_al_encargado" // Mix de insumos consumidos y devueltos por pabellón
 
 	// Alias para compatibilidad con código existente
 	RequestStatusPending = RequestStatusPendingPavedad
@@ -151,8 +151,6 @@ func (s *SupplyRequest) GetStatusLabel() string {
 		return "En Proceso"
 	case RequestStatusCompleted:
 		return "Completada"
-	case RequestStatusCancelled:
-		return "Cancelada"
 	default:
 		return "Desconocido"
 	}

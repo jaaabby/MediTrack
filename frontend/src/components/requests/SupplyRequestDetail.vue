@@ -699,9 +699,18 @@
                   Revisar Insumos
                 </button>
 
-                <!-- Botón Listo para retiro (solo para encargado de bodega cuando el carrito está activo) -->
+                <!-- Aviso al encargado cuando hay items pendientes de resolver -->
+                <div
+                  v-if="currentCart && currentCart.status === 'active' && request.status === 'parcialmente_aprobado' && authStore.isWarehouseManager"
+                  class="p-2 bg-yellow-50 border border-yellow-300 rounded text-center"
+                >
+                  <p class="text-xs text-yellow-700 font-medium">En espera del doctor</p>
+                  <p class="text-xs text-yellow-600 mt-0.5">Hay items rechazados pendientes de reenvío</p>
+                </div>
+
+                <!-- Botón Listo para retiro (solo cuando todos los items están aprobados) -->
                 <button
-                  v-if="currentCart && currentCart.status === 'active' && canTransferCartToPavilion"
+                  v-if="currentCart && currentCart.status === 'active' && canTransferCartToPavilion && request.status !== 'parcialmente_aprobado'"
                   @click="handleTransferCartToPavilion"
                   class="w-full inline-flex items-center justify-center px-3 py-2 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
                 >
@@ -713,7 +722,7 @@
 
                 <!-- Doctor puede editar y reenviar solicitud devuelta -->
                 <button
-                  v-if="hasReturnedItems && (request.status === 'devuelto' || request.status === 'parcialmente_aprobado') && (authStore.isDoctor || authStore.isNurse) && request.requested_by === authStore.getUserRut"
+                  v-if="(hasReturnedItems || hasRejectedItems) && (request.status === 'devuelto' || request.status === 'parcialmente_aprobado') && (authStore.isDoctor || authStore.isNurse) && request.requested_by === authStore.getUserRut"
                   @click="goToEditRequest"
                   class="w-full inline-flex items-center justify-center px-3 py-2 border border-orange-300 rounded-md text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100"
                 >
@@ -724,7 +733,7 @@
                 </button>
 
                 <!-- Si ya está procesada -->
-                <div v-if="['aprobado', 'rechazado', 'parcialmente_aprobado', 'completado'].includes(request.status)" class="p-2 bg-gray-50 rounded text-center">
+                <div v-if="['aprobado', 'rechazado', 'completado'].includes(request.status)" class="p-2 bg-gray-50 rounded text-center">
                   <p class="text-xs text-gray-600">
                     Solicitud procesada
                   </p>
@@ -1128,6 +1137,11 @@ const requestId = computed(() => parseInt(route.params.id))
 // Verificar si hay items devueltos en la solicitud
 const hasReturnedItems = computed(() => {
   return items.value.some(item => item.item_status === 'devuelto')
+})
+
+// Verificar si hay items rechazados en la solicitud
+const hasRejectedItems = computed(() => {
+  return items.value.some(item => item.item_status === 'rechazado')
 })
 
 // Verificar si todos los insumos han sido revisados (ninguno en estado 'pendiente')
