@@ -1525,7 +1525,7 @@ const parseAllComments = () => {
     if (firstReviewedItem && firstReviewedItem.reviewed_at) {
       timeline.push({
         type: 'devolución',
-        author: firstReviewedItem.reviewed_by_name || 'Encargado de Bodega',
+        author: firstReviewedItem.reviewed_by_name || 'Encargado/a de Bodega',
         date: new Date(firstReviewedItem.reviewed_at),
         hasComment: true
       })
@@ -1607,7 +1607,7 @@ const getReturnComments = () => {
 const getReturnCommentsAuthor = () => {
   const comments = parseAllComments()
   const devolucionComments = comments.filter(c => c.type === 'devolución')
-  return devolucionComments.length > 0 ? devolucionComments[devolucionComments.length - 1].author : 'Encargado de Bodega'
+  return devolucionComments.length > 0 ? devolucionComments[devolucionComments.length - 1].author : 'Encargado/a de Bodega'
 }
 
 const getStatusBadgeClass = (status) => {

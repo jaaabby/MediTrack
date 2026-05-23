@@ -206,8 +206,8 @@ const filters = ref({
   store_id: initialStoreId ? String(initialStoreId) : '',
   surgery_id: initialSurgeryId ? String(initialSurgeryId) : '',
   supplier: '',
-  low_stock: '',
-  near_expiration: ''
+  stock_filter: '',
+  expiration_filter: ''
 })
 const filterPanelKey = ref(0)
 
@@ -267,22 +267,24 @@ const filterConfig = computed(() => [
   },
   {
     type: 'toggle',
-    key: 'low_stock',
-    label: 'Stock crítico',
+    key: 'stock_filter',
+    label: 'Stock',
     default: '',
     options: [
       { value: '', label: 'Todos' },
-      { value: 'true', label: 'Stock Crítico', activeClass: 'bg-red-600 text-white' }
+      { value: 'medium', label: 'Stock Bajo', activeClass: 'bg-orange-500 text-white' },
+      { value: 'critical', label: 'Stock Crítico', activeClass: 'bg-red-600 text-white' }
     ]
   },
   {
     type: 'toggle',
-    key: 'near_expiration',
-    label: 'Por vencer',
+    key: 'expiration_filter',
+    label: 'Vencimiento',
     default: '',
     options: [
       { value: '', label: 'Todos' },
-      { value: 'true', label: 'Por Vencer', activeClass: 'bg-orange-500 text-white' }
+      { value: 'near_expiration', label: 'Por Vencer', activeClass: 'bg-orange-500 text-white' },
+      { value: 'expired', label: 'Vencidos', activeClass: 'bg-red-600 text-white' }
     ]
   }
 ])
@@ -291,8 +293,8 @@ const hasActiveFilters = computed(() =>
   filters.value.store_id !== '' ||
   filters.value.surgery_id !== '' ||
   filters.value.supplier.trim() !== '' ||
-  filters.value.low_stock !== '' ||
-  filters.value.near_expiration !== '' ||
+  filters.value.stock_filter !== '' ||
+  filters.value.expiration_filter !== '' ||
   surgerySearch.value.trim() !== '' ||
   supplierSearch.value.trim() !== ''
 )
@@ -334,9 +336,10 @@ const filteredInventory = computed(() => {
 
   let result = inventory.value
 
-  // Filtro client-side de stock bajo usando critical_stock (regla consolidada del frontend)
-  if (filters.value.low_stock === 'true') {
+  if (filters.value.stock_filter === 'critical') {
     result = result.filter(item => isLowStock(item.current_in_store, item.critical_stock))
+  } else if (filters.value.stock_filter === 'medium') {
+    result = result.filter(item => isMediumStock(item.current_in_store, item.critical_stock))
   }
 
   // ID 6: filtro client-side de proveedor, insensible a mayúsculas y tildes
@@ -362,7 +365,13 @@ const loadInventory = async () => {
   try {
     // El filtro de proveedor se aplica client-side con normalización de tildes y mayúsculas (ID 6)
     // No se envía al backend para evitar el LIKE case-sensitive de PostgreSQL
-    const backendFilters = { ...filters.value, supplier: '' }
+    const backendFilters = {
+      ...filters.value,
+      supplier: '',
+      low_stock: filters.value.stock_filter === 'critical' ? 'true' : '',
+      near_expiration: filters.value.expiration_filter === 'near_expiration' ? 'true' : '',
+      expired: filters.value.expiration_filter === 'expired' ? 'true' : '',
+    }
     const data = await inventoryService.getStoreInventory(backendFilters)
     // Asegurarse de que inventory.value siempre sea un array
     inventory.value = Array.isArray(data) ? data : []
@@ -414,8 +423,8 @@ const onFilterChange = (key, value) => {
       supplierSearch.value = value
       onSupplierSearch()
       break
-    case 'low_stock':
-    case 'near_expiration':
+    case 'stock_filter':
+    case 'expiration_filter':
       filters.value[key] = value
       applyFilters()
       break
@@ -429,8 +438,8 @@ const clearFilters = () => {
     store_id: '',
     surgery_id: '',
     supplier: '',
-    low_stock: '',
-    near_expiration: ''
+    stock_filter: '',
+    expiration_filter: ''
   }
   surgerySearch.value = ''
   supplierSearch.value = ''

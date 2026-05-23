@@ -491,6 +491,7 @@ class InventoryService {
       if (filters.supplier) params.append('supplier', filters.supplier)
       if (filters.near_expiration) params.append('near_expiration', 'true')
       if (filters.low_stock) params.append('low_stock', 'true')
+      if (filters.expired) params.append('expired', 'true')
       if (filters.page) params.append('page', filters.page)
       // Solicitar todos los registros ya que la paginación se maneja en el cliente
       params.append('page_size', filters.page_size || 9999)

@@ -24,6 +24,7 @@ func (s *InventoryService) GetStoreInventory(
 	supplier *string,
 	nearExpiration bool,
 	lowStock bool,
+	expired bool,
 	page int,
 	pageSize int,
 ) ([]models.StoreInventorySummaryWithDetails, int64, error) {
@@ -82,6 +83,10 @@ func (s *InventoryService) GetStoreInventory(
 		now := time.Now()
 		expirationDate := now.AddDate(0, 0, 90)
 		query = query.Where("b.expiration_date >= ? AND b.expiration_date <= ?", now, expirationDate)
+	}
+	if expired {
+		now := time.Now()
+		query = query.Where("b.expiration_date < ?", now)
 	}
 	if lowStock {
 		// Stock bajo (basado en critical_stock del supply_code)

@@ -94,6 +94,7 @@ func (c *InventoryController) GetStoreInventory(ctx *gin.Context) {
 
 	nearExpiration := ctx.Query("near_expiration") == "true"
 	lowStock := ctx.Query("low_stock") == "true"
+	expired := ctx.Query("expired") == "true"
 
 	inventory, total, err := c.inventoryService.GetStoreInventory(
 		storeID,
@@ -102,6 +103,7 @@ func (c *InventoryController) GetStoreInventory(ctx *gin.Context) {
 		supplier,
 		nearExpiration,
 		lowStock,
+		expired,
 		page,
 		pageSize,
 	)

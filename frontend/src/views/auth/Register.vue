@@ -116,9 +116,9 @@
               <option value="">Seleccionar rol</option>
               <option value="admin">Administrador</option>
               <option value="pabellón">Pabellón</option>
-              <option value="encargado de bodega">Encargado de Bodega</option>
-              <option value="enfermera">Enfermera</option>
-              <option value="doctor">Doctor</option>
+              <option value="encargado de bodega">Encargado/a de Bodega</option>
+              <option value="enfermera">Enfermero/a</option>
+              <option value="doctor">Médico/a</option>
             </select>
             <p v-if="errors.role" class="mt-1 text-sm text-red-600">{{ errors.role }}</p>
           </div>
