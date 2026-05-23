@@ -74,7 +74,7 @@
               </template>
 
               <template #actions="{ row }">
-                <div v-if="row.item_status === 'pendiente'" class="flex space-x-2">
+                <div v-if="isReviewable(row)" class="flex space-x-2">
                   <button @click="openActionModal(row, 'aceptado')" class="text-green-600 hover:text-green-900" title="Aceptar">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -141,7 +141,7 @@
               <p class="text-sm text-gray-600 mb-2">Se aplicará a los siguientes insumos:</p>
               <ul class="divide-y divide-gray-100 border border-gray-200 rounded-md overflow-hidden text-sm">
                 <li
-                  v-for="item in items.filter(i => i.item_status === 'pendiente')"
+                  v-for="item in items.filter(i => isReviewable(i))"
                   :key="item.id"
                   class="flex items-center justify-between px-3 py-2 bg-white"
                 >
@@ -238,8 +238,14 @@ const commentError = ref('')
 const isBulkAction = ref(false)
 
 // Computed
-const hasPendingItems = computed(() => items.value.some(i => i.item_status === 'pendiente'))
-const pendingItemsCount = computed(() => items.value.filter(i => i.item_status === 'pendiente').length)
+const isReviewable = (item) => {
+  if (item.item_status === 'pendiente') return true
+  // Si el doctor ya reenvió (devuelto_al_encargado), los items devueltos también son revisables
+  if (item.item_status === 'devuelto' && props.request?.status === 'devuelto_al_encargado') return true
+  return false
+}
+const hasPendingItems = computed(() => items.value.some(i => isReviewable(i)))
+const pendingItemsCount = computed(() => items.value.filter(i => isReviewable(i)).length)
 
 // Métodos
 const loadItems = async () => {
@@ -344,7 +350,7 @@ const confirmAction = async () => {
     }
 
     if (isBulkAction.value) {
-      const pendingItems = items.value.filter(i => i.item_status === 'pendiente')
+      const pendingItems = items.value.filter(i => isReviewable(i))
       // Procesar secuencialmente para evitar race conditions en el backend
       // (transacciones concurrentes sobre la misma solicitud causan conflictos en
       //  la creación del carrito y en la actualización del estado de la solicitud)
@@ -361,9 +367,7 @@ const confirmAction = async () => {
     await loadItems() // Recargar items
     
     // Verificar si todos los items han sido resueltos
-    const allItemsResolved = items.value.every(item => 
-      item.item_status !== 'pendiente'
-    )
+    const allItemsResolved = items.value.every(item => !isReviewable(item))
     
     // Siempre emitir el evento para que el componente padre pueda refrescar
     emit('itemsReviewed')

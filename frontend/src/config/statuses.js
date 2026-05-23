@@ -22,7 +22,7 @@ export const SUPPLY_REQUEST_STATUS_OPTIONS = [
   { value: 'aprobado', label: 'Aprobado' },
   { value: 'rechazado', label: 'Rechazado' },
   { value: 'completado', label: 'Completado' },
-  { value: 'parcialmente_aprobado', label: 'Parcialmente Aprobado' },
+  { value: 'devuelto_al_solicitante', label: 'Devuelto al Solicitante' },
   { value: 'devuelto', label: 'Devuelto al Solicitante' },
   { value: 'devuelto_al_encargado', label: 'Devuelto al Encargado' },
   { value: 'parcialmente_devuelto_al_encargado', label: 'Parcialmente Devuelto al Encargado' }

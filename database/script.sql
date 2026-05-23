@@ -1421,7 +1421,7 @@ INSERT INTO supply_request (
     'Dr. Roberto Silva',
     NOW() - INTERVAL '3 days',
     NOW() + INTERVAL '36 hours',
-    'parcialmente_aprobado',
+    'devuelto_al_solicitante',
     'Encargado de bodega: Material ortopédico aprobado. Guantes devueltos al médico — stock disponible: 30 unidades, solicitado: 60. Ajuste la cantidad y reenvíe.',
     1,
     '66666666-6',
@@ -1506,8 +1506,8 @@ INSERT INTO supply_request (
 ) ON CONFLICT DO NOTHING;
 
 INSERT INTO supply_request_item (supply_request_id, supply_code, supply_name, quantity_requested, is_pediatric, item_status, item_notes, reviewed_by, reviewed_by_name, reviewed_at) VALUES
-((SELECT id FROM supply_request WHERE request_number = 'SOL-20250207150000'), 1001, 'Guantes Quirúrgicos Estériles', 35, FALSE, 'devuelto', 'Cantidad original 60 — excedía stock. Corregido a 35.', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '2 days'),
-((SELECT id FROM supply_request WHERE request_number = 'SOL-20250207150000'), 1101, 'Sutura Vicryl 2-0', 8, FALSE, 'devuelto', 'Especificar tipo. Corregido: Vicryl reabsorbible.', '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '2 days'),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250207150000'), 1001, 'Guantes Quirúrgicos Estériles', 35, FALSE, 'pendiente', NULL, NULL, NULL, NULL),
+((SELECT id FROM supply_request WHERE request_number = 'SOL-20250207150000'), 1101, 'Sutura Vicryl 2-0', 8, FALSE, 'pendiente', NULL, NULL, NULL, NULL),
 ((SELECT id FROM supply_request WHERE request_number = 'SOL-20250207150000'), 1003, 'Jeringas 10ml', 15, FALSE, 'aceptado', NULL, '11111111-1', 'Encargado Bodega', NOW() - INTERVAL '2 days')
 ON CONFLICT DO NOTHING;
 

@@ -307,7 +307,7 @@ class SupplyRequestService {
       'in_process': 'En Proceso',
       'completed': 'Completada',
       'completado': 'Completado',
-      'parcialmente_aprobado': 'Parcialmente Aprobado',
+      'devuelto_al_solicitante': 'Devuelto al Solicitante',
       'devuelto': 'Devuelto al Solicitante',
       'devuelto_al_encargado': 'Devuelto al Encargado',
       'parcialmente_devuelto_al_encargado': 'Parcialmente Devuelto al Encargado'
@@ -329,7 +329,7 @@ class SupplyRequestService {
       'in_process': 'blue',
       'completed': 'green',
       'completado': 'green',
-      'parcialmente_aprobado': 'yellow',
+      'devuelto_al_solicitante': 'orange',
       'devuelto': 'orange',
       'devuelto_al_encargado': 'blue',
       'parcialmente_devuelto_al_encargado': 'orange'

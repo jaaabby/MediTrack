@@ -838,7 +838,7 @@ func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]SupplyRequestWi
 	var requests []models.SupplyRequest
 	// Pavedad ve tanto las pendientes como las ya asignadas
 	// Ordenar por urgencia primero (urgentes primero), luego por fecha
-	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "parcialmente_aprobado", "devuelto"}).
+	err := s.DB.Where("status IN ?", []string{"pendiente_pavedad", "asignado_bodega", "en_proceso", "aprobado", "rechazado", "completado", "devuelto_al_solicitante", "devuelto"}).
 		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '48 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
 		Order("CASE WHEN surgery_datetime <= NOW() + INTERVAL '12 hours' AND surgery_datetime > NOW() THEN 0 ELSE 1 END").
 		Order("surgery_datetime ASC").
@@ -870,7 +870,7 @@ func (s *SupplyRequestService) GetPendingRequestsForPavedad() ([]SupplyRequestWi
 func (s *SupplyRequestService) GetAssignedRequestsForWarehouseManager(warehouseManagerRut string) ([]SupplyRequestWithItems, error) {
 	var requests []models.SupplyRequest
 	// Incluir todos los estados relevantes para el encargado de bodega
-	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "parcialmente_aprobado", "devuelto", "devuelto_al_encargado", "parcialmente_devuelto_al_encargado", "completado"}).
+	err := s.DB.Where("assigned_to = ? AND status IN ?", warehouseManagerRut, []string{"asignado_bodega", "en_proceso", "aprobado", "rechazado", "devuelto_al_solicitante", "devuelto", "devuelto_al_encargado", "parcialmente_devuelto_al_encargado", "completado"}).
 		// Ordenar por urgencia solo para solicitudes no completadas; las completadas se van al final
 		Order(`CASE 
 			WHEN status = 'completado' THEN 3
@@ -1190,9 +1190,9 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 				// CASOS 4, 6, 7: Hay devueltos (prioridad a devueltos)
 			} else if hasReturned > 0 {
-				// Si hay items aceptados, mantener el estado como parcialmente_aprobado para que el carrito se mantenga
+				// Si hay items aceptados, mantener el estado como devuelto_al_solicitante para que el carrito se mantenga
 				if hasAccepted > 0 {
-					request.Status = "parcialmente_aprobado"
+					request.Status = "devuelto_al_solicitante"
 				} else {
 					request.Status = "devuelto"
 				}
@@ -1273,7 +1273,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 				// CASO 5: Aprobados + Rechazados (sin devueltos)
 			} else if hasAccepted > 0 && hasRejected > 0 && hasReturned == 0 {
-				request.Status = "parcialmente_aprobado"
+				request.Status = "devuelto_al_solicitante"
 				request.ApprovalDate = &now
 				request.ApprovedBy = &req.ReviewedBy
 				request.ApprovedByName = &req.ReviewedByName
@@ -1347,13 +1347,13 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 			return fmt.Errorf("solicitud no encontrada: %v", err)
 		}
 
-		// Verificar que la solicitud esté en estado devuelto o parcialmente_aprobado con items devueltos
-		if request.Status != "devuelto" && request.Status != "parcialmente_aprobado" {
+		// Verificar que la solicitud esté en estado devuelto o devuelto_al_solicitante con items devueltos
+		if request.Status != "devuelto" && request.Status != "devuelto_al_solicitante" {
 			return fmt.Errorf("solo se pueden reenviar solicitudes devueltas o parcialmente aprobadas con items devueltos")
 		}
 
-		// Si el estado es parcialmente_aprobado, verificar que haya items devueltos o rechazados
-		if request.Status == "parcialmente_aprobado" {
+		// Si el estado es devuelto_al_solicitante, verificar que haya items devueltos o rechazados
+		if request.Status == "devuelto_al_solicitante" {
 			var returnedItemsCount, rejectedItemsCount int64
 			if err := tx.Model(&models.SupplyRequestItem{}).Where("supply_request_id = ? AND item_status = ?", requestID, "devuelto").Count(&returnedItemsCount).Error; err != nil {
 				return fmt.Errorf("error verificando items devueltos: %v", err)

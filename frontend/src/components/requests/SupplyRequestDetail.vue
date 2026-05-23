@@ -439,7 +439,7 @@
           </div>
 
           <!-- Carrito de Insumos (mostrar si hay carrito o si la solicitud está aprobada) -->
-          <div v-if="['aprobado', 'en_proceso', 'completado', 'asignado_bodega', 'parcialmente_aprobado', 'devuelto_al_encargado'].includes(request.status)">
+          <div v-if="['aprobado', 'en_proceso', 'completado', 'asignado_bodega', 'devuelto_al_solicitante', 'devuelto_al_encargado'].includes(request.status)">
             <SupplyCart 
               :request-id="request.id"
               :can-close="authStore.canApproveRequests"
@@ -612,7 +612,7 @@
                       </div>
                       <div class="min-w-0 flex-1 pt-1.5">
                         <p class="text-sm font-medium text-gray-900">
-                          {{ request.status === 'parcialmente_aprobado' ? 'Solicitud parcialmente aprobada' : 'Solicitud aprobada' }}
+                          {{ request.status === 'devuelto_al_solicitante' ? 'Solicitud parcialmente aprobada' : 'Solicitud aprobada' }}
                         </p>
                         <p class="text-sm text-gray-500">{{ formatDate(request.approval_date) }}</p>
                         <p class="text-xs text-gray-400">por {{ request.approved_by_name }}</p>
@@ -701,7 +701,7 @@
 
                 <!-- Aviso al encargado cuando hay items pendientes de resolver -->
                 <div
-                  v-if="currentCart && currentCart.status === 'active' && request.status === 'parcialmente_aprobado' && authStore.isWarehouseManager"
+                  v-if="currentCart && currentCart.status === 'active' && request.status === 'devuelto_al_solicitante' && authStore.isWarehouseManager"
                   class="p-2 bg-yellow-50 border border-yellow-300 rounded text-center"
                 >
                   <p class="text-xs text-yellow-700 font-medium">En espera del doctor</p>
@@ -710,7 +710,7 @@
 
                 <!-- Botón Listo para retiro (solo cuando todos los items están aprobados) -->
                 <button
-                  v-if="currentCart && currentCart.status === 'active' && canTransferCartToPavilion && request.status !== 'parcialmente_aprobado'"
+                  v-if="currentCart && currentCart.status === 'active' && canTransferCartToPavilion && request.status !== 'devuelto_al_solicitante'"
                   @click="handleTransferCartToPavilion"
                   class="w-full inline-flex items-center justify-center px-3 py-2 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
                 >
@@ -722,7 +722,7 @@
 
                 <!-- Doctor puede editar y reenviar solicitud devuelta -->
                 <button
-                  v-if="(hasReturnedItems || hasRejectedItems) && (request.status === 'devuelto' || request.status === 'parcialmente_aprobado') && (authStore.isDoctor || authStore.isNurse) && request.requested_by === authStore.getUserRut"
+                  v-if="(hasReturnedItems || hasRejectedItems) && (request.status === 'devuelto' || request.status === 'devuelto_al_solicitante') && (authStore.isDoctor || authStore.isNurse) && request.requested_by === authStore.getUserRut"
                   @click="goToEditRequest"
                   class="w-full inline-flex items-center justify-center px-3 py-2 border border-orange-300 rounded-md text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100"
                 >

@@ -489,6 +489,18 @@ const filterConfig = computed(() => [
     ]
   },
   {
+    type: 'select',
+    key: 'urgency',
+    label: 'Urgencia',
+    default: '',
+    options: [
+      { value: '', label: 'Todas las urgencias' },
+      { value: 'emergency', label: 'Emergencia (≤12h)' },
+      { value: 'urgent', label: 'Urgente (≤48h)' },
+      { value: 'normal', label: 'Normal / Baja prioridad' },
+    ]
+  },
+  {
     type: 'date',
     key: 'surgeryDate',
     label: 'Fecha de Cirugía',
@@ -505,6 +517,7 @@ const filterConfig = computed(() => [
 
 const hasActiveFilters = computed(() =>
   filters.value.status !== '' ||
+  filters.value.urgency !== '' ||
   filters.value.surgeryDate !== '' ||
   filters.value.search.trim() !== '' ||
   filters.value.statusCategory !== ''
@@ -516,6 +529,9 @@ const onFilterChange = (key, value) => {
     filters.value.status = value
     currentPage.value = 1
     loadSupplyRequests()
+  } else if (key === 'urgency') {
+    filters.value.urgency = value
+    currentPage.value = 1
   } else if (key === 'surgeryDate') {
     filters.value.surgeryDate = value
     currentPage.value = 1
@@ -553,12 +569,12 @@ const filteredRequests = computed(() => {
     if (filters.value.statusCategory === 'pending') {
       // Pendientes: todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
       filtered = filtered.filter(r => 
-        !['aprobado', 'parcialmente_aprobado', 'rechazado'].includes(r.status)
+        !['aprobado', 'devuelto_al_solicitante', 'rechazado'].includes(r.status)
       )
     } else if (filters.value.statusCategory === 'approved') {
       // Aprobadas: aprobadas + parcialmente aprobadas
       filtered = filtered.filter(r => 
-        r.status === 'aprobado' || r.status === 'parcialmente_aprobado'
+        r.status === 'aprobado' || r.status === 'devuelto_al_solicitante'
       )
     } else if (filters.value.statusCategory === 'rejected') {
       // Rechazadas: solo rechazadas
@@ -569,8 +585,11 @@ const filteredRequests = computed(() => {
   }
 
   if (filters.value.urgency) {
-    filtered = filtered.filter(request => 
-      getUrgencyLevel(request) === filters.value.urgency)
+    filtered = filtered.filter(request => {
+      const level = getUrgencyLevel(request)
+      if (filters.value.urgency === 'normal') return level === 'normal' || level === 'low'
+      return level === filters.value.urgency
+    })
   }
 
   if (filters.value.surgeryDate) {
@@ -589,39 +608,6 @@ const filteredRequests = computed(() => {
     )
   }
 
-  // Ordenar por urgencia por defecto (DataTable maneja ordenamiento por columna)
-  filtered.sort((a, b) => {
-    // 1) Completadas siempre al final
-    const aCompleted = a.status === 'completado'
-    const bCompleted = b.status === 'completado'
-    if (aCompleted !== bCompleted) {
-      return aCompleted ? 1 : -1
-    }
-
-    // 2) Emergencias (<12h) primero, luego urgentes (<48h), luego resto
-    const aHours = getHoursUntilSurgery(a.surgery_datetime)
-    const bHours = getHoursUntilSurgery(b.surgery_datetime)
-
-    const getLevel = (hours) => {
-      if (hours === null || hours < 0) return 2
-      if (hours <= 12) return 0
-      if (hours <= 48) return 1
-      return 2
-    }
-
-    const aLevel = getLevel(aHours)
-    const bLevel = getLevel(bHours)
-
-    if (aLevel !== bLevel) {
-      return aLevel - bLevel
-    }
-
-    // 3) Como desempate, ordenar por fecha de cirugía ascendente
-    const aDate = a.surgery_datetime ? new Date(a.surgery_datetime).getTime() : Infinity
-    const bDate = b.surgery_datetime ? new Date(b.surgery_datetime).getTime() : Infinity
-    return aDate - bDate
-  })
-
   return filtered
 })
 
@@ -631,12 +617,12 @@ const stats = computed(() => {
   
   // Pendientes: todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
   const pending = allRequests.filter(r => 
-    !['aprobado', 'parcialmente_aprobado', 'rechazado'].includes(r.status)
+    !['aprobado', 'devuelto_al_solicitante', 'rechazado'].includes(r.status)
   ).length
   
   // Aprobadas: aprobadas + parcialmente aprobadas
   const approved = allRequests.filter(r => 
-    r.status === 'aprobado' || r.status === 'parcialmente_aprobado'
+    r.status === 'aprobado' || r.status === 'devuelto_al_solicitante'
   ).length
   
   // Rechazadas: solo rechazadas

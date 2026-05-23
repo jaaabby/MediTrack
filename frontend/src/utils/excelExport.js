@@ -119,7 +119,7 @@ export function formatStatusForExcel(status) {
     'en_proceso': 'En Proceso',
     'aprobado': 'Aprobado',
     'completado': 'Completado',
-    'parcialmente_aprobado': 'Parcialmente Aprobado',
+    'devuelto_al_solicitante': 'Devuelto al Solicitante',
     'devuelto': 'Devuelto al Solicitante',
     'devuelto_al_encargado': 'Devuelto al Encargado',
     'parcialmente_devuelto_al_encargado': 'Parcialmente Devuelto al Encargado'

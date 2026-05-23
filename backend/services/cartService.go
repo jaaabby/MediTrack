@@ -832,7 +832,7 @@ func (s *CartService) TransferCartToPavilion(cartID int, userRUT, userName strin
 		}
 
 		// Bloquear transferencia si hay items sin resolver en la solicitud
-		if cart.SupplyRequest.Status == "parcialmente_aprobado" {
+		if cart.SupplyRequest.Status == "devuelto_al_solicitante" {
 			return fmt.Errorf("no se puede transferir: la solicitud tiene items rechazados o devueltos pendientes de revisión")
 		}
 
