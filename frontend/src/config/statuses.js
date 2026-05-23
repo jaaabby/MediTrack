@@ -1,9 +1,7 @@
 export const TRANSFER_STATUS_OPTIONS = [
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'en_transito', label: 'En Tránsito' },
-  { value: 'recibido', label: 'Recibido' },
-  { value: 'rechazado', label: 'Rechazado' },
-  { value: 'cancelado', label: 'Cancelado' }
+  { value: 'recibido', label: 'Recibido' }
 ]
 
 export const MEDICAL_SUPPLY_STATUS_OPTIONS = [
@@ -23,7 +21,6 @@ export const SUPPLY_REQUEST_STATUS_OPTIONS = [
   { value: 'rechazado', label: 'Rechazado' },
   { value: 'completado', label: 'Completado' },
   { value: 'devuelto_al_solicitante', label: 'Devuelto al Solicitante' },
-  { value: 'devuelto', label: 'Devuelto al Solicitante' },
   { value: 'devuelto_al_encargado', label: 'Devuelto al Encargado' },
   { value: 'parcialmente_devuelto_al_encargado', label: 'Parcialmente Devuelto al Encargado' }
 ]

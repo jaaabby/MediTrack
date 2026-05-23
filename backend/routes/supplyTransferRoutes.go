@@ -19,9 +19,8 @@ func SetupSupplyTransferRoutes(router *gin.RouterGroup, transferService *service
 		transfers.POST("/to-pavilion", transferController.TransferToPavilion)
 		transfers.POST("/return-to-store", transferController.ReturnToStore)
 
-		// Confirmar y gestionar transferencias
+		// Confirmar transferencias
 		transfers.POST("/:code/confirm", transferController.ConfirmReception)
-		transfers.POST("/:code/cancel", transferController.CancelTransfer)
 
 		// Consultar transferencias
 		transfers.GET("/:code", transferController.GetTransferByCode)

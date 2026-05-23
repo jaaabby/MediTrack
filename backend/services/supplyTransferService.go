@@ -529,20 +529,21 @@ func (s *SupplyTransferService) GetTransferByCode(transferCode string) (*models.
 	var transfer models.SupplyTransferWithDetails
 
 	err := s.DB.Table("supply_transfer st").
-		Select(`st.*, 
+		Select(`st.*,
 			ms.qr_code as qr_code,
 			sc.code as supply_code,
 			sc.name as supply_name,
 			b.id as batch_number,
-			CASE 
+			CASE
 				WHEN st.origin_type = 'store' THEN s.name
 				WHEN st.origin_type = 'pavilion' THEN p.name
 			END as origin_name,
-			CASE 
+			CASE
 				WHEN st.destination_type = 'store' THEN s2.name
 				WHEN st.destination_type = 'pavilion' THEN p2.name
 			END as destination_name,
-			mc.name as medical_center_name`).
+			mc.name as medical_center_name,
+			sr.request_number as supply_request_number`).
 		Joins("LEFT JOIN medical_supply ms ON st.medical_supply_id = ms.id").
 		Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
 		Joins("LEFT JOIN supply_code sc ON b.supply_code = sc.code").
@@ -551,6 +552,8 @@ func (s *SupplyTransferService) GetTransferByCode(transferCode string) (*models.
 		Joins("LEFT JOIN store s2 ON st.destination_type = 'store' AND st.destination_id = s2.id").
 		Joins("LEFT JOIN pavilion p2 ON st.destination_type = 'pavilion' AND st.destination_id = p2.id").
 		Joins("LEFT JOIN medical_center mc ON (s.medical_center_id = mc.id OR p.medical_center_id = mc.id)").
+		Joins("LEFT JOIN supply_request_qr_assignment srqa ON srqa.qr_code = st.qr_code").
+		Joins("LEFT JOIN supply_request sr ON sr.id = srqa.supply_request_id").
 		Where("st.transfer_code = ?", transferCode).
 		First(&transfer).Error
 
@@ -577,25 +580,28 @@ func (s *SupplyTransferService) GetTransfersByFilters(
 	var total int64
 
 	query := s.DB.Table("supply_transfer st").
-		Select(`st.*, 
+		Select(`st.*,
 			sc.code as supply_code,
 			sc.name as supply_name,
 			b.id as batch_number,
-			CASE 
+			CASE
 				WHEN st.origin_type = 'store' THEN s.name
 				WHEN st.origin_type = 'pavilion' THEN p.name
 			END as origin_name,
-			CASE 
+			CASE
 				WHEN st.destination_type = 'store' THEN s2.name
 				WHEN st.destination_type = 'pavilion' THEN p2.name
-			END as destination_name`).
+			END as destination_name,
+			sr.request_number as supply_request_number`).
 		Joins("LEFT JOIN medical_supply ms ON st.medical_supply_id = ms.id").
 		Joins("LEFT JOIN batch b ON ms.batch_id = b.id").
 		Joins("LEFT JOIN supply_code sc ON b.supply_code = sc.code").
 		Joins("LEFT JOIN store s ON st.origin_type = 'store' AND st.origin_id = s.id").
 		Joins("LEFT JOIN pavilion p ON st.origin_type = 'pavilion' AND st.origin_id = p.id").
 		Joins("LEFT JOIN store s2 ON st.destination_type = 'store' AND st.destination_id = s2.id").
-		Joins("LEFT JOIN pavilion p2 ON st.destination_type = 'pavilion' AND st.destination_id = p2.id")
+		Joins("LEFT JOIN pavilion p2 ON st.destination_type = 'pavilion' AND st.destination_id = p2.id").
+		Joins("LEFT JOIN supply_request_qr_assignment srqa ON srqa.qr_code = st.qr_code").
+		Joins("LEFT JOIN supply_request sr ON sr.id = srqa.supply_request_id")
 
 	// Aplicar filtros
 	if status != nil {
@@ -637,90 +643,3 @@ func (s *SupplyTransferService) GetTransfersByFilters(
 	return transfers, total, nil
 }
 
-// CancelTransfer cancela una transferencia pendiente
-func (s *SupplyTransferService) CancelTransfer(
-	transferCode string,
-	userRUT string,
-	reason string,
-) (*models.SupplyTransfer, error) {
-	var transfer models.SupplyTransfer
-
-	err := s.DB.Transaction(func(tx *gorm.DB) error {
-		// 1. Obtener transferencia
-		if err := tx.Where("transfer_code = ?", transferCode).First(&transfer).Error; err != nil {
-			return fmt.Errorf("transferencia no encontrada: %v", err)
-		}
-
-		if !transfer.CanBeCancelled() {
-			return fmt.Errorf("la transferencia no puede ser cancelada (estado: %s)", transfer.Status)
-		}
-
-		// 2. Obtener insumo
-		var supply models.MedicalSupply
-		if err := tx.First(&supply, transfer.MedicalSupplyID).Error; err != nil {
-			return fmt.Errorf("insumo no encontrado: %v", err)
-		}
-
-		// 3. Revertir cambios en el insumo
-		supply.LocationType = models.SupplyLocationStore
-		supply.LocationID = transfer.OriginID
-		supply.InTransit = false
-		supply.Status = models.StatusAvailable
-
-		if err := tx.Save(&supply).Error; err != nil {
-			return fmt.Errorf("error al revertir insumo: %v", err)
-		}
-
-		// 4. Revertir cambios en resumen de bodega y lote
-		var batch models.Batch
-		if err := tx.First(&batch, supply.BatchID).Error; err != nil {
-			return fmt.Errorf("lote no encontrado: %v", err)
-		}
-
-		var storeSummary models.StoreInventorySummary
-		if err := tx.Where("batch_id = ?", batch.ID).First(&storeSummary).Error; err == nil {
-			storeSummary.CurrentInStore++
-			storeSummary.TotalTransferredOut--
-			if err := tx.Save(&storeSummary).Error; err != nil {
-				return fmt.Errorf("error al revertir resumen de bodega: %v", err)
-			}
-		}
-
-		batch.Amount++
-		if err := tx.Save(&batch).Error; err != nil {
-			return fmt.Errorf("error al revertir lote: %v", err)
-		}
-
-		// 5. Actualizar transferencia
-		transfer.Status = models.TransferStatusCancelled
-		transfer.RejectionReason = &reason
-
-		if err := tx.Save(&transfer).Error; err != nil {
-			return fmt.Errorf("error al cancelar transferencia: %v", err)
-		}
-
-		// 6. Registrar en historial
-		history := models.SupplyHistory{
-			DateTime:        time.Now(),
-			Status:          models.StatusAvailable,
-			DestinationType: models.DestinationTypeStore,
-			DestinationID:   transfer.OriginID,
-			MedicalSupplyID: supply.ID,
-			UserRUT:         userRUT,
-			Notes:           fmt.Sprintf("Transferencia cancelada: %s", reason),
-			TransferNotes:   reason,
-		}
-
-		if err := tx.Create(&history).Error; err != nil {
-			return fmt.Errorf("error al crear historial: %v", err)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &transfer, nil
-}

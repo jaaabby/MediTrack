@@ -65,16 +65,6 @@ class SupplyTransferService {
     }
   }
 
-  async cancelTransfer(code, cancellationData = {}) {
-    try {
-      const response = await this.api.post(`/transfers/${code}/cancel`, cancellationData)
-      return response.data
-    } catch (error) {
-      console.error('Error al cancelar transferencia:', error)
-      throw error
-    }
-  }
-
   // ========================
   // CONSULTAR TRANSFERENCIAS
   // ========================
@@ -94,8 +84,8 @@ class SupplyTransferService {
       const queryParams = new URLSearchParams()
       
       if (filters.status) queryParams.append('status', filters.status)
-      if (filters.from_date) queryParams.append('from_date', filters.from_date)
-      if (filters.to_date) queryParams.append('to_date', filters.to_date)
+      if (filters.from_date) queryParams.append('start_date', filters.from_date)
+      if (filters.to_date) queryParams.append('end_date', filters.to_date)
       if (filters.pavilion_id) queryParams.append('pavilion_id', filters.pavilion_id)
       if (filters.store_id) queryParams.append('store_id', filters.store_id)
       // Solicitar todos los registros ya que la paginación se maneja en el cliente

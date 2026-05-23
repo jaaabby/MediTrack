@@ -561,20 +561,23 @@ const filteredRequests = computed(() => {
 
   // Filtrar por estado específico (del select)
   if (filters.value.status) {
-    filtered = filtered.filter(r => r.status === filters.value.status)
+    // devuelto_al_solicitante agrupa también el status legacy 'devuelto'
+    if (filters.value.status === 'devuelto_al_solicitante') {
+      filtered = filtered.filter(r => r.status === 'devuelto_al_solicitante' || r.status === 'devuelto')
+    } else {
+      filtered = filtered.filter(r => r.status === filters.value.status)
+    }
   }
 
   // Filtrar por categoría de estadística (si está activo)
   if (filters.value.statusCategory) {
     if (filters.value.statusCategory === 'pending') {
-      // Pendientes: todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
-      filtered = filtered.filter(r => 
-        !['aprobado', 'devuelto_al_solicitante', 'rechazado'].includes(r.status)
+      filtered = filtered.filter(r =>
+        !['aprobado', 'devuelto_al_solicitante', 'devuelto', 'rechazado'].includes(r.status)
       )
     } else if (filters.value.statusCategory === 'approved') {
-      // Aprobadas: aprobadas + parcialmente aprobadas
-      filtered = filtered.filter(r => 
-        r.status === 'aprobado' || r.status === 'devuelto_al_solicitante'
+      filtered = filtered.filter(r =>
+        r.status === 'aprobado' || r.status === 'devuelto_al_solicitante' || r.status === 'devuelto'
       )
     } else if (filters.value.statusCategory === 'rejected') {
       // Rechazadas: solo rechazadas
@@ -615,14 +618,12 @@ const filteredRequests = computed(() => {
 const stats = computed(() => {
   const allRequests = requests.value
   
-  // Pendientes: todas las que NO están aprobadas, parcialmente aprobadas ni rechazadas
-  const pending = allRequests.filter(r => 
-    !['aprobado', 'devuelto_al_solicitante', 'rechazado'].includes(r.status)
+  const pending = allRequests.filter(r =>
+    !['aprobado', 'devuelto_al_solicitante', 'devuelto', 'rechazado'].includes(r.status)
   ).length
-  
-  // Aprobadas: aprobadas + parcialmente aprobadas
-  const approved = allRequests.filter(r => 
-    r.status === 'aprobado' || r.status === 'devuelto_al_solicitante'
+
+  const approved = allRequests.filter(r =>
+    r.status === 'aprobado' || r.status === 'devuelto_al_solicitante' || r.status === 'devuelto'
   ).length
   
   // Rechazadas: solo rechazadas

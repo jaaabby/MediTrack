@@ -69,9 +69,14 @@
       <template #cell-transfer_code="{ row }">
         <span>{{ row.transfer_code || row.code || 'N/A' }}</span>
       </template>
+      <template #cell-supply_request_number="{ row }">
+        <span v-if="row.supply_request_number" class="text-xs font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+          {{ row.supply_request_number }}
+        </span>
+        <span v-else class="text-gray-400 text-xs">—</span>
+      </template>
       <template #cell-origin_name="{ row }">{{ getOriginName(row) }}</template>
       <template #cell-destination_name="{ row }">{{ getDestinationName(row) }}</template>
-      <template #cell-cantidad="{ row }">1</template>
       <template #cell-status="{ row }">
         <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(row.status)">
           {{ getStatusLabel(row.status) }}
@@ -112,9 +117,6 @@
               <div class="h-10 w-10 rounded-full bg-white/80 flex items-center justify-center">
                 <svg v-if="selectedTransfer.status === 'recibido' || selectedTransfer.status === 'completed'" class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <svg v-else-if="selectedTransfer.status === 'cancelado' || selectedTransfer.status === 'rechazado'" class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 <svg v-else class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -217,11 +219,14 @@
               <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl border border-purple-200">
                 <div class="flex items-center space-x-3 mb-2">
                   <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
-                  <p class="text-sm font-semibold text-purple-900">ID Insumo</p>
+                  <p class="text-sm font-semibold text-purple-900">Solicitud de origen</p>
                 </div>
-                <p class="text-xl font-bold text-purple-700">#{{ selectedTransfer.medical_supply_id }}</p>
+                <p v-if="selectedTransfer.supply_request_number" class="text-xl font-bold text-purple-700">
+                  {{ selectedTransfer.supply_request_number }}
+                </p>
+                <p v-else class="text-sm text-purple-400 italic">Sin solicitud asociada</p>
               </div>
             </div>
 
@@ -439,8 +444,7 @@ const normalizeTransferStatus = (status) => {
   const statusMap = {
     pending: 'pendiente',
     in_transit: 'en_transito',
-    completed: 'recibido',
-    cancelled: 'cancelado'
+    completed: 'recibido'
   }
   return statusMap[status] || status || ''
 }
@@ -455,7 +459,7 @@ const filterState = reactive({
 })
 
 const filterConfig = [
-  { type: 'text', key: 'code', label: 'Buscar por código', placeholder: 'Código de transferencia' },
+  { type: 'text', key: 'code', label: 'Buscar', placeholder: 'Código de transferencia o N° solicitud' },
   {
     type: 'select', key: 'status', label: 'Estado', default: filterState.status,
     options: [
@@ -495,9 +499,9 @@ const loadTransfers = async () => {
 
 const tableColumns = [
   { key: 'transfer_code', label: 'Código' },
+  { key: 'supply_request_number', label: 'Solicitud', sortable: false },
   { key: 'origin_name', label: 'Origen', sortable: false },
   { key: 'destination_name', label: 'Destino', sortable: false },
-  { key: 'cantidad', label: 'Cantidad', sortable: false },
   { key: 'status', label: 'Estado' },
   { key: 'created_at', label: 'Fecha' }
 ]
@@ -508,7 +512,8 @@ const filteredTransfers = computed(() => {
   if (!codeFilter) return transfers.value
   return transfers.value.filter(t => {
     const code = (t.transfer_code || t.code || '').toLowerCase()
-    return code.includes(codeFilter)
+    const requestNumber = (t.supply_request_number || '').toLowerCase()
+    return code.includes(codeFilter) || requestNumber.includes(codeFilter)
   })
 })
 
@@ -527,13 +532,10 @@ const getStatusClass = (status) => {
     pendiente: 'bg-yellow-100 text-yellow-800',
     en_transito: 'bg-blue-100 text-blue-800',
     recibido: 'bg-green-100 text-green-800',
-    cancelado: 'bg-red-100 text-red-800',
-    rechazado: 'bg-red-100 text-red-800',
     // Inglés para compatibilidad
     pending: 'bg-yellow-100 text-yellow-800',
     in_transit: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800'
+    completed: 'bg-green-100 text-green-800'
   }
   return classes[status] || 'bg-gray-100 text-gray-800'
 }
@@ -543,13 +545,10 @@ const getStatusBgClass = (status) => {
     pendiente: 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-900',
     en_transito: 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-900',
     recibido: 'bg-gradient-to-r from-green-100 to-green-200 text-green-900',
-    cancelado: 'bg-gradient-to-r from-red-100 to-red-200 text-red-900',
-    rechazado: 'bg-gradient-to-r from-red-100 to-red-200 text-red-900',
     // Inglés para compatibilidad
     pending: 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-900',
     in_transit: 'bg-gradient-to-r from-brand-blue-light from-opacity-30 to-brand-blue-light from-opacity-50 text-brand-blue-dark',
-    completed: 'bg-gradient-to-r from-green-100 to-green-200 text-green-900',
-    cancelled: 'bg-gradient-to-r from-red-100 to-red-200 text-red-900'
+    completed: 'bg-gradient-to-r from-green-100 to-green-200 text-green-900'
   }
   return classes[status] || 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900'
 }
@@ -559,13 +558,10 @@ const getStatusLabel = (status) => {
     pendiente: 'Pendiente',
     en_transito: 'En Tránsito',
     recibido: 'Recibido',
-    cancelado: 'Cancelado',
-    rechazado: 'Rechazado',
     // Inglés para compatibilidad
     pending: 'Pendiente',
     in_transit: 'En Tránsito',
-    completed: 'Completado',
-    cancelled: 'Cancelado'
+    completed: 'Recibido'
   }
   return labels[status] || status
 }

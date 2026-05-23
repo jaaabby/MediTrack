@@ -34,8 +34,6 @@ const (
 	TransferStatusPending   = "pendiente"
 	TransferStatusInTransit = "en_transito"
 	TransferStatusReceived  = "recibido"
-	TransferStatusRejected  = "rechazado"
-	TransferStatusCancelled = "cancelado"
 )
 
 // Constantes para tipos de ubicación en transferencias
@@ -58,18 +56,15 @@ func (st SupplyTransfer) IsCompleted() bool {
 	return st.Status == TransferStatusReceived
 }
 
-// CanBeCancelled verifica si la transferencia puede ser cancelada
-func (st SupplyTransfer) CanBeCancelled() bool {
-	return st.Status == TransferStatusPending || st.Status == TransferStatusInTransit
-}
 
 // SupplyTransferWithDetails extiende SupplyTransfer con información adicional
 type SupplyTransferWithDetails struct {
 	SupplyTransfer
-	SupplyName        string  `json:"supply_name,omitempty"`
-	SupplyCode        int     `json:"supply_code,omitempty"`
-	BatchNumber       int     `json:"batch_number,omitempty"`
-	OriginName        string  `json:"origin_name,omitempty"`
-	DestinationName   string  `json:"destination_name,omitempty"`
-	MedicalCenterName *string `json:"medical_center_name,omitempty"`
+	SupplyName            string  `json:"supply_name,omitempty"`
+	SupplyCode            int     `json:"supply_code,omitempty"`
+	BatchNumber           int     `json:"batch_number,omitempty"`
+	OriginName            string  `json:"origin_name,omitempty"`
+	DestinationName       string  `json:"destination_name,omitempty"`
+	MedicalCenterName     *string `json:"medical_center_name,omitempty"`
+	SupplyRequestNumber   string  `json:"supply_request_number,omitempty"`
 }
