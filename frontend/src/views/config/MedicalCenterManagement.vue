@@ -68,7 +68,7 @@
             <p v-if="successMsg[center.id]" class="text-green-600 text-xs mt-1">{{ successMsg[center.id] }}</p>
             <p v-if="errorMsg[center.id]" class="text-red-600 text-xs mt-1">{{ errorMsg[center.id] }}</p>
             <p v-if="!center.alert_email" class="text-amber-600 text-xs mt-1">
-              ⚠ Sin correo configurado — las alertas no se enviarán
+              ⚠ Sin correo configurado - las alertas no se enviarán
             </p>
           </div>
         </div>
@@ -126,7 +126,7 @@ async function save(center) {
   const result = await medicalCenterService.update(center.id, payload)
   if (result.success) {
     center.alert_email = payload.alert_email
-    successMsg[center.id] = 'Correo guardado correctamente'
+    successMsg[center.id] = 'Cambios guardados correctamente'
     setTimeout(() => { successMsg[center.id] = null }, 3000)
   } else {
     errorMsg[center.id] = result.error || 'Error al guardar'

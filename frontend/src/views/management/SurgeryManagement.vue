@@ -127,6 +127,7 @@
               <p class="mt-1 text-xs text-gray-500">
                 Duración total: {{ formatDurationFromInput(surgeryForm.durationHours, surgeryForm.durationMinutes) }}
               </p>
+              <p v-if="durationError" class="mt-1 text-sm text-red-600">{{ durationError }}</p>
             </div>
 
             <div>
@@ -179,6 +180,7 @@ const filterState = reactive({ search: '' })
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+const durationError = ref('')
 
 const tableColumns = [
   { key: 'name', label: 'Nombre' },
@@ -273,6 +275,7 @@ const formatDurationFromInput = (hours, minutes) => {
 
 const openCreateModal = () => {
   isEditing.value = false
+  durationError.value = ''
   surgeryForm.value = {
     name: '',
     durationHours: 1,
@@ -284,6 +287,7 @@ const openCreateModal = () => {
 
 const openEditModal = (surgery) => {
   isEditing.value = true
+  durationError.value = ''
   const { hours, minutes } = decimalToHoursMinutes(surgery.duration || 1)
   surgeryForm.value = {
     id: surgery.id,
@@ -297,6 +301,7 @@ const openEditModal = (surgery) => {
 
 const closeModal = () => {
   showModal.value = false
+  durationError.value = ''
   surgeryForm.value = {}
 }
 
@@ -313,9 +318,10 @@ const saveSurgery = async () => {
   const totalDuration = hoursMinutesToDecimal(durationHours, durationMinutes)
   
   if (totalDuration <= 0) {
-    showWarning('La duración debe ser mayor a 0')
+    durationError.value = 'La duración debe ser mayor a 0'
     return
   }
+  durationError.value = ''
 
   saving.value = true
   try {
