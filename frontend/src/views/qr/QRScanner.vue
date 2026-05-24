@@ -1,9 +1,9 @@
 <template>
   <div class="max-w-4xl mx-auto p-3 sm:p-6">
     <!-- Header -->
-    <div class="mb-4 sm:mb-6">
-      <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Escáner QR</h1>
-      <p class="text-sm sm:text-base text-gray-600 mt-2">Escanea códigos QR para gestionar insumos médicos</p>
+    <div class="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
+      <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">Escáner QR</h1>
+      <p class="text-sm sm:text-base text-gray-600 mt-1">Escanea códigos QR para gestionar insumos médicos</p>
     </div>
 
     <!-- Sección de Escaneo -->
@@ -658,12 +658,6 @@ const canBeReturnedToStore = (info) => {
     // También verificar si las notas del insumo indican consumo automático
     const supplyNotes = info.supply_info?.notes || info.notes || ''
     if (supplyNotes.includes('[CONSUMO_AUTOMATICO]') || supplyNotes.includes('Consumo automático')) {
-      return true
-    }
-    
-    // Si está consumido y en pabellón, permitir devolverlo (asumimos que puede ser automático)
-    if (locationType === 'pavilion' && locationID) {
-      console.log('⚠️  Insumo consumido en pabellón, permitiendo devolución (puede ser automático)')
       return true
     }
   }

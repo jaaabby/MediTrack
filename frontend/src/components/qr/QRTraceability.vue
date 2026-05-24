@@ -1,31 +1,32 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
-    <div class="bg-white shadow-sm border-b">
-      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-14 sm:h-16">
-          <div class="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
-            <router-link to="/qr" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
-              <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </router-link>
-            <h1 class="text-sm sm:text-xl font-semibold text-gray-900 truncate">Trazabilidad del Insumo</h1>
+    <div class="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6 mx-3 sm:mx-6 lg:mx-8 mt-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <router-link to="/qr" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full flex-shrink-0">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </router-link>
+          <div>
+            <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">Trazabilidad del Insumo</h1>
+            <p class="text-gray-600 mt-1 text-sm">Registro completo de movimientos y ubicaciones</p>
           </div>
-          <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <button @click="exportTraceability" class="btn-secondary text-xs sm:text-sm p-2 sm:px-4 sm:py-2">
-              <svg class="h-4 w-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span class="hidden sm:inline">Exportar</span>
-            </button>
-            <button @click="printTraceability" class="btn-secondary text-xs sm:text-sm p-2 sm:px-4 sm:py-2">
-              <svg class="h-4 w-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              <span class="hidden sm:inline">Imprimir</span>
-            </button>
-          </div>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <button @click="exportTraceability" class="btn-secondary text-xs sm:text-sm p-2 sm:px-4 sm:py-2">
+            <svg class="h-4 w-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="hidden sm:inline">Exportar</span>
+          </button>
+          <button @click="printTraceability" class="btn-secondary text-xs sm:text-sm p-2 sm:px-4 sm:py-2">
+            <svg class="h-4 w-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span class="hidden sm:inline">Imprimir</span>
+          </button>
         </div>
       </div>
     </div>
@@ -61,7 +62,7 @@
     </div>
 
     <!-- Main Content -->
-    <div v-else-if="traceabilityData" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+    <div v-else-if="traceabilityData" class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-4 sm:pb-8">
       <!-- Product Summary Card -->
       <div class="bg-white rounded-lg shadow-sm border mb-4 sm:mb-8">
         <div class="p-4 sm:p-6">
