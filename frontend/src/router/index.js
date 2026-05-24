@@ -441,8 +441,8 @@ const routes = [
     name: 'InventoryDashboard',
     component: () => import('@/views/inventory/InventoryDashboard.vue'),
     meta: {
-      title: 'Dashboard de Inventario - Meditrack',
-      description: 'Resumen general del inventario por ubicaciones',
+      title: 'Inventario por cirugía - Meditrack',
+      description: 'Resumen general del inventario por cirugías',
       requiresAuth: true
     }
   },

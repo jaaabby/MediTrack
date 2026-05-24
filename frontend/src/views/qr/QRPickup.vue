@@ -1,5 +1,20 @@
 <template>
   <div class="max-w-4xl mx-auto p-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
+      <div class="flex items-center gap-3">
+        <button @click="$router.go(-1)" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full flex-shrink-0">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">Retiro de Insumo</h1>
+          <p class="text-gray-600 mt-1 text-sm">Registro de retiro de insumo desde bodega</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Mensaje de Error -->
     <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
       <div class="flex items-start space-x-3">

@@ -2,7 +2,7 @@
   <div class="space-y-8">
     <!-- Header -->
     <div class="bg-white rounded-lg shadow-sm border p-6">
-      <h2 class="text-2xl font-semibold text-gray-900">Dashboard de Inventario</h2>
+      <h2 class="text-2xl font-semibold text-gray-900">Inventario por Cirugía</h2>
       <p class="text-gray-600 mt-2">Inventario organizado por tipo de cirugía</p>
     </div>
 

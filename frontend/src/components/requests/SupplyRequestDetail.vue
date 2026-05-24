@@ -24,27 +24,25 @@
     <!-- Contenido principal -->
     <div v-else-if="request">
       <!-- Encabezado -->
-      <div class="mb-4 sm:mb-6">
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-          <div class="flex-1">
-            <div class="flex items-center mb-2 sm:mb-3">
-              <button
-                @click="$router.go(-1)"
-                class="mr-2 sm:mr-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
-              >
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <h1 class="text-lg sm:text-2xl font-bold text-gray-900 truncate">Solicitud {{ request.request_number }}</h1>
-            </div>
-            <div class="flex items-center space-x-4">
-              <span :class="getStatusBadgeClass(request.status)" class="inline-flex px-3 py-1 text-sm font-semibold rounded-full">
-                {{ getStatusLabel(request.status) }}
-              </span>
-              <span class="text-sm text-gray-600">
-                Creada: {{ formatDate(request.request_date) }}
-              </span>
+      <div class="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div class="flex items-center gap-3">
+            <button
+              @click="$router.go(-1)"
+              class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full flex-shrink-0"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">Solicitud {{ request.request_number }}</h1>
+              <div class="flex items-center gap-3 mt-1">
+                <span :class="getStatusBadgeClass(request.status)" class="inline-flex px-3 py-1 text-sm font-semibold rounded-full">
+                  {{ getStatusLabel(request.status) }}
+                </span>
+                <span class="text-sm text-gray-600">Creada: {{ formatDate(request.request_date) }}</span>
+              </div>
             </div>
           </div>
 
@@ -72,17 +70,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-weight="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
               Rechazar
-            </button>
-
-            <button
-              @click="loadSupplyRequest"
-              :disabled="loading"
-              class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 w-full sm:w-auto"
-            >
-              <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refrescar
             </button>
           </div>
         </div>
