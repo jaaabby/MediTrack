@@ -55,15 +55,19 @@ func (s *InventoryService) GetStoreInventory(
 			COALESCE(b.expiration_date::text, '') as expiration_date,
 			mc.id as medical_center_id,
 			mc.name as medical_center_name,
-			COALESCE((SELECT SUM(pis.total_consumed)
-				FROM pavilion_inventory_summary pis
-				WHERE pis.batch_id = sis.batch_id), 0) AS total_consumed_from_pavilions`).
+			COALESCE(pcons.total_consumed, 0) AS total_consumed_from_pavilions`).
 		Joins("LEFT JOIN store s ON sis.store_id = s.id").
 		Joins("LEFT JOIN supply_code sc ON sis.supply_code = sc.code").
 		Joins("LEFT JOIN surgery surg ON sis.surgery_id = surg.id").
 		Joins("LEFT JOIN batch b ON sis.batch_id = b.id").
 		Joins("LEFT JOIN supplier_config supc ON b.supplier_id = supc.id").
-		Joins("LEFT JOIN medical_center mc ON s.medical_center_id = mc.id")
+		Joins("LEFT JOIN medical_center mc ON s.medical_center_id = mc.id").
+		// Pre-agregado por batch en vez de subquery escalar por fila (evita N+1)
+		Joins(`LEFT JOIN (
+			SELECT batch_id, SUM(total_consumed) AS total_consumed
+			FROM pavilion_inventory_summary
+			GROUP BY batch_id
+		) pcons ON pcons.batch_id = sis.batch_id`)
 
 	// Aplicar filtros
 	if storeID != nil {

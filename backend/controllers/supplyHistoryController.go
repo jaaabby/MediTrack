@@ -104,7 +104,8 @@ func (c *SupplyHistoryController) UpdateSupplyHistory(ctx *gin.Context) {
 
 // GetAllSupplyHistoriesWithDetails - obtiene todos los supply histories con información detallada del insumo
 func (c *SupplyHistoryController) GetAllSupplyHistoriesWithDetails(ctx *gin.Context) {
-	histories, err := c.supplyHistoryService.GetAllSupplyHistoriesWithDetails()
+	status := ctx.Query("status") // filtro opcional por estado (server-side)
+	histories, err := c.supplyHistoryService.GetAllSupplyHistoriesWithDetails(status)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, Response{Success: false, Error: "Error al obtener supply histories: " + err.Error()})
 		return

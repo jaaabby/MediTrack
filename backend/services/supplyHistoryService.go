@@ -42,7 +42,7 @@ func (s *SupplyHistoryService) GetAllSupplyHistories() ([]models.SupplyHistory, 
 }
 
 // GetAllSupplyHistoriesWithDetails obtiene todos los historiales con información del insumo
-func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]interface{}, error) {
+func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails(status string) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
 
 	query := `
@@ -83,10 +83,17 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 		LEFT JOIN pavilion dpv ON sh.destination_type IN ('pavilion', 'pabellon') AND sh.destination_id = dpv.id
 		LEFT JOIN store ost ON sh.origin_type = 'store' AND sh.origin_id = ost.id
 		LEFT JOIN pavilion opv ON sh.origin_type IN ('pavilion', 'pabellon') AND sh.origin_id = opv.id
-		ORDER BY sh.date_time DESC
 	`
 
-	rows, err := s.DB.Raw(query).Rows()
+	// Filtro opcional por estado (server-side). No se cambian los valores/keys de estado.
+	var args []interface{}
+	if status != "" {
+		query += " WHERE sh.status = ?"
+		args = append(args, status)
+	}
+	query += " ORDER BY sh.date_time DESC"
+
+	rows, err := s.DB.Raw(query, args...).Rows()
 	if err != nil {
 		return nil, err
 	}
@@ -112,14 +119,15 @@ func (s *SupplyHistoryService) GetAllSupplyHistoriesWithDetails() ([]map[string]
 			return nil, err
 		}
 
-		// Formatear fecha en formato ISO 8601 con zona horaria para evitar problemas de interpretación
-		// Esto asegura que la fecha se interprete correctamente en el frontend
-		dateTimeISO := dateTime.Format(time.RFC3339)
+		// La columna date_time es TIMESTAMP (sin zona) y guarda el wall-clock local de Chile.
+		// Se serializa como naive (sin "Z") para que el frontend lo muestre tal cual, sin
+		// re-convertir UTC→local (lo que restaba 4h y mostraba el día anterior).
+		dateTimeISO := dateTime.Format("2006-01-02 15:04:05")
 
 		// También formatear confirmation_date si existe
 		var confirmationDateISO *string
 		if confirmationDate.Valid {
-			iso := confirmationDate.Time.Format(time.RFC3339)
+			iso := confirmationDate.Time.Format("2006-01-02 15:04:05")
 			confirmationDateISO = &iso
 		}
 
@@ -222,11 +230,12 @@ func (s *SupplyHistoryService) GetSupplyHistoryByBatchID(batchID int) ([]map[str
 			return nil, err
 		}
 
-		dateTimeISO := dateTime.Format(time.RFC3339)
+		// Naive local (sin "Z"), consistente con GetAllSupplyHistoriesWithDetails.
+		dateTimeISO := dateTime.Format("2006-01-02 15:04:05")
 
 		var confirmationDateISO *string
 		if confirmationDate.Valid {
-			iso := confirmationDate.Time.Format(time.RFC3339)
+			iso := confirmationDate.Time.Format("2006-01-02 15:04:05")
 			confirmationDateISO = &iso
 		}
 

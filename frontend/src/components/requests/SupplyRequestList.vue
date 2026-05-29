@@ -432,6 +432,7 @@ import ReviewItemsModal from '@/components/requests/ReviewItemsModal.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel } from '@/utils/excelExport'
@@ -835,7 +836,7 @@ const handleItemsReviewed = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
   } catch {
     return dateString
   }
@@ -885,7 +886,7 @@ const getStatusBadgeClass = (status) => {
 const formatSurgeryDateTime = (surgeryDateTime) => {
   if (!surgeryDateTime) return 'N/A'
   try {
-    return format(new Date(surgeryDateTime), 'dd/MM/yyyy HH:mm', { locale: es })
+    return format(parseDbDate(surgeryDateTime), 'dd/MM/yyyy HH:mm', { locale: es })
   } catch {
     return surgeryDateTime
   }
@@ -894,7 +895,7 @@ const formatSurgeryDateTime = (surgeryDateTime) => {
 // Funciones de urgencia
 const getHoursUntilSurgery = (surgeryDatetime) => {
   if (!surgeryDatetime) return null
-  const surgeryDate = new Date(surgeryDatetime)
+  const surgeryDate = parseDbDate(surgeryDatetime)
   const now = new Date()
   const diffTime = surgeryDate - now
   const diffHours = diffTime / (1000 * 60 * 60)

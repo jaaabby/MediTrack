@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs'
+import { parseDbDate } from './dateUtils'
 
 /**
  * Exporta datos a un archivo Excel
@@ -81,7 +82,7 @@ export async function exportToExcel(data, columns, filename = 'export') {
  */
 export function formatDateForExcel(date) {
   if (!date) return ''
-  return new Date(date).toLocaleString('es-CL', {
+  return parseDbDate(date).toLocaleString('es-CL', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

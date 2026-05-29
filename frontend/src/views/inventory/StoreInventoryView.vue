@@ -189,8 +189,9 @@ import DataTable from '@/components/common/DataTable.vue'
 import inventoryService from '@/services/inventory/inventoryService'
 import surgeryService from '@/services/management/surgeryService'
 import { useInventoryAlerts } from '@/composables/useInventoryAlerts'
+import { parseDbDate } from '@/utils/dateUtils'
 
-const { isLowStock, isMediumStock, getStockClass, getExpirationClass } = useInventoryAlerts()
+const { isLowStock, isMediumStock, getStockClass, getExpirationClass, isNearExpiration, isExpired } = useInventoryAlerts()
 
 const route = useRoute()
 const initialStoreId = Array.isArray(route.query.store_id) ? route.query.store_id[0] : route.query.store_id
@@ -330,55 +331,58 @@ const filteredSuppliers = computed(() => {
   ).slice(0, 10)
 })
 
-// Computed para filtrar inventario (filtros client-side de proveedor y stock bajo)
+// Todos los filtros son client-side sobre el inventario cargado una sola vez.
+// (Mismo patrón que la vista /inventory: 1 carga, filtros en memoria, sin refetch al backend.)
 const filteredInventory = computed(() => {
   if (!inventory.value || inventory.value.length === 0) return []
 
   let result = inventory.value
 
+  // Bodega
+  if (filters.value.store_id) {
+    result = result.filter(item => String(item.store_id) === String(filters.value.store_id))
+  }
+
+  // Tipo de cirugía
+  if (filters.value.surgery_id) {
+    result = result.filter(item => String(item.surgery_id) === String(filters.value.surgery_id))
+  }
+
+  // Stock
   if (filters.value.stock_filter === 'critical') {
     result = result.filter(item => isLowStock(item.current_in_store, item.critical_stock))
   } else if (filters.value.stock_filter === 'medium') {
     result = result.filter(item => isMediumStock(item.current_in_store, item.critical_stock))
   }
 
-  // ID 6: filtro client-side de proveedor, insensible a mayúsculas y tildes
-  const supplierQuery = normalizeText(filters.value.supplier)
-  if (!supplierQuery) return result
-  return result.filter(item =>
-    normalizeText(item.batch_supplier).includes(supplierQuery)
-  )
-})
+  // Vencimiento
+  if (filters.value.expiration_filter === 'near_expiration') {
+    result = result.filter(item => isNearExpiration(item.expiration_date))
+  } else if (filters.value.expiration_filter === 'expired') {
+    result = result.filter(item => isExpired(item.expiration_date))
+  }
 
-let debounceTimeout = null
-const debouncedApplyFilters = () => {
-  if (debounceTimeout) clearTimeout(debounceTimeout)
-  debounceTimeout = setTimeout(() => {
-    applyFilters()
-  }, 500)
-}
+  // Proveedor (insensible a mayúsculas y tildes)
+  const supplierQuery = normalizeText(filters.value.supplier)
+  if (supplierQuery) {
+    result = result.filter(item => normalizeText(item.batch_supplier).includes(supplierQuery))
+  }
+
+  return result
+})
 
 const loadInventory = async () => {
   loading.value = true
   error.value = null
-  
+
   try {
-    // El filtro de proveedor se aplica client-side con normalización de tildes y mayúsculas (ID 6)
-    // No se envía al backend para evitar el LIKE case-sensitive de PostgreSQL
-    const backendFilters = {
-      ...filters.value,
-      supplier: '',
-      low_stock: filters.value.stock_filter === 'critical' ? 'true' : '',
-      near_expiration: filters.value.expiration_filter === 'near_expiration' ? 'true' : '',
-      expired: filters.value.expiration_filter === 'expired' ? 'true' : '',
-    }
-    const data = await inventoryService.getStoreInventory(backendFilters)
-    // Asegurarse de que inventory.value siempre sea un array
+    // Una sola llamada: trae todo el inventario de bodegas. Todos los filtros se aplican
+    // client-side en filteredInventory (no se re-consulta el backend al filtrar).
+    const data = await inventoryService.getStoreInventory({})
     inventory.value = Array.isArray(data) ? data : []
   } catch (err) {
     error.value = err.message || 'Error al cargar inventario de bodegas'
     console.error('Error loading store inventory:', err)
-    // En caso de error, asegurar que sea un array vacío
     inventory.value = []
   } finally {
     loading.value = false
@@ -405,15 +409,10 @@ const loadSurgeries = async () => {
   }
 }
 
-const applyFilters = () => {
-  loadInventory()
-}
-
 const onFilterChange = (key, value) => {
   switch (key) {
     case 'store_id':
       filters.value.store_id = value
-      applyFilters()
       break
     case 'surgery_search':
       surgerySearch.value = value
@@ -426,7 +425,6 @@ const onFilterChange = (key, value) => {
     case 'stock_filter':
     case 'expiration_filter':
       filters.value[key] = value
-      applyFilters()
       break
     default:
       break
@@ -446,22 +444,19 @@ const clearFilters = () => {
   showSurgeryOptions.value = false
   showSupplierOptions.value = false
   filterPanelKey.value += 1
-  applyFilters()
 }
 
 // Funciones para manejar autocompletado de cirugía
 const onSurgerySearch = () => {
   showSurgeryOptions.value = true
   // Si el texto coincide exactamente con una cirugía, seleccionarla automáticamente
-  const exactMatch = surgeries.value.find(surgery => 
+  const exactMatch = surgeries.value.find(surgery =>
     normalizeText(surgery.name) === normalizeText(surgerySearch.value)
   )
   if (exactMatch) {
     filters.value.surgery_id = exactMatch.id.toString()
-    debouncedApplyFilters()
   } else if (surgerySearch.value.trim() === '') {
     filters.value.surgery_id = ''
-    debouncedApplyFilters()
   }
 }
 
@@ -469,7 +464,6 @@ const selectSurgery = (surgery) => {
   filters.value.surgery_id = surgery.id.toString()
   surgerySearch.value = surgery.name
   showSurgeryOptions.value = false
-  applyFilters()
 }
 
 const hideSurgeryOptions = () => {
@@ -491,14 +485,12 @@ const hideSurgeryOptions = () => {
 const onSupplierSearch = () => {
   showSupplierOptions.value = true
   filters.value.supplier = supplierSearch.value
-  debouncedApplyFilters()
 }
 
 const selectSupplier = (supplier) => {
   supplierSearch.value = supplier
   filters.value.supplier = supplier
   showSupplierOptions.value = false
-  applyFilters()
 }
 
 const hideSupplierOptions = () => {
@@ -510,7 +502,7 @@ const hideSupplierOptions = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   try {
-    return new Date(dateString).toLocaleDateString('es-CL')
+    return parseDbDate(dateString).toLocaleDateString('es-CL')
   } catch {
     return dateString
   }

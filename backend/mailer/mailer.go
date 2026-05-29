@@ -96,20 +96,20 @@ func (r *Request) SendMailSkipTLS(templateName string, items interface{}) error 
 	m.SetHeader("Subject", r.subject)
 	m.SetBody("text/html", r.body)
 
+	// Verificar que las variables de entorno estén configuradas ANTES de parsear el puerto
+	if email == "" || pass == "" || server == "" || port == "" {
+		fmt.Printf("ERROR: Variables de entorno de email no configuradas. EMAIL_DIR=%s, EMAIL_SERVER=%s, EMAIL_PORT=%s\n",
+			email, server, port)
+		return fmt.Errorf("variables de entorno de email no configuradas")
+	}
+
 	var puerto int
 	puerto, err = strconv.Atoi(port)
 	if err != nil {
 		fmt.Printf("No se pudo parsear el puerto: %s\n", err.Error())
 		return err
 	}
-	
-	// Verificar que las variables de entorno estén configuradas
-	if email == "" || pass == "" || server == "" || port == "" {
-		fmt.Printf("ERROR: Variables de entorno de email no configuradas. EMAIL_DIR=%s, EMAIL_SERVER=%s, EMAIL_PORT=%s\n", 
-			email, server, port)
-		return fmt.Errorf("variables de entorno de email no configuradas")
-	}
-	
+
 	fmt.Printf("Intentando enviar correo a: %v desde: %s usando servidor: %s:%s\n", r.to, email, server, port)
 	
 	d := mail.NewDialer(server, puerto, email, pass)
@@ -150,6 +150,13 @@ func (r *Request) SendMailWithAttachment(templateName string, data interface{}, 
 			"Content-Type": {mimeType},
 		}),
 	)
+
+	// Verificar que las variables de entorno estén configuradas ANTES de parsear el puerto
+	if email == "" || pass == "" || server == "" || port == "" {
+		fmt.Printf("ERROR: Variables de entorno de email no configuradas. EMAIL_DIR=%s, EMAIL_SERVER=%s, EMAIL_PORT=%s\n",
+			email, server, port)
+		return fmt.Errorf("variables de entorno de email no configuradas")
+	}
 
 	puerto, err := strconv.Atoi(port)
 	if err != nil {

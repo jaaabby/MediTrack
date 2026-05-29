@@ -1049,6 +1049,7 @@ import { userService } from '@/services/common/userService'
 import cartService from '@/services/requests/cartService'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 import { useNotification } from '@/composables/useNotification'
 import { formatRut } from '@/utils/rut'
 import AssignRequestModal from '@/components/requests/AssignRequestModal.vue'
@@ -1444,7 +1445,7 @@ const getMedicalCenterName = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
   } catch {
     return dateString
   }

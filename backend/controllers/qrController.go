@@ -1364,16 +1364,34 @@ func (c *QRController) NotifyPavilionForReturn(ctx *gin.Context) {
 	emails, err := c.medicalSupplyService.NotifyPavilionForReturn(request.QRCode, pdfBytes)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "no encontrado") {
+		// Mensaje técnico para logs; mensaje amigable para el usuario.
+		userMessage := err.Error()
+		errText := err.Error()
+
+		switch {
+		case strings.Contains(errText, "variables de entorno de email no configuradas"):
+			statusCode = http.StatusServiceUnavailable
+			userMessage = "El servicio de correo no está configurado. Avisá al administrador para habilitar las notificaciones por correo."
+		case strings.Contains(errText, "enviando correo"):
+			statusCode = http.StatusBadGateway
+			userMessage = "No se pudo enviar el correo de notificación en este momento. Volvé a intentar; si sigue fallando, avisá al administrador."
+		case strings.Contains(errText, "no encontrado"):
 			statusCode = http.StatusNotFound
-		} else if strings.Contains(err.Error(), "no se encuentra en un pabellón") {
+			userMessage = "No se encontró el insumo indicado."
+		case strings.Contains(errText, "no se encuentra en un pabellón"):
 			statusCode = http.StatusConflict
-		} else if strings.Contains(err.Error(), "no se encontraron usuarios") || strings.Contains(err.Error(), "no tienen correo") {
+			userMessage = "El insumo no está en un pabellón, así que no corresponde notificar su devolución."
+		case strings.Contains(errText, "no se encontraron usuarios") || strings.Contains(errText, "no tienen correo"):
 			statusCode = http.StatusUnprocessableEntity
+			userMessage = "El pabellón no tiene usuarios con correo registrado para notificar."
 		}
+
+		// Detalle técnico solo en logs del servidor
+		fmt.Printf("❌ Error notificando devolución (QR=%s): %v\n", request.QRCode, err)
+
 		ctx.JSON(statusCode, response.Response{
 			Success: false,
-			Error:   err.Error(),
+			Error:   userMessage,
 		})
 		return
 	}

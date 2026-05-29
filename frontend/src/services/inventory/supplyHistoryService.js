@@ -27,9 +27,12 @@ class SupplyHistoryService {
     )
   }
 
-  async getAllSupplyHistoryWithDetails() {
+  async getAllSupplyHistoryWithDetails(status = '') {
     try {
-      const response = await this.api.get('/supply-history/with-details')
+      const params = new URLSearchParams()
+      if (status) params.append('status', status)
+      const qs = params.toString()
+      const response = await this.api.get(`/supply-history/with-details${qs ? `?${qs}` : ''}`)
       return response.data.data || response.data || []
     } catch (error) {
       console.error('Error en getAllSupplyHistoryWithDetails:', error)

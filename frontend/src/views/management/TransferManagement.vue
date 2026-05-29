@@ -429,6 +429,7 @@ import { exportToExcel as exportExcel, formatDateForExcel, formatStatusForExcel 
 import { TRANSFER_STATUS_OPTIONS } from '@/config/statuses'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 const route = useRoute()
@@ -621,7 +622,7 @@ const closeDetailsModal = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
   } catch {
     return dateString
   }

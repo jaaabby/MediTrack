@@ -952,8 +952,10 @@ func (s *MedicalSupplyService) NotifyPavilionForReturn(qrCode string, pdfBytes [
 	pavilionID := supply.LocationID
 
 	// 4. Obtener datos del lote y bodega
+	// Preload de SupplierConfig para que AfterFind pueble batch.Supplier (campo transiente);
+	// sin esto el nombre del proveedor sale vacío en el correo.
 	var batch models.Batch
-	if err := s.DB.First(&batch, supply.BatchID).Error; err != nil {
+	if err := s.DB.Preload("SupplierConfig").First(&batch, supply.BatchID).Error; err != nil {
 		return nil, fmt.Errorf("error obteniendo lote del insumo: %v", err)
 	}
 

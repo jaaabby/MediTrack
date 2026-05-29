@@ -421,6 +421,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 import qrService from '@/services/qr/qrService'
 import { useNotification } from '@/composables/useNotification'
 import { useQRPdfDownload } from '@/composables/useQRPdfDownload'
@@ -725,7 +726,7 @@ const getUsagePercentage = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
   } catch (error) {
     return dateString
   }

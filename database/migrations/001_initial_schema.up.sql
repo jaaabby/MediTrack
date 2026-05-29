@@ -95,6 +95,10 @@ CREATE TABLE batch (
     expiration_alert_days INTEGER NOT NULL DEFAULT 90 CHECK (expiration_alert_days > 0)
 );
 
+-- Índices de rendimiento para el inventario de bodegas (joins/orden/filtros sobre batch)
+CREATE INDEX IF NOT EXISTS idx_batch_supplier_id ON batch(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_batch_expiration_date ON batch(expiration_date);
+
 -- Trigger de seguridad: si location_id no se proporcionó, inicializarlo con store_id
 CREATE OR REPLACE FUNCTION set_batch_initial_location()
 RETURNS TRIGGER AS $$

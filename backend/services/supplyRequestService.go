@@ -1024,11 +1024,13 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 					return fmt.Errorf("error creando asignación QR: %v", err)
 				}
 
-				// Registrar historial del insumo
+				// Registrar historial del insumo. El insumo NO cambia de estado al reservarse
+				// (sigue 'disponible'); la asociación a la solicitud queda reflejada en la nota,
+				// y el frontend muestra una etiqueta visual "En solicitud" derivada de ella.
 				history := models.SupplyHistory{
 					MedicalSupplyID: supply.ID,
 					DateTime:        now,
-					Status:          "reservado",
+					Status:          models.StatusAvailable,
 					DestinationType: models.DestinationTypeStore,
 					DestinationID:   supply.LocationID,
 					UserRUT:         req.ReviewedBy,

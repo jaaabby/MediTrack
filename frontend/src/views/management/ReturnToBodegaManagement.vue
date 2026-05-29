@@ -99,16 +99,9 @@
         </div>
       </div>
 
-      <!-- Tabla de datos -->
-      <div v-else-if="suppliesForReturn.length === 0" class="p-8 text-center">
-        <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p class="text-gray-600">No hay insumos pendientes de retorno</p>
-        <p class="text-sm text-gray-500 mt-1">Todos los insumos están siendo utilizados correctamente</p>
-      </div>
-
+      <!-- Tabla de datos (siempre visible; el estado vacío va dentro del tbody vía slot #empty) -->
       <DataTable
+        v-else
         :columns="tableColumns"
         :rows="filteredSupplies"
         default-sort-key="businessHoursElapsed"
@@ -125,10 +118,13 @@
           { type: 'view', label: 'Ver detalles', onClick: (row) => openDetailsModal(row) }
         ]"
       >
-
-
-
-
+        <template #empty>
+          <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-gray-600">No hay insumos pendientes de retorno</p>
+          <p class="text-sm text-gray-500 mt-1">Todos los insumos están siendo utilizados correctamente</p>
+        </template>
 
         <template #cell-name="{ row }">
           <div class="text-xs sm:text-sm font-medium text-gray-900">{{ row.name }}</div>
@@ -255,6 +251,7 @@ import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import { useQRPdfDownload } from '@/composables/useQRPdfDownload'
 import { normalize } from '@/utils/normalize'
+import { parseDbDate } from '@/utils/dateUtils'
 
 const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 const { confirm } = useAlert()
@@ -440,6 +437,7 @@ const notifyAllPavilions = async () => {
 
   let notified = 0
   let failed = 0
+  let lastError = ''
 
   for (const supply of criticalSupplies.value) {
     try {
@@ -473,6 +471,7 @@ const notifyAllPavilions = async () => {
     } catch (err) {
       console.error(`Error notificando ${supply.qrCode}:`, err)
       failed++
+      lastError = err.message || lastError
     }
   }
 
@@ -480,8 +479,11 @@ const notifyAllPavilions = async () => {
 
   if (failed === 0) {
     showSuccess(`Notificaciones enviadas a ${notified} pabellón(es) exitosamente`)
+  } else if (notified === 0) {
+    // Todas fallaron: mostrar el motivo amigable
+    showError(lastError || 'No se pudieron enviar las notificaciones por correo.')
   } else {
-    showError(`${notified} notificaciones enviadas, ${failed} fallaron`)
+    showError(`Se notificaron ${notified} pabellón(es), pero ${failed} no se pudieron enviar. ${lastError}`)
   }
 
   await refreshData()
@@ -629,7 +631,7 @@ const getStatusText = (status) => {
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
   } catch (error) {
     return dateString
   }

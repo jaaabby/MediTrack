@@ -152,47 +152,66 @@ func main() {
 	// Registrar rutas de consumo automático
 	routes.SetupAutomaticConsumptionRoutes(router, automaticConsumptionController, secretKey, db)
 
-	// Ruta de reseteo de BD (solo desarrollo)
-	router.GET("/dev/reset-db", func(c *gin.Context) {
-		scripts := []struct {
-			label string
-			path  string
-		}{
-			{"down (drop)", "../database/migrations/001_initial_schema.down.sql"},
-			{"up (create)", "../database/migrations/001_initial_schema.up.sql"},
-			{"seed (populate)", "../database/script.sql"},
+	// Ruta de reseteo de BD: SOLO en desarrollo, requiere token de admin y método POST.
+	// Es destructiva (borra y repuebla toda la BD), por eso no se registra en producción
+	// y nunca debe ser un GET (un prefetch/escaneo del navegador podría dispararla).
+	if cfg.Server.Env == "development" {
+		// psql configurable vía PSQL_BIN para no depender de que esté en el PATH del sistema.
+		psqlBin := os.Getenv("PSQL_BIN")
+		if psqlBin == "" {
+			psqlBin = "psql"
 		}
 
-		var fullOutput strings.Builder
-		pgEnv := append(os.Environ(), "PGPASSWORD="+cfg.Database.Password)
+		router.POST("/dev/reset-db",
+			middleware.AuthMiddleware(secretKey, db),
+			middleware.RequireAdmin(),
+			func(c *gin.Context) {
+				scripts := []struct {
+					label string
+					path  string
+				}{
+					{"down (drop)", "../database/migrations/001_initial_schema.down.sql"},
+					{"up (create)", "../database/migrations/001_initial_schema.up.sql"},
+					{"seed (populate)", "../database/script.sql"},
+				}
 
-		for _, s := range scripts {
-			cmd := exec.Command("psql",
-				"-h", cfg.Database.Host,
-				"-p", strconv.Itoa(cfg.Database.Port),
-				"-U", cfg.Database.User,
-				"-d", cfg.Database.Name,
-				"-f", s.path,
-			)
-			cmd.Env = pgEnv
-			out, err := cmd.CombinedOutput()
-			fullOutput.WriteString(fmt.Sprintf("\n--- %s ---\n%s\n", s.label, string(out)))
-			if err != nil {
-				c.Data(500, "text/html; charset=utf-8", []byte(fmt.Sprintf(
-					"<h2>❌ Error en script: %s</h2><pre>%s</pre>", s.label, fullOutput.String(),
-				)))
-				return
-			}
-		}
+				var fullOutput strings.Builder
+				pgEnv := append(os.Environ(), "PGPASSWORD="+cfg.Database.Password)
 
-		c.Data(200, "text/html; charset=utf-8", []byte(
-			"<h2>✅ BD reseteada correctamente (down → up → seed)</h2><pre>"+fullOutput.String()+"</pre>",
-		))
-	})
+				for _, s := range scripts {
+					cmd := exec.Command(psqlBin,
+						"-h", cfg.Database.Host,
+						"-p", strconv.Itoa(cfg.Database.Port),
+						"-U", cfg.Database.User,
+						"-d", cfg.Database.Name,
+						"-v", "ON_ERROR_STOP=1", // aborta el script ante el primer error SQL
+						"-f", s.path,
+					)
+					cmd.Env = pgEnv
+					out, err := cmd.CombinedOutput()
+					fullOutput.WriteString(fmt.Sprintf("\n--- %s ---\n%s\n", s.label, string(out)))
+					if err != nil {
+						c.Data(500, "text/html; charset=utf-8", []byte(fmt.Sprintf(
+							"<h2>❌ Error en script: %s</h2><pre>%s</pre>", s.label, fullOutput.String(),
+						)))
+						return
+					}
+				}
 
-	// Iniciar el verificador automático de retornos a bodega en una goroutine
-	go medicalSupplyService.StartAutomaticReturnChecker()
-	log.Println("✅ Iniciado verificador automático de retornos a bodega")
+				c.Data(200, "text/html; charset=utf-8", []byte(
+					"<h2>✅ BD reseteada correctamente (down → up → seed)</h2><pre>"+fullOutput.String()+"</pre>",
+				))
+			},
+		)
+		log.Println("⚠️  Ruta de desarrollo habilitada: POST /dev/reset-db (requiere token de admin)")
+	}
+
+	// DESACTIVADO: el retorno automático a las 8h laborales movía insumos pendientes
+	// a 'en_camino_a_bodega' sin acción del usuario, haciéndolos desaparecer de la vista
+	// de pendientes. Se decidió que el retorno a bodega debe ser 100% manual.
+	// Para reactivar, descomentar las dos líneas siguientes.
+	// go medicalSupplyService.StartAutomaticReturnChecker()
+	// log.Println("✅ Iniciado verificador automático de retornos a bodega")
 
 	// Iniciar el verificador automático de stock bajo en una goroutine
 	go batchService.StartAutomaticLowStockChecker()

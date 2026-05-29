@@ -514,7 +514,7 @@ func (s *BatchService) createHistoryAsync(batchID int, supplies []models.Medical
 	for _, supply := range supplies {
 		history := models.SupplyHistory{
 			DateTime:        time.Now(),
-			Status:          "creado",
+			Status:          models.StatusAvailable,
 			DestinationType: models.DestinationTypeStore,
 			DestinationID:   supply.LocationID,
 			MedicalSupplyID: supply.ID,

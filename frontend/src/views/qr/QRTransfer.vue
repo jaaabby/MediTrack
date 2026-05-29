@@ -271,6 +271,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 import qrService from '@/services/qr/qrService'
 import pavilionService from '@/services/config/pavilionService'
 import { useAuthStore } from '@/stores/auth'
@@ -522,7 +523,7 @@ const transferProduct = async () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy', { locale: es })
   } catch (error) {
     return dateString
   }

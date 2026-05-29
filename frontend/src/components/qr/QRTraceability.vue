@@ -288,7 +288,7 @@ import { useNotification } from '@/composables/useNotification'
 import qrService from '@/services/qr/qrService'
 import ExcelJS from 'exceljs'
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 const route = useRoute()
 const router = useRouter()
@@ -964,247 +964,153 @@ const exportTraceability = async () => {
 }
 
 const printTraceability = () => {
+  // Manejo de error explícito: el PDF necesita los datos cargados.
+  if (!traceabilityData.value || !qrInfo.value) {
+    showError('Todavía no se cargó la trazabilidad del insumo. Esperá a que termine de cargar e intentá de nuevo.')
+    return
+  }
+
   try {
-    const doc = new jsPDF()
-    const pageWidth = doc.internal.pageSize.width
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
     const margin = 15
-    const contentWidth = pageWidth - (margin * 2)
-    let yPos = 15
+    const contentWidth = pageWidth - margin * 2
 
-    // === ENCABEZADO ===
-    // Logo/Título
-    doc.setFillColor(37, 99, 235) // bg-blue-600
-    doc.rect(0, 0, pageWidth, 35, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(20)
-    doc.setFont('helvetica', 'bold')
-    doc.text('REPORTE DE TRAZABILIDAD', margin, 15)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.text(`Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}`, margin, 25)
-    
-    yPos = 45
+    const BLUE = [37, 99, 235]
+    const GRAY = [107, 114, 128]
 
-    // === INFORMACIÓN DEL INSUMO ===
-    doc.setTextColor(0, 0, 0)
-    doc.setFillColor(243, 244, 246) // bg-gray-100
-    doc.roundedRect(margin, yPos, contentWidth, 50, 2, 2, 'F')
-    
-    yPos += 8
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.text(qrInfo.value?.supply_info?.name || 'Insumo Médico', margin + 5, yPos)
-    
-    yPos += 7
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(75, 85, 99) // text-gray-600
-    doc.text(`QR: ${qrCode.value}`, margin + 5, yPos)
-    
-    yPos += 10
-    // Estado y ubicación en dos columnas
-    const colWidth = contentWidth / 2
-    
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7)
-    doc.setTextColor(107, 114, 128)
-    doc.text('ESTADO ACTUAL', margin + 5, yPos)
-    
-    yPos += 5
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(0, 0, 0)
-    doc.text(getCurrentStatusLabel(), margin + 5, yPos)
-    const locationText = doc.splitTextToSize(getCurrentLocation(), colWidth - 10)
-    doc.text(locationText, margin + 5 + colWidth, yPos)
-    
-    yPos += Math.max(5, locationText.length * 4)
-    
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7)
-    doc.setTextColor(107, 114, 128)
-    doc.text('TIEMPO EN SISTEMA', margin + 5, yPos)
-    doc.text('CODIGO PROVEEDOR', margin + 5 + colWidth, yPos)
-    
-    yPos += 5
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(0, 0, 0)
-    doc.text(getTimeInSystem(), margin + 5, yPos)
-    doc.text(String(qrInfo.value?.supply_code?.code_supplier || 'N/A'), margin + 5 + colWidth, yPos)
-    
-    yPos += 15
-
-    // === ESTADÍSTICAS ===
-    doc.setFillColor(59, 130, 246) // bg-blue-600
-    doc.rect(margin, yPos, contentWidth, 6, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.text('ESTADISTICAS', margin + 3, yPos + 4)
-    
-    yPos += 10
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
-    
-    const statWidth = contentWidth / 4
-    const stats = [
-      { label: 'Eventos', value: getAllEvents().length },
-      { label: 'Movimientos', value: getEventCount('movement') },
-      { label: 'Ubicaciones', value: getLocationCount() },
-      { label: 'Usuarios', value: getUserCount() }
-    ]
-    
-    stats.forEach((stat, i) => {
-      const xPos = margin + (i * statWidth)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(14)
-      doc.text(stat.value.toString(), xPos + statWidth/2, yPos + 5, { align: 'center' })
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7)
-      doc.setTextColor(107, 114, 128)
-      doc.text(stat.label, xPos + statWidth/2, yPos + 10, { align: 'center' })
-      doc.setTextColor(0, 0, 0)
-    })
-    
-    yPos += 20
-
-    // === RECORRIDO ===
-    doc.setFillColor(59, 130, 246)
-    doc.rect(margin, yPos, contentWidth, 6, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.text('RECORRIDO DEL INSUMO', margin + 3, yPos + 4)
-    
-    yPos += 12
-    const journey = getLocationJourney()
-    
-    journey.forEach((location, index) => {
-      if (yPos > 260) {
-        doc.addPage()
-        yPos = 20
-      }
-      
-      // Círculo numerado
-      const circleColor = location.is_current ? [34, 197, 94] : [156, 163, 175]
-      doc.setFillColor(circleColor[0], circleColor[1], circleColor[2])
-      doc.circle(margin + 4, yPos + 2, 3, 'F')
+    // Barra de título de sección reutilizable; devuelve la Y donde empieza el contenido.
+    const sectionTitle = (title, y) => {
+      doc.setFillColor(BLUE[0], BLUE[1], BLUE[2])
+      doc.rect(margin, y, contentWidth, 7, 'F')
       doc.setTextColor(255, 255, 255)
-      doc.setFontSize(7)
+      doc.setFontSize(9)
       doc.setFont('helvetica', 'bold')
-      doc.text((index + 1).toString(), margin + 4, yPos + 3, { align: 'center' })
-      
-      // Línea conectora
-      if (index < journey.length - 1) {
-        doc.setDrawColor(209, 213, 219)
-        doc.setLineWidth(0.5)
-        doc.line(margin + 4, yPos + 5, margin + 4, yPos + 18)
-      }
-      
-      // Contenido
-      doc.setTextColor(0, 0, 0)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8)
-      const locText = doc.splitTextToSize(location.name, contentWidth - 15)
-      doc.text(locText, margin + 10, yPos + 2)
-      
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7)
-      doc.setTextColor(107, 114, 128)
-      doc.text(formatDateTime(location.date), margin + 10, yPos + 7)
-      
-      if (location.duration) {
-        doc.text(`Duración: ${location.duration}`, margin + 10, yPos + 11)
-      }
-      
-      if (location.is_current) {
-        doc.setTextColor(34, 197, 94)
-        doc.setFont('helvetica', 'bold')
-        doc.text('• UBICACION ACTUAL', margin + 10, yPos + location.duration ? 15 : 11)
-      }
-      
-      yPos += 18
-    })
-    
-    yPos += 5
-
-    // === HISTORIAL DE EVENTOS ===
-    if (yPos > 200) {
-      doc.addPage()
-      yPos = 20
+      doc.text(title, margin + 3, y + 4.8)
+      return y + 11
     }
-    
-    doc.setFillColor(59, 130, 246)
-    doc.rect(margin, yPos, contentWidth, 6, 'F')
+
+    // ===== ENCABEZADO =====
+    doc.setFillColor(BLUE[0], BLUE[1], BLUE[2])
+    doc.rect(0, 0, pageWidth, 28, 'F')
     doc.setTextColor(255, 255, 255)
-    doc.setFontSize(9)
+    doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.text('HISTORIAL DETALLADO', margin + 3, yPos + 4)
-    
-    yPos += 12
+    doc.text('Reporte de Trazabilidad', margin, 13)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text('MediTrack · Sistema de Trazabilidad Médica', margin, 20)
+    doc.text(`Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}`,
+      pageWidth - margin, 13, { align: 'right' })
+
+    let y = 36
+
+    // ===== INFORMACIÓN DEL INSUMO =====
+    y = sectionTitle('Información del insumo', y)
+    const infoRows = [
+      ['Insumo', qrInfo.value?.supply_info?.name || 'Insumo médico'],
+      ['Código QR', qrCode.value || '—'],
+      ['Estado actual', getCurrentStatusLabel()],
+      ['Ubicación actual', getCurrentLocation()],
+      ['Tiempo en sistema', getTimeInSystem()],
+      ['Código proveedor', String(qrInfo.value?.supply_code?.code_supplier ?? 'N/A')]
+    ]
+    const proveedor = qrInfo.value?.supply_info?.batch?.supplier || qrInfo.value?.supply_info?.supplier_name
+    if (proveedor) infoRows.push(['Proveedor', proveedor])
+
+    autoTable(doc, {
+      startY: y,
+      theme: 'plain',
+      body: infoRows,
+      styles: { fontSize: 9, cellPadding: 1.5, textColor: [31, 41, 55], overflow: 'linebreak' },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 45, textColor: GRAY },
+        1: { cellWidth: contentWidth - 45 }
+      },
+      margin: { left: margin, right: margin }
+    })
+    y = doc.lastAutoTable.finalY + 6
+
+    // ===== RESUMEN / ESTADÍSTICAS =====
+    y = sectionTitle('Resumen', y)
+    autoTable(doc, {
+      startY: y,
+      theme: 'grid',
+      head: [['Eventos', 'Movimientos', 'Ubicaciones', 'Usuarios']],
+      body: [[
+        String(getAllEvents().length),
+        String(getEventCount('movement')),
+        String(getLocationCount()),
+        String(getUserCount())
+      ]],
+      headStyles: { fillColor: BLUE, textColor: 255, halign: 'center', fontSize: 8 },
+      bodyStyles: { halign: 'center', fontSize: 13, fontStyle: 'bold', textColor: [17, 24, 39] },
+      margin: { left: margin, right: margin }
+    })
+    y = doc.lastAutoTable.finalY + 6
+
+    // ===== RECORRIDO DEL INSUMO =====
+    const journey = getLocationJourney()
+    if (journey.length) {
+      y = sectionTitle('Recorrido del insumo', y)
+      autoTable(doc, {
+        startY: y,
+        theme: 'striped',
+        head: [['#', 'Ubicación', 'Fecha', 'Duración']],
+        body: journey.map((l, i) => [
+          String(i + 1),
+          (l.name || '—') + (l.is_current ? '  (actual)' : ''),
+          formatDateTime(l.date),
+          l.duration || '—'
+        ]),
+        headStyles: { fillColor: BLUE, textColor: 255, fontSize: 8 },
+        bodyStyles: { fontSize: 8, overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 3: { cellWidth: 28 } },
+        margin: { left: margin, right: margin }
+      })
+      y = doc.lastAutoTable.finalY + 6
+    }
+
+    // ===== HISTORIAL DETALLADO =====
     const events = getAllEvents()
-    
-    events.forEach((event, index) => {
-      if (yPos > 260) {
-        doc.addPage()
-        yPos = 20
-      }
-      
-      // Fondo alternado
-      if (index % 2 === 0) {
-        doc.setFillColor(249, 250, 251)
-        doc.rect(margin, yPos - 2, contentWidth, 20, 'F')
-      }
-      
-      // Fecha
-      doc.setTextColor(107, 114, 128)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'normal')
-      doc.text(formatDateTime(event.date_time || event.timestamp), margin + 2, yPos + 1)
-      
-      // Título del evento
-      doc.setTextColor(0, 0, 0)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'bold')
-      doc.text(getEventTitle(event), margin + 2, yPos + 6)
-      
-      // Descripción
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7)
-      doc.setTextColor(75, 85, 99)
-      const desc = doc.splitTextToSize(getEventDescription(event), contentWidth - 4)
-      doc.text(desc.slice(0, 1), margin + 2, yPos + 10)
-      
-      // Usuario
-      if (event.user_name) {
-        doc.setTextColor(107, 114, 128)
-        doc.setFontSize(6)
-        doc.text(`Usuario: ${event.user_name}`, margin + 2, yPos + 14)
-      }
-      
-      yPos += 20
+    y = sectionTitle('Historial detallado', y)
+    autoTable(doc, {
+      startY: y,
+      theme: 'striped',
+      head: [['Fecha', 'Evento', 'Estado', 'Ubicación', 'Usuario']],
+      body: events.length
+        ? events.map(e => [
+            formatDateTime(e.date_time || e.timestamp),
+            getEventTitle(e),
+            getStatusText(e.status),
+            e.location || '—',
+            e.user_name || '—'
+          ])
+        : [['—', 'Sin eventos registrados', '—', '—', '—']],
+      headStyles: { fillColor: BLUE, textColor: 255, fontSize: 8 },
+      bodyStyles: { fontSize: 8, overflow: 'linebreak' },
+      columnStyles: { 0: { cellWidth: 30 }, 2: { cellWidth: 26 } },
+      margin: { left: margin, right: margin }
     })
 
-    // Pie de página en todas las páginas
+    // ===== PIE DE PÁGINA (todas las páginas) =====
     const pageCount = doc.internal.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i)
       doc.setFontSize(7)
-      doc.setTextColor(156, 163, 175)
-      doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, 285, { align: 'center' })
-      doc.text('Meditrack - Sistema de Trazabilidad', pageWidth / 2, 290, { align: 'center' })
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(GRAY[0], GRAY[1], GRAY[2])
+      doc.text('MediTrack — Sistema de Trazabilidad Médica', margin, pageHeight - 8)
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth - margin, pageHeight - 8, { align: 'right' })
     }
 
-    // Guardar PDF
     const fileName = `Trazabilidad_${qrCode.value}_${format(new Date(), 'yyyy-MM-dd_HHmm')}.pdf`
     doc.save(fileName)
-    
     showSuccess('PDF generado exitosamente')
   } catch (err) {
-    console.error('Error al generar PDF:', err)
-    showError('Error al generar el PDF: ' + err.message)
+    console.error('Error al generar PDF de trazabilidad:', err)
+    showError('Error al generar el PDF: ' + (err?.message || 'error desconocido'))
   }
 }
 

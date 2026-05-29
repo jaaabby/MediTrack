@@ -380,10 +380,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 import { useAuthStore } from '@/stores/auth'
+import { useQrScanStore } from '@/stores/qrScan'
 import { useNotification } from '@/composables/useNotification'
 import { useAlert } from '@/composables/useAlert'
 import qrService from '@/services/qr/qrService'
@@ -395,6 +397,15 @@ import SupplyCart from '@/components/requests/SupplyCart.vue'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const qrScanStore = useQrScanStore()
+
+// Rutas de "ver trazabilidad/detalles". Solo se conserva el escaneo previo cuando el
+// scanner navega HACIA estas vistas (para restaurarlo al volver). Si navega a acciones
+// (consumir/transferir/retirar/recepcionar) o a cualquier otra parte, no se conserva.
+const TRACEABILITY_ROUTES = ['QRDetails', 'QRTraceability']
+onBeforeRouteLeave((to) => {
+  qrScanStore.keepForTraceability = TRACEABILITY_ROUTES.includes(to.name)
+})
 const { success: showSuccess, error: showError } = useNotification()
 const { confirm } = useAlert()
 
@@ -1076,7 +1087,10 @@ const scanQRCode = async () => {
     
     scannedInfo.value = result
     lastScanContext.value = scanContext
-    
+
+    // Persistir el escaneo actual para que sobreviva a la navegación (volver atrás)
+    qrScanStore.setScan(result, scanContext, qrInput.value.trim())
+
     // Debug: verificar inmediatamente después de asignar
     console.log('🔍 Verificando canBeMarkedAsReadyForPickup después de escanear:', {
       result: canBeMarkedAsReadyForPickup(scannedInfo.value)
@@ -1148,7 +1162,8 @@ const refreshScannedInfo = async () => {
     
     scannedInfo.value = result
     lastScanContext.value = scanContext
-    
+    qrScanStore.setScan(result, scanContext, scannedInfo.value.qr_code)
+
   } catch (err) {
     console.error('Error al refrescar información del QR:', err)
     // No mostrar error al usuario, solo loguear
@@ -1538,7 +1553,7 @@ const addScannedSupplyToCart = async () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy HH:mm', { locale: es })
   } catch (error) {
     return dateString
   }
@@ -1552,6 +1567,7 @@ const clearAll = () => {
   qrInput.value = ''
   scannedInfo.value = null
   error.value = null
+  qrScanStore.clearScan()
   stopCamera()
 }
 
@@ -1559,14 +1575,26 @@ const clearAll = () => {
 onMounted(() => {
   loadHistory()
   loadAvailableCarts()
-  
-  // Auto-escanear si viene QR en query params
+
+  // Auto-escanear si viene QR en query params (tiene prioridad sobre el estado restaurado)
   if (route.query.qr || route.query.test) {
     const testQR = route.query.qr || route.query.test
     qrInput.value = testQR
     scanQRCode()
+  } else if (qrScanStore.keepForTraceability) {
+    // Se volvió desde la vista de trazabilidad/detalles: restaurar el último escaneo.
+    qrScanStore.restore()
+    if (qrScanStore.currentScan) {
+      scannedInfo.value = qrScanStore.currentScan
+      lastScanContext.value = qrScanStore.currentContext
+      qrInput.value = qrScanStore.lastInput || ''
+    }
+    qrScanStore.keepForTraceability = false // one-shot: solo para este regreso
+  } else {
+    // Entrada fresca o desde una acción (consumir/transferir/etc.): no conservar el escaneo
+    qrScanStore.clearScan()
   }
-  
+
   // Inicializar autenticación si no está inicializada
   if (!authStore.isAuthenticated) {
     authStore.initializeAuth()

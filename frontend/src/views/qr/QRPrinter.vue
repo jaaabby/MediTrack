@@ -199,6 +199,7 @@
 import { ref, computed } from 'vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 import qrService from '@/services/qr/qrService'
 
 // Props
@@ -443,7 +444,7 @@ const hasTextInfo = () => {
 
 const formatDate = (date) => {
   try {
-    return format(new Date(date), 'dd/MM/yyyy', { locale: es })
+    return format(parseDbDate(date), 'dd/MM/yyyy', { locale: es })
   } catch (error) {
     return 'N/A'
   }

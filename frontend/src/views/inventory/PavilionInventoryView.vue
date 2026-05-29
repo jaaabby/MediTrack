@@ -229,6 +229,7 @@ import inventoryService from '@/services/inventory/inventoryService'
 import FilterPanel from '@/components/common/FilterPanel.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import { useInventoryAlerts } from '@/composables/useInventoryAlerts'
+import { parseDbDate } from '@/utils/dateUtils'
 
 const { isExpired, isNearExpiration, getExpirationClass } = useInventoryAlerts()
 
@@ -344,7 +345,7 @@ const getTotalConsumed = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   try {
-    return new Date(dateString).toLocaleDateString('es-CL')
+    return parseDbDate(dateString).toLocaleDateString('es-CL')
   } catch {
     return dateString
   }

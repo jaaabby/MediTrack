@@ -160,6 +160,9 @@
               <template #cell-id="{ row }">
                 <span class="text-gray-900">{{ supplyName || '—' }}</span>
               </template>
+              <template #cell-qr_text="{ row }">
+                <span class="text-gray-900 font-mono text-xs break-all">{{ row.qr_code || '—' }}</span>
+              </template>
               <template #cell-status="{ row }">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
                   :class="getStatusClass(row.status)">
@@ -732,6 +735,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 import { jsPDF } from 'jspdf'
 import inventoryService from '@/services/inventory/inventoryService'
 import supplyHistoryService from '@/services/inventory/supplyHistoryService'
@@ -756,6 +760,7 @@ const tableColumnsSupplies = [
 
 const tableColumnsBatchDetails = [
   { key: 'id', label: 'Insumo', sortable: false },
+  { key: 'qr_text', label: 'Código QR', sortable: false },
   { key: 'status', label: 'Estado', sortable: false },
   { key: 'qr_code', label: 'QR', sortable: false, align: 'center' },
 ]
@@ -980,7 +985,7 @@ const sortBy = (field, direction) => {
 
 const formatDate = (dateString) => {
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy', { locale: es })
   } catch {
     return dateString
   }

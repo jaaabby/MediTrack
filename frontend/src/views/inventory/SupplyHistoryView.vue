@@ -48,9 +48,17 @@
         <span class="text-gray-600">{{ row.qr_code || 'N/A' }}</span>
       </template>
       <template #cell-status="{ row }">
-        <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(row.status)">
-          {{ formatStatus(row.status) }}
-        </span>
+        <div class="flex flex-wrap items-center gap-1">
+          <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(row.status)">
+            {{ formatStatus(row.status) }}
+          </span>
+          <!-- Etiqueta visual complementaria; el estado real del insumo es el de arriba -->
+          <span v-if="isInRequest(row)"
+            class="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800"
+            title="El insumo está dentro de una solicitud">
+            En solicitud
+          </span>
+        </div>
       </template>
       <template #cell-destination_type="{ row }">
         <div class="text-sm font-medium text-gray-900">{{ row.destination_name || formatDestinationType(row.destination_type) }}</div>
@@ -229,6 +237,7 @@ import { useNotification } from '@/composables/useNotification'
 import FilterPanel from '@/components/common/FilterPanel.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import { normalize } from '@/utils/normalize'
+import { SUPPLY_HISTORY_STATUS_OPTIONS } from '@/config/statuses'
 
 const history = ref([])
 const loading = ref(false)
@@ -239,12 +248,23 @@ const { success: showSuccess, error: showError } = useNotification()
 
 const filterState = reactive({
   search: route.query.search || '',
+  status: route.query.status || '',
   from_date: route.query.from_date || '',
   to_date: route.query.to_date || ''
 })
 
 const filterConfig = [
   { type: 'text', key: 'search', label: 'Buscar', placeholder: 'Nombre, QR, estado, usuario...', default: filterState.search },
+  {
+    type: 'select',
+    key: 'status',
+    label: 'Estado',
+    default: filterState.status,
+    options: [
+      { value: '', label: 'Todos' },
+      ...SUPPLY_HISTORY_STATUS_OPTIONS
+    ]
+  },
   { type: 'date', key: 'from_date', label: 'Desde', default: filterState.from_date },
   { type: 'date', key: 'to_date', label: 'Hasta', default: filterState.to_date }
 ]
@@ -271,11 +291,15 @@ const parseDateTimeToLocal = (dateStr) => {
 }
 
 const hasActiveFilters = computed(() =>
-  filterState.search !== '' || filterState.from_date !== '' || filterState.to_date !== ''
+  filterState.search !== '' || filterState.status !== '' || filterState.from_date !== '' || filterState.to_date !== ''
 )
 
 const filteredHistory = computed(() => {
   let filtered = [...history.value]
+
+  if (filterState.status) {
+    filtered = filtered.filter(item => item.status === filterState.status)
+  }
 
   if (filterState.search) {
     const term = normalize(filterState.search)
@@ -311,6 +335,7 @@ const filteredHistory = computed(() => {
 const loadHistory = async () => {
   loading.value = true
   try {
+    // Get-all una sola vez; los filtros (estado, búsqueda, fechas) son client-side.
     const data = await supplyHistoryService.getAllSupplyHistoryWithDetails()
     history.value = data
   } catch (err) {
@@ -334,28 +359,13 @@ const closeDetailsModal = () => {
 const formatDateTime = (date) => {
   if (!date) return 'N/A'
   try {
-    // Crear objeto Date desde el string
-    // Si la fecha viene sin zona horaria, asumir que es UTC y convertir a hora local
-    let dateObj
-    if (typeof date === 'string') {
-      // Si no tiene información de zona horaria, asumir que es UTC
-      if (!date.includes('Z') && !date.includes('+') && !date.includes('-', 10)) {
-        // Formato: "2024-01-15 10:30:00" - asumir UTC
-        dateObj = new Date(date + 'Z')
-      } else {
-        dateObj = new Date(date)
-      }
-    } else {
-      dateObj = new Date(date)
-    }
-    
-    // Verificar que la fecha sea válida
-    if (isNaN(dateObj.getTime())) {
+    // date_time llega como wall-clock local naive (sin zona). Se interpreta como local,
+    // igual que el filtro de fechas (parseDateTimeToLocal). NO se convierte desde UTC.
+    const dateObj = parseDateTimeToLocal(date)
+    if (!dateObj || isNaN(dateObj.getTime())) {
       console.warn('Fecha inválida:', date)
       return 'Fecha inválida'
     }
-    
-    // Usar date-fns para formatear consistentemente con el resto de la aplicación
     return format(dateObj, 'dd/MM/yyyy HH:mm:ss', { locale: es })
   } catch (error) {
     console.error('Error formateando fecha:', error, date)
@@ -366,12 +376,13 @@ const formatDateTime = (date) => {
 const formatStatus = (status) => {
   const statusMap = {
     'disponible': 'Disponible',
+    'pendiente_retiro': 'Pendiente de retiro',
     'en_camino_a_pabellon': 'En Camino a Pabellón',
-    'en_camino_a_bodega': 'En Camino a Bodega',
     'recepcionado': 'Recepcionado',
     'consumido': 'Consumido',
-    'vencido': 'Vencido',
-    'reservado': 'Reservado'
+    'en_camino_a_bodega': 'En Camino a Bodega',
+    'devuelto': 'Devuelto',
+    'vencido': 'Vencido'
   }
   return statusMap[status] || status
 }
@@ -384,15 +395,23 @@ const formatDestinationType = (type) => {
   return typeMap[type] || type
 }
 
+// Etiqueta visual complementaria: el movimiento corresponde a una reserva por solicitud.
+// Se deriva de la nota (no es un estado del insumo).
+const isInRequest = (row) => (row?.notes || '').toLowerCase().includes('solicitud')
+
 const getStatusClass = (status) => {
+  // Colores consistentes con el resto del front (QRDetails.vue: badge de estados de insumo
+  // + mapa de historial para creado/devuelto). Creado (verde) ya no comparte color con Consumido (rojo).
   const classes = {
     'disponible': 'bg-green-100 text-green-800',
-    'en_camino_a_pabellon': 'bg-blue-100 text-blue-800',
-    'en_camino_a_bodega': 'bg-yellow-100 text-yellow-800',
-    'recepcionado': 'bg-purple-100 text-purple-800',
-    'consumido': 'bg-gray-100 text-gray-800',
-    'vencido': 'bg-red-100 text-red-800',
-    'reservado': 'bg-orange-100 text-orange-800'
+    'recepcionado': 'bg-blue-100 text-blue-800',
+    'en_camino_a_pabellon': 'bg-orange-100 text-orange-800',
+    'en_camino_a_bodega': 'bg-orange-100 text-orange-800',
+    'pendiente_retiro': 'bg-yellow-100 text-yellow-800',
+    'devuelto': 'bg-yellow-100 text-yellow-800',
+    'transferido': 'bg-purple-100 text-purple-800',
+    'consumido': 'bg-red-100 text-red-800',
+    'vencido': 'bg-red-100 text-red-800'
   }
   return classes[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
 }

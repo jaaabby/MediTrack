@@ -306,6 +306,7 @@
 import { ref, computed, watch } from 'vue'
 import { format, isToday, isYesterday, isThisWeek, isThisMonth, startOfDay, endOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseDbDate } from '@/utils/dateUtils'
 import { useNotification } from '@/composables/useNotification'
 
 // Props
@@ -531,7 +532,7 @@ const getScanSourceBadgeClass = (source) => {
 const formatDate = (dateString) => {
   if (!dateString) return 'No disponible'
   try {
-    return format(new Date(dateString), 'dd/MM/yyyy HH:mm:ss', { locale: es })
+    return format(parseDbDate(dateString), 'dd/MM/yyyy HH:mm:ss', { locale: es })
   } catch (error) {
     return dateString
   }

@@ -13,6 +13,19 @@ export const MEDICAL_SUPPLY_STATUS_OPTIONS = [
   { value: 'en_camino_a_bodega', label: 'En camino a bodega' }
 ]
 
+// Estados posibles de un registro del historial de insumos (supply_history.status).
+// Fuente única para el dropdown de filtro de SupplyHistoryView (no se hardcodea en la vista).
+export const SUPPLY_HISTORY_STATUS_OPTIONS = [
+  { value: 'disponible', label: 'Disponible' },
+  { value: 'pendiente_retiro', label: 'Pendiente de retiro' },
+  { value: 'en_camino_a_pabellon', label: 'En Camino a Pabellón' },
+  { value: 'recepcionado', label: 'Recepcionado' },
+  { value: 'consumido', label: 'Consumido' },
+  { value: 'en_camino_a_bodega', label: 'En Camino a Bodega' },
+  { value: 'devuelto', label: 'Devuelto' },
+  { value: 'vencido', label: 'Vencido' }
+]
+
 export const SUPPLY_REQUEST_STATUS_OPTIONS = [
   { value: 'pendiente_pavedad', label: 'Pendiente Pavedad' },
   { value: 'asignado_bodega', label: 'Asignado a Bodega' },
