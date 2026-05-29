@@ -255,7 +255,7 @@ func (c *AuthController) sendLoginNotificationEmail(user *models.User, ipAddress
 	templatePath := filepath.Join("mailer", "templates", "new_login.html")
 	mailReq := mailer.NewRequest([]string{user.Email}, "Nuevo inicio de sesión en tu cuenta Meditrack")
 	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
-		fmt.Printf("⚠️  No se pudo enviar el correo de notificación de login a %s: %v\n", user.Email, err)
+		fmt.Printf("No se pudo enviar el correo de notificación de login a %s: %v\n", user.Email, err)
 	}
 }
 
@@ -476,8 +476,9 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 		return
 	}
 
-	// Si MustChangePassword es true, no verificar contraseña actual
-	// Si es false, requerir contraseña actual
+	// Si MustChangePassword es true, el usuario ya se autenticó con la contraseña temporal,
+	// no es necesario verificarla nuevamente.
+	// Si es false, requerir contraseña actual.
 	if !user.MustChangePassword {
 		if changePassReq.CurrentPassword == "" {
 			ctx.JSON(http.StatusBadRequest, response.Response{
@@ -492,23 +493,6 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, response.Response{
 				Success: false,
 				Error:   "Contraseña actual incorrecta",
-			})
-			return
-		}
-	} else {
-		// Si está en primer inicio, verificar contraseña temporal
-		if changePassReq.CurrentPassword == "" {
-			ctx.JSON(http.StatusBadRequest, response.Response{
-				Success: false,
-				Error:   "Se requiere la contraseña temporal",
-			})
-			return
-		}
-
-		if err := crypto.ComparePassword(user.Password, changePassReq.CurrentPassword); err != nil {
-			ctx.JSON(http.StatusBadRequest, response.Response{
-				Success: false,
-				Error:   "Contraseña temporal incorrecta",
 			})
 			return
 		}

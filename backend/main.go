@@ -205,6 +205,8 @@ func main() {
 		)
 		log.Println("⚠️  Ruta de desarrollo habilitada: POST /dev/reset-db (requiere token de admin)")
 	}
+	// Iniciar el verificador automático de retornos a bodega en una goroutine
+	go medicalSupplyService.StartAutomaticReturnChecker()
 
 	// DESACTIVADO: el retorno automático a las 8h laborales movía insumos pendientes
 	// a 'en_camino_a_bodega' sin acción del usuario, haciéndolos desaparecer de la vista
@@ -215,11 +217,9 @@ func main() {
 
 	// Iniciar el verificador automático de stock bajo en una goroutine
 	go batchService.StartAutomaticLowStockChecker()
-	log.Println("✅ Iniciado verificador automático de stock bajo")
 
 	// Iniciar el verificador de cirugías completadas (solo envía notificaciones, NO consume insumos)
 	go automaticConsumptionService.StartAutomaticConsumptionChecker()
-	log.Println("✅ Iniciado verificador de cirugías completadas y notificaciones de insumos pendientes")
 
 	// Iniciar servidores HTTP y HTTPS
 	log.Printf("Servidor iniciando en puerto %d (HTTP)", cfg.Server.Port)
@@ -257,7 +257,7 @@ func main() {
 
 	// Iniciar servidor HTTP siempre
 	go func() {
-		log.Println("🌐 Iniciando servidor HTTP en puerto", cfg.Server.Port)
+		log.Println("Iniciando servidor HTTP en puerto", cfg.Server.Port)
 		if err := router.Run(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {
 			log.Fatalf("Error al iniciar servidor HTTP: %v", err)
 		}
@@ -265,8 +265,7 @@ func main() {
 
 	// Iniciar servidor HTTPS si hay certificados
 	if foundCert != "" && foundKey != "" {
-		log.Println("✅ Certificados SSL encontrados")
-		log.Printf("🔒 Iniciando servidor HTTPS en puerto %d", httpsPort)
+		log.Printf("Iniciando servidor HTTPS en puerto %d", httpsPort)
 		log.Printf("   Certificado: %s", foundCert)
 		log.Printf("   Clave: %s", foundKey)
 
@@ -277,11 +276,11 @@ func main() {
 				Handler: router,
 			}
 			if err := httpsServer.ListenAndServeTLS(foundCert, foundKey); err != nil {
-				log.Printf("⚠️  Error al iniciar servidor HTTPS: %v (continuando solo con HTTP)", err)
+				log.Printf("Error al iniciar servidor HTTPS: %v (continuando solo con HTTP)", err)
 			}
 		}()
 	} else {
-		log.Println("⚠️  Certificados SSL no encontrados, solo usando HTTP")
+		log.Println("Certificados SSL no encontrados, solo usando HTTP")
 		log.Println("   Para habilitar HTTPS, ejecuta: scripts/generate-certs.sh (o .bat)")
 	}
 

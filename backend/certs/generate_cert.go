@@ -62,8 +62,4 @@ func main() {
 	}
 	pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
 	keyOut.Close()
-
-	println("✅ Certificados SSL generados exitosamente:")
-	println("   - server.crt")
-	println("   - server.key")
 }

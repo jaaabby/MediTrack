@@ -1078,10 +1078,6 @@ const editSupply = (supply) => {
     expiration_date: supply.expiration_date ? new Date(supply.expiration_date).toISOString().split('T')[0] : ''
   }
 
-  // Log para debugging: verificar que el store_id se esté recibiendo correctamente
-  console.log('Editando lote:', supply)
-  console.log('Store ID del lote:', supply.store_id)
-
   showEditModal.value = true
 }
 
@@ -1135,10 +1131,6 @@ const saveEdit = async () => {
       supplier: editingSupply.value.supplier,
       store_id: editingSupply.value.store_id || 1 // Mantener el store_id original del lote
     }
-
-    // Log para debugging: verificar que se esté enviando el store_id correcto
-    console.log('Enviando datos del lote:', batchData)
-    console.log('Store ID que se mantiene:', batchData.store_id)
 
     // Actualizar el batch usando el servicio
     await inventoryService.updateBatch(editingSupply.value.batch_id, batchData)

@@ -310,7 +310,6 @@ func (s *AutomaticConsumptionService) StartAutomaticConsumptionChecker() {
 
 	// Ejecutar inmediatamente al inicio
 	go func() {
-		log.Println("🔄 Ejecutando verificación inicial de cirugías completadas...")
 		if err := s.ProcessAutomaticConsumption(); err != nil {
 			log.Printf("Error en verificación inicial: %v", err)
 		}

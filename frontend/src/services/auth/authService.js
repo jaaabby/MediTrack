@@ -142,8 +142,8 @@ class AuthService {
     }
   }
 
-  // Cambiar contraseña por primera vez (contraseña temporal)
-  async firstTimePasswordChange(temporaryPassword, newPassword) {
+  // Cambiar contraseña por primera vez (no requiere contraseña temporal, ya se autenticó con ella)
+  async firstTimePasswordChange(newPassword) {
     try {
       const token = this.getToken()
       if (!token) {
@@ -157,7 +157,6 @@ class AuthService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          temporary_password: temporaryPassword,
           new_password: newPassword
         })
       })

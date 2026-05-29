@@ -213,33 +213,21 @@ func (s *SupplyRequestService) CreateSupplyRequest(request CreateSupplyRequestRe
 
 	// Enviar correos de notificación
 	go func() {
-		fmt.Printf("=== INICIANDO ENVÍO DE CORREOS PARA SOLICITUD %s ===\n", fullRequest.RequestNumber)
 
 		// Correo al solicitante
-		fmt.Printf("Intentando enviar correo al solicitante: %s\n", fullRequest.RequestedBy)
 		if err := s.sendRequestCreatedEmailToRequester(fullRequest); err != nil {
 			fmt.Printf("ERROR enviando correo al solicitante: %v\n", err)
-		} else {
-			fmt.Printf("✓ Correo al solicitante enviado exitosamente\n")
 		}
 
 		// Correo a todos los usuarios Pavedad
-		fmt.Printf("Intentando enviar correo a usuarios Pavedad\n")
 		if err := s.sendRequestCreatedEmailToPavedad(fullRequest); err != nil {
 			fmt.Printf("ERROR enviando correo a Pavedad: %v\n", err)
-		} else {
-			fmt.Printf("✓ Correo a Pavedad enviado exitosamente\n")
 		}
 
 		// Correo a todos los usuarios Consignación
-		fmt.Printf("Intentando enviar correo a usuarios Consignación\n")
 		if err := s.sendRequestCreatedEmailToConsignation(fullRequest); err != nil {
 			fmt.Printf("ERROR enviando correo a Consignación: %v\n", err)
-		} else {
-			fmt.Printf("✓ Correo a Consignación enviado exitosamente\n")
 		}
-
-		fmt.Printf("=== FIN ENVÍO DE CORREOS PARA SOLICITUD %s ===\n", fullRequest.RequestNumber)
 	}()
 
 	// Retornar la solicitud completa con items
@@ -413,14 +401,12 @@ func (s *SupplyRequestService) ApproveSupplyRequest(requestID int, approval Appr
 		}
 
 		// Crear el carrito automáticamente al aprobar la solicitud
-		fmt.Printf("DEBUG: Intentando crear carrito para solicitud %d\n", requestID)
 		cartService := NewCartService(tx)
-		cart, err := cartService.CreateCartForRequest(requestID, approval.ApprovedBy, approval.ApprovedByName)
+		_, err := cartService.CreateCartForRequest(requestID, approval.ApprovedBy, approval.ApprovedByName)
 		if err != nil {
 			fmt.Printf("ERROR creando carrito: %v\n", err)
 			return fmt.Errorf("error creando carrito: %v", err)
 		}
-		fmt.Printf("DEBUG: Carrito creado exitosamente con ID: %d\n", cart.ID)
 
 		return nil
 	})
@@ -932,7 +918,6 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 		// Si el item fue ACEPTADO, asignar automáticamente insumos del inventario
 		if req.ItemStatus == "aceptado" {
-			fmt.Printf("DEBUG: Item %d aceptado, cantidad solicitada: %d\n", item.ID, item.QuantityRequested)
 			// Buscar insumos disponibles con el mismo código (supply_code) via JOIN con batch
 			// FEFO (First Expired First Out): Priorizar productos próximos a vencer
 			var availableSupplies []models.MedicalSupply
@@ -1047,14 +1032,11 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 
 			// Si este item tiene cantidad >= 2, crear o actualizar el carrito
 			if item.QuantityRequested >= 2 {
-				fmt.Printf("DEBUG: Item aceptado con cantidad >= 2, creando/actualizando carrito para solicitud %d\n", item.SupplyRequestID)
 				cartService := NewCartService(tx)
-				cart, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
+				_, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
 				if err != nil {
 					fmt.Printf("ERROR creando/actualizando carrito: %v\n", err)
 					// No retornar error, solo loguear, para no bloquear la aceptación del item
-				} else {
-					fmt.Printf("DEBUG: Carrito creado/actualizado exitosamente con ID: %d, número: %s\n", cart.ID, cart.CartNumber)
 				}
 			}
 		}
@@ -1092,14 +1074,12 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 				request.ApprovedByName = &req.ReviewedByName
 
 				// Crear el carrito automáticamente cuando todos los items son aceptados
-				fmt.Printf("DEBUG: Todos los items aceptados, creando carrito para solicitud %d\n", item.SupplyRequestID)
 				cartService := NewCartService(tx)
-				cart, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
+				_, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
 				if err != nil {
 					fmt.Printf("ERROR creando carrito: %v\n", err)
 					return fmt.Errorf("error creando carrito: %v", err)
 				}
-				fmt.Printf("DEBUG: Carrito creado exitosamente con ID: %d, número: %s\n", cart.ID, cart.CartNumber)
 
 				// Enviar correo de aprobación
 				go func() {
@@ -1208,14 +1188,11 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 					tx.Where("supply_request_id = ? AND item_status = ?", item.SupplyRequestID, "aceptado").Find(&acceptedItems)
 					for _, acceptedItem := range acceptedItems {
 						if acceptedItem.QuantityRequested >= 2 {
-							fmt.Printf("DEBUG: Hay items aceptados con cantidad >= 2, asegurando que el carrito exista para solicitud %d\n", item.SupplyRequestID)
 							cartService := NewCartService(tx)
-							cart, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
+							_, err := cartService.CreateCartForRequest(item.SupplyRequestID, req.ReviewedBy, req.ReviewedByName)
 							if err != nil {
 								fmt.Printf("ERROR creando/actualizando carrito: %v\n", err)
 								// No retornar error, solo loguear
-							} else {
-								fmt.Printf("DEBUG: Carrito creado/actualizado exitosamente con ID: %d, número: %s\n", cart.ID, cart.CartNumber)
 							}
 							break // Solo necesitamos crear el carrito una vez
 						}
@@ -1492,7 +1469,6 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 		// Eliminar items devueltos que no están en la lista de items actualizados
 		for _, returnedItem := range allReturnedItems {
 			if !updatedItemIDs[returnedItem.ID] {
-				fmt.Printf("DEBUG: Eliminando item devuelto %d (\"%s\") que no está en la lista de items actualizados\n", returnedItem.ID, returnedItem.SupplyName)
 				if err := tx.Delete(&returnedItem).Error; err != nil {
 					return fmt.Errorf("error eliminando item devuelto: %v", err)
 				}
@@ -1538,14 +1514,11 @@ func (s *SupplyRequestService) ResubmitReturnedRequest(requestID int, data Resub
 		if err := tx.Where("supply_request_id = ? AND item_status = ?", requestID, "aceptado").Find(&acceptedItems).Error; err == nil {
 			for _, acceptedItem := range acceptedItems {
 				if acceptedItem.QuantityRequested >= 2 {
-					fmt.Printf("DEBUG: Hay items aceptados con cantidad >= 2 después de reenviar, asegurando que el carrito exista para solicitud %d\n", requestID)
 					cartService := NewCartService(tx)
-					cart, err := cartService.CreateCartForRequest(requestID, "SYSTEM", "Sistema")
+					_, err := cartService.CreateCartForRequest(requestID, "SYSTEM", "Sistema")
 					if err != nil {
 						fmt.Printf("ERROR creando/actualizando carrito después de reenviar: %v\n", err)
 						// No retornar error, solo loguear
-					} else {
-						fmt.Printf("DEBUG: Carrito creado/actualizado exitosamente después de reenviar con ID: %d, número: %s\n", cart.ID, cart.CartNumber)
 					}
 					break // Solo necesitamos crear el carrito una vez
 				}
@@ -1960,8 +1933,6 @@ func (s *SupplyRequestService) sendRequestCreatedEmailToRequester(request *model
 	if err := s.DB.Where("rut = ?", request.RequestedBy).First(&requester).Error; err != nil {
 		return fmt.Errorf("error obteniendo solicitante: %v", err)
 	}
-
-	fmt.Printf("DEBUG: Solicitante encontrado - RUT: %s, Email: %s, Nombre: %s\n", requester.RUT, requester.Email, requester.Name)
 
 	if requester.Email == "" {
 		return fmt.Errorf("el solicitante no tiene email registrado")

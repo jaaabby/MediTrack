@@ -383,11 +383,7 @@ const refreshData = async () => {
   error.value = null
   
   try {
-    console.log('🔍 Iniciando carga de datos...')
     const supplies = await returnToBodegaService.getSuppliesForReturn()
-    console.log('🔍 Datos recibidos del servicio:', supplies)
-    console.log('🔍 Tipo de datos:', typeof supplies)
-    console.log('🔍 Es array:', Array.isArray(supplies))
     
     // Verificar si supplies es un array, si no convertirlo
     let suppliesArray = []
@@ -400,21 +396,17 @@ const refreshData = async () => {
       } else if (supplies.supplies && Array.isArray(supplies.supplies)) {
         suppliesArray = supplies.supplies
       } else {
-        console.warn('⚠️ Estructura de respuesta no esperada:', supplies)
         suppliesArray = []
       }
     } else {
-      console.warn('⚠️ Respuesta no válida del servidor:', supplies)
       suppliesArray = []
     }
     
-    console.log('🔍 Array final a procesar:', suppliesArray)
     suppliesForReturn.value = suppliesArray.map(supply => returnToBodegaService.formatSupplyForUI(supply))
     lastProcessDate.value = new Date().toLocaleString()
     
-    console.log('✅ Datos cargados exitosamente:', suppliesForReturn.value.length, 'insumos')
   } catch (err) {
-    console.error('❌ Error refreshing data:', err)
+    console.error('Error refreshing data:', err)
     error.value = err.message || 'Error al cargar los datos'
     // Asegurar que suppliesForReturn sea un array vacío en caso de error
     suppliesForReturn.value = []

@@ -326,24 +326,6 @@
 
     <!-- Resultado Exitoso -->
     <div v-if="generatedBatch && !error" class="space-y-6">
-      
-      <!-- Información del Lote Creado -->
-      <div class="bg-green-50 border border-green-200 rounded-lg p-6">
-        <div class="flex items-start">
-          <div class="flex-shrink-0">
-            <svg class="h-8 w-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div class="ml-4 flex-1">
-            <h3 class="text-lg font-medium text-green-800">¡Lote Creado Exitosamente!</h3>
-            <div class="mt-2 text-sm text-green-700">
-              <p>Se ha creado el lote <strong>ID: {{ generatedBatch.id }}</strong> con <strong>{{ generatedSupplies?.length || batchForm.amount }} productos individuales</strong></p>
-              <p class="mt-1">Cada producto tiene su propio código QR único para trazabilidad completa.</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- QR del Lote -->
       <div class="bg-white rounded-lg shadow-sm border p-6">
@@ -616,6 +598,7 @@
 <script setup>
 
 import { ref, onMounted, computed } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { jsPDF } from 'jspdf'
 import qrService from '@/services/qr/qrService'
 import inventoryService from '@/services/inventory/inventoryService'
@@ -812,20 +795,18 @@ const createSupply = async () => {
       }
     }
 
-    console.log('Datos a enviar:', completeSupplyData)
-
     // USAR EL MÉTODO CORRECTO que crea múltiples insumos
     const result = await inventoryService.createBatchWithIndividualSupplies(completeSupplyData)
-
-    console.log('Resultado completo:', result)
 
     // Verificar la estructura de la respuesta
     if (result.success && result.data) {
       generatedBatch.value = result.data.batch
       generatedSupplies.value = result.data.individual_supplies || []
       
-      console.log(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales`)
-      
+      // Persistir en sessionStorage para restaurar al volver desde el escáner QR
+      sessionStorage.setItem('addSupply_generatedBatch', JSON.stringify(generatedBatch.value))
+      sessionStorage.setItem('addSupply_generatedSupplies', JSON.stringify(generatedSupplies.value))
+
       const supplierMsg = result.data.supplier_created
         ? `\n✅ Proveedor "${supplierSearch.value}" registrado en el sistema`
         : ''
@@ -997,6 +978,10 @@ const formatDate = (dateString) => {
 }
 
 const createAnother = () => {
+  // Limpiar estado persistido
+  sessionStorage.removeItem('addSupply_generatedBatch')
+  sessionStorage.removeItem('addSupply_generatedSupplies')
+
   // Reset form
   generatedBatch.value = null
   generatedSupplies.value = null
@@ -1201,14 +1186,11 @@ const hideStoreOptions = () => {
 const onSupplierSearch = () => {
   clearFieldError('supplier')  // Limpiar error al escribir
   showSupplierOptions.value = true
-  console.log('🔍 Buscando proveedor:', supplierSearch.value)
-  console.log('📋 Proveedores filtrados:', filteredSuppliers.value.length)
 }
 
 const selectSupplier = (supplier) => {
   supplierSearch.value = supplier
   showSupplierOptions.value = false
-  console.log('✅ Proveedor seleccionado:', supplier)
 }
 
 const hideSupplierOptions = () => {
@@ -1221,13 +1203,11 @@ const hideSupplierOptions = () => {
 const loadSuppliers = async () => {
   try {
     const supplierConfigs = await supplierConfigService.getAllSupplierConfigs()
-    console.log('📦 Configuraciones de proveedores cargadas:', supplierConfigs?.length || 0)
     if (supplierConfigs && Array.isArray(supplierConfigs)) {
       uniqueSuppliers.value = supplierConfigs
         .map(config => config.supplier_name)
         .filter(name => name && name.trim())
         .sort()
-      console.log('✅ Proveedores encontrados:', uniqueSuppliers.value.length, uniqueSuppliers.value)
     }
   } catch (err) {
     console.error('❌ Error al cargar proveedores:', err)
@@ -1264,10 +1244,27 @@ const loadSupplyCodes = async () => {
 }
 
 // Cargar almacenes, proveedores y códigos al montar el componente
-onMounted(() => {
+// Limpiar estado persistido al salir, salvo que vaya al escáner QR
+onBeforeRouteLeave((to) => {
+  if (to.name !== 'QRScanner') {
+    sessionStorage.removeItem('addSupply_generatedBatch')
+    sessionStorage.removeItem('addSupply_generatedSupplies')
+  }
+})
+
+onMounted(async () => {
   loadStores()
   loadSuppliers()
   loadSupplyCodes()
+
+  // Restaurar estado del lote si el usuario volvió desde el escáner QR
+  const savedBatch = sessionStorage.getItem('addSupply_generatedBatch')
+  const savedSupplies = sessionStorage.getItem('addSupply_generatedSupplies')
+  if (savedBatch) {
+    generatedBatch.value = JSON.parse(savedBatch)
+    generatedSupplies.value = savedSupplies ? JSON.parse(savedSupplies) : []
+    await loadBatchQRImage()
+  }
 })
 </script>
 

@@ -467,7 +467,6 @@ const loadQRInfo = async () => {
   error.value = null
   try {
     const result = await qrService.scanQRCode(qrCode.value)
-    console.log('QR Info loaded:', result) // Debug log
     if (result) {
       qrInfo.value = result
       
@@ -504,7 +503,6 @@ const loadHistory = async () => {
   historyError.value = null
   try {
     const result = await qrService.getSupplyHistory(qrInfo.value.qr_code)
-    console.log('History loaded:', result) // Debug log
     
     let historyArray = []
     
@@ -519,21 +517,6 @@ const loadHistory = async () => {
       } else if (typeof result === 'object') {
         historyArray = [result]
       }
-      
-      console.log('Processed history array:', historyArray) // Debug log
-      
-      // Debug cada item del historial
-      historyArray.forEach((item, index) => {
-        console.log(`History item ${index}:`, {
-          status: item.status,
-          date_time: item.date_time,
-          user_rut: item.user_rut,
-          destination_type: item.destination_type,
-          destination_id: item.destination_id,
-          medical_supply_id: item.medical_supply_id,
-          id: item.id
-        })
-      })
       
       historyData.value = historyArray
     } else {

@@ -505,13 +505,6 @@ const canBePickedUp = (info) => {
       const authorizedRUT = request.authorized_pickup_rut
       const currentUserRUT = authStore.user?.rut
       
-      console.log('🔒 Verificando autorización de retiro:', {
-        allow_anyone: request.allow_anyone_to_pickup,
-        authorized_rut: authorizedRUT,
-        current_user_rut: currentUserRUT,
-        is_authorized: authorizedRUT === currentUserRUT
-      })
-      
       // Solo mostrar el botón si el RUT del usuario actual coincide con el autorizado
       if (authorizedRUT && authorizedRUT !== currentUserRUT) {
         return false
@@ -523,19 +516,13 @@ const canBePickedUp = (info) => {
 }
 
 const canBeMarkedAsReadyForPickup = (info) => {
-  console.log('🔍 INICIO verificación canBeMarkedAsReadyForPickup:', {
-    has_info: !!info,
-    type: info?.type,
-    is_consumed: info?.is_consumed,
-    user_role: authStore.user?.role
-  })
   
   if (!info || info.type !== 'medical_supply') return false
   if (info.is_consumed) return false
   
   // Solo encargados de bodega pueden marcar como listo para retiro
   if (authStore.user?.role !== 'encargado de bodega') {
-    console.log('❌ Usuario no es encargado de bodega:', authStore.user?.role)
+    console.log('Usuario no es encargado de bodega:', authStore.user?.role)
     return false
   }
   
@@ -547,20 +534,6 @@ const canBeMarkedAsReadyForPickup = (info) => {
   const cart = info.request_assignment?.cart || info.request_assignment?.Cart
   const cartStatus = cart?.status || cart?.Status
   const hasActiveCart = cart && (cartStatus === 'active' || cartStatus === 'Active')
-  
-  console.log('🔍 Verificando si puede marcar como listo para retiro:', {
-    user_role: authStore.user?.role,
-    status,
-    locationType,
-    has_request_assignment: !!info.request_assignment,
-    has_cart: !!cart,
-    cart_status: cartStatus,
-    hasActiveCart,
-    condition_1: hasActiveCart,
-    condition_2: status === 'disponible',
-    condition_3: locationType === 'store' || locationType === '',
-    result: hasActiveCart && status === 'disponible'
-  })
   
   // Si está en un carrito activo y disponible, permitir marcar como listo
   // El locationType puede estar vacío cuando el insumo está asignado a un carrito
@@ -643,9 +616,6 @@ const canBeReturnedToStore = (info) => {
                     info.traceability?.history || 
                     []
     
-    console.log('🔍 Verificando consumo automático. Historial:', history.length, 'items')
-    console.log('🔍 Info completa:', info)
-    
     const lastConsumption = history
       .filter(h => {
         const hStatus = h.status || h.Status || ''
@@ -659,9 +629,7 @@ const canBeReturnedToStore = (info) => {
     
     if (lastConsumption) {
       const notes = lastConsumption.notes || lastConsumption.Notes || ''
-      console.log('📝 Notas del último consumo:', notes)
       if (notes.includes('[CONSUMO_AUTOMATICO]') || notes.includes('Consumo automático')) {
-        console.log('✅ Insumo consumido automáticamente, puede ser devuelto')
         return true
       }
     }
@@ -686,17 +654,6 @@ const isOnRouteToStore = (info) => {
   const destinationStoreId = info.supply_info?.store_id
   const userStoreId = authStore.user?.store_id
 
-  console.log('🏪 isOnRouteToStore diagnóstico:', {
-    qr_code: info.qr_code,
-    status,
-    supply_info_store_id: destinationStoreId,
-    user_store_id: userStoreId,
-    user_email: authStore.user?.email,
-    user_role: authStore.user?.role,
-    supply_info_keys: info.supply_info ? Object.keys(info.supply_info) : [],
-    batch_store_id: info.supply_info?.batch?.StoreID,
-  })
-
   if (destinationStoreId == null) {
     console.log('❌ destinationStoreId es null/undefined — revise que supply_info.store_id llegue del backend')
     return false
@@ -705,7 +662,6 @@ const isOnRouteToStore = (info) => {
   // Preferir store_id del usuario si está disponible (requiere migración BD)
   if (userStoreId != null) {
     const match = destinationStoreId === userStoreId
-    console.log(`🔑 Comparando por store_id: destinationStoreId(${destinationStoreId}) === userStoreId(${userStoreId}) → ${match}`)
     return match
   }
 
@@ -714,7 +670,6 @@ const isOnRouteToStore = (info) => {
   const isConsignacion = email.includes('bodegaconsignacion') || email.includes('consignacion')
   // store_id 2 = consignación, cualquier otro = central
   const result = isConsignacion ? destinationStoreId === 2 : destinationStoreId !== 2
-  console.log(`📧 Fallback por email: isConsignacion=${isConsignacion}, destinationStoreId=${destinationStoreId}, result=${result}`)
   return result
 }
 
@@ -911,7 +866,6 @@ const startCameraScanner = async () => {
       isFront = false // Cámara trasera
     } catch (envError) {
       // Si falla con environment, intentar con user (delantera)
-      console.log('No se pudo acceder a cámara trasera, intentando con delantera...')
       constraints.video.facingMode = 'user'
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints)
@@ -1070,32 +1024,10 @@ const scanQRCode = async () => {
     // Escanear código QR
     const result = await qrService.scanQRCode(qrInput.value.trim(), scanContext)
     
-    // Debug: verificar que el historial esté presente
-    console.log('📦 Información recibida del escaneo:', {
-      qr_code: result.qr_code,
-      is_consumed: result.is_consumed,
-      status: result.supply_info?.Status || result.supply_info?.status,
-      has_history: !!result.history,
-      history_length: result.history?.length || 0,
-      has_traceability: !!result.traceability,
-      has_supply_history: !!result.traceability?.supply_history,
-      supply_history_length: result.traceability?.supply_history?.length || 0,
-      has_request_assignment: !!result.request_assignment,
-      request_assignment_cart: result.request_assignment?.cart,
-      request_assignment_Cart: result.request_assignment?.Cart,
-    })
-    
     scannedInfo.value = result
     lastScanContext.value = scanContext
-
     // Persistir el escaneo actual para que sobreviva a la navegación (volver atrás)
     qrScanStore.setScan(result, scanContext, qrInput.value.trim())
-
-    // Debug: verificar inmediatamente después de asignar
-    console.log('🔍 Verificando canBeMarkedAsReadyForPickup después de escanear:', {
-      result: canBeMarkedAsReadyForPickup(scannedInfo.value)
-    })
-    
     // Añadir al historial
     addToHistory(qrInput.value.trim(), result.type, result, scanContext)
     
@@ -1154,11 +1086,6 @@ const refreshScannedInfo = async () => {
     
     // Re-escanear el código QR actual para obtener información actualizada
     const result = await qrService.scanQRCode(scannedInfo.value.qr_code, scanContext)
-    
-    console.log('🔄 Información del QR actualizada:', {
-      qr_code: result.qr_code,
-      status: result.supply_info?.Status || result.supply_info?.status
-    })
     
     scannedInfo.value = result
     lastScanContext.value = scanContext
