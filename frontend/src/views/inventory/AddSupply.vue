@@ -795,12 +795,8 @@ const createSupply = async () => {
       }
     }
 
-    console.log('Datos a enviar:', completeSupplyData)
-
     // USAR EL MÉTODO CORRECTO que crea múltiples insumos
     const result = await inventoryService.createBatchWithIndividualSupplies(completeSupplyData)
-
-    console.log('Resultado completo:', result)
 
     // Verificar la estructura de la respuesta
     if (result.success && result.data) {
@@ -811,8 +807,6 @@ const createSupply = async () => {
       sessionStorage.setItem('addSupply_generatedBatch', JSON.stringify(generatedBatch.value))
       sessionStorage.setItem('addSupply_generatedSupplies', JSON.stringify(generatedSupplies.value))
 
-      console.log(`✅ Lote creado exitosamente con ${generatedSupplies.value.length} insumos individuales`)
-      
       const supplierMsg = result.data.supplier_created
         ? `\n✅ Proveedor "${supplierSearch.value}" registrado en el sistema`
         : ''
@@ -1192,14 +1186,11 @@ const hideStoreOptions = () => {
 const onSupplierSearch = () => {
   clearFieldError('supplier')  // Limpiar error al escribir
   showSupplierOptions.value = true
-  console.log('🔍 Buscando proveedor:', supplierSearch.value)
-  console.log('📋 Proveedores filtrados:', filteredSuppliers.value.length)
 }
 
 const selectSupplier = (supplier) => {
   supplierSearch.value = supplier
   showSupplierOptions.value = false
-  console.log('✅ Proveedor seleccionado:', supplier)
 }
 
 const hideSupplierOptions = () => {
@@ -1212,13 +1203,11 @@ const hideSupplierOptions = () => {
 const loadSuppliers = async () => {
   try {
     const supplierConfigs = await supplierConfigService.getAllSupplierConfigs()
-    console.log('📦 Configuraciones de proveedores cargadas:', supplierConfigs?.length || 0)
     if (supplierConfigs && Array.isArray(supplierConfigs)) {
       uniqueSuppliers.value = supplierConfigs
         .map(config => config.supplier_name)
         .filter(name => name && name.trim())
         .sort()
-      console.log('✅ Proveedores encontrados:', uniqueSuppliers.value.length, uniqueSuppliers.value)
     }
   } catch (err) {
     console.error('❌ Error al cargar proveedores:', err)

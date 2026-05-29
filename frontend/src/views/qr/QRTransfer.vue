@@ -324,21 +324,16 @@ onMounted(() => {
 const loadPavilions = async () => {
   try {
     loadingPavilions.value = true
-    console.log('🏢 Cargando pabellones desde BD...')
     
     const allPavilions = await pavilionService.getAllPavilions()
-    console.log('🏢 Respuesta completa del servicio de pabellones:', allPavilions)
     
     if (allPavilions && Array.isArray(allPavilions) && allPavilions.length > 0) {
       pavilions.value = allPavilions
-      console.log('✅ Pabellones cargados desde BD:', pavilions.value)
     } else {
-      console.warn('⚠️ No se encontraron pabellones en la BD, usando fallback')
       throw new Error('No data found')
     }
   } catch (error) {
-    console.error('❌ Error al cargar pabellones desde BD:', error)
-    console.log('🔄 Usando datos fallback para pabellones')
+    console.error('Error al cargar pabellones desde BD:', error)
     // Fallback con datos por defecto
     pavilions.value = [
       { id: 1, name: 'Pabellón A', medical_center_id: 1 },
@@ -370,13 +365,6 @@ const scanQR = async () => {
     if (result) {
       scannedProduct.value = result
       
-      // Debug: mostrar información del producto escaneado
-      console.log('Producto escaneado para transferencia:', result)
-      console.log('Tipo:', result.type)
-      console.log('Estado:', result.supply_info?.status || result.status)
-      console.log('Es consumido:', result.is_consumed)
-      console.log('Puede transferir:', canTransfer(result))
-      
       // Verificar si es un insumo individual
       if (result.type !== 'medical_supply') {
         error.value = 'Solo se pueden transferir insumos individuales. Este código QR corresponde a un lote.'
@@ -404,8 +392,6 @@ const canTransfer = (product) => {
                  product.current_status ||
                  product.supply_info?.Status ||
                  product.Status
-  
-  console.log('Estado encontrado para transferencia:', status)
   
   // Permitir transferencia si es "disponible", "recepcionado" o si no hay estado definido (asumir disponible)
   return status === 'disponible' || 
@@ -462,7 +448,6 @@ const transferProduct = async () => {
   
   // Prevenir dobles clics
   if (transferring.value) {
-    console.log('DEBUG - Transferencia ya en progreso, ignorando doble clic')
     return
   }
   
@@ -470,8 +455,6 @@ const transferProduct = async () => {
   error.value = null
   
   try {
-    console.log('DEBUG - Iniciando transferencia para QR:', scannedProduct.value.qr_code)
-    
     const transferData = {
       qr_code: scannedProduct.value.qr_code,
       user_rut: transferForm.value.userRUT,
@@ -487,11 +470,7 @@ const transferProduct = async () => {
       }
     }
     
-    console.log('DEBUG - Datos de transferencia:', transferData)
-    
     const result = await qrService.transferSupply(transferData)
-    
-    console.log('DEBUG - Resultado de transferencia:', result)
     
     if (result.success) {
       transferSuccess.value = {
@@ -510,7 +489,7 @@ const transferProduct = async () => {
       showError(result.error || 'Error al transferir el insumo')
     }
   } catch (err) {
-    console.error('DEBUG - Error en transferencia:', err)
+    console.error('Error en transferencia:', err)
     error.value = err.message || 'Error al transferir el insumo'
     showError(err.message || 'Error al transferir el insumo')
   } finally {

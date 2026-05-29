@@ -432,8 +432,6 @@ const scanQR = async () => {
     
     // Escanear código QR
     const result = await qrService.scanQRCode(qrInput.value.trim(), scanContext)
-    
-    console.log('Resultado del escaneo QR:', result) // Debug
 
     if (result) {
       scannedProduct.value = result
@@ -483,8 +481,6 @@ const canReceive = (product) => {
                  product.status ||
                  product.current_status
   
-  console.log('canReceive: Estado encontrado:', status)
-  
   if (status !== 'en_camino_a_pabellon') return false
   
   // Solo los usuarios con rol 'pabellón' tienen restricción de pabellón
@@ -516,8 +512,6 @@ const isReceived = (product) => {
                  product.supply_info?.status || 
                  product.status || 
                  product.current_status
-  
-  console.log('isReceived: Estado encontrado:', status)
   
   if (status !== 'recepcionado') return false
   

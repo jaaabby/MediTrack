@@ -855,11 +855,6 @@ onMounted(() => {
   authStore.initializeAuth()
 })
 
-const handleSearch = () => {
-  // TODO: Implementar logica de busqueda
-  console.log('Buscando:', searchQuery.value)
-}
-
 const handleLogout = () => {
   authStore.logout()
   router.push('/login')

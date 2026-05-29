@@ -670,21 +670,16 @@ const loadTypicalSupplies = async () => {
   loading.value = true
   error.value = null
   try {
-    console.log('🔄 Cargando insumos típicos...')
     const allSupplies = await surgeryTypicalSupplyService.getAllTypicalSupplies()
-    console.log('✅ Insumos típicos cargados:', allSupplies)
-    console.log('📊 Cantidad de insumos:', allSupplies ? allSupplies.length : 0)
     
     // Asegurar que siempre sea un array
     typicalSupplies.value = Array.isArray(allSupplies) ? allSupplies : []
     
     if (typicalSupplies.value.length === 0) {
-      console.warn('⚠️ No se encontraron insumos típicos en la base de datos')
+      console.warn('No se encontraron insumos típicos en la base de datos')
     }
   } catch (err) {
-    console.error('❌ Error detallado al cargar insumos típicos:', err)
-    console.error('❌ Código de error:', err.response?.status)
-    console.error('❌ Mensaje del servidor:', err.response?.data)
+    console.error('Error detallado al cargar insumos típicos:', err)
     
     // Mostrar mensaje de error más descriptivo
     if (err.response?.status === 404) {

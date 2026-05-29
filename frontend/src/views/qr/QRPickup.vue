@@ -280,8 +280,6 @@ const scanQR = async () => {
     
     // Escanear código QR
     const result = await qrService.scanQRCode(qrInput.value.trim(), scanContext)
-    
-    console.log('Resultado del escaneo QR:', result)
 
     if (result) {
       scannedProduct.value = result
@@ -318,7 +316,6 @@ const canPickup = (product) => {
                  product.status || 
                  product.current_status
   
-  console.log('canPickup: Estado encontrado:', status)
   return status === 'pendiente_retiro'
 }
 
@@ -404,10 +401,7 @@ const pickupSupply = async () => {
       pickupForm.value.notes
     )
     
-    console.log('Resultado de pickupSupplyFromStore:', result)
-    
     if (result.success) {
-      console.log('Retiro exitoso, redirigiendo...')
       
       // Mostrar notificación de éxito y redirigir
       showSuccess('El insumo ha sido retirado correctamente de la bodega')

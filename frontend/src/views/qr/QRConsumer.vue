@@ -346,20 +346,8 @@ const scanQR = async () => {
       scan_source: 'consumption_view'
     })
 
-    console.log('Resultado del escaneo QR:', result) // Debug
-
     if (result) {
       scannedProduct.value = result
-
-      // Debug: Mostrar información del producto escaneado
-      console.log('Información del producto:', {
-        type: result.type,
-        is_consumed: result.is_consumed,
-        status: result.status,
-        current_status: result.current_status,
-        supply_info: result.supply_info,
-        can_consume: canConsume(result)
-      })
 
       // Verificar si es un insumo individual
       if (result.type !== 'medical_supply') {
@@ -379,13 +367,11 @@ const scanQR = async () => {
 // Verificar si se puede consumir
 const canConsume = (product) => {
   if (!product) {
-    console.log('canConsume: No hay producto')
     return false
   }
 
   // No se pueden consumir insumos ya consumidos
   if (product.is_consumed) {
-    console.log('canConsume: Insumo ya consumido')
     return false
   }
 
@@ -395,11 +381,7 @@ const canConsume = (product) => {
     product.current_status ||
     (product.supply_info?.Status)
 
-  console.log('canConsume: Estado encontrado:', status)
-  console.log('canConsume: Estructura supply_info:', product.supply_info)
-
   const canConsumeResult = status === 'recepcionado'
-  console.log('canConsume: Resultado final:', canConsumeResult)
 
   return canConsumeResult
 }
