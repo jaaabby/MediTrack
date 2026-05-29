@@ -476,8 +476,9 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 		return
 	}
 
-	// Si MustChangePassword es true, no verificar contraseña actual
-	// Si es false, requerir contraseña actual
+	// Si MustChangePassword es true, el usuario ya se autenticó con la contraseña temporal,
+	// no es necesario verificarla nuevamente.
+	// Si es false, requerir contraseña actual.
 	if !user.MustChangePassword {
 		if changePassReq.CurrentPassword == "" {
 			ctx.JSON(http.StatusBadRequest, response.Response{
@@ -492,23 +493,6 @@ func (c *AuthController) FirstTimePasswordChange(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, response.Response{
 				Success: false,
 				Error:   "Contraseña actual incorrecta",
-			})
-			return
-		}
-	} else {
-		// Si está en primer inicio, verificar contraseña temporal
-		if changePassReq.CurrentPassword == "" {
-			ctx.JSON(http.StatusBadRequest, response.Response{
-				Success: false,
-				Error:   "Se requiere la contraseña temporal",
-			})
-			return
-		}
-
-		if err := crypto.ComparePassword(user.Password, changePassReq.CurrentPassword); err != nil {
-			ctx.JSON(http.StatusBadRequest, response.Response{
-				Success: false,
-				Error:   "Contraseña temporal incorrecta",
 			})
 			return
 		}
