@@ -255,7 +255,7 @@ func (c *AuthController) sendLoginNotificationEmail(user *models.User, ipAddress
 	templatePath := filepath.Join("mailer", "templates", "new_login.html")
 	mailReq := mailer.NewRequest([]string{user.Email}, "Nuevo inicio de sesión en tu cuenta Meditrack")
 	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
-		fmt.Printf("⚠️  No se pudo enviar el correo de notificación de login a %s: %v\n", user.Email, err)
+		fmt.Printf("No se pudo enviar el correo de notificación de login a %s: %v\n", user.Email, err)
 	}
 }
 

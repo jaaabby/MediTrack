@@ -829,10 +829,7 @@ func (s *BatchService) StartAutomaticLowStockChecker() {
 	ticker := time.NewTicker(DefaultLowStockCheckInterval)
 	defer ticker.Stop()
 
-	log.Println("🔄 Iniciado verificador automático de stock bajo")
-
 	for range ticker.C {
-		log.Println("🔍 Ejecutando verificación automática de stock bajo...")
 		if err := s.CheckAllBatchesLowStock(); err != nil {
 			log.Printf("Error en verificación automática de stock bajo: %v\n", err)
 		}

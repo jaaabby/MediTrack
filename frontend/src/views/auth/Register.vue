@@ -279,7 +279,6 @@ const loadMedicalCenters = async () => {
     const response = await medicalCenterService.getAll()
     // Manejar diferentes formatos de respuesta
     medicalCenters.value = response.data || response || []
-    console.log('Centros médicos cargados:', medicalCenters.value)
     
     if (medicalCenters.value.length === 0) {
       errorMessage.value = 'No hay centros médicos disponibles. Contacta al administrador.'

@@ -123,7 +123,6 @@ func (s *MedicalSupplyService) UpdateMedicalSupply(id int, newSupply *models.Med
 	if newSupply.Status == models.StatusReceived && previousStatus != models.StatusReceived {
 		// Programar verificación de alerta después de 1 minuto (para pruebas)
 		go s.scheduleUnconsumedSupplyAlert(supply.ID)
-		fmt.Printf("Insumo %d cambió a estado 'Recepcionado'. Alerta programada para 1 minuto.\n", supply.ID)
 	}
 
 	return &supply, nil
@@ -692,12 +691,9 @@ func (s *MedicalSupplyService) sendUnconsumedSupplyAlert(supply *models.MedicalS
 	}
 
 	templatePath := filepath.Join(wd, "mailer", "templates", "unconsumed_supply_alert.html")
-	fmt.Printf("Buscando plantilla en: %s\n", templatePath)
 
 	if err := request.SendMailSkipTLS(templatePath, emailData); err != nil {
 		fmt.Printf("Error enviando alerta de insumo no consumido: %v\n", err)
-	} else {
-		fmt.Printf("Alerta enviada para insumo %d que no ha sido consumido\n", supply.ID)
 	}
 }
 
@@ -825,8 +821,6 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 		AND ms.location_id > 0
 		ORDER BY ms.updated_at ASC
 	`
-
-	fmt.Printf("🔍 Buscando insumos recepcionados en pabellones...\n")
 	rows, err := s.DB.Raw(query, models.StatusReceived, models.SupplyLocationPavilion).Rows()
 	if err != nil {
 		return nil, fmt.Errorf("error consultando insumos para retorno: %v", err)
@@ -859,12 +853,9 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 		)
 
 		if err := rows.Scan(&id, &qrCode, &status, &supplyName, &supplyCode, &batchID, &supplier, &expirationDate, &storeName, &storeID, &receivedAt, &pavilionID, &pavilionName, &batchAmount, &supplyCodeSupplier); err != nil {
-			fmt.Printf("⚠️ Error escaneando fila %d: %v\n", count, err)
+			fmt.Printf("Error escaneando fila %d: %v\n", count, err)
 			continue
 		}
-
-		fmt.Printf("📦 Insumo encontrado: ID=%d, QR=%s, Status=%s, LocationType=%s, LocationID=%d, ReceivedAt=%s\n",
-			id, qrCode, status, "pavilion", 0, receivedAt.Format("2006-01-02 15:04:05"))
 
 		// Calcular horas laborales transcurridas desde la recepción
 		now := time.Now()
@@ -887,8 +878,6 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 				nextBusinessDayStart = time.Date(receivedAt.Year(), receivedAt.Month(), receivedAt.Day(), config.StartHour, 0, 0, 0, receivedAt.Location())
 			}
 			businessHoursElapsed = pkg.CalculateBusinessHours(nextBusinessDayStart, now, config)
-			fmt.Printf("  ℹ️ Recepción fuera del horario laboral (hora: %d), calculando desde próximo horario laboral: %.4f horas laborales\n",
-				receivedHour, businessHoursElapsed)
 		} else {
 			// Si fue dentro del horario laboral, calcular horas laborales normalmente
 			businessHoursElapsed = pkg.CalculateBusinessHours(receivedAt, now, config)
@@ -896,9 +885,6 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 
 		// Usar 8 horas laborales como umbral
 		shouldReturn := businessHoursElapsed >= 8.0
-
-		fmt.Printf("  ⏱️ Horas laborales transcurridas: %.4f (umbral: %.2f), Debe retornar: %v\n",
-			businessHoursElapsed, 8.0, shouldReturn)
 
 		item := map[string]interface{}{
 			"supply_id":              id,
@@ -923,14 +909,8 @@ func (s *MedicalSupplyService) GetSuppliesForReturn() ([]map[string]interface{},
 		// Solo agregar si debe retornarse (8 horas laborales o más)
 		if shouldReturn {
 			results = append(results, item)
-			fmt.Printf("✅ Insumo agregado para retorno: QR=%s\n", qrCode)
-		} else {
-			fmt.Printf("⏳ Insumo aún no debe retornar: QR=%s (%.4f < %.2f horas laborales)\n",
-				qrCode, businessHoursElapsed, 8.0)
 		}
 	}
-
-	fmt.Printf("📊 Total filas encontradas: %d, Total insumos para retorno: %d\n", count, len(results))
 	return results, nil
 }
 
@@ -1046,8 +1026,6 @@ func (s *MedicalSupplyService) NotifyPavilionForReturn(qrCode string, pdfBytes [
 		}
 	}
 
-	fmt.Printf("✉️ Notificación de devolución enviada a %v para insumo QR=%s en pabellón '%s'\n",
-		emails, qrCode, pavilionName)
 	return emails, nil
 }
 
@@ -1092,7 +1070,6 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 		}
 
 		now := time.Now()
-		oldStatus := supply.Status
 		oldLocationType := supply.LocationType
 		oldLocationID := supply.LocationID
 
@@ -1119,8 +1096,6 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 				if err := tx.Save(&pavilionSummary).Error; err != nil {
 					return fmt.Errorf("error actualizando resumen de pabellón: %v", err)
 				}
-				fmt.Printf("✅ Resumen de pabellón actualizado: PavilionID=%d, CurrentAvailable=%d\n",
-					oldLocationID, pavilionSummary.CurrentAvailable)
 			}
 		}
 
@@ -1171,15 +1146,10 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 			if err := tx.Save(&assignment).Error; err != nil {
 				return fmt.Errorf("error actualizando asignación QR: %v", err)
 			}
-			fmt.Printf("✅ Asignación QR actualizada para insumo %s\n", supply.QRCode)
 
 			// Recalculate supply request status based on all assignment statuses
 			updateRequestStatusAfterReturn(tx, assignment.SupplyRequestID)
 		}
-
-		// Log para depuración
-		fmt.Printf("✅ Insumo %s regresado a bodega %s (estado: %s -> %s)\n",
-			supply.QRCode, store.Name, oldStatus, supply.Status)
 
 		return nil
 	})
@@ -1238,11 +1208,9 @@ func updateRequestStatusAfterReturn(tx *gorm.DB, requestID int) {
 			"status":     newStatus,
 			"updated_at": now,
 		}).Error; err != nil {
-		fmt.Printf("⚠️ Error actualizando estado de solicitud %d: %v\n", requestID, err)
+		fmt.Printf("Error actualizando estado de solicitud %d: %v\n", requestID, err)
 		return
 	}
-	fmt.Printf("✅ Solicitud %d → %s (devueltos=%d, consumidos=%d, total=%d)\n",
-		requestID, newStatus, returned, consumed, total)
 }
 
 // ReturnSupplyToStoreByQR regresa un insumo a bodega usando su código QR
@@ -1281,14 +1249,12 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 			err := s.ReturnSupplyToStore(supplyID, systemUserRUT, notes, true)
 			if err != nil {
 				errorMsg := fmt.Sprintf("Error retornando insumo %s: %v", qrCode, err)
-				fmt.Printf("❌ %s\n", errorMsg)
 				errors = append(errors, errorMsg)
 				errorCount++
 				continue
 			}
 
 			returnedCount++
-			fmt.Printf("✅ Insumo %s retornado automáticamente a bodega (%.1f horas laborales)\n", qrCode, businessHoursElapsed)
 
 			// Guardar información para el correo
 			returnedSupplies = append(returnedSupplies, map[string]interface{}{
@@ -1301,14 +1267,11 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 	}
 
 	if returnedCount > 0 {
-		fmt.Printf("📦 Procesamiento automático completado: %d insumos retornados a bodega\n", returnedCount)
 
 		// Enviar correo con el resumen (en goroutine para no bloquear)
 		go func() {
 			if err := s.sendAutomaticReturnSummaryEmail(returnedCount, errorCount, returnedSupplies); err != nil {
-				fmt.Printf("⚠️ Error enviando correo de resumen de retornos automáticos: %v\n", err)
-			} else {
-				fmt.Printf("📧 Correo de resumen enviado exitosamente\n")
+				fmt.Printf("Error enviando correo de resumen de retornos automáticos: %v\n", err)
 			}
 		}()
 	}
@@ -1319,7 +1282,7 @@ func (s *MedicalSupplyService) ProcessAutomaticReturns() error {
 			return fmt.Errorf("todos los insumos fallaron al procesarse: %v", errors)
 		}
 		// Si algunos fallaron, solo loguear pero no retornar error
-		fmt.Printf("⚠️ Advertencia: %d insumos fallaron al procesarse\n", errorCount)
+		fmt.Printf("Advertencia: %d insumos fallaron al procesarse\n", errorCount)
 	}
 
 	return nil
@@ -1352,7 +1315,6 @@ func (s *MedicalSupplyService) sendAutomaticReturnSummaryEmail(returnedCount int
 	}
 
 	templatePath := filepath.Join(wd, "mailer", "templates", "automatic_return_summary.html")
-	fmt.Printf("📧 Enviando correo de resumen de retornos automáticos a %s\n", alertEmail)
 
 	if err := request.SendMailSkipTLS(templatePath, emailData); err != nil {
 		return fmt.Errorf("error enviando correo de resumen: %v", err)
@@ -1366,12 +1328,9 @@ func (s *MedicalSupplyService) StartAutomaticReturnChecker() {
 	ticker := time.NewTicker(24 * time.Hour) // Verificar cada 24 horas
 	defer ticker.Stop()
 
-	fmt.Println("🔄 Iniciado verificador automático de retornos a bodega")
-
 	for range ticker.C {
-		fmt.Println("🔍 Ejecutando verificación automática de retornos...")
 		if err := s.ProcessAutomaticReturns(); err != nil {
-			fmt.Printf("❌ Error en verificación automática: %v\n", err)
+			fmt.Printf("Error en verificación automática: %v\n", err)
 		}
 	}
 }
@@ -1523,7 +1482,7 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			if err := tx.Where("medical_supply_id = ? AND status = ? AND destination_type = ?",
 				supply.ID, models.TransferStatusInTransit, models.TransferLocationStore).
 				Order("send_date DESC").First(&transfer).Error; err != nil {
-				fmt.Printf("⚠️ No se encontró transferencia en tránsito para QR %s (puede que ya haya sido recibida)\n", qrCode)
+				fmt.Printf("No se encontró transferencia en tránsito para QR %s (puede que ya haya sido recibida)\n", qrCode)
 			} else {
 				// Transferencia encontrada por medical_supply_id - actualizar a recibida
 				now := time.Now()
@@ -1545,8 +1504,6 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 				if err := tx.Save(&transfer).Error; err != nil {
 					return fmt.Errorf("error actualizando transferencia: %v", err)
 				}
-				fmt.Printf("✅ Transferencia de devolución actualizada (por medical_supply_id): Code=%s, Status=%s\n",
-					transfer.TransferCode, transfer.Status)
 			}
 		} else {
 			// Transferencia encontrada por QR code - actualizar a recibida
@@ -1569,8 +1526,6 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 			if err := tx.Save(&transfer).Error; err != nil {
 				return fmt.Errorf("error actualizando transferencia: %v", err)
 			}
-			fmt.Printf("✅ Transferencia de devolución actualizada (por QR code): Code=%s, Status=%s\n",
-				transfer.TransferCode, transfer.Status)
 		}
 
 		// ============================
@@ -1632,7 +1587,7 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 					}
 				}
 				if err := tx.Save(&assignment).Error; err != nil {
-					fmt.Printf("⚠️ Error actualizando asignación a 'returned': %v\n", err)
+					fmt.Printf("Error actualizando asignación a 'returned': %v\n", err)
 				}
 
 				// Desactivar items de carrito asociados a esta asignación
@@ -1647,17 +1602,15 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 						"removed_by_name": &userNamePtr,
 						"notes":           "Insumo devuelto a bodega",
 					}).Error; err != nil {
-					fmt.Printf("⚠️ Error desactivando items de carrito: %v\n", err)
+					fmt.Printf("Error desactivando items de carrito: %v\n", err)
 				}
 			}
-			fmt.Printf("✅ Marcadas %d asignaciones antiguas como 'returned' para QR %s\n", len(oldAssignments), qrCode)
 		}
 
 		// ============================
 		// 4) Cambiar estado del insumo principal y registrar historial
 		// ============================
 
-		oldStatus := supply.Status
 		supply.Status = models.StatusAvailable
 		supply.LocationType = models.SupplyLocationStore
 		supply.LocationID = store.ID
@@ -1684,9 +1637,6 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 		if err := tx.Create(&historyEntry).Error; err != nil {
 			return fmt.Errorf("error creando historial: %v", err)
 		}
-
-		fmt.Printf("✅ Llegada confirmada para insumo %s a bodega %s (estado: %s -> %s)\n",
-			supply.QRCode, store.Name, oldStatus, supply.Status)
 
 		// ============================
 		// 5) Recepción automática de otros insumos del mismo carrito
@@ -1737,7 +1687,7 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 							if err := tx.Where("medical_supply_id = ? AND status = ? AND destination_type = ?",
 								otherSupply.ID, models.TransferStatusInTransit, models.TransferLocationStore).
 								Order("send_date DESC").First(&otherTransfer).Error; err != nil {
-								fmt.Printf("⚠️ No se encontró transferencia en tránsito para QR %s (carrito): %v\n", otherSupply.QRCode, err)
+								fmt.Printf("No se encontró transferencia en tránsito para QR %s (carrito): %v\n", otherSupply.QRCode, err)
 							}
 						}
 
@@ -1766,20 +1716,20 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 							}
 
 							if err := tx.Save(&otherTransfer).Error; err != nil {
-								fmt.Printf("⚠️ Error actualizando transferencia de devolución (carrito) para QR %s: %v\n", otherSupply.QRCode, err)
+								fmt.Printf("Error actualizando transferencia de devolución (carrito) para QR %s: %v\n", otherSupply.QRCode, err)
 							}
 						}
 
 						// === 5.2) Actualizar inventario y lote para este insumo ===
 						var otherBatch models.Batch
 						if err := tx.First(&otherBatch, otherSupply.BatchID).Error; err != nil {
-							fmt.Printf("⚠️ Error obteniendo lote para insumo %s: %v\n", otherSupply.QRCode, err)
+							fmt.Printf("Error obteniendo lote para insumo %s: %v\n", otherSupply.QRCode, err)
 							continue
 						}
 
 						var otherStore models.Store
 						if err := tx.First(&otherStore, otherBatch.StoreID).Error; err != nil {
-							fmt.Printf("⚠️ Error obteniendo bodega para insumo %s: %v\n", otherSupply.QRCode, err)
+							fmt.Printf("Error obteniendo bodega para insumo %s: %v\n", otherSupply.QRCode, err)
 							continue
 						}
 
@@ -1798,11 +1748,11 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 									LastReturnInDate: &now,
 								}
 								if err := tx.Create(&otherStoreSummary).Error; err != nil {
-									fmt.Printf("⚠️ Error creando resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
+									fmt.Printf("Error creando resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
 									continue
 								}
 							} else {
-								fmt.Printf("⚠️ Error obteniendo resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
+								fmt.Printf("Error obteniendo resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
 								continue
 							}
 						} else {
@@ -1811,14 +1761,14 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 							otherStoreSummary.TotalReturnedIn++
 							otherStoreSummary.LastReturnInDate = &now
 							if err := tx.Save(&otherStoreSummary).Error; err != nil {
-								fmt.Printf("⚠️ Error actualizando resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
+								fmt.Printf("Error actualizando resumen de bodega para insumo %s: %v\n", otherSupply.QRCode, err)
 								continue
 							}
 						}
 
 						otherBatch.Amount++
 						if err := tx.Save(&otherBatch).Error; err != nil {
-							fmt.Printf("⚠️ Error actualizando lote para insumo %s: %v\n", otherSupply.QRCode, err)
+							fmt.Printf("Error actualizando lote para insumo %s: %v\n", otherSupply.QRCode, err)
 							continue
 						}
 
@@ -1836,7 +1786,7 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 									}
 								}
 								if err := tx.Save(&a).Error; err != nil {
-									fmt.Printf("⚠️ Error actualizando asignación a 'returned' para QR %s: %v\n", otherSupply.QRCode, err)
+									fmt.Printf("Error actualizando asignación a 'returned' para QR %s: %v\n", otherSupply.QRCode, err)
 								}
 
 								now := time.Now()
@@ -1850,19 +1800,18 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 										"removed_by_name": &userNamePtr,
 										"notes":           "Insumo devuelto a bodega (recepción automática de carrito)",
 									}).Error; err != nil {
-									fmt.Printf("⚠️ Error desactivando items de carrito para QR %s: %v\n", otherSupply.QRCode, err)
+									fmt.Printf("Error desactivando items de carrito para QR %s: %v\n", otherSupply.QRCode, err)
 								}
 							}
 						}
 
 						// === 5.4) Actualizar insumo y registrar historial ===
-						oldOtherStatus := otherSupply.Status
 						otherSupply.Status = models.StatusAvailable
 						otherSupply.LocationType = models.SupplyLocationStore
 						otherSupply.LocationID = otherStore.ID
 						otherSupply.InTransit = false
 						if err := tx.Save(&otherSupply).Error; err != nil {
-							fmt.Printf("⚠️ Error actualizando insumo %s: %v\n", otherSupply.QRCode, err)
+							fmt.Printf("Error actualizando insumo %s: %v\n", otherSupply.QRCode, err)
 							continue
 						}
 
@@ -1881,17 +1830,11 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 							Notes:           autoFinalNotes,
 						}
 						if err := tx.Create(&history).Error; err != nil {
-							fmt.Printf("⚠️ Error creando historial para insumo %s: %v\n", otherSupply.QRCode, err)
+							fmt.Printf("Error creando historial para insumo %s: %v\n", otherSupply.QRCode, err)
 							continue
 						}
 
 						autoReceived++
-						fmt.Printf("✅ Llegada confirmada automáticamente para insumo %s (carrito) estado: %s -> %s\n",
-							otherSupply.QRCode, oldOtherStatus, otherSupply.Status)
-					}
-
-					if autoReceived > 0 {
-						fmt.Printf("✅ Recepción automática de %d insumos adicionales del mismo carrito para QR base %s\n", autoReceived, qrCode)
 					}
 				}
 
@@ -1909,7 +1852,7 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 						"removed_by_name": &userNamePtr,
 						"notes":           "Insumo llegó a bodega - confirmación de llegada",
 					}).Error; err != nil {
-					fmt.Printf("⚠️ Error desactivando cart item del insumo principal %s: %v\n", qrCode, err)
+					fmt.Printf("Error desactivando cart item del insumo principal %s: %v\n", qrCode, err)
 				}
 
 				// ============================
@@ -1930,9 +1873,7 @@ func (s *MedicalSupplyService) ConfirmArrivalToStore(qrCode string, userRUT stri
 							"closed_by":      &userRUT,
 							"closed_by_name": &userName,
 						}).Error; err != nil {
-						fmt.Printf("⚠️ Error cerrando carrito %d: %v\n", cartItem.SupplyCartID, err)
-					} else {
-						fmt.Printf("✅ Carrito %d cerrado automáticamente (todos los insumos llegaron a bodega)\n", cartItem.SupplyCartID)
+						fmt.Printf("Error cerrando carrito %d: %v\n", cartItem.SupplyCartID, err)
 					}
 				}
 			}

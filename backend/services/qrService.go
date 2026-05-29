@@ -139,11 +139,7 @@ func (s *QRService) ScanQRWithAutoLogging(qrCode string, context *ScanContext) (
 	}
 
 	// Registrar el escaneo exitoso
-	scanEvent, logErr := s.logScanEvent(qrCode, context, qrInfo, models.ScanResultSuccess, "")
-	if logErr != nil {
-		// Log el error pero no fallar el escaneo
-		fmt.Printf("Error logging scan event: %v\n", logErr)
-	}
+	scanEvent, _ := s.logScanEvent(qrCode, context, qrInfo, models.ScanResultSuccess, "")
 
 	// Agregar el evento de escaneo a la respuesta
 	if scanEvent != nil {
@@ -479,16 +475,9 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 		var cartItem models.SupplyCartItem
 		var assignment models.SupplyRequestQRAssignment
 
-		fmt.Printf("\n🔍 ===== DEBUG ESCANEO QR: %s =====\n", qrCode)
-
 		// Debug: Verificar TODAS las asignaciones de este QR
 		var allAssignments []models.SupplyRequestQRAssignment
 		s.DB.Where("qr_code = ?", qrCode).Order("assigned_date DESC").Find(&allAssignments)
-		fmt.Printf("📊 Total de asignaciones para este QR: %d\n", len(allAssignments))
-		for i, a := range allAssignments {
-			fmt.Printf("  [%d] ID=%d, Status=%s, RequestID=%d, AssignedDate=%s\n",
-				i+1, a.ID, a.Status, a.SupplyRequestID, a.AssignedDate.Format("2006-01-02 15:04:05"))
-		}
 
 		// Debug: Verificar TODOS los items de carrito para estas asignaciones
 		if len(allAssignments) > 0 {
@@ -501,16 +490,9 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 				Preload("SupplyCart").
 				Order("added_at DESC").
 				Find(&allCartItems)
-			fmt.Printf("🛒 Total de items de carrito para estas asignaciones: %d\n", len(allCartItems))
-			for i, ci := range allCartItems {
-				fmt.Printf("  [%d] CartItemID=%d, AssignmentID=%d, IsActive=%v, CartNumber=%s, CartStatus=%s, AddedAt=%s\n",
-					i+1, ci.ID, ci.SupplyRequestQRAssignmentID, ci.IsActive,
-					ci.SupplyCart.CartNumber, ci.SupplyCart.Status, ci.AddedAt.Format("2006-01-02 15:04:05"))
-			}
 		}
 
 		// Buscar item de carrito activo que contenga una asignación de este QR
-		fmt.Printf("\n🔎 Buscando carrito ACTIVO específicamente...\n")
 		if err := s.DB.Table("supply_cart_item sci").
 			Select("sci.*").
 			Joins("INNER JOIN supply_request_qr_assignment srqa ON sci.supply_request_qr_assignment_id = srqa.id").
@@ -524,22 +506,13 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 			Order("sci.added_at DESC").
 			First(&cartItem).Error; err == nil {
 
-			// Encontramos un carrito activo con este QR
-			fmt.Printf("✅ CARRITO ACTIVO ENCONTRADO:\n")
-			fmt.Printf("   - CartNumber: %s\n", cartItem.SupplyCart.CartNumber)
-			fmt.Printf("   - CartStatus: %s\n", cartItem.SupplyCart.Status)
-			fmt.Printf("   - AssignmentID: %d\n", cartItem.SupplyRequestQRAssignmentID)
-			fmt.Printf("   - AssignmentStatus: %s\n", cartItem.SupplyRequestQRAssignment.Status)
-			fmt.Printf("   - RequestID: %d\n", cartItem.SupplyRequestQRAssignment.SupplyRequestID)
-			fmt.Printf("===== FIN DEBUG =====\n\n")
-
 			assignment = cartItem.SupplyRequestQRAssignment
 			assignment.Cart = &cartItem.SupplyCart
 			result.RequestAssignment = &assignment
 			result.SupplyRequest = &assignment.SupplyRequest
 
 		} else {
-			fmt.Printf("⚠️ NO se encontró carrito activo. Error: %v\n", err)
+			fmt.Printf("NO se encontró carrito activo. Error: %v\n", err)
 
 			// No hay carrito activo, buscar la última asignación no devuelta
 			// IMPORTANTE: NO cargar el carrito aquí, solo la asignación
@@ -549,33 +522,12 @@ func (s *QRService) ScanQRWithTraceability(qrCode string) (*QRInfo, error) {
 				Order("assigned_date DESC").
 				First(&assignment).Error; err == nil {
 
-				fmt.Printf("📋 ASIGNACIÓN SIN CARRITO ACTIVO:\n")
-				fmt.Printf("   - AssignmentID: %d\n", assignment.ID)
-				fmt.Printf("   - Status: %s\n", assignment.Status)
-				fmt.Printf("   - RequestID: %d\n", assignment.SupplyRequestID)
-
 				// NO cargar el carrito aquí - dejar Cart como nil
 				result.RequestAssignment = &assignment
 				result.SupplyRequest = &assignment.SupplyRequest
-
-				// Verificar explícitamente si hay algún carrito (para debug)
-				var debugCartItem models.SupplyCartItem
-				if err := s.DB.Where("supply_request_qr_assignment_id = ?", assignment.ID).
-					Preload("SupplyCart").
-					Order("added_at DESC").
-					First(&debugCartItem).Error; err == nil {
-					fmt.Printf("   ⚠️ ADVERTENCIA: Existe carrito para esta asignación:\n")
-					fmt.Printf("      - CartNumber: %s\n", debugCartItem.SupplyCart.CartNumber)
-					fmt.Printf("      - CartStatus: %s\n", debugCartItem.SupplyCart.Status)
-					fmt.Printf("      - IsActive: %v\n", debugCartItem.IsActive)
-					fmt.Printf("      - (NO se cargará porque no está activo)\n")
-				} else {
-					fmt.Printf("   ℹ️ No hay carrito asociado a esta asignación\n")
-				}
 			} else {
-				fmt.Printf("❌ No se encontró ninguna asignación activa\n")
+				fmt.Printf("No se encontró ninguna asignación activa\n")
 			}
-			fmt.Printf("===== FIN DEBUG =====\n\n")
 		}
 
 	} else if qrType == "batch" {
@@ -1032,20 +984,6 @@ func (s *QRService) TransferSupplyByQR(qrCode, userRUT, receiverRUT, destination
 		}
 	}
 
-	// DEBUG: Verificar si ya hay una transferencia reciente para este QR (COMENTADO - permitir duplicados)
-	/*
-		var existingTransfer models.SupplyHistory
-		transferInProgress := s.DB.Where(`medical_supply_id = (SELECT id FROM medical_supply WHERE qr_code = ?)
-			AND status IN ('en_camino_a_pabellon', 'en_camino_a_bodega')
-			AND date_time > ?`, qrCode, time.Now().Add(-5*time.Minute)).First(&existingTransfer).Error == nil
-
-		if transferInProgress {
-			fmt.Printf("DEBUG - PREVENCIÓN DUPLICADO: Ya existe transferencia reciente para QR=%s, TransferID=%d, Status=%s, Time=%s\n",
-				qrCode, existingTransfer.ID, existingTransfer.Status, existingTransfer.DateTime.Format("2006-01-02 15:04:05"))
-			return nil, fmt.Errorf("ya existe una transferencia en progreso para este insumo - ID: %d", existingTransfer.ID)
-		}
-	*/
-
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		// Buscar el insumo por QR
 		if err := tx.Where("qr_code = ?", qrCode).First(&supply).Error; err != nil {
@@ -1362,10 +1300,9 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 					INNER JOIN medical_supply ms ON sqa.medical_supply_id = ms.id
 					WHERE sci.supply_cart_id = ? AND sci.is_active = true AND ms.id != ? AND ms.status = ?`
 				if err := tx.Raw(rawSQL, cartItem.SupplyCartID, supply.ID, models.StatusPendingPickup).Scan(&otherQRCodes).Error; err != nil {
-					fmt.Printf("⚠️ Error buscando otros items del carrito: %v\n", err)
+					fmt.Printf("Error buscando otros items del carrito: %v\n", err)
 					return nil
 				}
-				fmt.Printf("🔍 Items pendientes en el mismo carrito: %d (cart_id=%d)\n", len(otherQRCodes), cartItem.SupplyCartID)
 				if len(otherQRCodes) == 0 {
 					return nil
 				}
@@ -1382,7 +1319,6 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 					if err := tx.Where("qr_code = ? AND status = ?", otherQR, models.TransferStatusPending).
 						Order("id DESC").
 						First(&otherTransfer).Error; err != nil {
-						fmt.Printf("⚠️ Sin transfer pendiente para %s, saltando\n", otherQR)
 						continue
 					}
 
@@ -1426,7 +1362,7 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 						DestinationID:   transfer.DestinationID,
 						MedicalSupplyID: otherSupply.ID,
 						UserRUT:         userRUT,
-						Notes:           fmt.Sprintf("Retirado automáticamente con el carrito. En camino a pabellón."),
+						Notes:           "Retirado automáticamente con el carrito. En camino a pabellón.",
 						OriginType:      &otherOriginType,
 						OriginID:        &otherOriginID,
 					}
@@ -1435,11 +1371,6 @@ func (s *QRService) PickupSupplyFromStore(qrCode, userRUT string, notes string) 
 					}
 
 					retiradosCount++
-				}
-
-				// Log de cuántos insumos adicionales fueron retirados
-				if retiradosCount > 0 {
-					fmt.Printf("✅ Retirados automáticamente %d insumos adicionales del carrito\n", retiradosCount)
 				}
 			}
 		}
@@ -1587,7 +1518,7 @@ func (s *QRService) ReceiveSupplyByQR(qrCode, userRUT, destinationType string, d
 
 				if err := tx.Save(&assignment).Error; err != nil {
 					// No fallar si no se puede actualizar la asignación, solo loguear
-					fmt.Printf("⚠️  Advertencia: No se pudo actualizar asignación QR: %v\n", err)
+					fmt.Printf("Advertencia: No se pudo actualizar asignación QR: %v\n", err)
 				}
 			}
 		}
