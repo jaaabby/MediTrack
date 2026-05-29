@@ -113,7 +113,6 @@ export function formatStatusForExcel(status) {
     'recepcionado': 'Recepcionado',
     'consumido': 'Consumido',
     'vencido': 'Vencido',
-    'reservado': 'Reservado',
     // Estados de solicitud de insumo
     'pendiente_pavedad': 'Pendiente Pavedad',
     'asignado_bodega': 'Asignado a Bodega',

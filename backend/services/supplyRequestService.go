@@ -1034,7 +1034,7 @@ func (s *SupplyRequestService) ReviewSupplyRequestItem(itemID int, req ReviewIte
 					DestinationType: models.DestinationTypeStore,
 					DestinationID:   supply.LocationID,
 					UserRUT:         req.ReviewedBy,
-					Notes:           fmt.Sprintf("Reservado automáticamente para solicitud. Item: %s", item.SupplyName),
+					Notes:           fmt.Sprintf("Asignado automáticamente a una solicitud. Item: %s", item.SupplyName),
 				}
 
 				if err := tx.Create(&history).Error; err != nil {

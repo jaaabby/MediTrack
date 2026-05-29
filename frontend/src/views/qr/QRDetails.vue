@@ -754,8 +754,6 @@ const getStatusText = (status) => {
     case 'consumido':
     case 'consumed':
       return 'Consumido'
-    case 'reservado':
-      return 'Reservado'
     case 'transferido':
       return 'Transferido'
     default:
@@ -776,7 +774,6 @@ const getStatusClass = (status) => {
     'en_camino_a_bodega': 'bg-orange-100 text-orange-800',
     'consumido': 'bg-red-100 text-red-800',
     'consumed': 'bg-red-100 text-red-800',
-    'reservado': 'bg-purple-100 text-purple-800',
     'transferido': 'bg-purple-100 text-purple-800'
   }
   return statusColors[statusLower] || 'bg-gray-100 text-gray-800'
