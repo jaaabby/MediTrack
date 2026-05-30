@@ -1414,7 +1414,6 @@ const validateItem = (index) => {
 }
 
 const validateForm = () => {
-  console.log('🔍 Iniciando validación del formulario')
   
   // Limpiar errores anteriores
   fieldErrors.surgery_datetime = ''
@@ -1428,18 +1427,14 @@ const validateForm = () => {
   
   // Validar campos principales (solo si no está en modo edición o el campo es editable)
   if (!props.editMode) {
-    console.log('📝 Validando campos principales')
     validateField('surgery_datetime', requestForm.surgery_datetime)
     validateField('pavilion_id', requestForm.pavilion_id)
   }
   validateField('surgery_id', requestForm.surgery_id)
   
-  console.log('📋 Cantidad de items:', requestForm.items.length)
-  
   // Validar que haya al menos un item
   if (requestForm.items.length === 0) {
     errors.value.push('Debe agregar al menos un insumo')
-    console.log('❌ No hay items')
     return false
   }
   
@@ -1447,7 +1442,6 @@ const validateForm = () => {
   requestForm.items.forEach((item, index) => {
     // Solo validar items que no están aceptados (en modo edición)
     if (!props.editMode || item.item_status !== 'aceptado') {
-      console.log(`🔍 Validando item ${index}:`, item)
       validateItem(index)
     }
   })
@@ -1458,15 +1452,10 @@ const validateForm = () => {
                         fieldErrors.surgery_id ||
                         fieldErrors.items.some(item => item.supply_code || item.supply_name || item.quantity_requested)
   
-  console.log('❓ Hay errores de campo?', hasFieldErrors)
-  
   // Si hay errores, no continuar
   if (hasFieldErrors) {
-    console.log('❌ Validación falló por errores de campo')
     return false
   }
-  
-  console.log('✅ Validación de campos exitosa, procediendo a consolidar duplicados')
   
   // Solo si no hay errores, consolidar items duplicados
   const consolidated = consolidateDuplicateItems()
@@ -1536,12 +1525,6 @@ const cancelForm = () => {
 
 const submitRequest = async () => {
   if (!validateForm()) {
-    console.log('Errores de validación:', {
-      surgery_datetime: fieldErrors.surgery_datetime,
-      pavilion_id: fieldErrors.pavilion_id,
-      surgery_id: fieldErrors.surgery_id,
-      items: fieldErrors.items
-    })
     // Scroll hacia el primer campo con error
     nextTick(() => {
       const firstError = document.querySelector('.border-red-500')
@@ -1596,12 +1579,10 @@ const submitRequest = async () => {
 // Crear nueva solicitud
 const createNewRequest = async () => {
   const formattedData = supplyRequestService.formatSupplyRequestForAPI(requestForm)
-  console.log('Enviando solicitud:', formattedData)
   
   const result = await supplyRequestService.createSupplyRequest(formattedData)
   
   if (result.success) {
-    console.log('Solicitud creada exitosamente:', result)
     emit('success', result.data?.request || result.data)
   } else {
     const errorMessage = 'Error al crear la solicitud: ' + (result.error || 'Error desconocido')
@@ -1646,13 +1627,9 @@ const resubmitRequest = async () => {
       return itemData
     })
   
-  console.log('Reenviando solicitud con items:', updatedItems)
-  console.log('Notas del solicitante:', requestForm.notes)
-  
   const result = await supplyRequestService.resubmitReturnedRequest(props.id, updatedItems, requestForm.notes)
   
   if (result.success) {
-    console.log('Solicitud reenviada exitosamente')
     
     showSuccess('La solicitud ha sido reenviada al encargado de bodega')
     
@@ -1701,21 +1678,14 @@ const extractOriginalNotes = (fullNotes) => {
 // Cargar solicitud para editar
 const loadRequestForEdit = async () => {
   try {
-    console.log('🔄 Cargando solicitud para editar, ID:', props.id)
     const response = await supplyRequestService.getSupplyRequestById(props.id)
-    console.log('📦 Respuesta de la solicitud:', response)
     
     if (response.success && response.data) {
       // El backend devuelve data.request, data.items, data.assignments
       const request = response.data.request || response.data
-      console.log('✅ Datos de la solicitud completa:', JSON.stringify(request, null, 2))
-      console.log('🏥 Pabellones disponibles:', JSON.stringify(pavilions.value, null, 2))
-      console.log('🔍 Datos directos - pavilion_id:', request.pavilion_id, 'surgery_datetime:', request.surgery_datetime)
       
       const pavilionId = request.pavilion_id
       const surgeryDatetime = request.surgery_datetime
-      
-      console.log('📊 Valores finales - pavilionId:', pavilionId, 'surgeryDatetime:', surgeryDatetime)
       
       // Cargar datos básicos
       requestForm.pavilion_id = pavilionId ? pavilionId.toString() : ''
@@ -1729,28 +1699,22 @@ const loadRequestForEdit = async () => {
       } else {
         requestForm.surgery_id = null
       }
-      console.log('🔍 Surgery ID cargado:', requestForm.surgery_id, 'desde:', request.surgery_id)
       
       // Guardar datos originales para mostrar en modo solo lectura
       // Buscar el pabellón por ID - probar con conversión de tipos
       const pavilionIdToFind = parseInt(pavilionId || 0)
       let pavilionName = 'No especificado'
       
-      console.log('🔍 Buscando pabellón con ID:', pavilionIdToFind)
-      console.log('📋 Pabellones disponibles:', pavilions.value)
-      
       if (pavilionIdToFind > 0) {
         const foundPavilion = pavilions.value.find(p => {
           const pId = parseInt(p.id)
-          console.log(`  Comparando: ${pId} === ${pavilionIdToFind}?`, pId === pavilionIdToFind)
           return pId === pavilionIdToFind
         })
         
         if (foundPavilion) {
           pavilionName = foundPavilion.name
-          console.log('✅ Pabellón encontrado:', pavilionName)
         } else {
-          console.warn('⚠️ Pabellón no encontrado para ID:', pavilionIdToFind)
+          console.warn('Pabellón no encontrado para ID:', pavilionIdToFind)
           pavilionName = `Pabellón ID: ${pavilionIdToFind}`
         }
       }
@@ -1762,18 +1726,8 @@ const loadRequestForEdit = async () => {
         requester_rut: request.requested_by || 'No disponible'
       }
       
-      console.log('📝 Datos originales asignados:', originalRequestData.value)
-      
-      console.log('📝 Datos originales guardados:', originalRequestData.value)
-      
       // Forzar actualización del DOM
       await nextTick()
-      
-      console.log('📝 Formulario actualizado:', {
-        pavilion_id: requestForm.pavilion_id,
-        surgery_datetime: requestForm.surgery_datetime,
-        notes: requestForm.notes
-      })
       
       // Cargar items
       const itemsResponse = await supplyRequestService.getSupplyRequestItems(props.id)

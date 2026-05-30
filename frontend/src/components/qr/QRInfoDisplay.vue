@@ -248,29 +248,17 @@ const downloadQRAsPDF = async () => {
   }
 }
 
-// Métodos para el carrito
-const onCartLoaded = (cart) => {
-  console.log('Carrito cargado en QRInfoDisplay:', cart)
-}
-
 const onCartClosed = (cart) => {
-  console.log('Carrito cerrado en QRInfoDisplay:', cart)
   // Emitir evento para que el padre recargue la información del QR
   emit('qr-updated')
 }
 
-const onCartError = (error) => {
-  console.log('No se encontró carrito para este QR (puede ser normal):', error)
-}
-
 const onItemUsed = () => {
-  console.log('Item usado en carrito')
   // Emitir evento para que el padre recargue la información del QR
   emit('qr-updated')
 }
 
 const onItemReturned = () => {
-  console.log('Item devuelto desde carrito')
   // Emitir evento para que el padre recargue la información del QR
   emit('qr-updated')
 }

@@ -92,15 +92,12 @@ class InventoryService {
   // Crear lote (batch)
   async createBatch(batchData) {
     try {
-      console.log('Creando lote:', batchData)
 
       // Convertir fecha al formato RFC3339 que espera Go
       const formattedData = {
         ...batchData,
         expiration_date: batchData.expiration_date + 'T00:00:00Z'
       }
-
-      console.log('Datos formateados:', formattedData)
       const response = await this.api.post('/batches', formattedData)
       return response.data
     } catch (error) {
@@ -169,7 +166,6 @@ class InventoryService {
   // Crear lote completo con múltiples insumos individuales (MÉTODO CORRECTO)
   async createBatchWithIndividualSupplies(batchData) {
     try {
-      console.log('Creando lote con insumos individuales:', batchData)
 
       // Usar el endpoint correcto que ya existe en el backend
       const response = await this.api.post('/batches/create-with-supplies', {
@@ -188,8 +184,6 @@ class InventoryService {
         },
         individual_count: parseInt(batchData.batch.amount) // Esta es la clave - cantidad de insumos individuales
       })
-
-      console.log('Respuesta del backend:', response.data)
       return response.data
     } catch (error) {
       const backendError = error.response?.data?.error || error.message

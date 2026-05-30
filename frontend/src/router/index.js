@@ -520,7 +520,6 @@ router.beforeEach(async (to, from, next) => {
 
   // Si está autenticado y trata de acceder al login, redirigir al home
   if (to.name === 'Login' && authStore.isAuthenticated) {
-    console.log('✔ Usuario autenticado intentando acceder a login, redirigiendo a home')
     next({ name: 'Home', replace: true })
     return
   }
@@ -529,12 +528,10 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth !== false) {
     // Verificar si el usuario está autenticado
     if (!authStore.isAuthenticated) {
-      console.log('✖ Usuario no autenticado para ruta protegida')
       // Intentar restaurar sesión desde localStorage solo si no está autenticado
       authStore.initializeAuth()
       
       if (!authStore.isAuthenticated) {
-        console.log('✖ No se pudo restaurar sesión, redirigiendo a login')
         next({
           name: 'Login',
           query: { redirect: to.fullPath },
@@ -542,7 +539,6 @@ router.beforeEach(async (to, from, next) => {
         })
         return
       }
-      console.log('✔ Sesión restaurada exitosamente')
     }
 
     // CORRECCIÓN CRÍTICA: Verificar si el usuario debe cambiar su contraseña por primera vez
@@ -551,7 +547,6 @@ router.beforeEach(async (to, from, next) => {
     if (authStore.user?.must_change_password) {
       // Solo redirigir si NO estamos en FirstTimePasswordChange y NO tiene skipPasswordCheck
       if (to.name !== 'FirstTimePasswordChange' && to.meta.skipPasswordCheck !== true) {
-        console.log('✖ Usuario debe cambiar contraseña temporal, redirigiendo...')
         next({
           name: 'FirstTimePasswordChange',
           replace: true
@@ -564,7 +559,6 @@ router.beforeEach(async (to, from, next) => {
     if (to.meta.requiredRoles && to.meta.requiredRoles.length > 0) {
       const userRole = authStore.getUserRole
       if (!to.meta.requiredRoles.includes(userRole)) {
-        console.log('✖ Usuario sin permisos suficientes para acceder a:', to.name)
         next({ name: 'Home', replace: true })
         return
       }
@@ -591,7 +585,6 @@ router.beforeEach(async (to, from, next) => {
     ]
     
     if (!allowedRoutesForDoctor.includes(to.name)) {
-      console.log('âœ— Doctor intentando acceder a ruta no permitida:', to.name)
       next({ name: 'Home', replace: true })
       return
     }
@@ -609,7 +602,6 @@ router.beforeEach(async (to, from, next) => {
     ]
     
     if (!allowedRoutesForPavedad.includes(to.name)) {
-      console.log('âœ— Pavedad intentando acceder a ruta no permitida:', to.name)
       next({ name: 'Home', replace: true })
       return
     }
@@ -633,7 +625,6 @@ router.beforeEach(async (to, from, next) => {
     ]
     
     if (!allowedRoutesForNurse.includes(to.name)) {
-      console.log('âœ— Enfermera intentando acceder a ruta no permitida:', to.name)
       next({ name: 'Home', replace: true })
       return
     }
@@ -657,7 +648,6 @@ router.beforeEach(async (to, from, next) => {
     ]
     
     if (!allowedRoutesForPavilion.includes(to.name)) {
-      console.log('âœ— Usuario de pabellÃ³n intentando acceder a ruta no permitida:', to.name)
       next({ name: 'Home', replace: true })
       return
     }
@@ -673,7 +663,6 @@ router.beforeEach(async (to, from, next) => {
     ]
     
     if (restrictedRoutesForWarehouse.includes(to.name)) {
-      console.log('âœ— Encargado de bodega intentando acceder a ruta de configuraciÃ³n mÃ©dica no permitida:', to.name)
       next({ name: 'Home', replace: true })
       return
     }

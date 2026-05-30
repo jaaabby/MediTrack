@@ -97,13 +97,6 @@ export function useQRPdfDownload() {
       return false
     }
 
-    console.log('=== Generando PDF para QR:', qrInfo.qr_code, '===')
-    console.log('Estado:', qrInfo.is_consumed ? 'Consumido' : 'Disponible')
-    console.log('Ubicación:', qrInfo.traceability?.current_location?.name || 'No asignada')
-    console.log('Fecha vencimiento:', qrInfo.supply_info?.batch?.expiration_date || 'No disponible')
-    console.log('Cantidad:', qrInfo.supply_info?.batch?.amount || 'No disponible')
-    console.log('Proveedor:', qrInfo.supply_info?.batch?.supplier || 'No disponible')
-
     isGenerating.value = true
     error.value = null
 

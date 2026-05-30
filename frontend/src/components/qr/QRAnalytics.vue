@@ -589,14 +589,7 @@ const refreshData = () => {
 const applyFilters = () => {
   // Aplicar filtros a los datos
   let filtered = scanEvents.value || []
-  
-  // Filtros se aplicarán a los computed properties automáticamente
-  console.log('Aplicando filtros:', {
-    period: selectedPeriod.value,
-    scanType: selectedScanType.value,
-    source: selectedSource.value,
-    status: selectedStatus.value
-  })
+
 }
 
 const exportAnalytics = () => {
@@ -639,10 +632,6 @@ const exportAnalytics = () => {
     console.error('Error al exportar analytics:', err)
     showError('Error al exportar los datos de analytics')
   }
-}
-
-const handleEventDetails = (event) => {
-  console.log('Ver detalles del evento:', event)
 }
 
 // Funciones de utilidad

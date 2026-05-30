@@ -16,14 +16,14 @@ export function getApiBaseUrl() {
   if (viteApiUrl) {
     // Asegurar que termine con /api/v1 si no lo tiene
     const url = viteApiUrl.endsWith('/api/v1') ? viteApiUrl : `${viteApiUrl}/api/v1`
-    console.log('✅ API URL desde VITE_API_URL:', url)
+    console.log('API URL desde VITE_API_URL:', url)
     return url
   }
 
   // 2. Si hay VITE_API_BASE_URL (legacy), usarla
   const envUrl = import.meta.env.VITE_API_BASE_URL
   if (envUrl) {
-    console.log('✅ API URL desde VITE_API_BASE_URL:', envUrl)
+    console.log('API URL desde VITE_API_BASE_URL:', envUrl)
     return envUrl
   }
 
@@ -34,7 +34,7 @@ export function getApiBaseUrl() {
   // NOTA: En Cloudflare Pages, SIEMPRE debes configurar VITE_API_URL
   if (isProduction) {
     const apiUrl = '/api/v1'
-    console.warn('⚠️ Producción sin VITE_API_URL configurada. Usando URL relativa (solo funciona con Nginx proxy):', apiUrl)
+    console.warn('Producción sin VITE_API_URL configurada. Usando URL relativa (solo funciona con Nginx proxy):', apiUrl)
     console.log('   Protocolo:', window.location.protocol)
     console.log('   Hostname:', window.location.hostname)
     return apiUrl
@@ -63,7 +63,7 @@ export function getApiBaseUrl() {
   
   const apiUrl = `${backendProtocol}://${apiHost}:${backendPort}/api/v1`
   
-  console.log('🔧 API URL detectada automáticamente (desarrollo):', apiUrl)
+  console.log('API URL detectada automáticamente (desarrollo):', apiUrl)
   console.log('   Protocolo frontend:', protocol)
   console.log('   Hostname:', hostname)
   console.log('   Puerto frontend:', port)

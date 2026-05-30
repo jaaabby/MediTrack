@@ -1344,7 +1344,6 @@ onMounted(() => {
 // Recargar el carrito cuando cambia el requestId
 watch(() => props.requestId, (newRequestId, oldRequestId) => {
   if (newRequestId && newRequestId !== oldRequestId) {
-    console.log('RequestId cambió, recargando carrito:', newRequestId)
     // Esperar un momento para que el backend procese los cambios
     setTimeout(() => {
       loadCart()
@@ -1355,7 +1354,6 @@ watch(() => props.requestId, (newRequestId, oldRequestId) => {
 // Recargar el carrito cuando cambia el qrCode (por ejemplo, al escanear otro insumo en /qr)
 watch(() => props.qrCode, (newQR, oldQR) => {
   if (newQR && newQR !== oldQR) {
-    console.log('QR del carrito cambió, recargando carrito para QR:', newQR)
     setTimeout(() => {
       loadCart()
     }, 500)

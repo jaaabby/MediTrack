@@ -165,13 +165,10 @@ const loadWarehouseManagers = async () => {
   errorMessage.value = ''
   
   try {
-    console.log('Cargando encargados de bodega...')
     const result = await userService.getUsersByRole('encargado de bodega')
-    console.log('Resultado de getUsersByRole:', result)
     
     if (result.success && result.data) {
       warehouseManagers.value = result.data
-      console.log('Encargados cargados:', warehouseManagers.value)
       
       if (warehouseManagers.value.length === 0) {
         errorMessage.value = 'No hay encargados de bodega registrados en el sistema'

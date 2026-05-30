@@ -479,7 +479,6 @@ const loadQRInfo = async () => {
             qrInfo.value.batch_status.batch_qr_code = batchInfo.qr_code
           }
         } catch (err) {
-          console.log('No se pudo obtener QR del lote:', err)
         }
       }
       

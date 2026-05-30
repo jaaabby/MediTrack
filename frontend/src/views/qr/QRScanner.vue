@@ -522,7 +522,6 @@ const canBeMarkedAsReadyForPickup = (info) => {
   
   // Solo encargados de bodega pueden marcar como listo para retiro
   if (authStore.user?.role !== 'encargado de bodega') {
-    console.log('Usuario no es encargado de bodega:', authStore.user?.role)
     return false
   }
   
@@ -655,7 +654,6 @@ const isOnRouteToStore = (info) => {
   const userStoreId = authStore.user?.store_id
 
   if (destinationStoreId == null) {
-    console.log('❌ destinationStoreId es null/undefined — revise que supply_info.store_id llegue del backend')
     return false
   }
 

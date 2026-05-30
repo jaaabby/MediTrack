@@ -1062,11 +1062,8 @@ async function loadCompletedRequests() {
       requests = result
     }
     
-    console.log('📊 Solicitudes completadas encontradas:', requests.length)
-    
     // Si no hay solicitudes completadas, intentar con aprobadas también (para tener datos de prueba)
     if (requests.length === 0) {
-      console.log('⚠️ No hay solicitudes completadas, buscando aprobadas...')
       const approvedResult = await supplyRequestService.getAllSupplyRequests(1000, 0, 'aprobado')
       if (approvedResult && approvedResult.data) {
         if (Array.isArray(approvedResult.data.requests)) {
@@ -1075,12 +1072,10 @@ async function loadCompletedRequests() {
           requests = approvedResult.data.filter(r => r.surgery_id)
         }
       }
-      console.log('📊 Solicitudes aprobadas con cirugía:', requests.length)
     }
     
     // Filtrar solo las que tienen surgery_id
     requests = requests.filter(r => r.surgery_id)
-    console.log('📊 Solicitudes con surgery_id:', requests.length)
     
     // Cargar items para cada solicitud
     const requestsWithItems = await Promise.all(
@@ -1103,7 +1098,6 @@ async function loadCompletedRequests() {
     )
     
     completedRequests.value = requestsWithItems
-    console.log('✅ Solicitudes cargadas con items:', requestsWithItems.length)
   } catch (err) {
     console.error('❌ Error cargando solicitudes completadas:', err)
     completedRequests.value = []

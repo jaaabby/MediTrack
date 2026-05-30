@@ -472,8 +472,6 @@ class QRService {
 
       const response = await this.api.get(`/qr/history/${encodeURIComponent(qrCode)}`)
 
-      console.log('Raw history response:', response.data)
-
       // Manejar la estructura de respuesta del backend
       let historyData = null
 
@@ -495,8 +493,6 @@ class QRService {
           return dateB - dateA
         })
       }
-
-      console.log('Processed history data:', historyData)
 
       return historyData
     } catch (error) {
@@ -676,7 +672,6 @@ class QRService {
       // Crear el registro usando el servicio de inventario existente
       const response = await this.api.post('/batch-history/', historyEntry)
 
-      console.log('Historial del lote actualizado exitosamente:', response.data)
       return response.data
 
     } catch (error) {

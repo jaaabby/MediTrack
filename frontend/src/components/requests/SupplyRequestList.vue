@@ -692,8 +692,6 @@ const loadSupplyRequests = async () => {
       } else {
         requests.value = allRequests
       }
-      
-      console.log('Solicitudes cargadas:', requests.value)
     } else {
       // Solo establecer error si realmente hay un error (no solo falta de datos)
       requests.value = []

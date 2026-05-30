@@ -41,16 +41,11 @@ class ReturnToBodegaService {
    */
   async returnSupplyToStore(qrCode, notes = '') {
     try {
-      console.log('🔍 API_BASE_URL:', API_BASE_URL)
-      console.log('🔍 Calling:', `/qr/return-to-store`)
       
       const authStore = useAuthStore()
-      console.log('🔍 AuthStore user:', authStore.user)
-      console.log('🔍 User RUT:', authStore.user?.rut)
       
       // Usar un RUT por defecto que sabemos que existe en la base de datos
       const userRut = authStore.user?.rut || '12345678-9' // Admin del sistema
-      console.log('🔍 Using RUT:', userRut)
       
       const response = await this.api.post('/qr/return-to-store', {
         qr_code: qrCode,
@@ -79,11 +74,9 @@ class ReturnToBodegaService {
    */
   async confirmArrivalToStore(qrCode, notes = '') {
     try {
-      console.log('🔍 Confirmando llegada a bodega para:', qrCode)
       
       const authStore = useAuthStore()
       const userRut = authStore.user?.rut || '12345678-9'
-      console.log('🔍 Using RUT:', userRut)
       
       const response = await this.api.post('/qr/confirm-arrival-to-store', {
         qr_code: qrCode,
@@ -110,12 +103,7 @@ class ReturnToBodegaService {
    */
   async getSuppliesForReturn() {
     try {
-      console.log('🔍 Llamando a:', `${API_BASE_URL}/qr/supplies-for-return`)
       const response = await this.api.get('/qr/supplies-for-return')
-      console.log('🔍 Respuesta completa:', response)
-      console.log('🔍 Status:', response.status)
-      console.log('🔍 Data:', response.data)
-      console.log('🔍 Tipo de data:', typeof response.data)
       
       // Intentar diferentes estructuras de respuesta
       let data = []
@@ -130,27 +118,25 @@ class ReturnToBodegaService {
         // Si está en response.data.supplies
         data = response.data.supplies
       } else if (response.data && response.data.message) {
-        // Si es una respuesta con mensaje (posiblemente vacía)
-        console.log('📄 Mensaje del servidor:', response.data.message)
         data = []
       } else {
         // Fallback: intentar convertir cualquier cosa a array
-        console.warn('⚠️ Estructura de respuesta no reconocida, usando array vacío')
+        console.warn('Estructura de respuesta no reconocida, usando array vacío')
         data = []
       }
       
       return data
     } catch (error) {
-      console.error('❌ Error obteniendo insumos para retorno:', error)
+      console.error('Error obteniendo insumos para retorno:', error)
       if (error.response) {
-        console.error('❌ Status:', error.response.status)
-        console.error('❌ Data:', error.response.data)
+        console.error('Status:', error.response.status)
+        console.error('Data:', error.response.data)
         throw new Error(error.response.data?.error || `Error HTTP: ${error.response.status}`)
       } else if (error.request) {
-        console.error('❌ No response received:', error.request)
+        console.error('No response received:', error.request)
         throw new Error('No se pudo conectar con el servidor')
       } else {
-        console.error('❌ Request setup error:', error.message)
+        console.error('Request setup error:', error.message)
         throw error
       }
     }

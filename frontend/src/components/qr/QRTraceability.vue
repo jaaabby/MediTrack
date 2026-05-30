@@ -458,44 +458,24 @@ const getCurrentLocation = () => {
   // Si el insumo está consumido, mostrar dónde fue consumido
   const status = qrInfo.value?.supply_info?.status || qrInfo.value?.status
   
-  console.log('🔍 getCurrentLocation - Debug:', {
-    status,
-    is_consumed: qrInfo.value?.is_consumed,
-    supply_info_status: qrInfo.value?.supply_info?.status
-  })
-  
   if (status?.toLowerCase() === 'consumido' || qrInfo.value?.is_consumed) {
     const events = getAllEvents()
-    console.log('📋 Eventos totales:', events.length)
     
     // Buscar el evento de consumo
     const consumptionEvent = events.find(e => {
       const isConsumption = e.event_type === 'movement' && 
                            (e.status === 'consumido' || e.status === 'consumed')
-      if (isConsumption) {
-        console.log('✅ Encontrado evento de consumo:', e)
-      }
       return isConsumption
     })
     
     if (consumptionEvent && consumptionEvent.location) {
-      console.log('✓ Usando ubicación del evento de consumo:', consumptionEvent.location)
       return `Fue usado en ${consumptionEvent.location}`
     }
-    
-    console.log('⚠️ No hay ubicación en evento de consumo, buscando recepción...')
     
     // Buscar el último evento de recepción que debe tener la ubicación
     const receptionEvent = events.find(e => {
       const isReception = e.event_type === 'movement' && 
                          (e.status === 'recepcionado' || e.status === 'received')
-      if (isReception) {
-        console.log('📍 Encontrado evento de recepción:', {
-          location: e.location,
-          destination_name: e.destination_name,
-          event: e
-        })
-      }
       return isReception
     })
     
@@ -505,21 +485,7 @@ const getCurrentLocation = () => {
                       (receptionEvent.destination_name ? 
                         `${receptionEvent.destination_type === 'pavilion' ? 'Pabellón' : 'Almacén'}: ${receptionEvent.destination_name}` : 
                         null)
-      
-      if (location) {
-        console.log('✓ Usando ubicación del evento de recepción:', location)
-        return `Fue usado en ${location}`
-      }
     }
-    
-    // Si no hay evento de consumo pero hay información de ubicación en supply_info
-    if (qrInfo.value?.supply_info?.location_type === 'pavilion' && qrInfo.value?.supply_info?.pavilion_name) {
-      console.log('✓ Usando ubicación de supply_info')
-      return `Fue usado en Pabellón: ${qrInfo.value.supply_info.pavilion_name}`
-    }
-    
-    console.log('❌ No se encontró ubicación en ninguna fuente')
-    return 'Consumido (ubicación no especificada)'
   }
   
   // Si el estado es pendiente_retiro, el insumo físicamente está en bodega

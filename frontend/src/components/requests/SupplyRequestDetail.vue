@@ -1163,11 +1163,6 @@ const loadSupplyRequest = async () => {
           userSearchQuery.value = request.value.authorized_pickup_name
         }
       }
-      
-      console.log('Solicitud cargada:', result.data)
-      console.log('Estado:', request.value.status)
-      console.log('Fecha de aprobación:', request.value.approval_date)
-      console.log('Aprobado por:', request.value.approved_by_name)
     } else {
       error.value = result.error || 'Solicitud no encontrada'
     }
@@ -1259,7 +1254,6 @@ const handleItemsReviewed = async () => {
   // Solo recargar la solicitud para obtener el estado actualizado y mostrar el carrito si se aprobó
   await new Promise(resolve => setTimeout(resolve, 500))
   await loadSupplyRequest()
-  console.log('Solicitud recargada después de revisar items. Estado:', request.value?.status)
 }
 
 const openEditReturnedModal = () => {
@@ -1281,16 +1275,11 @@ const goToEditRequest = async () => {
     return
   }
   
-  console.log('Navegando a editar solicitud con ID:', id)
-  console.log('Nombre de ruta:', 'EditSupplyRequest')
-  console.log('Params:', { id: id.toString() })
-  
   try {
     await router.push({
       name: 'EditSupplyRequest',
       params: { id: id.toString() }
     })
-    console.log('Navegación exitosa')
   } catch (error) {
     console.error('Error en navegación:', error)
     showMessage('error', 'Error de Navegación', 'No se pudo navegar a la página de edición: ' + error.message)
@@ -1663,7 +1652,6 @@ const getAssignmentStatusLabel = (status) => {
 
 // Métodos para el carrito
 const onCartLoaded = (cart) => {
-  console.log('Carrito cargado:', cart)
   currentCart.value = cart
   canTransferCartToPavilion.value = cart?.canTransferToPavilion || false
   
@@ -1689,7 +1677,6 @@ const onCartClosed = (cart) => {
 }
 
 const onItemRemoved = (itemId) => {
-  console.log('Item removido del carrito:', itemId)
   showMessage('info', 'Item removido', 'El item ha sido removido del carrito')
 }
 
