@@ -348,7 +348,6 @@ func (s *SupplyTransferService) ReturnToStore(
 					// Si las notas contienen el prefijo de consumo automático, permitir devolución
 					if strings.Contains(lastConsumptionHistory.Notes, "[CONSUMO_AUTOMATICO]") {
 						// Permitir devolución de insumo consumido automáticamente
-						log.Printf("🔄 Permitiendo devolución de insumo %s consumido automáticamente", qrCode)
 					} else {
 						return fmt.Errorf("insumo %s ya fue consumido manualmente y no puede ser devuelto", qrCode)
 					}
@@ -454,7 +453,7 @@ func (s *SupplyTransferService) ReturnToStore(
 						assignment.Notes = returnNote
 					}
 					if err := tx.Save(&assignment).Error; err != nil {
-						log.Printf("⚠️ Error actualizando asignación a 'returned': %v\n", err)
+						log.Printf("Error actualizando asignación a 'returned': %v\n", err)
 					}
 
 					// Desactivar items de carrito asociados a esta asignación
@@ -468,7 +467,7 @@ func (s *SupplyTransferService) ReturnToStore(
 							"removed_by_name": &userName,
 							"notes":           "Insumo devuelto a bodega",
 						}).Error; err != nil {
-						log.Printf("⚠️ Error desactivando items de carrito: %v\n", err)
+						log.Printf("Error desactivando items de carrito: %v\n", err)
 					}
 
 					// Actualizar estado de la solicitud de insumos
@@ -476,7 +475,6 @@ func (s *SupplyTransferService) ReturnToStore(
 						updateRequestStatusAfterReturn(tx, assignment.SupplyRequestID)
 					}
 				}
-				log.Printf("✅ Marcadas %d asignaciones antiguas como 'returned' para QR %s\n", len(oldAssignments), qrCode)
 			}
 
 			// 8. Actualizar ubicación del insumo
@@ -642,4 +640,3 @@ func (s *SupplyTransferService) GetTransfersByFilters(
 
 	return transfers, total, nil
 }
-

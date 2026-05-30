@@ -1051,7 +1051,6 @@ func (s *MedicalSupplyService) ReturnSupplyToStore(supplyID int, userRUT string,
 				// Si las notas contienen el prefijo de consumo automático, permitir devolución
 				if strings.Contains(lastConsumptionHistory.Notes, "[CONSUMO_AUTOMATICO]") {
 					// Permitir devolución de insumo consumido automáticamente
-					log.Printf("🔄 Permitiendo devolución de insumo %s consumido automáticamente", supply.QRCode)
 				} else {
 					return fmt.Errorf("no se puede regresar un insumo consumido manualmente")
 				}
@@ -1397,12 +1396,6 @@ func (s *MedicalSupplyService) CheckAllIndividualSuppliesLowStock() error {
 			continue
 		}
 		alertsSent++
-		log.Printf("Alerta enviada para insumo %d (%s): Queda 1 insumo disponible",
-			supplyInfo.Code, supplyInfo.SupplyName)
-	}
-
-	if alertsSent > 0 {
-		log.Printf("Verificación de stock bajo de insumos completada: %d alertas enviadas, %d errores", alertsSent, errors)
 	}
 
 	return nil

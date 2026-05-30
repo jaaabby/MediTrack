@@ -110,8 +110,6 @@ func (r *Request) SendMailSkipTLS(templateName string, items interface{}) error 
 		return err
 	}
 
-	fmt.Printf("Intentando enviar correo a: %v desde: %s usando servidor: %s:%s\n", r.to, email, server, port)
-	
 	d := mail.NewDialer(server, puerto, email, pass)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true} // Habilitar TLS con skip verify
 
@@ -119,8 +117,6 @@ func (r *Request) SendMailSkipTLS(templateName string, items interface{}) error 
 		fmt.Printf("ERROR al enviar correo: %s\n", err.Error())
 		return err
 	}
-
-	fmt.Printf("Correo enviado exitosamente a: %v\n", r.to)
 	return nil
 }
 

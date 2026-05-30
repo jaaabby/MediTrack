@@ -45,19 +45,15 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	// Log del body recibido
 	bodyBytes, _ := ctx.GetRawData()
 	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	log.Printf("📝 CreateUser - Body recibido: %s", string(bodyBytes))
 
 	if err := ctx.ShouldBindJSON(&userRequest); err != nil {
-		log.Printf("❌ Error en binding JSON: %v", err)
+		log.Printf("Error en binding JSON: %v", err)
 		ctx.JSON(http.StatusBadRequest, response.Response{
 			Success: false,
 			Error:   "Datos de usuario inválidos: " + err.Error(),
 		})
 		return
 	}
-
-	log.Printf("✅ Datos parseados correctamente - RUT: %s, Role: %s, PavilionID: %v, SpecialtyID: %v",
-		userRequest.RUT, userRequest.Role, userRequest.PavilionID, userRequest.SpecialtyID)
 
 	// Validar rol
 	tempUser := models.User{Role: userRequest.Role}
@@ -167,7 +163,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	mailReq := mailer.NewRequest([]string{user.Email}, "¡Bienvenido a MediTrack! - Tus credenciales de acceso")
 
 	if err := mailReq.SendMailSkipTLS(templatePath, templateData); err != nil {
-		log.Printf("⚠️ Error enviando email a %s: %v", user.Email, err)
+		log.Printf("Error enviando email a %s: %v", user.Email, err)
 		// Continuamos aunque falle el email - el usuario fue creado
 		ctx.JSON(http.StatusCreated, response.Response{
 			Success: true,
@@ -176,8 +172,6 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		})
 		return
 	}
-
-	log.Printf("✅ Usuario creado y correo enviado exitosamente a: %s", user.Email)
 
 	ctx.JSON(http.StatusCreated, response.Response{
 		Success: true,

@@ -772,10 +772,6 @@ func (s *BatchService) CheckLowStockForSupplyType(supplyCode string) error {
 		alertsSent++
 	}
 
-	if alertsSent > 0 {
-		log.Printf("Se enviaron %d alertas de stock bajo para el insumo %s", alertsSent, supplyCode)
-	}
-
 	return nil
 }
 
@@ -817,11 +813,7 @@ func (s *BatchService) CheckAllBatchesLowStock() error {
 			continue
 		}
 		alertsSent++
-		log.Printf("Alerta enviada para lote %d (%s): Stock actual %d, Stock crítico %d",
-			batchInfo.ID, batchInfo.SupplyName, batchInfo.Amount, batchInfo.CriticalStock)
 	}
-
-	log.Printf("Verificación de stock bajo completada: %d alertas enviadas, %d errores", alertsSent, errors)
 	return nil
 }
 
@@ -913,7 +905,5 @@ func (s *BatchService) CheckAllBatchesExpiration() error {
 		}
 		alertsSent++
 	}
-
-	log.Printf("Verificación de vencimiento completada: %d verificaciones, %d errores", alertsSent, errors)
 	return nil
 }

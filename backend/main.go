@@ -91,7 +91,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error al inicializar WebAuthn: %v", err)
 	}
-	log.Printf("✅ WebAuthn inicializado (RPID: %s)", webauthnRPID)
+	log.Printf("WebAuthn inicializado (RPID: %s)", webauthnRPID)
 
 	// Configurar Gin
 	gin.SetMode(gin.ReleaseMode)
@@ -203,7 +203,7 @@ func main() {
 				))
 			},
 		)
-		log.Println("⚠️  Ruta de desarrollo habilitada: POST /dev/reset-db (requiere token de admin)")
+		log.Println("Ruta de desarrollo habilitada: POST /dev/reset-db (requiere token de admin)")
 	}
 	// Iniciar el verificador automático de retornos a bodega en una goroutine
 	go medicalSupplyService.StartAutomaticReturnChecker()

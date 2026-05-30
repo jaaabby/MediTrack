@@ -37,7 +37,6 @@ func (s *AutomaticConsumptionService) SetCartService(cartService *CartService) {
 // ProcessAutomaticConsumption verifica cirugías completadas y envía notificaciones para insumos pendientes
 func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 	now := time.Now()
-	log.Printf("Verificando cirugías completadas y notificaciones pendientes - %s", now.Format("2006-01-02 15:04:05"))
 
 	// Buscar solicitudes con cirugías que ya deberían haber terminado
 	// Usar una consulta SQL más eficiente que filtre directamente por fecha
@@ -58,32 +57,20 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 		return fmt.Errorf("error obteniendo solicitudes: %v", err)
 	}
 
-	log.Printf("Encontradas %d solicitudes con cirugías asociadas", len(requests))
-
 	var totalProcessed int
 	var totalConsumed int
 	var errors []string
 
 	for _, request := range requests {
 		if request.Surgery == nil {
-			log.Printf("Solicitud %d: sin cirugía asociada", request.ID)
 			continue
 		}
 
 		// Calcular cuándo debería terminar la cirugía
 		surgeryEndTime := request.SurgeryDatetime.Add(time.Duration(request.Surgery.Duration * float64(time.Hour)))
 
-		log.Printf("Verificando solicitud %s: cirugía programada %s, duración %.2f horas, debería terminar %s, ahora es %s",
-			request.RequestNumber,
-			request.SurgeryDatetime.Format("2006-01-02 15:04:05"),
-			request.Surgery.Duration,
-			surgeryEndTime.Format("2006-01-02 15:04:05"),
-			now.Format("2006-01-02 15:04:05"))
-
 		// Solo procesar si la cirugía ya debería haber terminado
 		if now.Before(surgeryEndTime) {
-			log.Printf("Solicitud %s: cirugía aún no ha terminado (termina en %s)",
-				request.RequestNumber, surgeryEndTime.Format("2006-01-02 15:04:05"))
 			continue
 		}
 
@@ -107,13 +94,6 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 			continue
 		}
 
-		log.Printf("Solicitud %s: encontradas %d asignaciones asociadas", request.RequestNumber, len(assignments))
-
-		if len(assignments) == 0 {
-			log.Printf("Solicitud %s: no hay asignaciones para procesar", request.RequestNumber)
-			continue
-		}
-
 		// Procesar cada asignación - SOLO NOTIFICAR, NO CONSUMIR
 		notifiedCount := 0
 		for _, assignment := range assignments {
@@ -128,44 +108,6 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 				}
 			} else {
 				supply = assignment.MedicalSupply
-			}
-
-			// Verificar que el insumo no esté ya consumido o devuelto
-			if supply.Status == models.StatusConsumed || supply.Status == models.StatusAvailable {
-				continue
-			}
-
-			// Solo notificar insumos en estado "recepcionado"
-			if supply.Status != models.StatusReceived {
-				log.Printf("Insumo %s (QR: %s): estado %s, esperado %s",
-					supply.QRCode, supply.QRCode, supply.Status, models.StatusReceived)
-				continue
-			}
-
-			if supply.LocationType != models.SupplyLocationPavilion {
-				log.Printf("Insumo %s (QR: %s): ubicación tipo %s, esperado %s",
-					supply.QRCode, supply.QRCode, supply.LocationType, models.SupplyLocationPavilion)
-				continue
-			}
-
-			// Verificar que el insumo esté en el pabellón correcto (el de la solicitud)
-			if supply.LocationID != request.PavilionID {
-				log.Printf("Insumo %s (QR: %s): pabellón %d, esperado %d",
-					supply.QRCode, supply.QRCode, supply.LocationID, request.PavilionID)
-				continue
-			}
-
-			// Verificar si debemos enviar notificación según el intervalo configurado
-			shouldNotify, isFirstNotification := s.shouldSendNotification(&assignment, surgeryEndTime)
-			if !shouldNotify {
-				log.Printf("Insumo %s: notificación ya enviada recientemente", supply.QRCode)
-				continue
-			}
-
-			if isFirstNotification {
-				log.Printf("Insumo %s (QR: %s) requiere atención - cirugía completada (primera notificación)", supply.QRCode, supply.QRCode)
-			} else {
-				log.Printf("Insumo %s - enviando recordatorio (notificación #%d)", supply.QRCode, assignment.NotificationCount+1)
 			}
 
 			// Enviar notificación por correo en lugar de consumir automáticamente
@@ -183,21 +125,14 @@ func (s *AutomaticConsumptionService) ProcessAutomaticConsumption() error {
 			if err := s.DB.Save(&assignment).Error; err != nil {
 				log.Printf("Error actualizando registro de notificación: %v", err)
 			}
-
-			log.Printf("Notificación enviada para insumo %s (QR: %s)", supply.QRCode, supply.QRCode)
 			notifiedCount++
 			totalConsumed++
 		}
 
 		if notifiedCount > 0 {
 			totalProcessed++
-			log.Printf("Solicitud %s: %d notificación(es) enviada(s)",
-				request.RequestNumber, notifiedCount)
 		}
 	}
-
-	log.Printf("Procesamiento completado: %d solicitud(es) procesada(s), %d notificación(es) enviada(s)",
-		totalProcessed, totalConsumed)
 
 	if len(errors) > 0 {
 		log.Printf("Se encontraron %d error(es) durante el procesamiento", len(errors))

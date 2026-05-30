@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"log"
 	"meditrack/models"
 	"strings"
 	"time"
@@ -500,7 +499,6 @@ func (s *CartService) processItemReturn(tx *gorm.DB, cart *models.SupplyCart, ca
 			First(&lastConsumptionHistory).Error; err == nil {
 			if strings.Contains(lastConsumptionHistory.Notes, "[CONSUMO_AUTOMATICO]") {
 				wasAutoConsumed = true
-				log.Printf("🔄 Devolviendo insumo %s consumido automáticamente desde carrito", supply.QRCode)
 			}
 		}
 	}
